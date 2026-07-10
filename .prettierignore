@@ -1,0 +1,12 @@
+**/pnpm-lock.yaml
+
+3rdparty/
+src/maa-cli
+src/MaaMacGui
+src/MaaUtils
+
+resource/Arknights-Tile-Pos/
+tools/OptimizeTemplates/optimize_templates.json
+
+CITATION.cff
+CHANGELOG.md

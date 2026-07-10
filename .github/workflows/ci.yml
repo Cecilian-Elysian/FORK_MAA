@@ -1,0 +1,856 @@
+name: Release Pipeline
+
+on:
+  push:
+    tags:
+      - "v*"
+    branches:
+      - "dev-v2"
+    paths:
+      - ".github/workflows/ci.yml"
+      - "3rdparty/include/**"
+      - "cmake/**"
+      - "CMakeLists.txt"
+      - "CMakePresets.json"
+      - "include/**"
+      - "src/**"
+      - "tools/maadeps-download.py"
+      - "!**/*.md"
+  pull_request:
+    paths:
+      - ".github/workflows/ci.yml"
+      - "3rdparty/include/**"
+      - "cmake/**"
+      - "CMakeLists.txt"
+      - "CMakePresets.json"
+      - "include/**"
+      - "src/**"
+      - "tools/maadeps-download.py"
+      - "!**/*.md"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.head.repo.full_name || github.repository }}-${{ github.head_ref || github.ref_name }}${{ github.ref == 'refs/heads/dev-v2' && format('-{0}', github.sha) || '' }}
+  cancel-in-progress: true
+
+jobs:
+  meta:
+    name: Gather Meta Information
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.set_tag.outputs.tag }}
+      prerelease: ${{ steps.set_pre.outputs.prerelease }}
+    steps:
+      - name: Show concurrency group
+        env:
+          CONCURRENCY_GROUP: ${{ github.workflow }}-${{ github.event.pull_request.head.repo.full_name || github.repository }}-${{ github.head_ref || github.ref_name }}${{ github.ref == 'refs/heads/dev-v2' && format('-{0}', github.sha) || '' }}
+        run: |
+          echo "Concurrency Group: $CONCURRENCY_GROUP"
+
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          show-progress: false
+
+      - name: Set tag
+        id: set_tag
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            # For tag pushes, use the tag name
+            tag="${{ github.ref_name }}"
+          else
+            # For PRs and branch pushes, use git describe or fallback
+            tag=$(git describe --tags --match "v*" HEAD 2>/dev/null || echo "v0.0.1-$(git rev-parse --short HEAD)")
+          fi
+          echo "tag=${tag}" | tee -a $GITHUB_OUTPUT
+
+      - name: Check if it is a pre-release
+        id: set_pre
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          if [[ '${{ steps.set_tag.outputs.tag }}' =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "prerelease=false" | tee -a $GITHUB_OUTPUT
+          else
+            echo "prerelease=true" | tee -a $GITHUB_OUTPUT
+          fi
+
+      - name: Finalize changelog
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          this_tag=${{ steps.set_tag.outputs.tag }}
+          if [[ '${{ steps.set_pre.outputs.prerelease }}' != 'false' ]]; then
+            last_tag=$(git describe --tags --match "v*" --abbrev=0 --exclude='${{ steps.set_tag.outputs.tag }}')
+          else
+            last_tag=$(git describe --tags --match "v*" --abbrev=0 --exclude='${{ steps.set_tag.outputs.tag }}' --exclude='*-*')
+          fi
+          echo >> CHANGELOG.md
+          echo "**Full Changelog**: [$last_tag -> $this_tag](https://github.com/MaaAssistantArknights/MaaAssistantArknights/compare/${last_tag}...${this_tag})" >> CHANGELOG.md
+          echo >> CHANGELOG.md
+          echo "[已有 Mirror酱 CDK？前往 Mirror酱 高速下载](https://mirrorchyan.com/zh/projects?rid=MAA&source=maagh-release)" >> CHANGELOG.md
+
+      - name: Upload changelog to GitHub
+        uses: actions/upload-artifact@v7
+        if: startsWith(github.ref, 'refs/tags/v')
+        with:
+          name: changelog
+          path: CHANGELOG.md
+
+  windows:
+    name: Build for Windows
+    needs: meta
+    strategy:
+      matrix:
+        arch: [arm64, x64]
+      fail-fast: false
+    runs-on: windows-2025-vs2026
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          show-progress: false
+
+      - name: Fetch submodules
+        shell: bash
+        run: bash ./.github/scripts/sync-optional-submodules.sh --init --depth 1 src/MaaUtils 3rdparty/EmulatorExtras
+
+      - name: Cache MaaDeps
+        id: cache-maadeps
+        uses: actions/cache@v6
+        continue-on-error: true
+        with:
+          path: |
+            ./src/MaaUtils/MaaDeps
+          key: ${{ runner.os }}-${{ matrix.arch }}-maadeps-${{ hashFiles('tools/maadeps-download.py') }}
+
+      - name: Bootstrap MaaDeps
+        if: steps.cache-maadeps.outputs.cache-hit != 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 tools/maadeps-download.py ${{ matrix.arch }}-windows
+
+      - name: Configure, build and install
+        run: |
+          cmake -B build --preset ${{ matrix.arch == 'arm64' && 'windows-publish-arm64' || 'windows-publish-x64' }} -DMAA_HASH_VERSION='${{ needs.meta.outputs.tag }}'
+          cmake --build --preset ${{ matrix.arch == 'arm64' && 'windows-publish-arm64' || 'windows-publish-x64' }} --parallel $env:NUMBER_OF_PROCESSORS
+          cmake --build build --target MAA.Updater --config RelWithDebInfo --parallel $env:NUMBER_OF_PROCESSORS
+          cmake --install build --config RelWithDebInfo
+
+      - name: Download MaaFramework
+        uses: robinraju/release-downloader@v1
+        with:
+          repository: MaaXYZ/MaaFramework
+          tag: v5.9.2
+          fileName: ${{ matrix.arch == 'arm64' && '*win-aarch64*.zip' || '*win-x86_64*.zip' }}
+          extract: true
+          out-file-path: MaaFramework-temp
+
+      - name: Copy ControlUnits
+        run: |
+          cp MaaFramework-temp/bin/*Win32ControlUnit* install/
+          cp MaaFramework-temp/bin/*AdbControlUnit* install/
+
+      - name: Upload MaaCore runtime for downstream jobs
+        uses: actions/upload-artifact@v7
+        with:
+          name: MAARuntime-win-${{ matrix.arch }}
+          path: |
+            install/
+            !install/*.h
+            !install/*.pdb
+            !install/msvc-debug/
+
+      - name: Generate global.json
+        shell: bash
+        run: |
+          echo '{"sdk":{"version":"10.0.203","rollForward":"disable"}}' > global.json
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      - name: Cache .nuke/temp, ~/.nuget/packages
+        id: cache-nuget
+        uses: actions/cache@v6
+        continue-on-error: true
+        with:
+          path: |
+            .nuke/temp
+            ~/.nuget/packages
+          key: ${{ runner.os }}-${{ matrix.arch }}-nuget-${{ hashFiles('**/*.csproj', 'global.json') }}
+
+      - name: Restore dependencies
+        if: steps.cache-nuget.outputs.cache-hit != 'true'
+        run: dotnet restore src/MaaWpfGui/MaaWpfGui.csproj
+
+      - name: Taggify version for csproj
+        run: |
+          $csprojPath = "src/MaaWpfGui/MaaWpfGui.csproj"
+          $csprojPath = Resolve-Path -Path $csprojPath
+          $tag = '${{ needs.meta.outputs.tag }}' -replace '.*?/', ''
+          if ($tag -match '\d+(\.\d+){1,3}') {
+              $match = $Matches[0]
+          } else {
+              $match = "0.0.1"
+          }
+          [xml]$csproj = Get-Content -Path $csprojPath
+          $node = $csproj.Project.PropertyGroup | where {$_.ApplicationVersion -ne $null}
+          $node.InformationalVersion = $tag
+          $node.Version = $match
+          $node.FileVersion = $match
+          $node.AssemblyVersion = $match
+          $csproj.Save($csprojPath)
+
+      - name: Publish WPF GUI
+        continue-on-error: true
+        run: |
+          dotnet publish src/MaaWpfGui/MaaWpfGui.csproj -c Release -p:Platform=${{ matrix.arch == 'arm64' && 'ARM64' || 'x64' }} -o install
+
+      - name: Collect PDB files
+        run: |
+          cp build/bin/RelWithDebInfo/*.pdb install/
+          Compress-Archive -Path install/*.pdb -DestinationPath install/MAAComponent-DebugSymbol-${{ needs.meta.outputs.tag }}-win-${{ matrix.arch }}.zip
+        continue-on-error: true
+
+      - name: Upload PDB files
+        uses: actions/upload-artifact@v7
+        with:
+          name: MAAComponent-DebugSymbol-win-${{ matrix.arch }}
+          path: install/MAAComponent-DebugSymbol-${{ needs.meta.outputs.tag }}-win-${{ matrix.arch }}.zip
+          compression-level: 0
+
+      - name: Organize install files
+        shell: bash
+        run: |
+          rm -rf install/MAAComponent-DebugSymbol-*.zip
+          rm -rf install/*.pdb
+          rm -rf install/msvc-debug
+          rm -rf install/*.h
+          rm -rf install/*.bak
+
+          cp tools/DependencySetup_依赖库安装.bat install
+
+      - name: Zip files
+        run: |
+          cd install
+          Compress-Archive -Destination MAA-${{ needs.meta.outputs.tag }}-win-${{ matrix.arch }}.zip -Path ./*
+
+      - name: Upload MAA to GitHub
+        uses: actions/upload-artifact@v7
+        with:
+          name: MAA-win-${{ matrix.arch }}
+          path: install/MAA-*.zip
+          compression-level: 0
+
+  ubuntu:
+    name: Build for Ubuntu
+    needs: meta
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch: [aarch64, x86_64]
+      fail-fast: false
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          show-progress: false
+
+      - name: Fetch submodules
+        shell: bash
+        run: bash ./.github/scripts/sync-optional-submodules.sh --init --depth 1 src/MaaUtils 3rdparty/EmulatorExtras src/maa-cli
+
+      - name: Cache MaaDeps
+        id: cache-maadeps
+        uses: actions/cache@v6
+        continue-on-error: true
+        with:
+          path: ./src/MaaUtils/MaaDeps
+          key: ${{ runner.os }}-${{ matrix.arch == 'x86_64' && 'x64' || 'arm64' }}-maadeps-${{ hashFiles('tools/maadeps-download.py') }}
+
+      - name: Bootstrap MaaDeps
+        if: steps.cache-maadeps.outputs.cache-hit != 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 tools/maadeps-download.py ${{ matrix.arch == 'x86_64' && 'x64' || 'arm64' }}-linux
+
+      - name: Configure, build and install
+        run: |
+          cmake --preset ${{ matrix.arch == 'x86_64' && 'linux-publish-x64' || 'linux-publish-arm64' }} -DMAA_HASH_VERSION='${{ needs.meta.outputs.tag }}'
+          cmake --build --preset ${{ matrix.arch == 'x86_64' && 'linux-publish-x64' || 'linux-publish-arm64' }} --parallel $(nproc)
+          cmake --install build --config RelWithDebInfo
+        env:
+          CLICOLOR_FORCE: 1
+
+      - name: Download MaaFramework
+        uses: robinraju/release-downloader@v1
+        with:
+          repository: MaaXYZ/MaaFramework
+          latest: true
+          fileName: '*linux-${{ matrix.arch }}*.zip'
+          extract: true
+          out-file-path: MaaFramework-temp
+
+      - name: Copy ControlUnits
+        run: |
+          cp MaaFramework-temp/bin/*AdbControlUnit* install/
+
+      - name: Upload MaaCore runtime for downstream jobs
+        uses: actions/upload-artifact@v7
+        with:
+          name: MAARuntime-linux-${{ matrix.arch }}
+          path: install/
+
+      - name: Setup cross compile toolchains for CLI
+        uses: ./src/maa-cli/.github/actions/setup
+        with:
+          target_arch: ${{ matrix.arch }}
+
+      - name: Build CLI
+        run: |
+          cargo build --release --locked --package maa-cli --features git2/vendored-openssl
+          cp -v target/$CARGO_BUILD_TARGET/release/maa $GITHUB_WORKSPACE/install/maa
+          cargo build --release --locked --package maa-cli --no-default-features \
+            --features git2,git2/vendored-openssl
+          cp -v target/$CARGO_BUILD_TARGET/release/maa $GITHUB_WORKSPACE/appimage-maa
+        working-directory: src/maa-cli
+
+      - name: Build Appimage
+        run: |
+          sudo add-apt-repository universe
+          sudo apt update
+          sudo apt install libfuse2
+          mkdir -pv release
+          mkdir -pv Maa.AppDir/usr/share/maa
+          cp -r install/* Maa.AppDir/usr/share/maa/
+          wget -c https://raw.githubusercontent.com/MaaAssistantArknights/design/main/v2/icons/maa-logo_512x512.png -O Maa.AppDir/maa.png
+          mkdir -pv Maa.AppDir/usr/share/icons/hicolor/512x512/apps/
+          cp -v Maa.AppDir/maa.png Maa.AppDir/usr/share/icons/hicolor/512x512/apps/
+          cp -v appimage-maa Maa.AppDir/usr/share/maa/maa
+          chmod a+x Maa.AppDir/usr/share/maa/maa
+
+          cat > Maa.AppDir/maa.desktop <<EOF
+          [Desktop Entry]
+          Type=Application
+          Name=MaaAssistantArknights
+          Icon=maa
+          Exec=AppRun
+          Terminal=true
+          Categories=Game;StrategyGame;
+          Comment=An Arknights assistant
+          EOF
+
+          ln -sv usr/share/maa/maa Maa.AppDir/AppRun
+          mkdir -pv Maa.AppDir/usr/share/metainfo/
+          cp -v tools/AppImage/io.github.maaassistantarknights.maaassistantarknights.metainfo.xml Maa.AppDir/usr/share/metainfo/
+          wget "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage"
+          # appimagetool with embedded runtime does not support cross build, till AppImage/appimagetool 7a10b8
+          wget "https://github.com/AppImage/type2-runtime/releases/download/old/runtime-fuse3-${{ matrix.arch }}"
+          chmod a+x appimagetool-x86_64.AppImage
+          ARCH=${{ matrix.arch }} ./appimagetool-x86_64.AppImage --runtime-file runtime-fuse3-${{ matrix.arch }} Maa.AppDir
+          chmod a+x MaaAssistantArknights-${{ matrix.arch }}.AppImage
+          mv -v MaaAssistantArknights-${{ matrix.arch }}.AppImage $GITHUB_WORKSPACE/release/MAA-${{ needs.meta.outputs.tag }}-linux-${{ matrix.arch }}.AppImage
+
+      - name: Tar files
+        run: |
+          mkdir -p release
+          cd install
+          tar czvf $GITHUB_WORKSPACE/release/MAA-${{ needs.meta.outputs.tag }}-linux-${{ matrix.arch }}.tar.gz .
+
+      - name: Upload MAA to GitHub
+        uses: actions/upload-artifact@v7
+        with:
+          name: MAA-linux-${{ matrix.arch }}
+          path: |
+            release/*.AppImage
+            release/*.tar.gz
+          compression-level: 0
+
+  android:
+    name: Build for Android
+    needs: meta
+    runs-on: macos-26
+    strategy:
+      matrix:
+        arch: [arm64, x64]
+      fail-fast: false
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          show-progress: false
+
+      - name: Fetch submodules
+        run: |
+          git submodule update --init --depth 1 src/MaaUtils
+
+      - name: Cache MaaDeps
+        id: cache-maadeps
+        uses: actions/cache@v6
+        continue-on-error: true
+        with:
+          path: ./src/MaaUtils/MaaDeps
+          key: ${{ runner.os }}-${{ matrix.arch }}-android-maadeps-${{ hashFiles('tools/maadeps-download.py') }}
+
+      - name: Bootstrap MaaDeps
+        if: steps.cache-maadeps.outputs.cache-hit != 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 tools/maadeps-download.py ${{ matrix.arch }}-android
+
+      - name: Setup Android NDK
+        id: setup-ndk
+        uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r29
+
+      - name: Configure, build and install
+        run: |
+          cmake -B build --preset 'android-publish-${{ matrix.arch }}' \
+            -DCMAKE_TOOLCHAIN_FILE=${{ steps.setup-ndk.outputs.ndk-path }}/build/cmake/android.toolchain.cmake \
+            -DMAA_HASH_VERSION='${{ needs.meta.outputs.tag }}'
+          cmake --build build --parallel $(sysctl -n hw.logicalcpu)
+          cmake --install build --prefix install
+
+      - name: Download MaaFramework
+        uses: robinraju/release-downloader@v1
+        with:
+          repository: MaaXYZ/MaaFramework
+          latest: true
+          fileName: "*android-${{ matrix.arch == 'arm64' && 'aarch64' || 'x86_64' }}*.zip"
+          extract: true
+          out-file-path: MaaFramework-temp
+
+      - name: Copy MaaAndroidNativeControlUnit
+        run: |
+          cp MaaFramework-temp/bin/libMaaAndroidNativeControlUnit.so install/
+
+      - name: Tar files
+        run: |
+          cd install
+          tar czvf $GITHUB_WORKSPACE/MAAComponent-${{ needs.meta.outputs.tag }}-android-${{ matrix.arch }}.tar.gz .
+
+      - name: Upload MAA to GitHub
+        uses: actions/upload-artifact@v7
+        with:
+          name: MAAComponent-android-${{ matrix.arch }}
+          path: MAAComponent-*.tar.gz
+          compression-level: 0
+
+  macOS-Core:
+    name: Build Core for macOS
+    needs: meta
+    runs-on: macos-26
+    strategy:
+      matrix:
+        arch: [arm64, x86_64]
+      fail-fast: false
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          show-progress: false
+
+      - name: Fetch submodules
+        shell: bash
+        run: bash ./.github/scripts/sync-optional-submodules.sh --init --depth 1 src/MaaUtils
+
+      # ninja 1.13.1 is already installed and up-to-date.
+      # - name: Install dependencies
+      #   run: |
+      #     brew install ninja
+
+      - name: Cache MaaDeps
+        id: cache-maadeps
+        uses: actions/cache@v6
+        continue-on-error: true
+        with:
+          path: ./src/MaaUtils/MaaDeps
+          key: ${{ runner.os }}-${{ matrix.arch == 'x86_64' && 'x64' || 'arm64' }}-maadeps-${{ hashFiles('tools/maadeps-download.py') }}
+
+      - name: Bootstrap MaaDeps
+        run: |
+          python3 tools/maadeps-download.py ${{ matrix.arch == 'x86_64' && 'x64' || 'arm64' }}-osx
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure, build and install
+        run: |
+          cmake -B build --preset ${{ matrix.arch == 'x86_64' && 'macos-publish-x64' || 'macos-publish-arm64' }} -DMAA_HASH_VERSION='${{ needs.meta.outputs.tag }}'
+          cmake --build --preset ${{ matrix.arch == 'x86_64' && 'macos-publish-x64' || 'macos-publish-arm64' }} --parallel $(sysctl -n hw.logicalcpu)
+          cmake --install build --config RelWithDebInfo
+
+      - name: Download MaaFramework
+        uses: robinraju/release-downloader@v1
+        with:
+          repository: MaaXYZ/MaaFramework
+          latest: true
+          fileName: ${{ matrix.arch == 'x86_64' && '*macos-x86_64*.zip' || '*macos-aarch64*.zip' }}
+          extract: true
+          out-file-path: MaaFramework-temp
+
+      - name: Copy ControlUnits
+        run: |
+          cp MaaFramework-temp/bin/*AdbControlUnit* install/
+
+      - name: Upload MAA to GitHub
+        uses: actions/upload-artifact@v7
+        with:
+          name: MAACore-macos-${{ matrix.arch }}
+          path: "install/*.dylib"
+
+      - name: Upload MaaCore runtime for downstream jobs
+        uses: actions/upload-artifact@v7
+        with:
+          name: MAARuntime-macos-${{ matrix.arch }}
+          path: install/
+
+  macOS-GUI:
+    name: Build GUI for macOS
+    needs: [meta, macOS-Core]
+    runs-on: macos-26
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          show-progress: false
+
+      - name: Install dependencies
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          brew install graphicsmagick imagemagick
+          npm install -g create-dmg
+
+      - name: Fetch submodules
+        run: |
+          git submodule update --init --depth 1 src/MaaMacGui
+
+      - name: Download MAA (arm64) from GitHub
+        uses: actions/download-artifact@v8
+        with:
+          name: MAACore-macos-arm64
+          path: install-arm64
+
+      - name: Download MAA (x64) from GitHub
+        uses: actions/download-artifact@v8
+        with:
+          name: MAACore-macos-x86_64
+          path: install-x86_64
+
+      - name: Install Developer ID certificate
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: apple-actions/import-codesign-certs@v7
+        with:
+          p12-file-base64: ${{ secrets.HGUANDL_SIGN_CERT_P12 }}
+          p12-password: ${{ secrets.HGUANDL_SIGN_CERT_PASSWD }}
+
+      - name: Download provisioning profiles
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: apple-actions/download-provisioning-profiles@v6
+        with:
+          bundle-id: "com.hguandl.MeoAsstMac"
+          issuer-id: ${{ secrets.HGUANDL_APPSTORE_ISSUER }}
+          api-key-id: ${{ secrets.HGUANDL_APPSTORE_KEYID }}
+          api-private-key: ${{ secrets.HGUANDL_APPSTORE_KEY }}
+
+      - name: Setup Xcode toolchain
+        if: false
+        run: |
+          sudo xcode-select -s /Applications/Xcode_16.1.app/Contents/Developer
+
+      - name: Build universal binaries
+        run: |
+          mkdir build
+          for LIB_NAME in $(ls install-arm64); do
+            lipo -create install-arm64/$LIB_NAME install-x86_64/$LIB_NAME -output build/$LIB_NAME
+          done
+
+      - name: Archive runtime files
+        run: |
+          mkdir runtime && cd runtime
+          name='MAA-${{ needs.meta.outputs.tag }}-macos-runtime-universal'
+          mkdir "$name" && cd "$name"
+          cp -v ../../build/*.dylib .
+          ln -vs libonnxruntime*.dylib libonnxruntime.dylib
+          ln -vs libopencv_world4*.dylib libopencv_world4.dylib
+          cp -vr ../../resource .
+          cd .. || exit 1
+          zip -yrX9 "$name.zip" "$name"
+
+      - name: Upload MAA runtime to GitHub
+        uses: actions/upload-artifact@v7
+        with:
+          name: MAA-macos-runtime-universal
+          path: runtime/MAA-${{ needs.meta.outputs.tag }}-macos-runtime-universal.zip
+          compression-level: 0
+
+
+      - name: Build XCFramework
+        run: |
+          xcodebuild -create-xcframework -library libMaaCore.dylib -headers ../include -output MaaCore.xcframework
+          xcodebuild -create-xcframework -library libMaaUtils.dylib -output MaaUtils.xcframework
+          xcodebuild -create-xcframework -library libfastdeploy_ppocr.dylib -output fastdeploy_ppocr.xcframework
+          xcodebuild -create-xcframework -library libonnxruntime.*.dylib -output ONNXRuntime.xcframework
+          xcodebuild -create-xcframework -library libopencv*.dylib -output OpenCV.xcframework
+        working-directory: build
+
+      - name: Setup GUI version
+        run: |
+          RELEASE_COUNT=$(git ls-remote --tags origin | grep refs/tags/v | awk 'END{print NR}')
+          echo 'MARKETING_VERSION = ${{ needs.meta.outputs.tag }}' | tee src/MaaMacGui/Version.xcconfig
+          echo 'CURRENT_PROJECT_VERSION = '"${RELEASE_COUNT}" | tee -a src/MaaMacGui/Version.xcconfig
+
+      - name: Build MAA
+        run: |
+          if ${{ startsWith(github.ref, 'refs/tags/v') }}; then
+            xcodebuild -scheme MAA archive -archivePath MAA.xcarchive
+          else
+            xcodebuild CODE_SIGNING_ALLOWED=NO -scheme MAA archive -archivePath MAA.xcarchive
+          fi
+        working-directory: src/MaaMacGui
+
+      - name: Export MAA
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          xcodebuild -exportArchive -archivePath MAA.xcarchive -exportOptionsPlist ExportOptions.plist -exportPath Export
+        working-directory: src/MaaMacGui
+
+      - name: Create disk image
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          create-dmg Export/MAA.app
+          mv MAA*.dmg MAA.dmg
+        working-directory: src/MaaMacGui
+
+      - name: Archive debug symbols
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          ditto -c -k --keepParent MAA.app.dSYM MAA.app.dSYM.zip
+        working-directory: src/MaaMacGui/MAA.xcarchive/dSYMs
+
+      - name: Place packages
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          GIT_TAG=${{ needs.meta.outputs.tag }}
+          APP_DMG=MAA-${GIT_TAG}-macos-universal.dmg
+          APP_SYM=MAAComponent-DebugSymbol-${GIT_TAG}-macos-universal.zip
+          mkdir -p release
+          mv src/MaaMacGui/MAA.dmg release/${APP_DMG}
+          mv src/MaaMacGui/MAA.xcarchive/dSYMs/MAA.app.dSYM.zip release/${APP_SYM}
+
+      - name: Notarize image
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: nick-fields/retry@v4
+        with:
+          max_attempts: 3
+          timeout_minutes: 15
+          command: |
+            cd release
+            echo "$APPSTORE_KEY" > "AuthKey_${APPSTORE_KEYID}.p8"
+            dmg="MAA-${{ needs.meta.outputs.tag }}-macos-universal.dmg"
+            xcrun notarytool submit -k "AuthKey_${APPSTORE_KEYID}.p8" -d "$APPSTORE_KEYID" -i "$ISSUER_ID" --wait ${dmg}
+        env:
+          APPSTORE_KEYID: ${{ secrets.HGUANDL_APPSTORE_KEYID }}
+          APPSTORE_KEY: ${{ secrets.HGUANDL_APPSTORE_KEY }}
+          ISSUER_ID: ${{ secrets.HGUANDL_APPSTORE_ISSUER }}
+
+      - name: Attach notarization tickets
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          dmg="MAA-${{ needs.meta.outputs.tag }}-macos-universal.dmg"
+          xcrun stapler staple ${dmg}
+        working-directory: release
+
+      - name: Upload MAA to GitHub
+        uses: actions/upload-artifact@v7
+        with:
+          name: MAA-macos-universal
+          path: ${{ startsWith(github.ref, 'refs/tags/v') && 'release/MAA*' || 'src/MaaMacGui/MAA.xcarchive/**' }}
+
+  avalonia:
+    name: Build MAAUnified (Avalonia) ${{ matrix.name }}
+    needs: [meta, windows, ubuntu, macOS-Core]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: win-x64
+            os: windows-2025-vs2026
+            rid: win-x64
+            runtime_artifact: MAARuntime-win-x64
+          - name: linux-x64
+            os: ubuntu-latest
+            rid: linux-x64
+            runtime_artifact: MAARuntime-linux-x86_64
+          - name: macos-x64
+            os: macos-latest
+            rid: osx-x64
+            runtime_artifact: MAARuntime-macos-x86_64
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          show-progress: false
+
+      - name: Fetch required submodules
+        shell: bash
+        run: bash ./.github/scripts/sync-optional-submodules.sh --init --depth 1 src/MAAUnified
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore app
+        run: dotnet restore src/MAAUnified/App/MAAUnified.App.csproj
+
+      - name: Restore tests
+        if: matrix.name != 'macos-x64'
+        run: dotnet restore src/MAAUnified/Tests/MAAUnified.Tests.csproj
+
+      - name: Run Linux baseline consistency gate
+        if: matrix.name == 'linux-x64'
+        run: >
+          dotnet test src/MAAUnified/Tests/MAAUnified.Tests.csproj -c Release --no-restore --disable-build-servers -m:1
+          --results-directory TestResults/${{ matrix.name }}
+          --logger "trx;LogFileName=baseline-consistency.trx"
+          --filter "FullyQualifiedName~BaselineContractTests|FullyQualifiedName~BaselineCoverageTests|FullyQualifiedName~BaselineRenderSyncTests|FullyQualifiedName~ParityMatrixSyncTests"
+
+      - name: Run Linux full MAAUnified test gate
+        if: matrix.name == 'linux-x64'
+        run: >
+          dotnet test src/MAAUnified/Tests/MAAUnified.Tests.csproj -c Release --no-restore --disable-build-servers -m:1
+          --results-directory TestResults/${{ matrix.name }}
+          --logger "trx;LogFileName=full-maaunified-tests.trx"
+
+      - name: Run Windows platform capability contract gate
+        if: matrix.name == 'win-x64'
+        run: >
+          dotnet test src/MAAUnified/Tests/MAAUnified.Tests.csproj -c Release --no-restore --disable-build-servers -m:1
+          --results-directory TestResults/${{ matrix.name }}
+          --logger "trx;LogFileName=platform-capability-contract.trx"
+          --filter "FullyQualifiedName~PlatformCapabilityContractTests"
+
+      - name: Run Windows native capability smoke gate
+        if: matrix.name == 'win-x64'
+        run: >
+          dotnet test src/MAAUnified/Tests/MAAUnified.Tests.csproj -c Release --no-restore --disable-build-servers -m:1
+          --results-directory TestResults/${{ matrix.name }}
+          --logger "trx;LogFileName=platform-windows-native-smoke.trx"
+          --filter "FullyQualifiedName~PlatformWindowsNativeSmokeTests"
+
+      - name: Upload test result artifacts on failure
+        if: failure() && matrix.name != 'macos-x64'
+        uses: actions/upload-artifact@v7
+        with:
+          name: MAAUnified-TestResults-${{ matrix.name }}
+          path: TestResults/${{ matrix.name }}/*.trx
+          if-no-files-found: ignore
+
+      - name: Download MaaCore runtime
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ matrix.runtime_artifact }}
+          path: install
+
+      - name: Publish MAAUnified app
+        run: dotnet publish src/MAAUnified/App/MAAUnified.App.csproj -c Release -r ${{ matrix.rid }} --self-contained true -o publish
+
+      - name: Merge MaaCore runtime (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Copy-Item install\* publish\ -Recurse -Force
+          if (!(Test-Path "publish\MaaCore.dll")) { throw "MaaCore.dll not found in publish output." }
+          if (!(Test-Path "publish\resource")) { throw "resource directory not found in publish output." }
+
+      - name: Merge MaaCore runtime (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          cp -a install/. publish/
+          if [[ "$RUNNER_OS" == "Linux" ]]; then
+            test -f publish/libMaaCore.so
+          else
+            test -f publish/libMaaCore.dylib
+          fi
+          test -d publish/resource
+
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path release -Force | Out-Null
+          $name = "MAAUnified-${{ needs.meta.outputs.tag }}-${{ matrix.name }}"
+          Compress-Archive -Path publish\* -DestinationPath "release\$name.zip"
+
+      - name: Package (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          mkdir -p release
+          name="MAAUnified-${{ needs.meta.outputs.tag }}-${{ matrix.name }}"
+          tar -czf "release/${name}.tar.gz" -C publish .
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: MAAUnified-${{ matrix.name }}
+          path: release/*
+
+  release:
+    name: Publish Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [meta, windows, ubuntu, android, macOS-Core, macOS-GUI]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download MAA from GitHub
+        uses: actions/download-artifact@v8
+        with:
+          path: assets
+
+      - name: Clean up files
+        run: |
+          mv -vf assets/changelog/* .
+          rm -rf assets/MAACore-macos-*
+          rm -rf assets/MAARuntime-*
+          rm -rf assets/MAAUnified-*
+          cd assets
+          # find . -type f | xargs mv -fvt .
+          find . -type f | while read f; do mv -fvt . $f; done
+
+      - name: Publish release to GitHub
+        uses: softprops/action-gh-release@v3.0.1
+        with:
+          body_path: CHANGELOG.md
+          files: |
+            assets/*
+          prerelease: ${{ needs.meta.outputs.prerelease != 'false' }}
+
+      - name: Trigger release distribution workflows
+        run: |
+          gh workflow run --repo $GITHUB_REPOSITORY release-package-distribution.yml \
+            -f release_tag="${{ needs.meta.outputs.tag }}" \
+            -f mirrorchyan=true \
+            -f winget=${{ needs.meta.outputs.prerelease == 'false' }}
+          gh workflow run --repo $GITHUB_REPOSITORY mirrorchyan_release_note.yml
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Trigger OTA release workflow # ref: https://docs.github.com/en/actions/using-workflows/triggering-a-workflow#triggering-a-workflow-from-a-workflow
+        run: |
+          gh workflow run --repo $GITHUB_REPOSITORY release-ota.yml
+        env:
+          GH_TOKEN: ${{ secrets.MISTEOWORKFLOW }}
+
+          title: "Errors occured during release ${{ needs.meta.outputs.tag }}"
+          body: |
+            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

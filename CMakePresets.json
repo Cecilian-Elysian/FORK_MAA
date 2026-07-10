@@ -1,0 +1,459 @@
+{
+    "version": 10,
+    "cmakeMinimumRequired": {
+        "major": 3,
+        "minor": 23,
+        "patch": 0
+    },
+    "configurePresets": [
+        {
+            "name": "windows-base",
+            "hidden": true,
+            "generator": "Visual Studio 18 2026",
+            "binaryDir": "${sourceDir}/build",
+            "$comment": [
+                "Base for Windows presets; Visual Studio is multi-config (Debug/Release/RelWithDebInfo in same build dir)",
+                "see https://cmake.org/cmake/help/latest/generator/Visual%20Studio%2018%202026.html"
+            ],
+            "cacheVariables": {
+                "BUILD_WPF_GUI": "ON",
+                "BUILD_DEBUG_DEMO": "ON",
+                "BUILD_RESOURCE_UPDATER": "ON",
+                "INSTALL_RESOURCE": "OFF",
+                "INSTALL_PYTHON": "OFF"
+            },
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Windows"
+            }
+        },
+        {
+            "name": "windows-clang-base",
+            "hidden": true,
+            "generator": "Ninja Multi-Config",
+            "binaryDir": "${sourceDir}/build",
+            "$comment": [
+                "NOT for building — only for generating compile_commands.json for clangd / VS Code",
+                "run from 'x64 Native Tools Command Prompt for VS' or ensure clang-cl is in PATH",
+                "to build, use the Visual Studio presets (windows-x64, windows-arm64)"
+            ],
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Windows"
+            },
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "clang-cl",
+                "CMAKE_CXX_COMPILER": "clang-cl",
+                "CMAKE_C_COMPILER_TARGET": "x86_64-pc-windows-msvc",
+                "CMAKE_CXX_COMPILER_TARGET": "x86_64-pc-windows-msvc",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+                "BUILD_WPF_GUI": "OFF",
+                "BUILD_DEBUG_DEMO": "ON",
+                "BUILD_RESOURCE_UPDATER": "ON",
+                "INSTALL_RESOURCE": "OFF",
+                "INSTALL_PYTHON": "OFF"
+            }
+        },
+        {
+            "name": "windows-x64-clang",
+            "inherits": "windows-clang-base",
+            "displayName": "Windows x64 (clang-cl)",
+            "cacheVariables": {
+                "MAADEPS_TRIPLET": "maa-x64-windows"
+            }
+        },
+        {
+            "name": "linux-base",
+            "hidden": true,
+            "generator": "Ninja Multi-Config",
+            "binaryDir": "${sourceDir}/build",
+            "$comment": [
+                "Base for Linux presets; Ninja is multi-config (Debug/Release/RelWithDebInfo in same build dir)",
+                "see https://cmake.org/cmake/help/latest/generator/Ninja%20Multi-Config.html",
+                "clangd uses compile_commands.json to provide code completion and navigation",
+                "so CMAKE_EXPORT_COMPILE_COMMANDS is set to ON",
+                "see https://clangd.llvm.org/installation.html"
+            ],
+            "cacheVariables": {
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+            },
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Linux"
+            }
+        },
+        {
+            "name": "macos-base",
+            "hidden": true,
+            "generator": "Ninja Multi-Config",
+            "binaryDir": "${sourceDir}/build",
+            "$comment": [
+                "Base for macOS presets; Ninja is multi-config (Debug/Release/RelWithDebInfo in same build dir)",
+                "see https://cmake.org/cmake/help/latest/generator/Ninja%20Multi-Config.html",
+                "clangd uses compile_commands.json to provide code completion and navigation",
+                "so CMAKE_EXPORT_COMPILE_COMMANDS is set to ON",
+                "see https://clangd.llvm.org/installation.html"
+            ],
+            "cacheVariables": {
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+            },
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Darwin"
+            }
+        },
+        {
+            "name": "windows-x64",
+            "inherits": "windows-base",
+            "displayName": "Windows x64",
+            "architecture": "x64",
+            "cacheVariables": {
+                "MAADEPS_TRIPLET": "maa-x64-windows"
+            }
+        },
+        {
+            "name": "windows-arm64",
+            "inherits": "windows-base",
+            "displayName": "Windows arm64",
+            "architecture": "ARM64",
+            "cacheVariables": {
+                "MAADEPS_TRIPLET": "maa-arm64-windows"
+            }
+        },
+        {
+            "name": "linux-x64",
+            "inherits": "linux-base",
+            "displayName": "Linux x64",
+            "toolchainFile": "src/MaaUtils/MaaDeps/cmake/maa-x64-linux-toolchain.cmake",
+            "cacheVariables": {
+                "MAADEPS_TRIPLET": "maa-x64-linux"
+            }
+        },
+        {
+            "name": "linux-arm64",
+            "inherits": "linux-base",
+            "displayName": "Linux arm64",
+            "toolchainFile": "src/MaaUtils/MaaDeps/cmake/maa-arm64-linux-toolchain.cmake",
+            "cacheVariables": {
+                "MAADEPS_TRIPLET": "maa-arm64-linux"
+            }
+        },
+        {
+            "name": "macos-arm64",
+            "inherits": "macos-base",
+            "displayName": "macOS arm64",
+            "cacheVariables": {
+                "CMAKE_OSX_ARCHITECTURES": "arm64"
+            }
+        },
+        {
+            "name": "macos-x64",
+            "inherits": "macos-base",
+            "displayName": "macOS x64",
+            "cacheVariables": {
+                "CMAKE_OSX_ARCHITECTURES": "x86_64"
+            }
+        },
+        {
+            "name": "android-base",
+            "hidden": true,
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build",
+            "$comment": [
+                "Base for Android presets; cross-compilation via NDK toolchain",
+                "CMAKE_TOOLCHAIN_FILE must be passed externally pointing to NDK's android.toolchain.cmake"
+            ],
+            "cacheVariables": {
+                "CMAKE_SYSTEM_NAME": "Android",
+                "ANDROID_PLATFORM": "android-28",
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+            }
+        },
+        {
+            "name": "android-arm64",
+            "inherits": "android-base",
+            "displayName": "Android arm64",
+            "cacheVariables": {
+                "ANDROID_ABI": "arm64-v8a",
+                "MAADEPS_TRIPLET": "maa-arm64-android"
+            }
+        },
+        {
+            "name": "android-x64",
+            "inherits": "android-base",
+            "displayName": "Android x64",
+            "cacheVariables": {
+                "ANDROID_ABI": "x86_64",
+                "MAADEPS_TRIPLET": "maa-x64-android"
+            }
+        },
+        {
+            "name": "publish-base",
+            "$comment": [
+                "All the name contains 'publish' are used for github actions",
+                "see .github/workflows/ci.yml"
+            ],
+            "hidden": true,
+            "installDir": "install",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+                "INSTALL_RESOURCE": "ON",
+                "INSTALL_PYTHON": "ON",
+                "BUILD_WPF_GUI": "OFF",
+                "BUILD_DEBUG_DEMO": "OFF",
+                "BUILD_RESOURCE_UPDATER": "OFF"
+            }
+        },
+        {
+            "name": "windows-publish-x64",
+            "inherits": [
+                "publish-base",
+                "windows-x64"
+            ],
+            "cacheVariables": {
+                "BUILD_WPF_GUI": "ON"
+            },
+            "displayName": "Windows x64 Publish"
+        },
+        {
+            "name": "windows-publish-arm64",
+            "inherits": [
+                "publish-base",
+                "windows-arm64"
+            ],
+            "cacheVariables": {
+                "BUILD_WPF_GUI": "ON"
+            },
+            "displayName": "Windows arm64 Publish"
+        },
+        {
+            "name": "linux-publish-x64",
+            "inherits": [
+                "publish-base",
+                "linux-x64"
+            ],
+            "displayName": "Linux x64 Publish"
+        },
+        {
+            "name": "linux-publish-arm64",
+            "inherits": [
+                "publish-base",
+                "linux-arm64"
+            ],
+            "displayName": "Linux arm64 Publish"
+        },
+        {
+            "name": "macos-publish-x64",
+            "inherits": [
+                "publish-base",
+                "macos-x64"
+            ],
+            "displayName": "macOS x64 Publish"
+        },
+        {
+            "name": "macos-publish-arm64",
+            "inherits": [
+                "publish-base",
+                "macos-arm64"
+            ],
+            "displayName": "macOS arm64 Publish"
+        },
+        {
+            "name": "android-publish-arm64",
+            "inherits": ["publish-base", "android-arm64"],
+            "displayName": "Android arm64 Publish",
+            "cacheVariables": {
+                "INSTALL_PYTHON": "OFF"
+            }
+        },
+        {
+            "name": "android-publish-x64",
+            "inherits": ["publish-base", "android-x64"],
+            "displayName": "Android x64 Publish",
+            "cacheVariables": {
+                "INSTALL_PYTHON": "OFF"
+            }
+        },
+        {
+            "name": "smoke-test",
+            "$comment": [
+                "this preset is used for smoke testing",
+                "see .github/workflows/smoke-testing.yml"
+            ],
+            "inherits": "macos-arm64",
+            "displayName": "macOS arm64 Smoke Test",
+            "installDir": "install",
+            "cacheVariables": {
+                "BUILD_SMOKE_TEST": "ON",
+                "INSTALL_RESOURCE": "ON",
+                "WITH_HASH_VERSION": "ON"
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "windows-x64-Debug",
+            "displayName": "Build Windows x64 Debug",
+            "configurePreset": "windows-x64",
+            "configuration": "Debug"
+        },
+        {
+            "name": "windows-x64-Release",
+            "displayName": "Build Windows x64 Release",
+            "configurePreset": "windows-x64",
+            "configuration": "Release"
+        },
+        {
+            "name": "windows-x64-RelWithDebInfo",
+            "displayName": "Build Windows x64 RelWithDebInfo",
+            "configurePreset": "windows-x64",
+            "configuration": "RelWithDebInfo"
+        },
+        {
+            "name": "windows-arm64-Debug",
+            "displayName": "Build Windows arm64 Debug",
+            "configurePreset": "windows-arm64",
+            "configuration": "Debug"
+        },
+        {
+            "name": "windows-arm64-Release",
+            "displayName": "Build Windows arm64 Release",
+            "configurePreset": "windows-arm64",
+            "configuration": "Release"
+        },
+        {
+            "name": "windows-arm64-RelWithDebInfo",
+            "displayName": "Build Windows arm64 RelWithDebInfo",
+            "configurePreset": "windows-arm64",
+            "configuration": "RelWithDebInfo"
+        },
+        {
+            "name": "linux-x64-Debug",
+            "displayName": "Build Linux x64 Debug",
+            "configurePreset": "linux-x64",
+            "configuration": "Debug"
+        },
+        {
+            "name": "linux-x64-Release",
+            "displayName": "Build Linux x64 Release",
+            "configurePreset": "linux-x64",
+            "configuration": "Release"
+        },
+        {
+            "name": "linux-x64-RelWithDebInfo",
+            "displayName": "Build Linux x64 RelWithDebInfo",
+            "configurePreset": "linux-x64",
+            "configuration": "RelWithDebInfo"
+        },
+        {
+            "name": "linux-arm64-Debug",
+            "displayName": "Build Linux arm64 Debug",
+            "configurePreset": "linux-arm64",
+            "configuration": "Debug"
+        },
+        {
+            "name": "linux-arm64-Release",
+            "displayName": "Build Linux arm64 Release",
+            "configurePreset": "linux-arm64",
+            "configuration": "Release"
+        },
+        {
+            "name": "linux-arm64-RelWithDebInfo",
+            "displayName": "Build Linux arm64 RelWithDebInfo",
+            "configurePreset": "linux-arm64",
+            "configuration": "RelWithDebInfo"
+        },
+        {
+            "name": "macos-x64-Debug",
+            "displayName": "Build macOS x64 Debug",
+            "configurePreset": "macos-x64",
+            "configuration": "Debug"
+        },
+        {
+            "name": "macos-x64-Release",
+            "displayName": "Build macOS x64 Release",
+            "configurePreset": "macos-x64",
+            "configuration": "Release"
+        },
+        {
+            "name": "macos-x64-RelWithDebInfo",
+            "displayName": "Build macOS x64 RelWithDebInfo",
+            "configurePreset": "macos-x64",
+            "configuration": "RelWithDebInfo"
+        },
+        {
+            "name": "macos-arm64-Debug",
+            "displayName": "Build macOS arm64 Debug",
+            "configurePreset": "macos-arm64",
+            "configuration": "Debug"
+        },
+        {
+            "name": "macos-arm64-Release",
+            "displayName": "Build macOS arm64 Release",
+            "configurePreset": "macos-arm64",
+            "configuration": "Release"
+        },
+        {
+            "name": "macos-arm64-RelWithDebInfo",
+            "displayName": "Build macOS arm64 RelWithDebInfo",
+            "configurePreset": "macos-arm64",
+            "configuration": "RelWithDebInfo"
+        },
+        {
+            "name": "windows-publish-x64",
+            "displayName": "Build Windows x64 Publish",
+            "configurePreset": "windows-publish-x64",
+            "configuration": "RelWithDebInfo"
+        },
+        {
+            "name": "windows-publish-arm64",
+            "displayName": "Build Windows arm64 Publish",
+            "configurePreset": "windows-publish-arm64",
+            "configuration": "RelWithDebInfo"
+        },
+        {
+            "name": "linux-publish-x64",
+            "displayName": "Build Linux x64 Publish",
+            "configurePreset": "linux-publish-x64",
+            "configuration": "RelWithDebInfo"
+        },
+        {
+            "name": "linux-publish-arm64",
+            "displayName": "Build Linux arm64 Publish",
+            "configurePreset": "linux-publish-arm64",
+            "configuration": "RelWithDebInfo"
+        },
+        {
+            "name": "macos-publish-x64",
+            "displayName": "Build macOS x64 Publish",
+            "configurePreset": "macos-publish-x64",
+            "configuration": "RelWithDebInfo"
+        },
+        {
+            "name": "macos-publish-arm64",
+            "displayName": "Build macOS arm64 Publish",
+            "configurePreset": "macos-publish-arm64",
+            "configuration": "RelWithDebInfo"
+        },
+        {
+            "name": "android-publish-arm64",
+            "displayName": "Build Android arm64 Publish",
+            "configurePreset": "android-publish-arm64"
+        },
+        {
+            "name": "android-publish-x64",
+            "displayName": "Build Android x64 Publish",
+            "configurePreset": "android-publish-x64"
+        },
+        {
+            "name": "smoke-test",
+            "displayName": "Build macOS arm64 Smoke Test",
+            "configurePreset": "smoke-test",
+            "configuration": "Debug"
+        }
+    ]
+}

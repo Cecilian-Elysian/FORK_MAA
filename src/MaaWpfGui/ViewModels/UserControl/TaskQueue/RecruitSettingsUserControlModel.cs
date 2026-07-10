@@ -1,0 +1,339 @@
+// <copyright file="RecruitSettingsUserControlModel.cs" company="MaaAssistantArknights">
+// Part of the MaaWpfGui project, maintained by the MaaAssistantArknights team (Maa Team)
+// Copyright (C) 2021-2025 MaaAssistantArknights Contributors
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License v3.0 only as published by
+// the Free Software Foundation, either version 3 of the License, or
+// any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY
+// </copyright>
+
+#nullable enable
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using MaaWpfGui.Configuration.Single.MaaTask;
+using MaaWpfGui.Helper;
+using MaaWpfGui.Models.AsstTasks;
+using MaaWpfGui.Utilities;
+using MaaWpfGui.Utilities.ValueType;
+using MaaWpfGui.ViewModels.UI;
+using static MaaWpfGui.Main.AsstProxy;
+
+namespace MaaWpfGui.ViewModels.UserControl.TaskQueue;
+
+/// <summary>
+/// 自动公招model
+/// </summary>
+public class RecruitSettingsUserControlModel : TaskSettingsViewModel, RecruitSettingsUserControlModel.ISerialize
+{
+    public const string LegacyRobotTag = "支援机械";
+
+    static RecruitSettingsUserControlModel()
+    {
+        Instance = new();
+        LocalizationHelper.LanguageChanged += Instance.RefreshLocalization;
+    }
+
+    public static RecruitSettingsUserControlModel Instance { get; }
+
+    private static readonly List<string> _autoRecruitTagList = ["近战位", "远程位", "先锋干员", "近卫干员", "狙击干员", "重装干员", "医疗干员", "辅助干员", "术师干员", "治疗", "费用回复", "输出", "生存", "群攻", "防护", "减速",];
+
+    private static readonly Lazy<List<CombinedData>> _autoRecruitTagShowList = new(() =>
+        [.. _autoRecruitTagList.Select<string, (string, string)?>(tag => DataHelper.RecruitTags.TryGetValue(tag, out var value) ? value : null)
+            .Where(tag => tag is not null)
+            .Cast<(string Display, string Client)>()
+            .Select(tag => new CombinedData() { Display = tag.Display, Value = tag.Client })]);
+
+    public static List<CombinedData> AutoRecruitTagShowList
+    {
+        get => _autoRecruitTagShowList.Value;
+    }
+
+    private static readonly Lazy<List<CombinedData>> _autoRecruitSkipTagShowList = new(() =>
+        [.. DataHelper.RecruitTags.Select(tag => new CombinedData() { Display = tag.Value.DisplayName, Value = tag.Key })]);
+
+    public static List<CombinedData> AutoRecruitSkipTagShowList
+    {
+        get => _autoRecruitSkipTagShowList.Value;
+    }
+
+    public object[] AutoRecruitFirstList
+    {
+        get {
+            var value = GetTaskConfig<RecruitTask>().Level3PreferTags;
+            return value.Select(tag => _autoRecruitTagShowList.Value.FirstOrDefault(i => i.Value == tag)).Where(v => v is not null).Cast<CombinedData>().ToArray();
+        }
+
+        set {
+            var config = RecruitTagHelper.NormalizeTagList(value.Cast<CombinedData>().Select(item => item.Value));
+            SetTaskConfig<RecruitTask>(t => t.Level3PreferTags.SequenceEqual(config, StringComparer.Ordinal), t => t.Level3PreferTags = config);
+        }
+    }
+
+    public bool UseLevel3PreferTags
+    {
+        get => GetTaskConfig<RecruitTask>().PreferTagEnabled;
+        set => SetTaskConfig<RecruitTask>(t => t.PreferTagEnabled == value, t => t.PreferTagEnabled = value);
+    }
+
+    public object[] AutoRecruitPreserveTagList
+    {
+        get {
+            var value = GetTaskConfig<RecruitTask>().PreserveTagList;
+            return value.Select(tag => _autoRecruitSkipTagShowList.Value.FirstOrDefault(i => i.Value == tag)).Where(v => v is not null).Cast<CombinedData>().ToArray();
+        }
+
+        set {
+            var config = RecruitTagHelper.NormalizeTagList(value.Cast<CombinedData>().Select(item => item.Value));
+            SetTaskConfig<RecruitTask>(t => t.PreserveTagList.SequenceEqual(config, StringComparer.Ordinal), t => t.PreserveTagList = config);
+        }
+    }
+
+    public bool PreserveTagEnabled
+    {
+        get => GetTaskConfig<RecruitTask>().PreserveTagEnabled;
+        set => SetTaskConfig<RecruitTask>(t => t.PreserveTagEnabled == value, t => t.PreserveTagEnabled = value);
+    }
+
+    /// <summary>
+    /// Gets or sets the maximum times of recruit.
+    /// </summary>
+    public int RecruitMaxTimes
+    {
+        get => GetTaskConfig<RecruitTask>().MaxTimes;
+        set => SetTaskConfig<RecruitTask>(t => t.MaxTimes == value, t => t.MaxTimes = value);
+    }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether to refresh level 3.
+    /// </summary>
+    public bool RefreshLevel3
+    {
+        get => GetTaskConfig<RecruitTask>().RefreshLevel3;
+        set => SetTaskConfig<RecruitTask>(t => t.RefreshLevel3 == value, t => t.RefreshLevel3 = value);
+    }
+
+    /// <summary>
+    /// Gets or Sets a value indicating whether to refresh when recruit permit ran out.
+    /// </summary>
+    public bool ForceRefresh
+    {
+        get => GetTaskConfig<RecruitTask>().ForceRefresh;
+        set => SetTaskConfig<RecruitTask>(t => t.ForceRefresh == value, t => t.ForceRefresh = value);
+    }
+
+    public bool? UseExpeditedWithNull
+    {
+        get => GetTaskConfig<RecruitTask>().UseExpedited;
+        set {
+            if (value == true)
+            {
+                value = null;
+            }
+
+            SetTaskConfig<RecruitTask>(t => t.UseExpedited == value, t => t.UseExpedited = value);
+        }
+    }
+
+    public static void ResetRecruitVariables(RecruitTask? recruit)
+    {
+        recruit?.UseExpedited ??= false;
+    }
+
+    /// <summary>
+    /// Gets the list of auto recruit selecting extra tags.
+    /// </summary>
+    public LocalizedObservableList<int> AutoRecruitSelectExtraTagsList { get; } = new(
+        (0, "DefaultNoExtraTags"),
+        (1, "SelectExtraTags"),
+        (2, "SelectExtraOnlyRareTags"));
+
+    /// <summary>
+    /// Gets or sets a value indicating three tags are always selected or select only rare tags as many as possible .
+    /// </summary>
+    public int SelectExtraTags
+    {
+        get => GetTaskConfig<RecruitTask>().ExtraTagMode;
+        set => SetTaskConfig<RecruitTask>(t => t.ExtraTagMode == value, t => t.ExtraTagMode = value);
+    }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether to choose level 3.
+    /// </summary>
+    public bool ChooseLevel3
+    {
+        get => GetTaskConfig<RecruitTask>().Level3Choose;
+        set => SetTaskConfig<RecruitTask>(t => t.Level3Choose == value, t => t.Level3Choose = value);
+    }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether to choose level 4.
+    /// </summary>
+    public bool ChooseLevel4
+    {
+        get => GetTaskConfig<RecruitTask>().Level4Choose;
+        set => SetTaskConfig<RecruitTask>(t => t.Level4Choose == value, t => t.Level4Choose = value);
+    }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether to choose level 5.
+    /// </summary>
+    public bool ChooseLevel5
+    {
+        get => GetTaskConfig<RecruitTask>().Level5Choose;
+        set => SetTaskConfig<RecruitTask>(t => t.Level5Choose == value, t => t.Level5Choose = value);
+    }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether to choose level 6.
+    /// 仅作为配置项暴露，界面不可修改（IsEnabled=False），招募时间固定为 9:00。
+    /// </summary>
+    public bool ChooseLevel6
+    {
+        get => GetTaskConfig<RecruitTask>().Level6Choose;
+        set => SetTaskConfig<RecruitTask>(t => t.Level6Choose == value, t => t.Level6Choose = value);
+    }
+
+    #region 公招时间
+    [PropertyDependsOn(nameof(ChooseLevel3Time))]
+    public int ChooseLevel3Hour
+    {
+        get => ChooseLevel3Time / 60;
+        set => ChooseLevel3Time = (value * 60) + ChooseLevel3Min;
+    }
+
+    [PropertyDependsOn(nameof(ChooseLevel3Time))]
+    public int ChooseLevel3Min
+    {
+        get => (ChooseLevel3Time % 60) / 10 * 10;
+        set => ChooseLevel3Time = (ChooseLevel3Hour * 60) + value;
+    }
+
+    public int ChooseLevel3Time
+    {
+        get => GetTaskConfig<RecruitTask>().Level3Time;
+        set {
+            value = value switch {
+                < 60 => 9 * 60,
+                > 9 * 60 => 60,
+                _ => value / 10 * 10,
+            };
+            SetTaskConfig<RecruitTask>(t => t.Level3Time == value, t => t.Level3Time = value);
+        }
+    }
+
+    [PropertyDependsOn(nameof(ChooseLevel4Time))]
+    public int ChooseLevel4Hour
+    {
+        get => ChooseLevel4Time / 60;
+        set => ChooseLevel4Time = (value * 60) + ChooseLevel4Min;
+    }
+
+    [PropertyDependsOn(nameof(ChooseLevel4Time))]
+    public int ChooseLevel4Min
+    {
+        get => (ChooseLevel4Time % 60) / 10 * 10;
+        set => ChooseLevel4Time = (ChooseLevel4Hour * 60) + value;
+    }
+
+    public int ChooseLevel4Time
+    {
+        get => GetTaskConfig<RecruitTask>().Level4Time;
+        set {
+            value = value switch {
+                < 60 => 9 * 60,
+                > 9 * 60 => 60,
+                _ => value / 10 * 10,
+            };
+            SetTaskConfig<RecruitTask>(t => t.Level4Time == value, t => t.Level4Time = value);
+        }
+    }
+
+    // 5 星、6 星公招时间固定为 9:00，不提供可修改的绑定属性。
+    #endregion 公招时间
+
+    public override void RefreshUI(BaseTask baseTask)
+    {
+        if (baseTask is RecruitTask)
+        {
+            Refresh();
+        }
+    }
+
+    public override (bool? IsSuccess, IEnumerable<int> TaskId) SerializeTask(BaseTask? baseTask, int? taskId = null) => (this as ISerialize).Serialize(baseTask, taskId);
+
+    /// <summary>
+    /// 刷新构造时缓存的本地化列表文本。
+    /// </summary>
+    private void RefreshLocalization()
+    {
+        AutoRecruitSelectExtraTagsList.RefreshLocalization();
+    }
+
+    private interface ISerialize : ITaskQueueModelSerialize
+    {
+        (bool? IsSuccess, IEnumerable<int> TaskId) ITaskQueueModelSerialize.Serialize(BaseTask? baseTask, int? taskId)
+        {
+            if (baseTask is not RecruitTask recruit)
+            {
+                return (null, []);
+            }
+
+            var preserveTags = recruit.PreserveTagEnabled ? RecruitTagHelper.NormalizeTagList(recruit.PreserveTagList) : [];
+            var firstTags = recruit.PreferTagEnabled ? RecruitTagHelper.NormalizeTagList(recruit.Level3PreferTags) : [];
+
+            var task = new AsstRecruitTask() {
+                Refresh = recruit.RefreshLevel3,
+                ForceRefresh = recruit.ForceRefresh,
+                SetRecruitTime = true,
+                RecruitTimes = recruit.MaxTimes,
+                UseExpedited = recruit.UseExpedited is not false,
+                ExpeditedTimes = recruit.MaxTimes,
+                SelectExtraTags = recruit.ExtraTagMode,
+                Level3FirstList = firstTags,
+                PreserveTags = preserveTags,
+                ChooseLevel3Time = recruit.Level3Time,
+                ChooseLevel4Time = recruit.Level4Time,
+                ReportToPenguin = SettingsViewModel.GameSettings.EnablePenguin,
+                ReportToYituliu = SettingsViewModel.GameSettings.EnableYituliu,
+                PenguinId = SettingsViewModel.GameSettings.PenguinId,
+                YituliuId = SettingsViewModel.GameSettings.PenguinId,
+                ServerType = Instances.SettingsViewModel.ServerType,
+            };
+
+            if (recruit.Level3Choose)
+            {
+                task.ConfirmList.Add(3);
+            }
+
+            if (recruit.Level4Choose)
+            {
+                task.SelectList.Add(4);
+                task.ConfirmList.Add(4);
+            }
+
+            if (recruit.Level5Choose)
+            {
+                task.SelectList.Add(5);
+                task.ConfirmList.Add(5);
+            }
+
+            // 6 星仅参与确认，招募时间固定 9:00，界面不可修改
+            if (recruit.Level6Choose)
+            {
+                task.SelectList.Add(6);
+                task.ConfirmList.Add(6);
+            }
+
+            return taskId switch {
+                int id when id > 0 => (Instances.AsstProxy.AsstSetTaskParamsEncoded(id, task), [id]),
+                null => FromSingle(Instances.AsstProxy.AsstAppendTaskWithEncoding(TaskType.Recruit, task)),
+                _ => (null, []),
+            };
+        }
+    }
+}

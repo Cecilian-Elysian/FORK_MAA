@@ -1,0 +1,13 @@
+{
+    "name": "Plain Env (Nothing Installed)",
+    "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+    "postCreateCommand": "bash .devcontainer/post-create.sh",
+    "customizations": {
+        "vscode": {
+            "settings": {
+                // Color theme
+                "workbench.colorTheme": "Default Dark Modern"
+            }
+        }
+    }
+}

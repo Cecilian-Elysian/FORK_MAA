@@ -1,0 +1,2 @@
+MaaFw~=5.10
+opencv_python~=4.13

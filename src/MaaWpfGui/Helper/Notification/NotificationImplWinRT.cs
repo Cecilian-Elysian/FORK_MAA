@@ -1,0 +1,88 @@
+// <copyright file="NotificationImplWinRT.cs" company="MaaAssistantArknights">
+// Part of the MaaWpfGui project, maintained by the MaaAssistantArknights team (Maa Team)
+// Copyright (C) 2021-2025 MaaAssistantArknights Contributors
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License v3.0 only as published by
+// the Free Software Foundation, either version 3 of the License, or
+// any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY
+// </copyright>
+
+using System;
+using Microsoft.Toolkit.Uwp.Notifications;
+using Serilog;
+using Windows.UI.Notifications;
+
+namespace MaaWpfGui.Helper.Notification;
+
+internal class NotificationImplWinRT : INotificationPoster, IDisposable
+{
+    public event EventHandler<string> ActionActivated;
+
+    private static readonly ILogger _logger = Log.ForContext<NotificationImplWinRT>();
+
+    public NotificationImplWinRT()
+    {
+        ToastNotificationManagerCompat.OnActivated += OnWinRTActivated;
+    }
+
+    public void Dispose()
+    {
+        ToastNotificationManagerCompat.OnActivated -= OnWinRTActivated;
+
+        // ToastNotificationManagerCompat.History.Clear();
+    }
+
+    private void OnWinRTActivated(ToastNotificationActivatedEventArgsCompat args)
+    {
+        ActionActivated?.Invoke(this, args.Argument);
+    }
+
+    public void ShowNotification(NotificationContent content)
+    {
+        try
+        {
+            var builder = new ToastContentBuilder().AddText(content.Body).AddText(content.Summary);
+
+            foreach (var action in content.Actions)
+            {
+                builder.AddButton(new ToastButton()
+                    .SetContent(action.Label)
+                    .AddArgument(action.Tag));
+            }
+
+            builder.GetToastContent().ActivationType = ToastActivationType.Protocol;
+            builder.Show();
+        }
+        catch (Exception e)
+        {
+            _logger.Error(e, "Failed to Toast Notification.");
+        }
+    }
+
+    public (bool IsAvailable, string Detail) IsNotificationAvailable
+    {
+        get {
+            try
+            {
+                var setting = ToastNotificationManagerCompat.CreateToastNotifier().Setting;
+                return setting switch {
+                    NotificationSetting.Enabled => (true, string.Empty),
+                    NotificationSetting.DisabledForApplication => (false, LocalizationHelper.GetString("ToastNotificationUnavailable.DisabledForApplication")),
+                    NotificationSetting.DisabledForUser => (false, LocalizationHelper.GetString("ToastNotificationUnavailable.DisabledForUser")),
+                    NotificationSetting.DisabledByGroupPolicy => (false, LocalizationHelper.GetString("ToastNotificationUnavailable.DisabledByGroupPolicy")),
+                    NotificationSetting.DisabledByManifest => (false, LocalizationHelper.GetString("ToastNotificationUnavailable.DisabledByManifest")),
+                    _ => (false, $"Unknown notification setting: {setting}"),
+                };
+            }
+            catch (Exception e)
+            {
+                _logger.Error(e, "Failed to create Toast Notifier.");
+                return (false, e.Message);
+            }
+        }
+    }
+}

@@ -1,0 +1,212 @@
+{
+  "repo_notes": [
+    {
+      "content": "所有 wiki 页面标题、正文、说明文字必须使用简体中文；涉及外部链接时优先使用中文文档，如 docs.maa.plus 的 zh-cn 页面；仅在中文名不通用时保留 OCR、ADB、CLI、JSON、API 等缩写。"
+    },
+    {
+      "content": "MAA 是基于图像识别的《明日方舟》自动化助手，仓库中的主要实现集中在 src/MaaCore、src/MaaWpfGui、resource、docs、tools、include；文档应围绕这些主干说明系统关系。"
+    },
+    {
+      "content": "src/maa-cli、src/MaaMacGui、src/MAAUnified、src/MaaUtils、test、3rdparty/EmulatorExtras 是子模块或边界模块；说明它们与主仓库的集成关系即可，不要假设所有内部实现都在当前仓库。"
+    },
+    {
+      "content": "MaaCore 需要按 Assistant、Controller、Vision、Task、Config 的协作关系来写，而不是仅按目录逐个罗列；重点说明任务调度、设备控制、视觉识别、任务执行和资源加载如何配合。"
+    },
+    {
+      "content": "resource/tasks 目录是任务定义的主入口，加载时会递归合并目录内 JSON；旧的 tasks.json 只是兼容旧结构的 deprecated fallback，不应继续作为主要入口来描述。"
+    },
+    {
+      "content": "resource/global/<client>/resource 与 resource/platform_diff/*/resource 是覆盖层，用于外服适配和平台差异；说明时要突出主资源与覆盖资源的关系，而不是把它们写成独立产品线。"
+    },
+    {
+      "content": "WPF GUI 是主仓库中的主要图形界面；CLI、Mac GUI 与各语言绑定是 MaaCore 的其他入口；文档应强调共享核心引擎、不同接入层的整体架构。"
+    },
+    {
+      "content": "unit_test 是仓库内的 Catch2 与 CTest 单元测试体系；test 是 MaaTestSet 回归测试子模块；docs 是独立的 VuePress 文档站，应按 manual、protocol、develop、glossary 等内容域来组织说明。"
+    },
+    {
+      "content": "interface.json 定义 controller 与 resource 变体，package-definition.json 定义发布包形态；构建、发布和资源相关页面需要覆盖这两个入口文件的作用。"
+    }
+  ],
+  "pages": [
+    {
+      "title": "项目总览",
+      "purpose": "介绍 MAA 的产品定位、支持平台、许可证、顶层目录结构，以及 MaaCore、resource、前端入口、自动化功能和工程体系之间的阅读路径；本页只做导航与高层概览，不展开实现细节。",
+      "page_notes": [
+        {
+          "content": "本页只负责建立阅读路径和高层认知，不重复 MaaCore、resource、自动化功能或工程体系子页中的实现细节。"
+        }
+      ]
+    },
+    {
+      "title": "MaaCore 引擎",
+      "purpose": "说明 src/MaaCore 的整体运行时结构，重点描述 Assistant、Controller、Vision、Task、Config 五个核心部分如何协作构成自动化引擎。",
+      "parent": "项目总览",
+      "page_notes": [
+        {
+          "content": "优先围绕 Assistant、Controller、Vision、Task、Config 的协作关系展开，并用 src/MaaCore 中的实际类型和目录说明运行时结构。"
+        }
+      ]
+    },
+    {
+      "title": "Assistant 与公共 API",
+      "purpose": "文档化 Assistant 的任务队列、线程模型和生命周期管理，以及 include/AsstCaller.h 暴露的公共 C 接口如何作为各类前端和绑定层的统一调用入口。",
+      "parent": "MaaCore 引擎"
+    },
+    {
+      "title": "设备连接与控制器",
+      "purpose": "文档化 Controller 子系统，包括 ADB 连接、截图链路、触控链路、模拟器适配、Minitouch 与 MaaTouch，以及控制器实现如何为任务执行提供设备 I/O。",
+      "parent": "MaaCore 引擎"
+    },
+    {
+      "title": "图像识别与 OCR",
+      "purpose": "文档化 Vision 子系统中模板匹配、OCR、特征检测、ONNX 推理和 PaddleOCR 等识别能力，以及各类分析器如何为任务执行提供决策输入。",
+      "parent": "MaaCore 引擎"
+    },
+    {
+      "title": "任务引擎与执行模型",
+      "purpose": "文档化 AbstractTask、PackageTask、InterfaceTask、ProcessTask、任务插件和流程控制机制，说明任务定义如何转换为可执行的自动化流程。",
+      "parent": "MaaCore 引擎"
+    },
+    {
+      "title": "资源与配置系统",
+      "purpose": "说明 resource 目录与 MaaCore 配置加载体系的关系，概述任务数据、模板、模型、外服覆盖和专用数据包如何共同驱动自动化逻辑。",
+      "parent": "项目总览"
+    },
+    {
+      "title": "资源加载与覆盖规则",
+      "purpose": "文档化 ResourceLoader、TaskData、TemplResource 和 WPF 侧资源加载流程，说明主资源、缓存资源、外服资源和平台差异资源的搜索路径与叠加顺序。",
+      "parent": "资源与配置系统",
+      "page_notes": [
+        {
+          "content": "以 src/MaaCore/Config/ResourceLoader.cpp、src/MaaCore/Config/TaskData.cpp、src/MaaWpfGui/Main/AsstProxy.cs 和 interface.json 为主要事实锚点，明确目录优先、覆盖叠加和外服差异的加载规则。"
+        }
+      ]
+    },
+    {
+      "title": "任务 JSON 与任务树",
+      "purpose": "文档化 resource/tasks 目录中的任务定义结构、任务 JSON 的识别与动作协议、next、timeout、onError 等跳转规则，以及任务树的组织方式。",
+      "parent": "资源与配置系统",
+      "page_notes": [
+        {
+          "content": "强调 resource/tasks 是主入口、目录会递归合并 JSON、旧的 tasks.json 是 deprecated fallback，并说明任务树与模板资源之间的关系。"
+        }
+      ]
+    },
+    {
+      "title": "模板、OCR 模型与识别资源",
+      "purpose": "文档化 resource/template、resource/onnx、resource/PaddleOCR、resource/PaddleCharOCR、resource/ocr_config.json、resource/battle_data.json 等识别资源的职责分工，以及它们如何支撑视觉分析。",
+      "parent": "资源与配置系统"
+    },
+    {
+      "title": "外服与平台差异资源",
+      "purpose": "文档化 resource/global 与 resource/platform_diff 的目录结构、覆盖逻辑与适配用途，说明国际服、日服、韩服、繁中服以及 PC 平台差异资源如何在主资源之上叠加。",
+      "parent": "资源与配置系统"
+    },
+    {
+      "title": "专用数据包与玩法资源",
+      "purpose": "文档化 resource/copilot、resource/custom_infrast、resource/roguelike、resource/Arknights-Tile-Pos、resource/recruitment.json、resource/infrast.json、resource/stages.json 等专用数据包的职责，以及它们与自动化功能页的关系。",
+      "parent": "资源与配置系统"
+    },
+    {
+      "title": "前端与集成",
+      "purpose": "概述 WPF GUI、CLI、Mac GUI 和多语言绑定等接入层如何共享 MaaCore，以及本仓库实现与子模块边界之间的关系。",
+      "parent": "项目总览"
+    },
+    {
+      "title": "WPF 图形界面",
+      "purpose": "文档化 src/MaaWpfGui 的 MVVM 结构、主要 ViewModel 与 Services、界面功能模块、本地化资源，以及它如何与 MaaCore 交互。",
+      "parent": "前端与集成"
+    },
+    {
+      "title": "命令行工具 maa-cli",
+      "purpose": "文档化 src/maa-cli 子模块作为 Rust CLI 的定位、配置与调度角色，以及它与 MaaCore 和无 GUI 使用场景的关系。",
+      "parent": "前端与集成"
+    },
+    {
+      "title": "多语言集成接口",
+      "purpose": "文档化 include/AsstCaller.h 作为统一接口入口，以及 src/Python、src/Java、src/Rust、src/Golang、src/Dart、src/Woolang 等绑定层如何在不同语言环境中接入 MaaCore。",
+      "parent": "前端与集成",
+      "page_notes": [
+        {
+          "content": "以 include/AsstCaller.h 为统一入口，按统一 C 接口加各语言封装层的方式组织内容，不按语言逐一展开成平行小页面。"
+        }
+      ]
+    },
+    {
+      "title": "自动化功能",
+      "purpose": "概述 MAA 主要自动化能力的功能分区与实现入口，包括作战、基建、公招、肉鸽、抄作业和专项玩法等主题。",
+      "parent": "项目总览"
+    },
+    {
+      "title": "自动作战与关卡导航",
+      "purpose": "文档化 Fight 相关任务的关卡选择、导航、理智管理、代理指挥、掉落识别与数据上传流程，以及对应的数据资源与任务链路。",
+      "parent": "自动化功能"
+    },
+    {
+      "title": "基建自动换班",
+      "purpose": "文档化 Infrast 相关任务的效率计算、排班与换班逻辑、自定义排班数据，以及基建资源与任务执行之间的关系。",
+      "parent": "自动化功能"
+    },
+    {
+      "title": "自动公招与标签识别",
+      "purpose": "文档化公招标签 OCR、标签组合策略、识别结果处理与 recruitment 数据的关系，以及公招自动化的主要任务链路。",
+      "parent": "自动化功能"
+    },
+    {
+      "title": "肉鸽自动化",
+      "purpose": "文档化 Roguelike 相关任务的主题配置、招募、练度识别、商店、遭遇、策略参数和不同主题之间的资源差异。",
+      "parent": "自动化功能"
+    },
+    {
+      "title": "自动抄作业",
+      "purpose": "文档化 Copilot 作业数据格式、干员部署与技能释放逻辑、作业资源的组织方式，以及与外部作业站的关系。",
+      "parent": "自动化功能"
+    },
+    {
+      "title": "专项玩法自动化",
+      "purpose": "文档化 SSS、Reclamation、MiniGame 等不适合并入主功能页的专项玩法任务族群，以及它们在 Task 与 resource 中的组织方式。",
+      "parent": "自动化功能"
+    },
+    {
+      "title": "工程体系",
+      "purpose": "概述构建、发布、测试、文档站、内部工具与子模块边界之间的工程协作关系。",
+      "parent": "项目总览"
+    },
+    {
+      "title": "构建系统、CI/CD 与发布包",
+      "purpose": "文档化 CMake 构建体系、依赖管理、跨平台构建流程、.github/workflows 中的持续集成流程，以及 package-definition.json 定义的发布包形态。",
+      "parent": "工程体系"
+    },
+    {
+      "title": "测试体系与回归资源",
+      "purpose": "文档化 unit_test 的 Catch2 与 CTest 单元测试体系、test 子模块的回归测试角色、suite 组织方式，以及 CI 中的测试选择逻辑。",
+      "parent": "工程体系",
+      "page_notes": [
+        {
+          "content": "必须显式区分 unit_test 与 test 子模块，分别说明它们的定位、运行方式与 CI 集成方式，避免混写为单一测试体系。"
+        }
+      ]
+    },
+    {
+      "title": "内部工具集",
+      "purpose": "文档化 tools 目录下用于资源更新、模板优化、OTA 打包、海外客户端适配、肉鸽辅助和图像处理的内部工具及其维护用途。",
+      "parent": "工程体系"
+    },
+    {
+      "title": "文档站、协议与开发指南",
+      "purpose": "文档化 docs 目录作为 VuePress 文档站的结构，串联 manual、protocol、develop、glossary 等内容域，以及它们与外部中文文档站的关系。",
+      "parent": "工程体系",
+      "page_notes": [
+        {
+          "content": "优先使用 docs 目录内部结构解释文档体系，再引用 docs.maa.plus 中文页面；不要按不同语言版本重复讲述相同主题。"
+        }
+      ]
+    },
+    {
+      "title": "仓库结构与子模块边界",
+      "purpose": "文档化顶层目录、include、3rdparty、resource、docs、src 等入口的职责分工，并明确各个子模块或边界模块在仓库中的定位。",
+      "parent": "工程体系"
+    }
+  ]
+}

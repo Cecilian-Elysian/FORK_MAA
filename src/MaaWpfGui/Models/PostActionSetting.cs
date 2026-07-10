@@ -1,0 +1,522 @@
+// <copyright file="PostActionSetting.cs" company="MaaAssistantArknights">
+// Part of the MaaWpfGui project, maintained by the MaaAssistantArknights team (Maa Team)
+// Copyright (C) 2021-2025 MaaAssistantArknights Contributors
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License v3.0 only as published by
+// the Free Software Foundation, either version 3 of the License, or
+// any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY
+// </copyright>
+
+#nullable enable
+using System;
+using System.Collections.Generic;
+using System.Windows.Controls;
+using System.Windows.Input;
+using JetBrains.Annotations;
+using MaaWpfGui.Constants;
+using MaaWpfGui.Helper;
+using MaaWpfGui.ViewModels.UserControl.Settings;
+using Newtonsoft.Json;
+using Stylet;
+
+namespace MaaWpfGui.Models;
+
+public class PostActionSetting : PropertyChangedBase
+{
+    [Flags]
+    public enum PostActions
+    {
+        /// <summary>
+        /// 无动作
+        /// </summary>
+        None = 0,
+
+        /// <summary>
+        /// 退出明日方舟
+        /// </summary>
+        ExitArknights = 1 << 0,
+
+        /// <summary>
+        /// 返回模拟器首页
+        /// </summary>
+        BackToAndroidHome = 1 << 1,
+
+        /// <summary>
+        /// 退出模拟器
+        /// </summary>
+        ExitEmulator = 1 << 2,
+
+        /// <summary>
+        /// 退出MAA
+        /// </summary>
+        ExitSelf = 1 << 3,
+
+        /// <summary>
+        /// 如果没有其他MAA
+        /// </summary>
+        IfNoOtherMaa = 1 << 4,
+
+        /// <summary>
+        /// 休眠
+        /// </summary>
+        Hibernate = 1 << 5,
+
+        /// <summary>
+        /// 关机
+        /// </summary>
+        Shutdown = 1 << 6,
+
+        /// <summary>
+        /// 睡眠
+        /// </summary>
+        Sleep = 1 << 7,
+    }
+
+    private PostActions _postActions;
+
+    private bool _once;
+
+    public bool Once
+    {
+        get => _once;
+        set
+        {
+            if (!SetAndNotify(ref _once, value))
+            {
+                return;
+            }
+
+            if (!value)
+            {
+                SaveActions();
+            }
+
+            ActionTitle = value ? $"{LocalizationHelper.GetString("PostActions")} ({LocalizationHelper.GetString("Once")})" : LocalizationHelper.GetString("PostActions");
+        }
+    }
+
+    private bool _exitArknights;
+
+    public bool ExitArknights
+    {
+        get => _exitArknights;
+        set
+        {
+            if (!SetAndNotify(ref _exitArknights, value))
+            {
+                return;
+            }
+
+            if (value)
+            {
+                BackToAndroidHome = false;
+            }
+
+            UpdatePostAction(PostActions.ExitArknights, value);
+        }
+    }
+
+    private bool _backToAndroidHome;
+
+    /// <summary>
+    /// Gets a value indicating whether AttachWindow 模式支持 Android 侧后处理动作。
+    /// </summary>
+    public bool AndroidControlPostActionsEnabled => !_exitEmulator && !ConnectSettingsUserControlModel.Instance.UseAttachWindow;
+
+    public bool BackToAndroidHome
+    {
+        get => _backToAndroidHome;
+        set
+        {
+            if (!SetAndNotify(ref _backToAndroidHome, value))
+            {
+                return;
+            }
+
+            if (value)
+            {
+                ExitArknights = false;
+            }
+
+            UpdatePostAction(PostActions.BackToAndroidHome, value);
+        }
+    }
+
+    private bool _exitEmulator;
+
+    /// <summary>
+    /// Gets a value indicating whether PC 端（窗口绑定）无模拟器进程，完成后不可选择 ｢退出模拟器｣。
+    /// </summary>
+    public bool ExitEmulatorOptionEnabled => !ConnectSettingsUserControlModel.Instance.UseAttachWindow;
+
+    public bool ExitEmulator
+    {
+        get => _exitEmulator;
+        set
+        {
+            if (value && ConnectSettingsUserControlModel.Instance.UseAttachWindow)
+            {
+                return;
+            }
+
+            if (!SetAndNotify(ref _exitEmulator, value))
+            {
+                return;
+            }
+
+            NotifyOfPropertyChange(nameof(AndroidControlPostActionsEnabled));
+
+            if (value)
+            {
+                ExitArknights = false;
+                BackToAndroidHome = false;
+            }
+
+            UpdatePostAction(PostActions.ExitEmulator, value);
+        }
+    }
+
+    private bool _exitSelf;
+
+    public bool ExitSelf
+    {
+        get => _exitSelf;
+        set
+        {
+            if (!SetAndNotify(ref _exitSelf, value))
+            {
+                return;
+            }
+
+            if (!value)
+            {
+                IfNoOtherMaa = false;
+            }
+
+            UpdatePostAction(PostActions.ExitSelf, value);
+        }
+    }
+
+    private bool _ifNoOtherMaa;
+
+    public bool IfNoOtherMaa
+    {
+        get => _ifNoOtherMaa;
+        set
+        {
+            if (!SetAndNotify(ref _ifNoOtherMaa, value))
+            {
+                return;
+            }
+
+            NotifyOfPropertyChange(nameof(ExitEmulatorOptionEnabled));
+
+            if (value)
+            {
+                ExitSelf = true;
+            }
+
+            UpdatePostAction(PostActions.IfNoOtherMaa, value);
+        }
+    }
+
+    private bool _hibernate;
+
+    public bool Hibernate
+    {
+        get => _hibernate;
+        set
+        {
+            if (!SetAndNotify(ref _hibernate, value))
+            {
+                return;
+            }
+
+            if (value)
+            {
+                Shutdown = false;
+                Sleep = false;
+            }
+            else if (!Shutdown && !Sleep)
+            {
+                IfNoOtherMaa = false;
+            }
+
+            UpdatePostAction(PostActions.Hibernate, value);
+        }
+    }
+
+    private bool _shutdown;
+
+    public bool Shutdown
+    {
+        get => _shutdown;
+        set
+        {
+            if (!SetAndNotify(ref _shutdown, value))
+            {
+                return;
+            }
+
+            if (value)
+            {
+                ExitArknights = false;
+                BackToAndroidHome = false;
+                Hibernate = false;
+                Sleep = false;
+            }
+            else if (!Hibernate && !Sleep)
+            {
+                IfNoOtherMaa = false;
+            }
+
+            UpdatePostAction(PostActions.Shutdown, value);
+        }
+    }
+
+    private bool _sleep;
+
+    public bool Sleep
+    {
+        get => _sleep;
+        set
+        {
+            if (!SetAndNotify(ref _sleep, value))
+            {
+                return;
+            }
+
+            if (value)
+            {
+                Hibernate = false;
+                Shutdown = false;
+            }
+            else if (!Hibernate && !Shutdown)
+            {
+                IfNoOtherMaa = false;
+            }
+
+            UpdatePostAction(PostActions.Sleep, value);
+        }
+    }
+
+    public static PostActionSetting Instance { get; } = new();
+
+    private string _actionTitle = LocalizationHelper.GetString("PostActions");
+
+    public string ActionTitle
+    {
+        get => _actionTitle;
+        private set => SetAndNotify(ref _actionTitle, value);
+    }
+
+    private string _actionDescription = string.Empty;
+
+    public string ActionDescription
+    {
+        get => _actionDescription;
+        private set => SetAndNotify(ref _actionDescription, value);
+    }
+
+    // UI 绑定的方法
+    [UsedImplicitly]
+    public void PostActionsAndOnce(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton != MouseButton.Right)
+        {
+            return;
+        }
+
+        CheckBox checkBox = (CheckBox)sender;
+        Once = !checkBox.IsChecked ?? false;
+        checkBox.IsChecked = !checkBox.IsChecked;
+    }
+
+    // UI 绑定的方法
+    [UsedImplicitly]
+    public void PostActionsClear()
+    {
+        Once = false;
+        _postActions = PostActions.None;
+        SaveActions();
+        LoadPostActions();
+    }
+
+    // UI 绑定的方法
+    [UsedImplicitly]
+    public void PostActionsClearOnce()
+    {
+        Once = true;
+        ExitArknights = false;
+        BackToAndroidHome = false;
+        ExitEmulator = false;
+        ExitSelf = false;
+        IfNoOtherMaa = false;
+        Hibernate = false;
+        Shutdown = false;
+        Sleep = false;
+        RefreshDescription();
+    }
+
+    private void RefreshDescription()
+    {
+        List<string> actions = [];
+
+        if (BackToAndroidHome)
+        {
+            actions.Add(LocalizationHelper.GetString("BackToAndroidHome"));
+        }
+
+        if (ExitArknights)
+        {
+            actions.Add(LocalizationHelper.GetString("ExitArknights"));
+        }
+
+        if (ExitEmulator)
+        {
+            actions.Add(LocalizationHelper.GetString("ExitEmulator"));
+        }
+
+        if (ExitSelf)
+        {
+            actions.Add(LocalizationHelper.GetString("ExitSelf"));
+        }
+
+        var prefix = IfNoOtherMaa ? LocalizationHelper.GetString("IfNoOtherMaa") : string.Empty;
+        if (Hibernate)
+        {
+            actions.Add(prefix + LocalizationHelper.GetString("Hibernate"));
+        }
+
+        if (Shutdown)
+        {
+            actions.Add(prefix + LocalizationHelper.GetString("Shutdown"));
+        }
+
+        if (Sleep)
+        {
+            actions.Add(prefix + LocalizationHelper.GetString("Sleep"));
+        }
+
+        ActionDescription = actions.Count == 0 ? LocalizationHelper.GetString("DoNothing") : string.Join(" -> ", actions);
+    }
+
+    private void UpdatePostAction(PostActions postActions, bool value)
+    {
+        if (value)
+        {
+            _postActions |= postActions;
+        }
+        else
+        {
+            _postActions &= ~postActions;
+        }
+
+        RefreshDescription();
+        SaveActions();
+    }
+
+    private void SaveActions()
+    {
+        if (!_once)
+        {
+            ConfigurationHelper.SetValue(ConfigurationKeys.PostActions, JsonConvert.SerializeObject(_postActions));
+        }
+    }
+
+    public void LoadPostActions()
+    {
+        _postActions = JsonConvert.DeserializeObject<PostActions>(ConfigurationHelper.GetValue(ConfigurationKeys.PostActions, "0"));
+        ExitArknights = _postActions.HasFlag(PostActions.ExitArknights);
+        BackToAndroidHome = _postActions.HasFlag(PostActions.BackToAndroidHome);
+        ExitEmulator = _postActions.HasFlag(PostActions.ExitEmulator);
+        ExitSelf = _postActions.HasFlag(PostActions.ExitSelf);
+        IfNoOtherMaa = _postActions.HasFlag(PostActions.IfNoOtherMaa);
+        Hibernate = _postActions.HasFlag(PostActions.Hibernate);
+        Shutdown = _postActions.HasFlag(PostActions.Shutdown);
+        Sleep = _postActions.HasFlag(PostActions.Sleep);
+        Once = false;
+        ClearUnsupportedPostActionsForAttachWindow();
+    }
+
+    /// <summary>
+    /// PC 端（窗口绑定）不支持 ADB 侧后处理动作：移除已保存的相关标志，且不触发额外联动。
+    /// </summary>
+    private void ClearUnsupportedPostActionsForAttachWindow()
+    {
+        if (!ConnectSettingsUserControlModel.Instance.UseAttachWindow)
+        {
+            return;
+        }
+
+        var changed = false;
+
+        if (_backToAndroidHome)
+        {
+            _backToAndroidHome = false;
+            _postActions &= ~PostActions.BackToAndroidHome;
+            NotifyOfPropertyChange(nameof(BackToAndroidHome));
+            changed = true;
+        }
+
+        /*
+        if (_exitArknights)
+        {
+            _exitArknights = false;
+            _postActions &= ~PostActions.ExitArknights;
+            NotifyOfPropertyChange(nameof(ExitArknights));
+            changed = true;
+        }
+        */
+
+        if (_exitEmulator)
+        {
+            _exitEmulator = false;
+            _postActions &= ~PostActions.ExitEmulator;
+            NotifyOfPropertyChange(nameof(ExitEmulator));
+            changed = true;
+        }
+
+        if (!changed)
+        {
+            return;
+        }
+
+        NotifyOfPropertyChange(nameof(AndroidControlPostActionsEnabled));
+        RefreshDescription();
+        SaveActions();
+    }
+
+    private PostActionSetting()
+    {
+        ConnectSettingsUserControlModel.Instance.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is nameof(ConnectSettingsUserControlModel.ConnectConfig) or nameof(ConnectSettingsUserControlModel.UseAttachWindow))
+            {
+                if (ConnectSettingsUserControlModel.Instance.UseAttachWindow && ExitEmulator)
+                {
+                    ExitEmulator = false;
+                    ExitArknights = true;
+                }
+
+                NotifyOfPropertyChange(nameof(AndroidControlPostActionsEnabled));
+                NotifyOfPropertyChange(nameof(ExitEmulatorOptionEnabled));
+                ClearUnsupportedPostActionsForAttachWindow();
+            }
+        };
+
+        LoadPostActions();
+        RefreshDescription();
+
+        LocalizationHelper.LanguageChanged += () => {
+            ActionTitle = _once
+                ? $"{LocalizationHelper.GetString("PostActions")} ({LocalizationHelper.GetString("Once")})"
+                : LocalizationHelper.GetString("PostActions");
+            RefreshDescription();
+        };
+    }
+}
