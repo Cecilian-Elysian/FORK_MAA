@@ -38,6 +38,7 @@ using MaaWpfGui.Extensions;
 using MaaWpfGui.Helper;
 using MaaWpfGui.Main;
 using MaaWpfGui.Models;
+using MaaWpfGui.Models.AsstTasks;
 using MaaWpfGui.Services.Notification;
 using MaaWpfGui.States;
 using MaaWpfGui.Utilities;
@@ -2205,22 +2206,47 @@ public class TaskQueueViewModel : Screen
 
             try
             {
-                var (isSuccess, taskIds) = SerializeTask(item);
-                switch (isSuccess)
+                // 轮换中 StartUp 任务禁止重启游戏（已在运行），其余任务正常序列化
+                if (item.TaskType == TaskType.StartUp)
                 {
-                    case true:
+                    var startUpTask = new AsstStartUpTask
+                    {
+                        ClientType = SettingsViewModel.GameSettings.ClientType,
+                        StartGame = false,
+                        AccountName = cfg.AccountName,
+                    };
+                    var (isSuccess, taskId) = Instances.AsstProxy.AsstAppendTaskWithEncoding(TaskType.StartUp, startUpTask);
+                    if (isSuccess && taskId > 0)
+                    {
                         ++count;
-                        TaskItemViewModels.ElementAtOrDefault(index)?.SetTaskIds(taskIds);
-                        break;
-                    case false:
+                        var idx = ConfigFactory.CurrentConfig.TaskQueue.IndexOf(item);
+                        TaskItemViewModels.ElementAtOrDefault(idx)?.SetTaskIds([taskId]);
+                    }
+                    else
+                    {
                         taskRet = false;
                         AddLog(LocalizationHelper.GetStringFormat("TaskAppend.Error", LocalizationHelper.GetString(item.TaskType.ToString()), item.NameOrTaskType), UiLogColor.Error);
-                        if (index >= 0 && index < TaskItemViewModels.Count) TaskItemViewModels[index].StatusDisplay = TaskItemStatus.Error;
-                        break;
-                    case null:
-                        AddLog(LocalizationHelper.GetStringFormat("TaskAppend.Skip", LocalizationHelper.GetString(item.TaskType.ToString()), item.NameOrTaskType), UiLogColor.Info);
-                        if (index >= 0 && index < TaskItemViewModels.Count) TaskItemViewModels[index].StatusDisplay = TaskItemStatus.Skipped;
-                        break;
+                    }
+                }
+                else
+                {
+                    var (isSuccess, taskIds) = SerializeTask(item);
+                    switch (isSuccess)
+                    {
+                        case true:
+                            ++count;
+                            TaskItemViewModels.ElementAtOrDefault(index)?.SetTaskIds(taskIds);
+                            break;
+                        case false:
+                            taskRet = false;
+                            AddLog(LocalizationHelper.GetStringFormat("TaskAppend.Error", LocalizationHelper.GetString(item.TaskType.ToString()), item.NameOrTaskType), UiLogColor.Error);
+                            if (index >= 0 && index < TaskItemViewModels.Count) TaskItemViewModels[index].StatusDisplay = TaskItemStatus.Error;
+                            break;
+                        case null:
+                            AddLog(LocalizationHelper.GetStringFormat("TaskAppend.Skip", LocalizationHelper.GetString(item.TaskType.ToString()), item.NameOrTaskType), UiLogColor.Info);
+                            if (index >= 0 && index < TaskItemViewModels.Count) TaskItemViewModels[index].StatusDisplay = TaskItemStatus.Skipped;
+                            break;
+                    }
                 }
             }
             catch (Exception ex)
