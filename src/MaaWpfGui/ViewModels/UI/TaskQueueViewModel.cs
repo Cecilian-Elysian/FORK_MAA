@@ -1814,20 +1814,28 @@ public class TaskQueueViewModel : Screen
         using var log = new LogScope(_logger);
         await TaskQueueSerializingLock.WaitAsync();
 
-        // 账号轮换：检查是否需要启用轮换模式
         var startUpConfig = TaskQueueViewModel.StartUpTask;
+        startUpConfig.InitAccountCycleItems();
+
         if (startUpConfig.AccountCycleEnabled && startUpConfig.AccountCycleItems.Any(x => x.IsSelected && !string.IsNullOrEmpty(x.AccountName)))
         {
-            startUpConfig.InitAccountCycleItems();
-            var firstAccount = startUpConfig.GetCurrentCycleAccount();
-            if (firstAccount != null)
+            // 轮换模式：每次 LinkStart 只处理一个账号
+            startUpConfig.IsCycling = true;
+            var account = startUpConfig.GetCurrentCycleAccount();
+            if (account != null)
             {
-                startUpConfig.IsCycling = true;
                 var cfg = ConfigFactory.CurrentConfig.TaskQueue.OfType<StartUpTask>().FirstOrDefault();
                 if (cfg != null)
                 {
-                    cfg.AccountName = firstAccount;
+                    cfg.AccountSwitchEnabled = true;
+                    cfg.AccountName = account;
+                    AddLog($"[Cycle] Account: {account}", UiLogColor.Info);
                 }
+            }
+            else
+            {
+                AddLog(LocalizationHelper.GetString("AccountCycleAllDone"), UiLogColor.Info);
+                startUpConfig.IsCycling = false;
             }
         }
         else
@@ -2119,10 +2127,13 @@ public class TaskQueueViewModel : Screen
     /// <returns>是否实际执行了状态重置（false 表示被幂等保护跳过）。</returns>
     public bool SetStopped(bool runStopScript = true)
     {
+        AddLog($"[Cycle] SetStopped called: Idle={_runningState.GetIdle()}, Stopping={_runningState.GetStopping()}, IsCycling={StartUpTask.IsCycling}", UiLogColor.Info);
+
         // 幂等保护：已经空闲且不在停止中，跳过
         // 防止超时 SetStopped 后 Core 延迟回调再次触发导致打断新任务
         if (_runningState.GetIdle() && !_runningState.GetStopping())
         {
+            AddLog("[Cycle] SetStopped: idle check triggered, returning false", UiLogColor.Info);
             return false;
         }
 
@@ -2141,53 +2152,43 @@ public class TaskQueueViewModel : Screen
         _runningState.SetStopping(false);
         _runningState.SetIdle(true);
 
-        // 账号轮换：自动推进到下一个账号
-        TryStartNextCycleAccount();
-
-        // 只抑制“本轮任务期间”的自动开启；任务结束后应允许下一轮自动开启 LiveView。
         return true;
     }
 
-    private async void TryStartNextCycleAccount()
+    /// <summary>
+    /// 账号轮换推进：标记当前账号完成，取下一个账号，无缝继续执行，不产生"已停止"语义。
+    /// </summary>
+    public void AdvanceAccountCycle()
     {
-        var startUpConfig = TaskQueueViewModel.StartUpTask;
-        if (!startUpConfig.IsCycling)
+        if (!StartUpTask.IsCycling)
         {
             return;
         }
 
-        if (!startUpConfig.AccountCycleEnabled)
-        {
-            startUpConfig.IsCycling = false;
-            return;
-        }
-
-        // 标记当前账号为已完成
         var cfg = ConfigFactory.CurrentConfig.TaskQueue.OfType<StartUpTask>().FirstOrDefault();
-        if (cfg != null)
+        if (cfg == null)
         {
-            startUpConfig.MarkAccountCompleted(cfg.AccountName);
-        }
-
-        // 取下一个账号
-        var nextAccount = startUpConfig.GetCurrentCycleAccount();
-        if (nextAccount == null)
-        {
-            AddLog(LocalizationHelper.GetString("AccountCycleAllDone"), UiLogColor.Info);
-            startUpConfig.IsCycling = false;
             return;
         }
 
-        AddLog(LocalizationHelper.GetString("AccountCycleSwitchingTo") + $" {nextAccount}", UiLogColor.Info);
-
-        if (cfg != null)
+        StartUpTask.MarkAccountCompleted(cfg.AccountName);
+        var nextAccount = StartUpTask.GetCurrentCycleAccount();
+        if (nextAccount != null)
         {
+            cfg.AccountSwitchEnabled = true;
             cfg.AccountName = nextAccount;
-        }
 
-        // 延迟 1.5s 后自动重启
-        await Task.Delay(1500);
-        await LinkStartWithTasks(ConfigFactory.CurrentConfig.TaskQueue);
+            // 直接复位闲状态，走 LinkStart 全流程（连接、序列化、启动）
+            _runningState.SetIdle(true);
+            _runningState.SetStopping(false);
+            _ = LinkStart();
+        }
+        else
+        {
+            StartUpTask.IsCycling = false;
+            _runningState.SetIdle(true);
+            AddLog(LocalizationHelper.GetString("AccountCycleAllDone"), UiLogColor.Info);
+        }
     }
 
     public bool EnableSetFightParams { get; set; } = true;

@@ -546,6 +546,8 @@ void Assistant::working_proc()
             append_callback(AsstMsg::AllTasksCompleted, callback_json);
             finished_tasks.clear();
             clear_cache();
+            m_thread_idle = true;
+            m_running = false;
         }
 
         const int delay = Config.get_options().task_delay;

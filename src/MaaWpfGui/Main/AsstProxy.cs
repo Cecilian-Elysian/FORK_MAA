@@ -1259,6 +1259,17 @@ public class AsstProxy
                 _tasksStatus.Clear();
 
                 Instances.TaskQueueViewModel.ResetAllTemporaryVariable();
+
+                // 账号轮换：正常完成时自动继续下一个账号
+                if (TaskQueueViewModel.StartUpTask.IsCycling && !_runningState.GetIdle())
+                {
+                    Instances.TaskQueueViewModel.AdvanceAccountCycle();
+                    if (TaskQueueViewModel.StartUpTask.IsCycling)
+                    {
+                        break;
+                    }
+                }
+
                 _runningState.SetIdle(true);
 
                 if (isMainTaskQueueAllCompleted)

@@ -31,12 +31,12 @@ public class StartUpTask : BaseTask, IJsonOnDeserialized
     /// <summary>
     /// Gets or sets a value indicating whether 启用账号轮换。
     /// </summary>
-    public bool AccountCycleEnabled { get; set; } = false;
+    public bool AccountCycleEnabled { get; set; } = true;
 
     /// <summary>
     /// Gets or sets the 轮换账号列表。
     /// </summary>
-    public List<string> AccountNames { get; set; } = [];
+    public List<string> AccountNames { get; set; } = [string.Empty, string.Empty];
 
     public void OnDeserialized()
     {

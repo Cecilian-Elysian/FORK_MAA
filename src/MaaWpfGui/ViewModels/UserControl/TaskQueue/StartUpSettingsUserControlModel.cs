@@ -90,7 +90,6 @@ public class StartUpSettingsUserControlModel : TaskSettingsViewModel, StartUpSet
 
     private readonly ObservableCollection<AccountCycleItem> _accountCycleItems = [];
     private readonly HashSet<string> _completedAccounts = [];
-    private int _currentCycleIndex;
     private bool _isCycling;
 
     public bool AccountCycleEnabled
@@ -150,6 +149,12 @@ public class StartUpSettingsUserControlModel : TaskSettingsViewModel, StartUpSet
     public void SyncAccountNamesToItems()
     {
         var config = GetTaskConfig<StartUpTask>();
+
+        // 从单账号切换复制账号名到轮换列表第一项
+        if (config.AccountNames.Count > 0 && string.IsNullOrEmpty(config.AccountNames[0]) && !string.IsNullOrEmpty(config.AccountName))
+        {
+            config.AccountNames[0] = config.AccountName;
+        }
 
         if (config.AccountNames.Count == 0 && !string.IsNullOrEmpty(config.AccountName))
         {
@@ -242,19 +247,10 @@ public class StartUpSettingsUserControlModel : TaskSettingsViewModel, StartUpSet
 
     public string? GetCurrentCycleAccount()
     {
-        var candidates = _accountCycleItems
+        return _accountCycleItems
             .Where(x => x.IsSelected && !x.IsCompleted && !string.IsNullOrEmpty(x.AccountName))
             .OrderBy(x => x.Index)
-            .ToList();
-
-        if (candidates.Count == 0)
-        {
-            return null;
-        }
-
-        var candidate = candidates.FirstOrDefault(x => x.Index >= _currentCycleIndex) ?? candidates.First();
-        _currentCycleIndex = candidate.Index + 1;
-        return candidate.AccountName;
+            .FirstOrDefault()?.AccountName;
     }
 
     public void MarkAccountCompleted(string accountName)
@@ -274,14 +270,8 @@ public class StartUpSettingsUserControlModel : TaskSettingsViewModel, StartUpSet
 
     public void ResetCycle()
     {
-        _currentCycleIndex = 0;
         _isCycling = false;
         ClearCompletedAccounts();
-    }
-
-    public void ResetCycleIndex()
-    {
-        _currentCycleIndex = 0;
     }
 
     public void ClearCompletedAccounts()
@@ -313,7 +303,7 @@ public class StartUpSettingsUserControlModel : TaskSettingsViewModel, StartUpSet
     {
         if (baseTask is StartUpTask)
         {
-            Refresh();
+            InitAccountCycleItems();
         }
     }
 

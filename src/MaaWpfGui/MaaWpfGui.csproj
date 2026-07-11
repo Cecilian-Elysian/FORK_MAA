@@ -22,9 +22,9 @@
     <PublishReadyToRun>false</PublishReadyToRun>
     <PublishSingleFile>false</PublishSingleFile>
     <PublishTrimmed>false</PublishTrimmed>
-    <SelfContained Condition="'$(RuntimeIdentifier)' != ''">true</SelfContained>
+    <SelfContained Condition="'$(RuntimeIdentifier)' != ''">false</SelfContained>
     <BeautyLibsDir>./externals</BeautyLibsDir>
-    <BeautyUsePatch Condition="'$(RuntimeIdentifier)' != ''">true</BeautyUsePatch>
+    <BeautyUsePatch Condition="'$(RuntimeIdentifier)' != ''">false</BeautyUsePatch>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
     <PostBuildEvent>
