@@ -2145,7 +2145,14 @@ public class TaskQueueViewModel : Screen
 
         if (!_runningState.GetIdle() || _runningState.GetStopping())
         {
-            AddLog(LocalizationHelper.GetString("Stopped"), splitMode: LogCardSplitMode.Both);
+            if (!StartUpTask.IsCycling)
+            {
+                AddLog(LocalizationHelper.GetString("Stopped"), splitMode: LogCardSplitMode.Both);
+            }
+            else
+            {
+                AddLog("[Cycle] " + LocalizationHelper.GetString("AccountSwitch") + " -->> " + (ConfigFactory.CurrentConfig.TaskQueue.OfType<StartUpTask>().FirstOrDefault()?.AccountName ?? "?"), UiLogColor.Info);
+            }
         }
 
         Waiting = false;
@@ -2178,7 +2185,8 @@ public class TaskQueueViewModel : Screen
             cfg.AccountSwitchEnabled = true;
             cfg.AccountName = nextAccount;
 
-            // 直接复位闲状态，走 LinkStart 全流程（连接、序列化、启动）
+            // 立即恢复 Running，避免按钮在轮换间隙闪成 "LinkStart"
+            Running = true;
             _runningState.SetIdle(true);
             _runningState.SetStopping(false);
             _ = LinkStart();
