@@ -2127,13 +2127,11 @@ public class TaskQueueViewModel : Screen
     /// <returns>是否实际执行了状态重置（false 表示被幂等保护跳过）。</returns>
     public bool SetStopped(bool runStopScript = true)
     {
-        AddLog($"[Cycle] SetStopped called: Idle={_runningState.GetIdle()}, Stopping={_runningState.GetStopping()}, IsCycling={StartUpTask.IsCycling}", UiLogColor.Info);
-
         // 幂等保护：已经空闲且不在停止中，跳过
         // 防止超时 SetStopped 后 Core 延迟回调再次触发导致打断新任务
         if (_runningState.GetIdle() && !_runningState.GetStopping())
         {
-            AddLog("[Cycle] SetStopped: idle check triggered, returning false", UiLogColor.Info);
+            // idle check triggered, returning false
             return false;
         }
 
@@ -2143,16 +2141,14 @@ public class TaskQueueViewModel : Screen
             Task.Run(() => SettingsViewModel.GameSettings.RunScript("EndsWithScript"));
         }
 
+        if (StartUpTask.IsCycling)
+        {
+            return true;
+        }
+
         if (!_runningState.GetIdle() || _runningState.GetStopping())
         {
-            if (!StartUpTask.IsCycling)
-            {
-                AddLog(LocalizationHelper.GetString("Stopped"), splitMode: LogCardSplitMode.Both);
-            }
-            else
-            {
-                AddLog("[Cycle] " + LocalizationHelper.GetString("AccountSwitch") + " -->> " + (ConfigFactory.CurrentConfig.TaskQueue.OfType<StartUpTask>().FirstOrDefault()?.AccountName ?? "?"), UiLogColor.Info);
-            }
+            AddLog(LocalizationHelper.GetString("Stopped"), splitMode: LogCardSplitMode.Both);
         }
 
         Waiting = false;
@@ -2180,22 +2176,73 @@ public class TaskQueueViewModel : Screen
 
         StartUpTask.MarkAccountCompleted(cfg.AccountName);
         var nextAccount = StartUpTask.GetCurrentCycleAccount();
-        if (nextAccount != null)
-        {
-            cfg.AccountSwitchEnabled = true;
-            cfg.AccountName = nextAccount;
-
-            // 立即恢复 Running，避免按钮在轮换间隙闪成 "LinkStart"
-            Running = true;
-            _runningState.SetIdle(true);
-            _runningState.SetStopping(false);
-            _ = LinkStart();
-        }
-        else
+        if (nextAccount == null)
         {
             StartUpTask.IsCycling = false;
             _runningState.SetIdle(true);
             AddLog(LocalizationHelper.GetString("AccountCycleAllDone"), UiLogColor.Info);
+            return;
+        }
+
+        cfg.AccountSwitchEnabled = true;
+        cfg.AccountName = nextAccount;
+
+        // 轮换推进：不重连模拟器、不重启游戏，仅切号 + 跑任务
+        // 直接序列化当前任务队列并启动，跳过 ConnectToEmulator / StartGame / 脚本
+        _runningState.SetStopping(false);
+        AddLog(LocalizationHelper.GetString("Running"));
+
+        bool taskRet = true;
+        int count = 0;
+        foreach (var item in ConfigFactory.CurrentConfig.TaskQueue)
+        {
+            var index = ConfigFactory.CurrentConfig.TaskQueue.IndexOf(item);
+            if (!IsTaskEnable(item))
+            {
+                if (index >= 0 && index < TaskItemViewModels.Count) TaskItemViewModels[index].StatusDisplay = TaskItemStatus.Skipped;
+                continue;
+            }
+
+            try
+            {
+                var (isSuccess, taskIds) = SerializeTask(item);
+                switch (isSuccess)
+                {
+                    case true:
+                        ++count;
+                        TaskItemViewModels.ElementAtOrDefault(index)?.SetTaskIds(taskIds);
+                        break;
+                    case false:
+                        taskRet = false;
+                        AddLog(LocalizationHelper.GetStringFormat("TaskAppend.Error", LocalizationHelper.GetString(item.TaskType.ToString()), item.NameOrTaskType), UiLogColor.Error);
+                        if (index >= 0 && index < TaskItemViewModels.Count) TaskItemViewModels[index].StatusDisplay = TaskItemStatus.Error;
+                        break;
+                    case null:
+                        AddLog(LocalizationHelper.GetStringFormat("TaskAppend.Skip", LocalizationHelper.GetString(item.TaskType.ToString()), item.NameOrTaskType), UiLogColor.Info);
+                        if (index >= 0 && index < TaskItemViewModels.Count) TaskItemViewModels[index].StatusDisplay = TaskItemStatus.Skipped;
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                taskRet = false;
+                AddLog(LocalizationHelper.GetStringFormat("TaskAppend.Error", LocalizationHelper.GetString(item.TaskType.ToString()), item.NameOrTaskType) + "\n" + ex.Message, UiLogColor.Error);
+            }
+        }
+
+        if (count == 0)
+        {
+            AddLog(LocalizationHelper.GetString("UnselectedTask"));
+            _runningState.SetIdle(true);
+            Instances.AsstProxy.AsstStop();
+            StartUpTask.IsCycling = false;
+            return;
+        }
+
+        if (!taskRet || !Instances.AsstProxy.AsstStart())
+        {
+            AddLog(LocalizationHelper.GetString("UnknownErrorOccurs"), UiLogColor.Error);
+            StartUpTask.IsCycling = false;
         }
     }
 
