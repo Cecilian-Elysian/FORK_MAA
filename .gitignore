@@ -486,8 +486,8 @@ Thumbs.db
 
 # build & install
 build
-install
 install-*
+install/
 
 # pnpm cache
 .pnpm-store
@@ -512,3 +512,7 @@ DependencySetup_依赖库安装.bat
 # Development documents
 LOG.md
 AGENTS.md
+
+# Feature/fix working documents
+feat*.md
+fix*.md

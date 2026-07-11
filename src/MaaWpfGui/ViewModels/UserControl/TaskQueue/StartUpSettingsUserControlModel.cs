@@ -162,15 +162,20 @@ public class StartUpSettingsUserControlModel : TaskSettingsViewModel, StartUpSet
             config.AccountNames.Add(string.Empty);
         }
 
+        var existingSelections = _accountCycleItems
+            .Where(x => !string.IsNullOrEmpty(x.AccountName))
+            .ToDictionary(x => x.AccountName, x => x.IsSelected);
+
         _accountCycleItems.Clear();
         for (int i = 0; i < config.AccountNames.Count; i++)
         {
+            var name = config.AccountNames[i];
             var item = new AccountCycleItem
             {
                 DisplayName = LocalizationHelper.GetString("AccountCycleNewAccountDefaultName") + (i + 1),
-                AccountName = config.AccountNames[i],
-                IsSelected = true,
-                IsCompleted = _completedAccounts.Contains(config.AccountNames[i]),
+                AccountName = name,
+                IsSelected = existingSelections.TryGetValue(name, out var selected) ? selected : true,
+                IsCompleted = _completedAccounts.Contains(name),
                 Index = i,
             };
             item.PropertyChanged += OnAccountCycleItemPropertyChanged;
