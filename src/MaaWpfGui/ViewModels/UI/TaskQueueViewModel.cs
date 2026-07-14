@@ -2144,7 +2144,17 @@ public class TaskQueueViewModel : Screen
 
         if (StartUpTask.IsCycling)
         {
-            return true;
+            // 账号轮换中：仅在"非强制停止"场景下保留 Cycling 状态（AdvanceAccountCycle 内部会重启任务）。
+            // 当外部调用方（Stop 按钮 / 定时器 / 超时强制重置）请求停止时，必须清空 Stopping 标志，
+            // 否则 UI 永远卡在"正在停止……"且按钮不可用。
+            if (runStopScript && _runningState.GetStopping())
+            {
+                StartUpTask.IsCycling = false;
+            }
+            else
+            {
+                return true;
+            }
         }
 
         if (!_runningState.GetIdle() || _runningState.GetStopping())
@@ -2259,9 +2269,9 @@ public class TaskQueueViewModel : Screen
         if (count == 0)
         {
             AddLog(LocalizationHelper.GetString("UnselectedTask"));
-            _runningState.SetIdle(true);
-            Instances.AsstProxy.AsstStop();
             StartUpTask.IsCycling = false;
+            Instances.AsstProxy.AsstStop();
+            SetStopped(runStopScript: false);
             return;
         }
 
@@ -2269,6 +2279,7 @@ public class TaskQueueViewModel : Screen
         {
             AddLog(LocalizationHelper.GetString("UnknownErrorOccurs"), UiLogColor.Error);
             StartUpTask.IsCycling = false;
+            SetStopped(runStopScript: false);
         }
     }
 
