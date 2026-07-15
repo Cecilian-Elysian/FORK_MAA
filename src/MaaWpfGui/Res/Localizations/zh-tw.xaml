@@ -694,6 +694,8 @@ HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Notifications\Settin
     <system:String x:Key="AccountCycleAddAccountTip">在該帳號後添加新帳號</system:String>
     <system:String x:Key="AccountCycleAllDone">所有帳號已完成！</system:String>
     <system:String x:Key="AccountCycleSwitchingTo">正在切換至</system:String>
+    <system:String x:Key="LateStageRogueAndReclamation">肉鴿和生息演算延後到所有帳號完成基礎任務後執行</system:String>
+    <system:String x:Key="LateStageRogueAndReclamationTip">啟用後，一鍵長草會先在所有帳號上跑完除 ｢{key=Roguelike}｣ 和 ｢{key=Reclamation}｣ 之外的任務，再依次在每個帳號上跑肉鴿和生息演算。僅在 ｢{key=AccountCycle}｣ 開啟時生效。</system:String>
     <system:String x:Key="AdbPath">ADB 路徑</system:String>
     <system:String x:Key="AdbPathFileSelectionErrorPrompt">所選檔案名稱不包含 ADB，請檢查是否選擇了錯誤的檔案，或誤選成了模擬器本體。</system:String>
     <system:String x:Key="AdbPathFileSelectionErrorImSure">我確定沒選錯</system:String>

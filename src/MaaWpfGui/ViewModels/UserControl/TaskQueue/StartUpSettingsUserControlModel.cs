@@ -17,6 +17,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using JetBrains.Annotations;
+using MaaWpfGui.Configuration.Factory;
 using MaaWpfGui.Configuration.Single.MaaTask;
 using MaaWpfGui.Constants;
 using MaaWpfGui.Constants.Enums;
@@ -105,6 +106,18 @@ public class StartUpSettingsUserControlModel : TaskSettingsViewModel, StartUpSet
 
             NotifyOfPropertyChange();
         }
+    }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether 是否将肉鸽 (Roguelike) 与生息演算 (Reclamation) 任务延后到所有账号的基础任务完成后执行。
+    /// 仅在 <see cref="AccountCycleEnabled"/> 为 true 时生效。
+    /// </summary>
+    public bool LateStageRogueAndReclamation
+    {
+        get => GetTaskConfig<StartUpTask>().LateStageRogueAndReclamation;
+        set => SetTaskConfig<StartUpTask>(
+            t => t.LateStageRogueAndReclamation == value,
+            t => t.LateStageRogueAndReclamation = value);
     }
 
     public bool ShowEditSection
@@ -276,6 +289,8 @@ public class StartUpSettingsUserControlModel : TaskSettingsViewModel, StartUpSet
     public void ResetCycle()
     {
         _isCycling = false;
+        _cycleSteps.Clear();
+        _currentStepIndex = -1;
         ClearCompletedAccounts();
     }
 
@@ -293,6 +308,86 @@ public class StartUpSettingsUserControlModel : TaskSettingsViewModel, StartUpSet
         get => _isCycling;
         set => SetAndNotify(ref _isCycling, value);
     }
+
+    #endregion
+
+    #region Late Stage (Phase 1 / Phase 2 cycle steps)
+
+    private readonly List<AccountCycleStep> _cycleSteps = [];
+    private int _currentStepIndex = -1;
+
+    /// <summary>
+    /// 当前步骤总数(<c>RebuildCycleSteps</c> 后有效)。
+    /// </summary>
+    public int CurrentStepCount => _cycleSteps.Count;
+
+    /// <summary>
+    /// 当前正在执行或即将执行的步骤。<c>-1</c> 表示尚未开始。
+    /// </summary>
+    public AccountCycleStep? CurrentStep =>
+        _currentStepIndex >= 0 && _currentStepIndex < _cycleSteps.Count
+            ? _cycleSteps[_currentStepIndex]
+            : null;
+
+    /// <summary>
+    /// 上一个步骤,用于判断是否需要跨账号切号。无返回 <c>null</c>。
+    /// </summary>
+    public AccountCycleStep? GetPreviousStep() =>
+        _currentStepIndex - 1 >= 0 ? _cycleSteps[_currentStepIndex - 1] : null;
+
+    /// <summary>
+    /// 当前步骤的 Phase (1 = 基础任务, 2 = 收尾任务)。未启动时返回 1。
+    /// </summary>
+    public int CurrentPhase => CurrentStep?.Phase ?? 1;
+
+    /// <summary>
+    /// 根据当前勾选账号与 <see cref="LateStageRogueAndReclamation"/> 重新构建扁平步骤列表。
+    /// Phase 1 = 所有账号的基础任务 (1 个 step/账号);
+    /// Phase 2 = 当开关开启且至少有 1 个肉鸽/生息任务勾选时,每个账号各加 1 个 step。
+    /// </summary>
+    public void RebuildCycleSteps()
+    {
+        _cycleSteps.Clear();
+
+        var accounts = _accountCycleItems
+            .Where(x => x.IsSelected && !string.IsNullOrEmpty(x.AccountName))
+            .OrderBy(x => x.Index)
+            .Select(x => x.AccountName)
+            .ToList();
+
+        // Phase 1: 每个账号各 1 个 step
+        foreach (var acc in accounts)
+        {
+            _cycleSteps.Add(new AccountCycleStep(acc, 1));
+        }
+
+        // Phase 2: 仅当开关开启 + 至少勾了肉鸽/生息时, 每个账号各加 1 个 step
+        if (LateStageRogueAndReclamation
+            && ConfigFactory.CurrentConfig.TaskQueue.Any(t =>
+                IsTaskEnable(t) &&
+                (t.TaskType == TaskType.Roguelike || t.TaskType == TaskType.Reclamation)))
+        {
+            foreach (var acc in accounts)
+            {
+                _cycleSteps.Add(new AccountCycleStep(acc, 2));
+            }
+        }
+
+        _currentStepIndex = _cycleSteps.Count > 0 ? 0 : -1;
+    }
+
+    /// <summary>
+    /// 将步骤索引推进 1,准备下一轮任务的提交。
+    /// </summary>
+    public void AdvanceStepIndex()
+    {
+        if (_currentStepIndex >= 0)
+        {
+            _currentStepIndex++;
+        }
+    }
+
+    private static bool IsTaskEnable(BaseTask t) => TaskQueueViewModel.IsTaskEnable(t);
 
     #endregion
 

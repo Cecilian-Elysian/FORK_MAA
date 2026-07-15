@@ -1816,21 +1816,36 @@ public class TaskQueueViewModel : Screen
         await TaskQueueSerializingLock.WaitAsync();
 
         var startUpConfig = TaskQueueViewModel.StartUpTask;
+
+        // fix/defer-rogue/1: 防止轮换中途再次触发 LinkStart (Stop 后再次点击 / 定时器 / 快捷键),
+        // 避免 InitAccountCycleItems + RebuildCycleSteps 重置进度导致步骤丢失或重复。
+        if (startUpConfig.IsCycling)
+        {
+            TaskQueueSerializingLock.Release();
+            return;
+        }
+
         startUpConfig.InitAccountCycleItems();
 
         if (startUpConfig.AccountCycleEnabled && startUpConfig.AccountCycleItems.Any(x => x.IsSelected && !string.IsNullOrEmpty(x.AccountName)))
         {
-            // 轮换模式：每次 LinkStart 只处理一个账号
+            // 轮换模式：每次 LinkStart 只处理一个步骤 (account, phase)
+            startUpConfig.RebuildCycleSteps();
+            var firstStep = startUpConfig.CurrentStep;
+
             startUpConfig.IsCycling = true;
-            var account = startUpConfig.GetCurrentCycleAccount();
-            if (account != null)
+            if (firstStep != null)
             {
                 var cfg = ConfigFactory.CurrentConfig.TaskQueue.OfType<StartUpTask>().FirstOrDefault();
                 if (cfg != null)
                 {
                     cfg.AccountSwitchEnabled = true;
-                    cfg.AccountName = account;
-                    AddLog($"[Cycle] Account: {account}", UiLogColor.Info);
+                    cfg.AccountName = firstStep.AccountName;
+                    AddLog($"[Cycle] Step 0: Account={firstStep.AccountName}, Phase={firstStep.Phase}", UiLogColor.Info);
+                }
+                else
+                {
+                    startUpConfig.IsCycling = false;
                 }
             }
             else
@@ -1936,6 +1951,8 @@ public class TaskQueueViewModel : Screen
 
         // 直接遍历TaskItemViewModels里面的内容，是排序后的
         int count = 0;
+        bool lateStageOn = StartUpTask.LateStageRogueAndReclamation;
+        int currentPhase = StartUpTask.CurrentPhase;
         foreach (var item in tasks)
         {
             var index = ConfigFactory.CurrentConfig.TaskQueue.IndexOf(item);
@@ -1947,6 +1964,12 @@ public class TaskQueueViewModel : Screen
             if (!IsTaskEnable(item))
             {
                 SetTaskStatus(index, TaskItemStatus.Skipped);
+                continue;
+            }
+
+            // feat/defer-rogue: 按阶段过滤, LateStage 关闭时此过滤为 no-op
+            if (lateStageOn && !IsInCurrentPhase(item.TaskType, currentPhase))
+            {
                 continue;
             }
 
@@ -2171,6 +2194,9 @@ public class TaskQueueViewModel : Screen
 
     /// <summary>
     /// 账号轮换推进：标记当前账号完成，取下一个账号，无缝继续执行，不产生"已停止"语义。
+    /// feat/defer-rogue: 改为按预构建的扁平步骤列表推进，相邻步骤跨账号时显式补一个 StartUp(StartGame=false) 切号。
+    /// fix/defer-rogue/1: 把"标记上一个步骤完成"抽成 <see cref="MarkPreviousStepCompleted"/>,并在
+    /// 步骤耗尽 (nextStep == null) 的早退分支前调用,确保最后一个账号也会被打勾。
     /// </summary>
     public void AdvanceAccountCycle()
     {
@@ -2179,107 +2205,197 @@ public class TaskQueueViewModel : Screen
             return;
         }
 
-        var cfg = ConfigFactory.CurrentConfig.TaskQueue.OfType<StartUpTask>().FirstOrDefault();
-        if (cfg == null)
-        {
-            return;
-        }
+        StartUpTask.AdvanceStepIndex();
+        var nextStep = StartUpTask.CurrentStep;
 
-        StartUpTask.MarkAccountCompleted(cfg.AccountName);
-        var nextAccount = StartUpTask.GetCurrentCycleAccount();
-        if (nextAccount == null)
+        // fix/defer-rogue/1: 在早退分支前捕获 prevStep,保证最后一步也能被标记完成
+        var prevStep = StartUpTask.GetPreviousStep();
+
+        // 步骤耗尽: 全部账号(及 Phase 2,如启用)已跑完
+        if (nextStep == null)
         {
+            MarkPreviousStepCompleted(prevStep);
             StartUpTask.IsCycling = false;
             _runningState.SetIdle(true);
             AddLog(LocalizationHelper.GetString("AccountCycleAllDone"), UiLogColor.Info);
             return;
         }
 
-        cfg.AccountSwitchEnabled = true;
-        cfg.AccountName = nextAccount;
-
-        // 轮换推进：不重连模拟器、不重启游戏，仅切号 + 跑任务
-        // 直接序列化当前任务队列并启动，跳过 ConnectToEmulator / StartGame / 脚本
-        _runningState.SetStopping(false);
-        AddLog(LocalizationHelper.GetString("Running"));
-
-        bool taskRet = true;
-        int count = 0;
-        foreach (var item in ConfigFactory.CurrentConfig.TaskQueue)
+        var cfg = ConfigFactory.CurrentConfig.TaskQueue.OfType<StartUpTask>().FirstOrDefault();
+        if (cfg == null)
         {
-            var index = ConfigFactory.CurrentConfig.TaskQueue.IndexOf(item);
-            if (!IsTaskEnable(item))
-            {
-                if (index >= 0 && index < TaskItemViewModels.Count) TaskItemViewModels[index].StatusDisplay = TaskItemStatus.Skipped;
-                continue;
-            }
-
-            try
-            {
-                // 轮换中 StartUp 任务禁止重启游戏（已在运行），其余任务正常序列化
-                if (item.TaskType == TaskType.StartUp)
-                {
-                    var startUpTask = new AsstStartUpTask
-                    {
-                        ClientType = SettingsViewModel.GameSettings.ClientType,
-                        StartGame = false,
-                        AccountName = cfg.AccountName,
-                    };
-                    var (isSuccess, taskId) = Instances.AsstProxy.AsstAppendTaskWithEncoding(TaskType.StartUp, startUpTask);
-                    if (isSuccess && taskId > 0)
-                    {
-                        ++count;
-                        var idx = ConfigFactory.CurrentConfig.TaskQueue.IndexOf(item);
-                        TaskItemViewModels.ElementAtOrDefault(idx)?.SetTaskIds([taskId]);
-                    }
-                    else
-                    {
-                        taskRet = false;
-                        AddLog(LocalizationHelper.GetStringFormat("TaskAppend.Error", LocalizationHelper.GetString(item.TaskType.ToString()), item.NameOrTaskType), UiLogColor.Error);
-                    }
-                }
-                else
-                {
-                    var (isSuccess, taskIds) = SerializeTask(item);
-                    switch (isSuccess)
-                    {
-                        case true:
-                            ++count;
-                            TaskItemViewModels.ElementAtOrDefault(index)?.SetTaskIds(taskIds);
-                            break;
-                        case false:
-                            taskRet = false;
-                            AddLog(LocalizationHelper.GetStringFormat("TaskAppend.Error", LocalizationHelper.GetString(item.TaskType.ToString()), item.NameOrTaskType), UiLogColor.Error);
-                            if (index >= 0 && index < TaskItemViewModels.Count) TaskItemViewModels[index].StatusDisplay = TaskItemStatus.Error;
-                            break;
-                        case null:
-                            AddLog(LocalizationHelper.GetStringFormat("TaskAppend.Skip", LocalizationHelper.GetString(item.TaskType.ToString()), item.NameOrTaskType), UiLogColor.Info);
-                            if (index >= 0 && index < TaskItemViewModels.Count) TaskItemViewModels[index].StatusDisplay = TaskItemStatus.Skipped;
-                            break;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                taskRet = false;
-                AddLog(LocalizationHelper.GetStringFormat("TaskAppend.Error", LocalizationHelper.GetString(item.TaskType.ToString()), item.NameOrTaskType) + "\n" + ex.Message, UiLogColor.Error);
-            }
-        }
-
-        if (count == 0)
-        {
-            AddLog(LocalizationHelper.GetString("UnselectedTask"));
             StartUpTask.IsCycling = false;
-            Instances.AsstProxy.AsstStop();
-            SetStopped(runStopScript: false);
+            _runningState.SetIdle(true);
             return;
         }
 
-        if (!taskRet || !Instances.AsstProxy.AsstStart())
+        cfg.AccountSwitchEnabled = true;
+        cfg.AccountName = nextStep.AccountName;
+
+        // 标记前一个步骤所属账号完成 (仅当跨账号或离开 Phase 2 时)
+        MarkPreviousStepCompleted(prevStep);
+
+        // 跨账号切换: 显式追加一个 StartUp(StartGame=false) 切号
+        bool needStartupSwitch = prevStep == null || prevStep.AccountName != nextStep.AccountName;
+
+        // 轮换推进：不重连模拟器、不重启游戏，仅切号 + 跑任务
+        _runningState.SetStopping(false);
+        AddLog($"[Cycle] Account={nextStep.AccountName}, Phase={nextStep.Phase}{(needStartupSwitch ? " (switch)" : string.Empty)}", UiLogColor.Info);
+
+        bool taskRet = true;
+        int count = 0;
+        bool lateStageOn = StartUpTask.LateStageRogueAndReclamation;
+        int currentPhase = nextStep.Phase;
+
+        try
         {
-            AddLog(LocalizationHelper.GetString("UnknownErrorOccurs"), UiLogColor.Error);
+            // 1) 显式切号
+            if (needStartupSwitch)
+            {
+                var switchTask = new AsstStartUpTask
+                {
+                    ClientType = SettingsViewModel.GameSettings.ClientType,
+                    StartGame = false,
+                    AccountName = cfg.AccountName,
+                };
+                var (isSuccess, taskId) = Instances.AsstProxy.AsstAppendTaskWithEncoding(TaskType.StartUp, switchTask);
+                if (isSuccess && taskId > 0)
+                {
+                    ++count;
+                }
+                else
+                {
+                    taskRet = false;
+                    AddLog($"StartUp switch failed for account={cfg.AccountName}", UiLogColor.Error);
+                }
+            }
+
+            // 2) Phase 任务
+            foreach (var item in ConfigFactory.CurrentConfig.TaskQueue)
+            {
+                var index = ConfigFactory.CurrentConfig.TaskQueue.IndexOf(item);
+                if (!IsTaskEnable(item))
+                {
+                    if (index >= 0 && index < TaskItemViewModels.Count) TaskItemViewModels[index].StatusDisplay = TaskItemStatus.Skipped;
+                    continue;
+                }
+
+                // Phase 过滤 (LateStage OFF 时 no-op)
+                if (lateStageOn && !IsInCurrentPhase(item.TaskType, currentPhase))
+                {
+                    continue;
+                }
+
+                // 已显式补过 StartUp, 跳过循环内 StartUp 处理避免重复
+                if (needStartupSwitch && item.TaskType == TaskType.StartUp)
+                {
+                    continue;
+                }
+
+                try
+                {
+                    if (item.TaskType == TaskType.StartUp)
+                    {
+                        var startUpTask = new AsstStartUpTask
+                        {
+                            ClientType = SettingsViewModel.GameSettings.ClientType,
+                            StartGame = false,
+                            AccountName = cfg.AccountName,
+                        };
+                        var (isSuccess, taskId) = Instances.AsstProxy.AsstAppendTaskWithEncoding(TaskType.StartUp, startUpTask);
+                        if (isSuccess && taskId > 0)
+                        {
+                            ++count;
+                            TaskItemViewModels.ElementAtOrDefault(index)?.SetTaskIds([taskId]);
+                        }
+                        else
+                        {
+                            taskRet = false;
+                            AddLog(LocalizationHelper.GetStringFormat("TaskAppend.Error", LocalizationHelper.GetString(item.TaskType.ToString()), item.NameOrTaskType), UiLogColor.Error);
+                        }
+                    }
+                    else
+                    {
+                        var (isSuccess, taskIds) = SerializeTask(item);
+                        switch (isSuccess)
+                        {
+                            case true:
+                                ++count;
+                                TaskItemViewModels.ElementAtOrDefault(index)?.SetTaskIds(taskIds);
+                                break;
+                            case false:
+                                taskRet = false;
+                                AddLog(LocalizationHelper.GetStringFormat("TaskAppend.Error", LocalizationHelper.GetString(item.TaskType.ToString()), item.NameOrTaskType), UiLogColor.Error);
+                                if (index >= 0 && index < TaskItemViewModels.Count) TaskItemViewModels[index].StatusDisplay = TaskItemStatus.Error;
+                                break;
+                            case null:
+                                AddLog(LocalizationHelper.GetStringFormat("TaskAppend.Skip", LocalizationHelper.GetString(item.TaskType.ToString()), item.NameOrTaskType), UiLogColor.Info);
+                                if (index >= 0 && index < TaskItemViewModels.Count) TaskItemViewModels[index].StatusDisplay = TaskItemStatus.Skipped;
+                                break;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    taskRet = false;
+                    AddLog(LocalizationHelper.GetStringFormat("TaskAppend.Error", LocalizationHelper.GetString(item.TaskType.ToString()), item.NameOrTaskType) + "\n" + ex.Message, UiLogColor.Error);
+                }
+            }
+
+            // 3) 空步骤递归跳过
+            if (count == 0)
+            {
+                AddLog($"[Cycle] Step empty (Phase {currentPhase}), advancing to next...", UiLogColor.Info);
+                AdvanceAccountCycle();
+                return;
+            }
+
+            if (!taskRet || !Instances.AsstProxy.AsstStart())
+            {
+                AddLog(LocalizationHelper.GetString("UnknownErrorOccurs"), UiLogColor.Error);
+                StartUpTask.IsCycling = false;
+                SetStopped(runStopScript: false);
+            }
+        }
+        catch (Exception ex)
+        {
+            AddLog($"[Cycle] AdvanceAccountCycle error: {ex.Message}", UiLogColor.Error);
             StartUpTask.IsCycling = false;
-            SetStopped(runStopScript: false);
+            _runningState.SetIdle(true);
+        }
+    }
+
+    /// <summary>
+    /// feat/defer-rogue: 判断 taskType 是否属于当前 phase。Phase 1 = 除 Roguelike/Reclamation 外;
+    /// Phase 2 = 仅 Roguelike/Reclamation。
+    /// </summary>
+    private static bool IsInCurrentPhase(TaskType taskType, int phase)
+    {
+        return phase switch
+        {
+            1 => taskType != TaskType.Roguelike && taskType != TaskType.Reclamation,
+            2 => taskType == TaskType.Roguelike || taskType == TaskType.Reclamation,
+            _ => true,
+        };
+    }
+
+    /// <summary>
+    /// fix/defer-rogue/1: 将"标记上一个步骤所属账号为已完成"抽成独立方法,供 <see cref="AdvanceAccountCycle"/>
+    /// 在普通推进路径与"步骤耗尽"早退分支两处复用。语义保持与原始 inline 块一致:
+    /// 仅当上一阶段是 Phase 2,或未启用 LateStageRogueAndReclamation 时,才把该账号打勾。
+    /// </summary>
+    private void MarkPreviousStepCompleted(AccountCycleStep? prevStep)
+    {
+        if (prevStep == null || string.IsNullOrEmpty(prevStep.AccountName))
+        {
+            return;
+        }
+
+        bool leftPhase2 = prevStep.Phase == 2;
+        bool lateStageOff = !StartUpTask.LateStageRogueAndReclamation;
+        if (leftPhase2 || lateStageOff)
+        {
+            StartUpTask.MarkAccountCompleted(prevStep.AccountName);
         }
     }
 

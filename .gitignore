@@ -512,7 +512,6 @@ config/gui.new.json.bak
 install/DependencySetup_*.bat
 
 # Feature/fix working documents (local only, never committed)
-# See AGENTS.md for the branch-scoped retention rules.
 feat*.md
 fix*.md
 
