@@ -131,6 +131,22 @@
                         <ComboBoxItem>添加账号</ComboBoxItem>
                         <ComboBoxItem>删除账号</ComboBoxItem>
                     </ComboBox>
+
+                    <!--  feat/defer-rogue: Late stage rogue & reclamation  -->
+                    <StackPanel Margin="0,5" HorizontalAlignment="Left" Orientation="Horizontal">
+                        <CheckBox
+                            MaxWidth="{c:Binding '220 - ActualWidth',
+                                                 ElementName=LateStageRogueAndReclamationTipBlock}"
+                            IsChecked="{Binding LateStageRogueAndReclamation}">
+                            <TextBlock
+                                Block.TextAlignment="Left"
+                                Text="{DynamicResource LateStageRogueAndReclamation}"
+                                TextWrapping="Wrap" />
+                        </CheckBox>
+                        <controls:TooltipBlock
+                            x:Name="LateStageRogueAndReclamationTipBlock"
+                            TooltipText="{DynamicResource LateStageRogueAndReclamationTip}" />
+                    </StackPanel>
                 </StackPanel>
             </StackPanel>
 
