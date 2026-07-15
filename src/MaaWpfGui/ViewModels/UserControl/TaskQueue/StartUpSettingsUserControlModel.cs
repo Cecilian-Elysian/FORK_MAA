@@ -322,6 +322,11 @@ public class StartUpSettingsUserControlModel : TaskSettingsViewModel, StartUpSet
     public int CurrentStepCount => _cycleSteps.Count;
 
     /// <summary>
+    /// 当前正在执行或即将执行的步骤的索引。<c>-1</c> 表示尚未开始。
+    /// </summary>
+    public int CurrentStepIndex => _currentStepIndex;
+
+    /// <summary>
     /// 当前正在执行或即将执行的步骤。<c>-1</c> 表示尚未开始。
     /// </summary>
     public AccountCycleStep? CurrentStep =>
