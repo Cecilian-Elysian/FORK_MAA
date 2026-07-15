@@ -38,6 +38,12 @@ public class StartUpTask : BaseTask, IJsonOnDeserialized
     /// </summary>
     public List<string> AccountNames { get; set; } = [string.Empty, string.Empty];
 
+    /// <summary>
+    /// Gets or sets a value indicating whether 是否将肉鸽 (Roguelike) 与生息演算 (Reclamation) 任务延后到所有账号的基础任务完成后执行。
+    /// 仅在 <see cref="AccountCycleEnabled"/> 为 true 时生效;默认 false,行为与历史版本保持一致。
+    /// </summary>
+    public bool LateStageRogueAndReclamation { get; set; } = false;
+
     public void OnDeserialized()
     {
         // v6.14.0-b2 新增一次性配置迁移：旧配置没有这个字段（json 中不存在，反序列化后为 null），此时按是否已有账号名决定初始值

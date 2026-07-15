@@ -440,3 +440,37 @@ dotnet build src/MaaWpfGui/MaaWpfGui.csproj -c Release -p:Platform=x64
 - AGENTS.md 仅文档改动,无代码影响
 
 **部署验证**: (待补充,需在 `install/` 启动 MAA 走一遍 2 账号 cycle,确认最后一个账号 IsCompleted 变蓝)
+**部署验证**: (待补充,需在 `install/` 启动 MAA 走一遍 2 账号 cycle,确认最后一个账号 IsCompleted 变蓝)
+
+### fix/account_rotation/修改次数 — 测试发现的 6 项 cycle 行为异常修复
+
+从 `feat/defer-rogue` 拉出 `fix/account_rotation/修改次数`。该 fix 同时修复 `feat/defer-rogue` 与 `feat/account_rotation` 交互产生的缺陷，合并目标为 `feat/defer-rogue`（在依赖链中位于下游）。
+
+**测试发现的问题**:
+- A 账号 Phase 1 显示两个"更新数据"（实为 OperBox+Depot 子任务共用 UserDataUpdate 名称）
+- B 账号 Phase 1 显示带括号的"(干员识别)/(仓库识别)"（TaskItemViewModel taskId 查找失败 → 索引不一致）
+- 肉鸽跑错阶段（可能是上号状态残留）
+- UserDataUpdate 的 `IsTriggerDue` 跨账号跳过 → 子任务丢失
+
+| # | 文件 | 操作 | 说明 |
+|---|------|------|------|
+| 1 | `src/MaaWpfGui/ViewModels/UserControl/TaskQueue/UserDataUpdateSettingsUserControlModel.cs:91-97` | 修改 | **#1**: cycle 中 (`GetAccountSwitchEnabled()`) 跳过 `IsTriggerDue` 检查,保证每个账号的 OperBox/Depot 子任务都被追加 |
+| 2 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs:2155-2192` | 修改 | **#6**: `SetStopped` 将 cycling 检查移到 idle 检查之前,当 `IsCycling=true && Idle=true`（LinkStartWithTasks 早退路径）时清理 cycling 状态,让正常停止接管,防止轮换永久卡住 |
+| 3 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs:2232-2234` | 修改 | **#5**: `AdvanceAccountCycle` 入口加 `_logger.Information` 日志记录 stepIdx/prev/next 信息 |
+| 4 | `src/MaaWpfGui/ViewModels/UserControl/TaskQueue/StartUpSettingsUserControlModel.cs:326` | 修改 | **#5**: 新增 `CurrentStepIndex` 公开属性支持日志 |
+| 5 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs:2360-2362` | 修改 | **#5**: AdvanceAccountCycle 循环后追加 `_logger.Information` 记录 phase/switch/count/ret |
+| 6 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs:2337-2339` | 修改 | **#5**: AdvanceAccountCycle 中 Append task 时记录 `[CycleAdv] Append task #Idx` 日志 |
+| 7 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs:1983-1985` | 修改 | **#5**: LinkStartWithTasks 中 Append task 时记录 `[LinkStart] Append task #Idx` 日志 |
+| 8 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs:2287-2358` | 修改 | **#2/#3**: AdvanceAccountCycle 的 Phase 任务循环由 foreach + `IndexOf` 改为 **for 循环** (`int index = i`),消除重复项/顺序变更时的索引错误;同时保持原有 Phase 过滤/StartUp 跳过/`SetTaskIds` 逻辑不变 |
+| 9 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs:2256` | 修改 | **#4**: AdvanceAccountCycle 初始日志追加 `idx={CurrentStepIndex}/{CurrentStepCount}` 显示步骤位置 |
+| 10 | `AGENTS.md` | 修改 | 新增跨多个 feat 的 fix 分支命名约束:合并目标选依赖链最下游的 feat,PR 说明列出所有涉及 feat |
+| 11 | `LOG.md` | 修改 | 本节 |
+
+**编译结果**: `dotnet build -c Release` 0 error, 0 warning
+
+**兼容性核查**:
+- #1 仅在 cycle 运行时跳过 `IsTriggerDue`,非 cycle 路径行为不变
+- #6 仅在 `IsCycling=true` 时按新顺序命中,非 cycle 路径完全等价
+- #2/#3 for 循环与 foreach 行为在无重复项时完全相同;原 foreach + IndexOf 在有重复项时会返回首个匹配索引导致错误 UI 显示,for 循环修复此问题
+- AGENTS.md 仅文档改动,无代码影响
+

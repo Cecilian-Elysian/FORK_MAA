@@ -694,6 +694,8 @@ HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Notifications\Settin
     <system:String x:Key="AccountCycleAddAccountTip">このアカウントの後に新しいアカウントを追加</system:String>
     <system:String x:Key="AccountCycleAllDone">全てのアカウントが完了しました！</system:String>
     <system:String x:Key="AccountCycleSwitchingTo">切り替え中</system:String>
+    <system:String x:Key="LateStageRogueAndReclamation">全アカウントの基礎タスク完了後に肉鴿と生息演算を実行</system:String>
+    <system:String x:Key="LateStageRogueAndReclamationTip">有効にすると、まず全アカウントで ｢{key=Roguelike}｣ と ｢{key=Reclamation}｣ 以外のタスクを実行し、その後各アカウントで順番に肉鴿と生息演算を実行します。｢{key=AccountCycle}｣ が有効な場合のみ機能します。</system:String>
     <system:String x:Key="AdbPath">ADBパス</system:String>
     <system:String x:Key="AdbPathFileSelectionErrorPrompt">選択されたファイル名にADBが含まれていません。誤ったファイルを選択していないか、エミュレータ自体を選択していないか確認してください。</system:String>
     <system:String x:Key="AdbPathFileSelectionErrorImSure">確かに間違って選択していないと思います</system:String>
