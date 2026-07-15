@@ -509,10 +509,6 @@ config/gui.json.old
 config/gui.new.json.bak
 DependencySetup_依赖库安装.bat
 
-# Development documents
-LOG.md
-AGENTS.md
-
-# Feature/fix working documents
+# Feature/fix working documents (local only, never committed)
 feat*.md
 fix*.md
