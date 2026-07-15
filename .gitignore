@@ -511,11 +511,7 @@ config/gui.new.json.bak
 # (the source lives in tools/ which IS tracked)
 install/DependencySetup_*.bat
 
-# Development documents
-LOG.md
-AGENTS.md
-
-# Feature/fix working documents
+# Feature/fix working documents (local only, never committed)
 feat*.md
 fix*.md
 
