@@ -133,11 +133,13 @@
                     </ComboBox>
 
                     <!--  feat/defer-rogue: Late stage rogue & reclamation  -->
+                    <!--  fix/defer-rogue/1: 轮换运行中(IsCycling=true)时禁用此开关,防止运行中切换污染 phase 2 步骤  -->
                     <StackPanel Margin="0,5" HorizontalAlignment="Left" Orientation="Horizontal">
                         <CheckBox
                             MaxWidth="{c:Binding '220 - ActualWidth',
                                                  ElementName=LateStageRogueAndReclamationTipBlock}"
-                            IsChecked="{Binding LateStageRogueAndReclamation}">
+                            IsChecked="{Binding LateStageRogueAndReclamation}"
+                            IsEnabled="{c:Binding '!IsCycling'}">
                             <TextBlock
                                 Block.TextAlignment="Left"
                                 Text="{DynamicResource LateStageRogueAndReclamation}"
