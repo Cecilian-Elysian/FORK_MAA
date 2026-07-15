@@ -1213,7 +1213,8 @@
             "JieGarden@Roguelike@Stages@(JieGarden@Roguelike@CloseCollectionClose)",
             "JieGarden@Roguelike@Routing_BoskyPassage",
             "JieGarden@Roguelike@Stages_leaveBoskyPassage#next"
-        ]
+        ],
+        "onErrorNext": ["JieGarden@Roguelike@ExitThenAbandon"]
     },
     "JieGarden@Roguelike@Stages_default": {
         "Doc": "avoid battle,其他模式和5-6层策略",
