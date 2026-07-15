@@ -1,0 +1,442 @@
+# 修改日志
+
+日志规范：每次修改文件后，在此记录修改内容。
+
+## 2026-07-15
+
+### 分支工作文档约束调整
+
+LOG.md / AGENTS.md 从 `.gitignore` 移除，改为所有分支跟踪；feat*.md / fix*.md 保留 gitignore，永不提交。
+
+| # | 文件 | 操作 | 说明 |
+|---|------|------|------|
+| 1 | `.gitignore:515-516` | 删除 | 移除 `LOG.md`、`AGENTS.md` 忽略规则 |
+| 2 | `.gitignore:514` | 修改 | 注释改为 `# Feature/fix working documents (local only, never committed)` |
+| 3 | `LOG.md` | 修改 | 本节 |
+
+### feat/expedite-threshold 启动
+
+公招加急(`expedite`)原本只有"开/关"两种状态，与星级判断完全脱钩。新增**加急门槛**机制:可仅在本次确认的招募组合最低星级 ≥ 4/5/6 时才使用加急许可，3★ 不浪费加急许可。
+
+| # | 文件/对象 | 操作 | 说明 |
+|---|----------|------|------|
+| 1 | `feat/expedite-threshold` | 新建分支 | 从 `branch` 拉出 |
+| 2 | `feat_expedite-threshold.md` | 新建 | 工作文档(已 .gitignore) |
+
+### feat/expedite-threshold 实施完成
+
+| # | 文件 | 操作 | 说明 |
+|---|------|------|------|
+| 1 | `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.h:28, 173, 186` | 修改 | +1 setter 声明 `set_expedite_min_level`;+2 成员 `m_expedite_min_level`(默认 0)、`m_last_confirmed_min_level`(默认 0) |
+| 2 | `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.cpp:147-152` | 修改 | +1 setter 实现 `set_expedite_min_level` |
+| 3 | `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.cpp:228-303` | 修改 | `_run` 主循环移除 `try_use_expedited` 局部变量,加急判定改为**每次进入前重新求值** `m_use_expedited && m_last_confirmed_min_level >= m_expedite_min_level`;加急成功后立即重置 `m_last_confirmed_min_level = 0` 防止陈旧状态被复用;加急失败时显式退出以避免阈值=0 时死循环 |
+| 4 | `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.cpp:340-347` | 修改 | `recruit_one` 开头重置 `m_last_confirmed_min_level = 0`,仅当 `recruit_calc_task` 走到 success / nothing_to_select 路径时才会被重新赋值 |
+| 5 | `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.cpp:740-743, 770-772` | 修改 | `recruit_calc_task` 在 `nothing_to_select` 与 `success` 两条返回路径前赋值 `m_last_confirmed_min_level = final_combination.min_level` |
+| 6 | `src/MaaCore/Task/Interface/RecruitTask.cpp:54, 87` | 修改 | +1 参数解析 `expedite_min_level`(默认 0);链式调用透传给 AutoRecruitTask |
+| 7 | `src/MaaWpfGui/Configuration/Single/MaaTask/RecruitTask.cs:38-42` | 修改 | +1 字段 `ExpediteMinLevel`(默认 0) |
+| 8 | `src/MaaWpfGui/Models/AsstTasks/AsstRecruitTask.cs:69-72, 161` | 修改 | +1 字段 `ExpediteMinLevel`;`Serialize` 始终写入 `expedite_min_level` 到 params |
+| 9 | `src/MaaWpfGui/ViewModels/UserControl/TaskQueue/RecruitSettingsUserControlModel.cs:142-174, 329` | 修改 | +3 VM 成员:`ExpediteMinLevelEnabled`(布尔,setter 控制 0/4 切换)、`ExpediteMinLevel`(int,setter 白名单 0/4/5/6)、`ExpediteMinLevelOptions`(4/5/6 三档 ComboBox 选项);Serialize 阶段写入 `ExpediteMinLevel` |
+| 10 | `src/MaaWpfGui/Views/UserControl/TaskQueue/RecruitSettingsUserControl.xaml:162-182` | 修改 | 高级设置区末尾追加 CheckBox + ComboBox;整行 Visibility 绑定到 `UseExpeditedWithNull == true` |
+| 11 | `src/MaaWpfGui/Res/Localizations/zh-cn.xaml:1474-1479` | 修改 | +5 string key:`ExpediteMinLevelLabel` / `ExpediteMinLevelTip` / `ExpediteMinLevel_4Plus` / `ExpediteMinLevel_5Plus` / `ExpediteMinLevel_6Plus` |
+| 12 | `docs/zh-cn/protocol/integration.md:263-276` | 修改 | +1 字段说明 `expedite_min_level`,含 0/4/5/6 语义 |
+| 13 | `feat_expedite-threshold.md` | 修改 | 追加章节 三/四/五,记录实施结果与踩坑 |
+| 14 | `LOG.md` | 修改 | 本节 |
+
+**编译/部署结果**: (待补充)
+
+**兼容性核查**:
+- 旧 API 用户不传 `expedite_min_level` → C++ 端默认 0 = 不限 → 全加急,行为不变
+- 旧 GUI 用户配置文件中无该字段 → JSON 反序列化默认 0 + CheckBox 未勾选 → 全加急,行为不变
+- 新用户首次启动 → CheckBox 未勾选(默认 0) → 全加急,等同旧行为
+
+**待手动验证 (需模拟器环境)**:
+1. 准备 4★ 组合 → 选 Tag → 确认 → 立即完成 → 循环到下一栏
+2. 准备 5★ 组合 → 选 Tag → 确认 → 立即完成 → 循环到下一栏
+3. 准备 3★ 组合 → 选 Tag → 确认 → 等待 9 小时(不加急)
+4. 关掉"自动加急" → 所有栏位走自然倒计时
+5. 下拉框改 "5★+" → 4★ 栏位走自然倒计时,5★+ 立即完成
+6. 下拉框改 "6★+" → 4★/5★ 都走自然倒计时,6★ 立即完成
+
+## 2026-07-15
+
+### feat/defer-rogue 启动
+
+启用账号轮换时把肉鸽 (Roguelike) 与生息演算 (Reclamation) 延后到所有账号基础任务完成后执行。执行顺序: A-1 → B-1 → A-2 → B-2 (跨账号轮转 Phase)。默认关闭以保持向后兼容。
+
+| # | 文件/对象 | 操作 | 说明 |
+|---|----------|------|------|
+| 1 | `feat/defer-rogue` | 新建分支 | 从 `branch` 拉出,本地工作分支 |
+| 2 | `feat_defer-rogue.md` | 新建 | 工作文档(已 .gitignore) |
+
+### feat/defer-rogue 实施完成
+
+| # | 文件 | 操作 | 说明 |
+|---|------|------|------|
+| 1 | `src/MaaWpfGui/Configuration/Single/MaaTask/StartUpTask.cs:36-44` | 修改 | 新增 `LateStageRogueAndReclamation : bool = false`,默认关闭以保持向后兼容 |
+| 2 | `src/MaaWpfGui/Models/AccountCycleStep.cs` | 新建 | `record AccountCycleStep(string AccountName, int Phase)`,步骤扁平列表的载体 |
+| 3 | `src/MaaWpfGui/ViewModels/UserControl/TaskQueue/StartUpSettingsUserControlModel.cs:95-176` | 修改 | (a) `LateStageRogueAndReclamation` VM 属性(照搬 `AccountSwitchEnabled`);(b) 新增 `#region Late Stage` 含 `_cycleSteps` / `_currentStepIndex` / `RebuildCycleSteps` / `AdvanceStepIndex` / `CurrentStep` / `GetPreviousStep` / `CurrentPhase`;(c) `ResetCycle` 同步清空步骤列表 |
+| 4 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs:1813-1851` | 修改 | `LinkStart` 改为 `RebuildCycleSteps` + 取 `CurrentStep` 决定首个账号 |
+| 5 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs:1939-1982` | 修改 | `LinkStartWithTasks` foreach 新增 Phase 过滤(`IsInCurrentPhase` 由 `lateStageOn` 闸门,LateStage 关闭时 no-op) |
+| 6 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs:2172-2355` | 修改 | `AdvanceAccountCycle` 全量重写:扁平步骤推进 + `needStartupSwitch` 显式切号 + 空步骤递归跳过 + `MarkAccountCompleted` 按 LateStage 状态差异化触发 |
+| 7 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs:2359-2367` | 修改 | 新增静态助手 `IsInCurrentPhase(TaskType, int phase)` |
+| 8 | `src/MaaWpfGui/Views/UserControl/TaskQueue/StartUpTaskUserControl.xaml:134-149` | 修改 | AccountCycle 子面板末尾新增 CheckBox + TooltipBlock(长 Wrap + MaxWidth CalcBinding 防挤压) |
+| 9 | `src/MaaWpfGui/Res/Localizations/zh-cn.xaml:696-697` | 修改 | +2 string key:`LateStageRogueAndReclamation` / `LateStageRogueAndReclamationTip` |
+| 10 | `src/MaaWpfGui/Res/Localizations/zh-tw.xaml:696-697` | 修改 | 同上(繁体) |
+| 11 | `src/MaaWpfGui/Res/Localizations/en-us.xaml:696-697` | 修改 | 同上(英文) |
+| 12 | `src/MaaWpfGui/Res/Localizations/ja-jp.xaml:696-697` | 修改 | 同上(日文) |
+| 13 | `src/MaaWpfGui/Res/Localizations/ko-kr.xaml:696-697` | 修改 | 同上(韩文) |
+| 14 | `install/MAA.dll` | 更新 | `dotnet publish` 部署时间 2026-07-15 11:48 |
+| 15 | `install/MaaCore.dll`, `install/MaaUtils.dll`, `install/MAA.Updater.exe` | 更新 | `cmake --install` 部署 |
+| 16 | `feat_defer-rogue.md` | 修改 | 追加章节 三/四/五,记录实施结果与踩坑 |
+| 17 | `LOG.md` | 修改 | 本节 |
+
+**编译/部署结果**: `dotnet build -c Release` 0 error, 3 warning (SA1503, 与原版同款写法);`cmake --build` + `cmake --install` + `dotnet publish` 全部通过;最终 `install/MAA.dll` 时间戳为今日。
+
+**踩坑**:
+- cmake 触发 WPF MSBuild 评估时撞到 LOG.md 记录的 VS2026 SDK 路径 bug,绕用 standalone `dotnet publish`
+- Phase 2 不包含 StartUp 任务,跨账号切号需在 AdvanceAccountCycle 顶部显式补 `StartGame=false StartUp`,避免 Phase 2 步骤卡死在错误账号
+
+**待手动验证 (需模拟器环境)**:
+1. 2 账号 + 开关 ON + 全勾 → 日志应见 `[Cycle] Account=A, Phase=1` 后切号 → Account=B, Phase=1 → 切号 → A, Phase=2 → B, Phase=2 → 全部完成
+2. 2 账号 + 开关 ON + 不勾肉鸽生息 → Phase 2 自动跳过
+3. 2 账号 + 开关 OFF → 旧版行为
+4. 1 账号 + 开关 ON → A-1 → A-2 (同账号不切号)
+5. 1 账号 + 开关 OFF → 单账号旧行为
+
+## 2026-07-14
+
+### fix/account_rotation/3 — 版本不一致误报修复
+
+| # | 文件/操作 | 说明 |
+|---|----------|------|
+| 1 | cmake 缓存重置 | `cmake -DMAA_HASH_VERSION=DEBUG_VERSION`，清除上次 release 脚本遗留的 `v6.14.0-fork.20260714` |
+| 2 | `src/MaaWpfGui/ViewModels/UI/RootViewModel.cs:117` | `uiVersion` 追加 `.TrimStart('v', 'V')` |
+| 3 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs:1882` | 同上 |
+| 4 | `feat/account_rotation` | FF 合并 `fix/account_rotation/3` |
+| 5 | `branch` | 合并 `feat/account_rotation`，同步修复 |
+| 6 | `Github/branch`, `Github/feat/account_rotation` | 推送至远程 |
+
+### 移除发布打包文件 + 清理 install 目录
+
+从仓库和 `install/` 中移除不再需要的发布打包相关文件。后续本地运行直接从 `build/bin/RelWithDebInfo/` 启动。
+
+| # | 文件 | 操作 | 说明 |
+|---|------|------|------|
+| 1 | `VERSION` | git rm | 仅 release 脚本读取，不再需要 |
+| 2 | `.github/workflows/release-fork.yml` | git rm | fork 的 GitHub CI，本地运行不需要 |
+| 3 | `tools/release-zip.ps1` | git rm | 发布打包脚本，不再需要 |
+| 4 | `tools/release-zip.bat` | git rm | 发布打包脚本，不再需要 |
+| 5 | `tools/DependencySetup_依赖库安装.bat` | git rm | 终端用户依赖安装脚本，不再需要 |
+| 6 | `install/DependencySetup_依赖库安装.bat` | 删除 | install 目录副本同步清理 |
+| 7 | `install/filelist.txt` | 删除 | 打包校验清单，运行时无用 |
+| 8 | `install/Python/` | 删除 | Python 绑定，WPF GUI 不需要 |
+| 9 | `install/.gitignore` | 删除 | 产物目录中不应有 git 忽略规则 |
+| 10 | `src/MaaWpfGui/ViewModels/UI/RootViewModel.cs` | 修改 | 版本比较时 `uiVersion` 也 `TrimStart('v', 'V')`，修复 UI 和 Core 版本号一致仍弹警告的 bug |
+| 11 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs` | 修改 | 同一处版本比较，补上 `uiVersion.TrimStart` |
+
+### 实际跑通 release-zip + 4 个 bug 修复
+
+按上一节方案第一次运行 `tools\release-zip.bat` 跑通，产出 `installer/MAA-v6.14.0-fork.20260714-win-x64.zip`（250.5 MB，9297 entries）。过程中踩到 4 个本机环境问题，均已修复并入脚本或 .gitignore。
+
+| # | 问题 | 修复 | 影响 |
+|---|------|------|------|
+| 1 | `cmake --build --preset windows-publish-x64` 触发 cmake MSBuild 评估 MaaWpfGui.csproj 时报 `Microsoft.NET.Sdk` 找不到：VS 2026 装在 `E:\visual stduio community 2026\VIUAL\`（拼写错），其 `MSBuild\Sdks\Microsoft.NET.Sdk\Sdk` 目录缺失。 | 改用 `cmake --build build --target MaaCore` 单目标 C++ 构建；WPF 改走 standalone `dotnet publish`（用 `C:\Program Files\dotnet` 的 SDK，与 cmake 带的 MSBuild 解耦）。脚本改一处（2 行 cmake 命令）。 | 跳过 cmake 的 WPF 评估，走和 `local-install.bat` 一致的"先 cmake 装 C++，再 dotnet publish WPF"双轨流程。 |
+| 2 | 临时 `global.json` 强制 `10.0.203` + `rollForward:disable`，但本机 `dotnet --list-sdks` 只装 `10.0.300`，SDK 解析失败。 | 改为 `10.0.100` + `rollForward:latestFeature`：要求 .NET 10 特性带内（10.0.x.x），但不锁小版本。 | 任何装 10.0.x SDK 的机器都能跑；本机 10.0.300 自动启用。 |
+| 3 | `install\.git\` 是个真实 git 子目录（含 hooks/info/objects/refs），原 staging 漏排，导致它被打进 zip（约 50 个无关文件）。 | robocopy `/XD` 列表追加 `.git`。 | zip 不再携带意外目录。 |
+| 4 | `.gitignore` 第 510 行 `DependencySetup_依赖库安装.bat` 无 `install/` 前缀，误伤 `tools/DependencySetup_依赖库安装.bat`，导致源文件长期无法入仓。 | 规则改为 `install/DependencySetup_*.bat`，只屏蔽 install/ 副本。 | tools/ 源可入仓，build 可复现。 |
+
+附加修复：发现 `tools\DependencySetup_依赖库安装.bat` 在 git 跟踪中实际已不存在（仅 `install/` 里有副本），从 `install/` 还原回 `tools/`，脚本的 `Copy-Item` 才有源。
+
+最终 8 步全过日志：`<install>/installer-build.log`（9362 行，2.6 MB）。
+
+**zip 结构 vs `D:\MAA\MAA-v5.21.2-win-x64` 对照**：
+
+- 共同：16 个顶层 DLL/EXE 文件（`MAA.exe` / `MAA.dll` / `MaaCore.dll` / `MaaUtils.dll` / 4 个 ControlUnit / DirectML / fastdeploy_ppocr_maa / onnxruntime_maa / opencv_world4_maa / `MAA.Updater.exe` 等）+ 4 个顶层目录（`externals/`、`Python/`、`Res/`、`resource/`）+ `DependencySetup_依赖库安装.bat`
+- 差异（正向）：我们额外有 `libloader.dll`（libloader.dll 启动钩子）、`res_updater.exe`（资源自更新器）— 本仓库历史加入
+- 差异（负向）：官方有 `hostfxr.dll` / `hostpolicy.dll`（dotnet 启动器）、`filelist.txt`（CI 产物清单）— 本机用 SelfContained 发布模式不需要，`filelist.txt` 在 .gitignore 已排
+- 用户数据目录（`cache/` / `config/` / `data/` / `debug/`）：我们**正确排除** ✓（官方不知为何保留在 release 解压后的目录里，可能是发布前被预热过）
+
+| # | 文件 | 操作 | 说明 |
+|---|------|------|------|
+| 1 | `tools/release-zip.ps1` | 修改 | 步骤 2 改单目标 cmake build；步骤 6 改 global.json 为 `10.0.100 + latestFeature`；步骤 8 staging `/XD` 加 `.git`；脚本注释说明改动原因 |
+| 2 | `tools/DependencySetup_依赖库安装.bat` | 还原 | 从 `install/` 副本拷回 `tools/`，恢复 `Copy-Item` 源；并入 git |
+| 3 | `.gitignore` | 修改 | (a) 追加 `/installer-build.log`（2.6 MB 临时日志不入仓）；(b) 修正第 510 行规则 `DependencySetup_依赖库安装.bat` 误伤 `tools/`，改为 `install/DependencySetup_*.bat`（只屏蔽 install/ 副本） |
+| 4 | `LOG.md` | 修改 | 本节记录首次跑通与 4 个 bug 修复 |
+
+
+
+### 一键发布包脚本（installer/）
+
+新增 `tools/release-zip.{bat,ps1}`，对照上游 `.github/workflows/ci.yml` 的 `Build for Windows` 作业实现本地等价流程：从 `VERSION` 读版本号 → `cmake --preset windows-publish-x64 -DMAA_HASH_VERSION=<v>` → 构建 `MAA.Updater` → `cmake --install` → 同步 `resource/` → 临时改 csproj 4 个 Version 字段后 `dotnet publish` → 剥 `*.pdb` `*.h` `*.bak` `msvc-debug/` `MAAComponent-DebugSymbol-*.zip` → 拷 `DependencySetup_依赖库安装.bat` → 用 `System.IO.Compression.ZipFile` 压缩到 `installer/MAA-<v>-win-x64.zip`，staging 目录排除 `cache/` `config/` `data/` `debug/`（用户数据不入包）。
+
+| # | 文件 | 操作 | 说明 |
+|---|------|------|------|
+| 1 | `VERSION` | 新建 | 内容 `v6.14.0-fork.20260714`，作为 `MAA_HASH_VERSION` 和 zip 文件名单一来源 |
+| 2 | `tools/release-zip.bat` | 新建 | bat 外壳，调 ps1 后 `pause`；失败时 `errorlevel` 透传 |
+| 3 | `tools/release-zip.ps1` | 新建 | 核心 PowerShell 脚本（~180 行），`-Version` / `-SkipBuild` / `-KeepInstallerDir` 三个开关 |
+| 4 | `.gitignore` | 修改 | 末尾追加 `/installer/`（产物不入仓），与 `install/` 一致不污染 git |
+| 5 | `LOG.md` | 修改 | 本节 |
+
+**关键设计**：
+
+- **try/finally 保护仓库状态**：csproj 备份到 `.bak` 后改 4 个 Version 字段，无论 dotnet publish 成功或失败都还原；`global.json` 同样处理（按 AGENTS.md 约定写 10.0.203）→ 仓库**永远不变脏**
+- **不联网拉 MaaFramework**：复用 install/ 现有的 `MaaAdbControlUnit.dll` / `MaaWin32ControlUnit.dll`，缺则报错（用户在 install/ 里已有这两个文件）
+- **staging 目录临时构造**：避免把 `cache/config/data/debug` 这 4 个用户数据目录打进 zip；用 `robocopy /MIR /XD` 实现
+- **`-SkipBuild` 开关**：只想重新打 zip 不重编译时可用
+- **不裁剪 `externals/`**：与上游 CI 行为一致，零风险
+- **不生成 DebugSymbol 副包**：用户确认不需要
+- **脚本命名 `release-zip.*` 而非 `build-release-zip.*`**：根 `.gitignore` 第 6 行有 `build-*` 规则（CMake 构建产物），原命名会被吞掉；改名前 git check-ignore 验证确认
+
+**版本号格式**：`vX.Y.Z-fork.YYYYMMDD`（如 `v6.14.0-fork.20260714`）。SemVer 解析为 prerelease，SemVer 严格支持；上游新版本（如 `v6.14.1`）按 SemVer 排序能正确触发更新提示。
+
+**使用方式**：
+```bat
+:: 标准用法（双击或命令行）
+tools\release-zip.bat
+
+:: 跳过编译、只重新打包（install/ 已是最新时）
+powershell -File tools\release-zip.ps1 -SkipBuild
+
+:: 指定版本（跳过 VERSION 文件）
+powershell -File tools\release-zip.ps1 -Version v6.14.0-fork.20260715
+```
+
+**与传统 local-install.bat 的区别**：
+
+| 项 | `local-install.bat` | `release-zip.{bat,ps1}` |
+|----|---------------------|-------------------------|
+| 用途 | 本地开发自用 | **打包给其他人** |
+| 产物 | `install/` 直接可跑 | `installer/MAA-vX.X.X-fork.YYYYMMDD-win-x64.zip` |
+| `csproj` 改 | 不改 | 临时改 4 个 Version 字段再还原 |
+| `*.pdb` `*.h` | 保留 | 剥 |
+| NetBeauty | 启用 | 启用 |
+| 资源 | 同步到 `install/` | 同步到 `install/` 然后排除用户数据后打 zip |
+
+### 工作区清理 + 工具脚本归档 + 子模块初始化
+
+| # | 文件 | 操作 | 说明 |
+|---|------|------|------|
+| 1 | `true` | 删除 | 0 字节空文件，误产生，清理 |
+| 2 | `add_maa_to_nahimic_whitelist.ps1` | 移动 | 从根目录移入 `tools/`，脚本用途：将 MAA.exe 添加到 Nahimic DLL 注入白名单，绕过 Nahimic 拦截 |
+| 3 | `disable_nahimic.ps1` | 移动 | 从根目录移入 `tools/`，脚本用途：停止并禁用 NahimicService 开机自启，彻底阻止 DLL 注入 |
+| 4 | `src/MaaUtils` | 子模块初始化 | 引用上游 `MaaXYZ/MaaUtils`（HEAD `0c2556cfc`），提交至 feat/fix 索引 |
+| 5 | `3rdparty/EmulatorExtras` | 子模块初始化 | 引用上游 `MaaXYZ/EmulatorExtras`（HEAD `54d3a3ad4`），提交至 feat/fix 索引 |
+
+### feat/account_rotation 分支收尾
+
+将 `fix/account_rotation/1` + `fix/account_rotation/2` 合并至 `feat/account_rotation`，形成单一主分支。
+
+## 2026-07-13
+
+### 账号轮换：停止卡死 + 切换报错后无法恢复
+
+| # | 文件 | 操作 | 说明 |
+|---|------|------|------|
+| 1 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs` | 修改 | `SetStopped` 中 `IsCycling` 短路分支增加"是否被强制停止"判断：`runStopScript && _runningState.GetStopping()` 时落空 `IsCycling` 走完整重置流程,清 `Stopping` 标志;正常轮换推进路径保持不变(直接 return)。修复点停止按钮后 UI 永远卡在"正在停止"且按钮不可用的问题。 |
+| 2 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs` | 修改 | `AdvanceAccountCycle` 两个失败分支(`count == 0` 无任务被附加、`AsstStart()` 失败)改为调用 `SetStopped(runStopScript: false)`,统一重置 `Stopping/Idle/IsCycling`。修复"切换第二个账号任务出错"后状态卡住、按钮变灰、标题不恢复的问题。 |
+
+## 2026-07-11
+
+### 漏洞修复与配置调整
+
+| # | 文件 | 操作 | 说明 |
+|---|------|------|------|
+| 1 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs` | 修改 | `LinkStart` 补上 `AccountSwitchEnabled = true`；`TryStartNextCycleAccount` 处理 `cfg` 为 null 的边界情况；包裹 try-catch 防止 `async void` 静默吞异常；通过 `Execute.OnUIThreadAsync` 确保 UI 线程执行 |
+| 2 | `src/MaaWpfGui/ViewModels/UserControl/TaskQueue/StartUpSettingsUserControlModel.cs` | 修改 | `GetCurrentCycleAccount` 简化：去掉 `_currentCycleIndex` 状态跟踪，改为直接取第一个符合条件的账号；去掉 `ResetCycleIndex` 方法 |
+| 3 | `src/MaaWpfGui/Views/UserControl/TaskQueue/StartUpTaskUserControl.xaml` | 修改 | 添加/删除按钮图标统一字号和居中 |
+| 4 | `.gitignore` | 修改 | 追加运行时缓存忽略规则；追加 `.crush/` / `.claude/` / `.cursor/` 规则；追加 `LOG.md` / `AGENTS.md` 忽略 |
+| 5 | `src/MaaWpfGui/Main/AsstProxy.cs` | 修改 | `AllTasksCompleted` 回调中补上轮换推进逻辑：正常完成时调用 `MarkAccountCompleted` + `GetCurrentCycleAccount` + `LinkStart`，并 `break` 跳过标准完成日志，防止新一轮启动后仍打出"所有任务完成" |
+
+### install 目录重构
+
+| # | 文件 | 操作 | 说明 |
+|---|------|------|------|
+| 1 | `install/debug/oper` | 删除 | 空目录清理 |
+| 2 | `install/debug/drops` | 删除 | 空目录清理 |
+| 3 | `install/debug/other` | 删除 | 空目录清理 |
+| 4 | `install/debug/infrast` | 删除 | 空目录清理 |
+| 5 | `install/debug/interface` | 删除 | 空目录清理 |
+| 6 | `install/cache/avatars` | 删除 | 空目录清理 |
+| 7 | `install/filelist.txt` | 修改 | 重新生成，与实际文件同步 |
+| 8 | `install/MAA.dll`, `install/MAA.pdb`, `install/MAA.exe`, `install/MAA.deps.json`, `install/MAA.runtimeconfig.json` | 更新 | 编译 MaaWpfGui 后部署；修复 `AsstProxy.cs` 中 `StartUpTask` 静态属性用实例访问的编译错误；修复 `TaskQueueViewModel.cs` 缩进和多余空行 |
+| 9 | `install/MaaCore.dll`, `install/MaaUtils.dll` | 更新 | 完整 CMake 构建后部署 （RelWithDebInfo）|
+| 10 | `src/MaaWpfGui/MaaWpfGui.csproj` | 修改 | `SelfContained` 改为 `false`，禁用 NetBeauty2 打包（不兼容 .NET 10.0.300） |
+| 11 | `install/msvc-debug/` | 删除 | CMake 安装产生的 debug 符号目录，非必需 |
+| 12 | `install/filelist.txt` | 更新 | 重新生成 |
+| 13 | `src/MaaCore/Assistant.cpp` | 修改 | `AllTasksCompleted` 后立即设 `m_thread_idle=true`，修复第二轮 `AsstStart` 因竞态返回 false 的 bug |
+| 14 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs` | 修改 | 新增 `AdvanceAccountCycle()` 方法替代 `SetStopped` 做轮换推进；`SetStopped` 剥离轮换逻辑，只处理停止 |
+| 15 | `src/MaaWpfGui/Main/AsstProxy.cs` | 修改 | `AllTasksCompleted` 回调调 `AdvanceAccountCycle` 替代 `SetStopped` |
+| 16 | `src/MaaWpfGui/ViewModels/UserControl/TaskQueue/StartUpSettingsUserControlModel.cs` | 修改 | `SyncAccountNamesToItems` 保留已有项 `IsSelected` 状态，用户可自由勾选参与轮换的账号 |
+
+### install 目录标准化
+
+| # | 文件 | 操作 | 说明 |
+|---|------|------|------|
+| 1 | `install/MAA.runtimeconfig.json` | 修改 | 添加 `additionalProbingPaths: ["./externals"]` 和 `STARTUP_HOOKS: libloader` |
+| 2 | `install/MAA.deps.json` | 替换 | 替换为参考版（NetBeauty2 正确修补的版本） |
+| 3 | `install/externals/` | 重建 | 将 279 个托管 DLL 移入 `externals/`；区域卫星程序集移至 `externals/locales/{lang}/` |
+| 4 | `install/` 根目录 | 清理 | 仅保留 11 个核心 DLL + 2 个 EXE + 配置文件 |
+| 5 | `install/filelist.txt` | 新增 | 从参考版复制 |
+| 6 | `install/MAA.dll` | 更新 | 多次重建部署 |
+| 7 | 空目录清理 | 删除 | 删除 10 个空目录（子模块占位等） |
+| 8 | 冗余 DLL 清理 | 删除 | 删除根目录 33 个 .NET runtime DLL + install 目录 245 个 |
+
+### Skills 迁移
+
+| # | 文件 | 操作 | 说明 |
+|---|------|------|------|
+| 1 | `.crush/skills/` | 新建 | 从 `.claude/skills/` 和 `.cursor/skills/` 迁入 5 个 skill |
+| 2 | `.claude/` | 删除 | 空目录清理 |
+| 3 | `.cursor/` | 删除 | 空目录清理 |
+
+### branch 接受 feat/account_rotation 合并
+
+将 `feat/account_rotation` 通过 Fast-forward 方式合入 `branch`，完成该功能的正式发布流程。
+
+| # | 文件/对象 | 操作 | 说明 |
+|---|-----------|------|------|
+| 1 | `branch` | FF 合并 | 接收 `feat/account_rotation` 全部 7 个新提交，HEAD 由 `c8c8e75be5` → `23b1bf3167`。`merge-base` 等于 `branch` 旧 HEAD，无分叉、无合并提交、无冲突 |
+| 2 | `Github/branch` | 推送 | 远程 `branch` 同步到 `23b1bf3167`（`git push Github branch`）|
+| 3 | `Github/feat/account_rotation` | 删除 | feat 功能正式合入 `branch`，远程 feat 分支清理（`git push Github --delete feat/account_rotation`）。本地 `feat/account_rotation` 保留以备回溯与对照 |
+| 4 | `feat_account_rotation.md` | 修改 | 追加 `## 十一、feat→branch 合并完成` 沉淀段落，更新 `## 九、待办` 完成项 |
+| 5 | `LOG.md` | 修改 | 新增本节，记录合并事件 |
+
+合并前后 `branch` 对比：
+
+```
+c8c8e75be5  Initial commit: MAA fork base with account rotation feature
+   ↓ +7 commits
+23b1bf3167  fix: 停止卡死 + 切换报错后无法恢复; chore: 归档 Nahimic 脚本到 tools/; build: 初始化 MaaUtils/EmulatorExtras 子模块
+```
+
+关键决策：
+
+- **FF 而非 --no-ff**：`branch` 是 `feat/account_rotation` 的严格祖先，无任何分叉。`--no-ff` 会产生无信息增量的冗余 merge commit，与 AGENTS.md 推崇的"PR 简洁历史"相悖
+- **本地保留 feat 分支**：feat 功能虽已合并到 `branch`，但保留本地 `feat/account_rotation` 指针便于回溯（如对比 feat 行为差异、cherry-pick 修复等）。`fix/account_rotation/1` 和 `fix/account_rotation/2` 保留同样理由
+- **远程删除 feat**：远端 feat 分支已无存在价值（功能在 `branch` 中），清理可减少远程分支列表噪音
+
+### 远程 feat/account_rotation 恢复（决策修正）
+
+事后澄清：`fix/account_rotation/{1,2}` 与 `feat/account_rotation` 是从属关系，远程 fix/* 不应孤立存在。修正先前"删除远程 feat"的决策，将远程 feat 恢复。
+
+| # | 文件/对象 | 操作 | 说明 |
+|---|-----------|------|------|
+| 1 | `Github/feat/account_rotation` | 恢复 | `git push Github feat/account_rotation`，在远端重建 `refs/heads/feat/account_rotation` → `23b1bf3167` |
+| 2 | `feat/account_rotation` | 设置 upstream | `git branch --set-upstream-to=Github/feat/account_rotation feat/account_rotation`，后续 push/pull 无需指定远端 |
+| 3 | `Github/fix/account_rotation/{1,2}` | 不动 | 按用户确认保留两个远程 fix 分支，不删除 |
+| 4 | `feat_account_rotation.md` | 修改 | 追加 `## 十二、远程 feat 恢复记录`，记录决策修正与修复后分支层级 |
+
+修复后远程分支结构：
+
+```
+branch                          (23b1bf3167, 生产就绪)
+└─ feat/account_rotation        (23b1bf3167, 从属, 恢复)
+   ├─ fix/account_rotation/1    (f3413f24f5, 从属, 落后 feat 1 commit)
+   └─ fix/account_rotation/2    (23b1bf3167, 从属, 与 feat 同位)
+```
+
+### 工作文档命名规范化
+
+按 AGENTS.md 分支工作流约定，feat/fix 工作文档名应对齐分支名。中文文件名在跨平台 / 终端场景下存在编码兼容问题，统一改为英文命名。
+
+| # | 文件 | 操作 | 说明 |
+|---|------|------|------|
+| 1 | `feat_账号轮换.md` | 删除 | 中文文件名；内容已拆分：上半段（章节 一~十一 合并日志）已存在于 `feat_account_rotation.md`、无重复；末尾独立设计文档（标题"账号轮换功能设计与实现"，11 章 ~9000 字）被合入 `feat_account_rotation.md` 作为新章节十二 |
+| 2 | `feat_account_rotation.md` | 修改 | 新增 `## 十二、账号轮换功能设计文档`：覆盖功能架构、数据模型、编辑模式、轮换生命周期、UI 布局与交互、本地化字符串、手动切换、C++ 后端流程、默认配置、文件清单、约束与注意事项。原 `## 十二、远程 feat 恢复记录` 重编号为 `## 十三、`（含 `### 12.x` → `### 13.x`） |
+| 3 | `fix_账号轮换.md` | 重命名 | → `fix_account_rotation_1.md`，对齐分支名 `fix/account_rotation/1`，证明是 `feat/account_rotation` 分支的第一次修复 |
+
+**文件整理前后**：
+
+```
+整理前                                    整理后
+feat_account_rotation.md  (16050 B)       feat_account_rotation.md  (31223 B, 章节 11 → 13)
+feat_账号轮换.md          (14834 B)  →  fix_account_rotation_1.md  (2154 B)
+fix_账号轮换.md           ( 2154 B)
+```
+
+**为什么新增的是章节十二而非其他位置**：
+
+- 设计文档是 feat 分支的**核心交付物**（UI 架构 / 数据流 / 约束），理应作为长期知识沉淀，位置应靠前
+- 原章节十二（远程 feat 恢复记录）是**操作流水**，时效性强、长期参考价值低，重编号为十三不影响阅读
+- 章节十一（feat→branch 合并完成）是分支生命周期记录，作为收官章节保持不动
+
+**为什么 fix 文件用 `fix_account_rotation_1.md`（下划线）而非目录形式**：
+
+- Windows 文件名不支持 `/`，无法使用 `fix_account_rotation/1.md` 路径分两段
+- 下划线 `_` 与 AGENTS.md "feat_*.md / fix_*.md" 现有约定一致（如 `feat_账号轮换.md`）
+- 阿拉伯数字后缀 `_1` 隐含序列语义，未来 `fix/account_rotation/2` 对应 `fix_account_rotation_2.md`，一一对应
+
+## 2026-07-10
+
+### 账号轮换漏洞修复
+
+| # | 文件 | 操作 | 说明 |
+|---|------|------|------|
+| 1 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs` | 修改 | `SetStopped` 新增轮换逻辑：完成任务后调用 `MarkAccountCompleted` 标记当前账号完成，若还有未完成账号则自动触发 `LinkStart` 继续下一账号 |
+
+## 2026-07-10
+
+### 账号轮换功能实现
+
+实现了完整的账号轮换功能，允许用户配置多个账号，MAA 在每次完整任务队列执行完毕后自动切换到列表中的下一个未完成账号，并重新启动任务队列，直到所有账号全部完成一轮。
+
+| # | 文件 | 操作 | 说明 |
+|---|------|------|------|
+| 1 | `src/MaaWpfGui/Configuration/Single/MaaTask/StartUpTask.cs` | 修改 | 添加 `AccountCycleEnabled` (bool, 默认 true) 和 `AccountNames` (List\<string\>, 默认 ["", ""]) |
+| 2 | `src/MaaWpfGui/Models/AccountCycleItem.cs` | 新建 | 轮换账号数据模型（DisplayName / AccountName / IsSelected / IsCompleted / Index） |
+| 3 | `src/MaaWpfGui/Res/Localizations/zh-cn.xaml` | 修改 | 添加 7 个 AccountCycle 本地化 key |
+| 4 | `src/MaaWpfGui/Res/Localizations/en-us.xaml` | 修改 | 同上（英文） |
+| 5 | `src/MaaWpfGui/Res/Localizations/ja-jp.xaml` | 修改 | 同上（日文） |
+| 6 | `src/MaaWpfGui/Res/Localizations/ko-kr.xaml` | 修改 | 同上（韩文） |
+| 7 | `src/MaaWpfGui/Res/Localizations/zh-tw.xaml` | 修改 | 同上（繁体中文） |
+| 8 | `src/MaaWpfGui/ViewModels/UserControl/TaskQueue/StartUpSettingsUserControlModel.cs` | 修改 | 添加轮换 CRUD、GetCurrentCycleAccount、MarkAccountCompleted、SyncAccountNamesToItems 等方法 |
+| 9 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs` | 修改 | LinkStart 加入轮换判定，SetStopped 后调用 TryStartNextCycleAccount 自动推进 |
+| 10 | `src/MaaWpfGui/ViewModels/UI/RootViewModel.cs` | 修改 | 版本比较忽略 `v` 前缀 |
+| 11 | `src/MaaWpfGui/Views/UserControl/TaskQueue/StartUpTaskUserControl.xaml` | 修改 | 添加轮换 CheckBox、账号列表 ItemsControl、编辑模式 ComboBox、IsCompleted 蓝色高亮 |
+| 12 | `src/MaaWpfGui/MaaWpfGui.csproj` | 修改 | 版本号从 0.0.1 改为 6.14.0 |
+| 13 | `install/config/gui.new.json` | 修改 | StartUpTask 添加 AccountCycleEnabled / AccountNames 默认字段 |
+| 14 | `install/config/gui.new.json.bak` | 修改 | 同上（备份文件同步） |
+
+### fix/defer-rogue/1 启动
+
+基于 `feat/defer-rogue` (commit `31b84f44a3`) 的 code review,发现 3 个问题:
+
+| ID | 严重度 | 主题 |
+|----|--------|------|
+| A1 | CRITICAL | 步骤耗尽时,最后一个账号不会被 `MarkAccountCompleted` |
+| A7 | WARNING | Cycle 运行中 `LateStageRogueAndReclamation` CheckBox 仍可点击 |
+| A8 | WARNING | `LinkStart` 无 re-entrancy guard,运行中再次点击会重置 _cycleSteps/_currentStepIndex |
+
+按 AGENTS.md 新约定(`fix/*` 必须从对应 `feat/*` 拉出),从 `feat/defer-rogue` 拉出 `fix/defer-rogue/1`。
+
+| # | 文件/对象 | 操作 | 说明 |
+|---|----------|------|------|
+| 1 | `fix/defer-rogue/1` | 新建分支 | 从 `feat/defer-rogue` 拉出 |
+| 2 | `fix_defer-rogue_1.md` | 新建 | 工作文档(已 .gitignore) |
+| 3 | `AGENTS.md` | 修改 | 把"修复分支挂在对应 feat 下"写入正式约定:更新分支命名表 + 增加"修复分支必须挂在对应 feat 之下"小节 + 更新工作流示意图 |
+
+### fix/defer-rogue/1 实施完成
+
+| # | 文件 | 操作 | 说明 |
+|---|------|------|------|
+| 1 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs:2195-2200` | 修改 | `AdvanceAccountCycle` 文档注释追加 fix/defer-rogue/1 段落 |
+| 2 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs:2208-2222` | 修改 | **A1**: 把 `prevStep = GetPreviousStep()` 移到 `nextStep == null` 早退分支**之前**;早退分支里先调用 `MarkPreviousStepCompleted(prevStep)` 再 `return` |
+| 3 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs:2235-2236` | 修改 | **A1**: 普通推进路径移除原 inline 块,改为调用 `MarkPreviousStepCompleted(prevStep)` |
+| 4 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs:2382-2400` | 修改 | **A1**: 新增私有方法 `MarkPreviousStepCompleted(AccountCycleStep?)`,语义与原 inline 块一致(`leftPhase2 \|\| lateStageOff`) |
+| 5 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs:1813-1826` | 修改 | **A8**: `LinkStart` 顶部加 `if (startUpConfig.IsCycling) { Release; return; }` guard,防止 Stop 后再次点击 / 定时器 / 快捷键在 cycle 中重置进度 |
+| 6 | `src/MaaWpfGui/Views/UserControl/TaskQueue/StartUpTaskUserControl.xaml:140` | 修改 | **A7**: `LateStageRogueAndReclamation` CheckBox 加 `IsEnabled="{c:Binding '!IsCycling'}"`,Cycle 运行中灰显 |
+| 7 | `LOG.md` | 修改 | 本节 |
+
+**编译结果**:
+```
+dotnet build src/MaaWpfGui/MaaWpfGui.csproj -c Release -p:Platform=x64
+0 个错误, 6 个 warning (3 个 SA1503 来自原 feat/defer-rogue 代码 2279/2329/2333 行,与本次修复无关)
+```
+
+**兼容性核查**:
+- A1 修复仅改变 last step 路径的标记时机,不影响中间步骤
+- A7 仅 UI 层禁用,VM 行为不变
+- A8 仅在 `IsCycling == true` 时早退,不进入 LinkStart 主流程,不会改变已有行为;用户体感为"轮换运行时再点开始按钮没反应"(符合预期)
+- AGENTS.md 仅文档改动,无代码影响
+
+**部署验证**: (待补充,需在 `install/` 启动 MAA 走一遍 2 账号 cycle,确认最后一个账号 IsCompleted 变蓝)
