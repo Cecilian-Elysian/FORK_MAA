@@ -1816,6 +1816,15 @@ public class TaskQueueViewModel : Screen
         await TaskQueueSerializingLock.WaitAsync();
 
         var startUpConfig = TaskQueueViewModel.StartUpTask;
+
+        // fix/defer-rogue/1: 防止轮换中途再次触发 LinkStart (Stop 后再次点击 / 定时器 / 快捷键),
+        // 避免 InitAccountCycleItems + RebuildCycleSteps 重置进度导致步骤丢失或重复。
+        if (startUpConfig.IsCycling)
+        {
+            TaskQueueSerializingLock.Release();
+            return;
+        }
+
         startUpConfig.InitAccountCycleItems();
 
         if (startUpConfig.AccountCycleEnabled && startUpConfig.AccountCycleItems.Any(x => x.IsSelected && !string.IsNullOrEmpty(x.AccountName)))
@@ -2186,6 +2195,8 @@ public class TaskQueueViewModel : Screen
     /// <summary>
     /// 账号轮换推进：标记当前账号完成，取下一个账号，无缝继续执行，不产生"已停止"语义。
     /// feat/defer-rogue: 改为按预构建的扁平步骤列表推进，相邻步骤跨账号时显式补一个 StartUp(StartGame=false) 切号。
+    /// fix/defer-rogue/1: 把"标记上一个步骤完成"抽成 <see cref="MarkPreviousStepCompleted"/>,并在
+    /// 步骤耗尽 (nextStep == null) 的早退分支前调用,确保最后一个账号也会被打勾。
     /// </summary>
     public void AdvanceAccountCycle()
     {
@@ -2197,9 +2208,13 @@ public class TaskQueueViewModel : Screen
         StartUpTask.AdvanceStepIndex();
         var nextStep = StartUpTask.CurrentStep;
 
+        // fix/defer-rogue/1: 在早退分支前捕获 prevStep,保证最后一步也能被标记完成
+        var prevStep = StartUpTask.GetPreviousStep();
+
         // 步骤耗尽: 全部账号(及 Phase 2,如启用)已跑完
         if (nextStep == null)
         {
+            MarkPreviousStepCompleted(prevStep);
             StartUpTask.IsCycling = false;
             _runningState.SetIdle(true);
             AddLog(LocalizationHelper.GetString("AccountCycleAllDone"), UiLogColor.Info);
@@ -2218,16 +2233,7 @@ public class TaskQueueViewModel : Screen
         cfg.AccountName = nextStep.AccountName;
 
         // 标记前一个步骤所属账号完成 (仅当跨账号或离开 Phase 2 时)
-        var prevStep = StartUpTask.GetPreviousStep();
-        if (prevStep != null && !string.IsNullOrEmpty(prevStep.AccountName))
-        {
-            bool leftPhase2 = prevStep.Phase == 2;
-            bool lateStageOff = !StartUpTask.LateStageRogueAndReclamation;
-            if (leftPhase2 || lateStageOff)
-            {
-                StartUpTask.MarkAccountCompleted(prevStep.AccountName);
-            }
-        }
+        MarkPreviousStepCompleted(prevStep);
 
         // 跨账号切换: 显式追加一个 StartUp(StartGame=false) 切号
         bool needStartupSwitch = prevStep == null || prevStep.AccountName != nextStep.AccountName;
@@ -2371,6 +2377,26 @@ public class TaskQueueViewModel : Screen
             2 => taskType == TaskType.Roguelike || taskType == TaskType.Reclamation,
             _ => true,
         };
+    }
+
+    /// <summary>
+    /// fix/defer-rogue/1: 将"标记上一个步骤所属账号为已完成"抽成独立方法,供 <see cref="AdvanceAccountCycle"/>
+    /// 在普通推进路径与"步骤耗尽"早退分支两处复用。语义保持与原始 inline 块一致:
+    /// 仅当上一阶段是 Phase 2,或未启用 LateStageRogueAndReclamation 时,才把该账号打勾。
+    /// </summary>
+    private void MarkPreviousStepCompleted(AccountCycleStep? prevStep)
+    {
+        if (prevStep == null || string.IsNullOrEmpty(prevStep.AccountName))
+        {
+            return;
+        }
+
+        bool leftPhase2 = prevStep.Phase == 2;
+        bool lateStageOff = !StartUpTask.LateStageRogueAndReclamation;
+        if (leftPhase2 || lateStageOff)
+        {
+            StartUpTask.MarkAccountCompleted(prevStep.AccountName);
+        }
     }
 
     public bool EnableSetFightParams { get; set; } = true;
