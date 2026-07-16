@@ -1980,7 +1980,9 @@ public class TaskQueueViewModel : Screen
                 {
                     case true:
                         ++count;
-                        Instances.TaskQueueViewModel.TaskItemViewModels.ElementAtOrDefault(index)?.SetTaskIds(taskIds);
+                        var idsList = taskIds as IList<int> ?? taskIds.ToList();
+                        _logger.Information("[LinkStart] Append task #{Idx} '{Name}' type={Type} taskIds=[{Ids}]", index, item.NameOrTaskType, item.TaskType, string.Join(",", idsList));
+                        Instances.TaskQueueViewModel.TaskItemViewModels.ElementAtOrDefault(index)?.SetTaskIds(idsList);
                         break;
                     case false:
                         taskRet = false;
@@ -2152,25 +2154,17 @@ public class TaskQueueViewModel : Screen
     public bool SetStopped(bool runStopScript = true)
     {
         // 幂等保护：已经空闲且不在停止中，跳过
-        // 防止超时 SetStopped 后 Core 延迟回调再次触发导致打断新任务
-        if (_runningState.GetIdle() && !_runningState.GetStopping())
-        {
-            // idle check triggered, returning false
-            return false;
-        }
-
-        SleepManagement.AllowSleep();
-        if (runStopScript && SettingsViewModel.GameSettings.ManualStopWithScript)
-        {
-            Task.Run(() => SettingsViewModel.GameSettings.RunScript("EndsWithScript"));
-        }
-
+        // fix/account_rotation/修改次数: 先处理轮换状态,再处理空闲判断。
+        // 当 IsCycling=true 且 Idle=true 时,说明来自 LinkStartWithTasks
+        // (count==0 / 版本不匹配等) 的早退路径已设 Idle 但未重置 Cycling,
+        // 需在此处清理 Cycling 让正常停止逻辑接管,否则轮换会永久卡住。
         if (StartUpTask.IsCycling)
         {
-            // 账号轮换中：仅在"非强制停止"场景下保留 Cycling 状态（AdvanceAccountCycle 内部会重启任务）。
-            // 当外部调用方（Stop 按钮 / 定时器 / 超时强制重置）请求停止时，必须清空 Stopping 标志，
-            // 否则 UI 永远卡在"正在停止……"且按钮不可用。
-            if (runStopScript && _runningState.GetStopping())
+            if (_runningState.GetIdle())
+            {
+                StartUpTask.IsCycling = false;
+            }
+            else if (runStopScript && _runningState.GetStopping())
             {
                 StartUpTask.IsCycling = false;
             }
@@ -2178,6 +2172,18 @@ public class TaskQueueViewModel : Screen
             {
                 return true;
             }
+        }
+
+        // 防止超时 SetStopped 后 Core 延迟回调再次触发导致打断新任务
+        if (_runningState.GetIdle() && !_runningState.GetStopping())
+        {
+            return false;
+        }
+
+        SleepManagement.AllowSleep();
+        if (runStopScript && SettingsViewModel.GameSettings.ManualStopWithScript)
+        {
+            Task.Run(() => SettingsViewModel.GameSettings.RunScript("EndsWithScript"));
         }
 
         if (!_runningState.GetIdle() || _runningState.GetStopping())
@@ -2211,6 +2217,13 @@ public class TaskQueueViewModel : Screen
         // fix/defer-rogue/1: 在早退分支前捕获 prevStep,保证最后一步也能被标记完成
         var prevStep = StartUpTask.GetPreviousStep();
 
+        // fix/account_rotation/修改次数: 入口日志
+        _logger.Information("[CycleAdv] stepIdx={Idx}, prev={PrevAcct}:{PrevPhase}, next={NextAcct}:{NextPhase}, stepsTotal={Total}",
+            StartUpTask.CurrentStepIndex,
+            prevStep?.AccountName, prevStep?.Phase,
+            nextStep?.AccountName, nextStep?.Phase,
+            StartUpTask.CurrentStepCount);
+
         // 步骤耗尽: 全部账号(及 Phase 2,如启用)已跑完
         if (nextStep == null)
         {
@@ -2240,7 +2253,7 @@ public class TaskQueueViewModel : Screen
 
         // 轮换推进：不重连模拟器、不重启游戏，仅切号 + 跑任务
         _runningState.SetStopping(false);
-        AddLog($"[Cycle] Account={nextStep.AccountName}, Phase={nextStep.Phase}{(needStartupSwitch ? " (switch)" : string.Empty)}", UiLogColor.Info);
+        AddLog($"[Cycle] Account={nextStep.AccountName}, Phase={nextStep.Phase} idx={StartUpTask.CurrentStepIndex}/{StartUpTask.CurrentStepCount}{(needStartupSwitch ? " (switch)" : string.Empty)}", UiLogColor.Info);
 
         bool taskRet = true;
         int count = 0;
@@ -2270,13 +2283,18 @@ public class TaskQueueViewModel : Screen
                 }
             }
 
-            // 2) Phase 任务
-            foreach (var item in ConfigFactory.CurrentConfig.TaskQueue)
+            // 2) Phase 任务 (fix/account_rotation/修改次数: 改用 for 循环避免 IndexOf 在重复项时返回错误索引)
+            for (int i = 0; i < ConfigFactory.CurrentConfig.TaskQueue.Count; i++)
             {
-                var index = ConfigFactory.CurrentConfig.TaskQueue.IndexOf(item);
+                var item = ConfigFactory.CurrentConfig.TaskQueue[i];
+                int index = i;
                 if (!IsTaskEnable(item))
                 {
-                    if (index >= 0 && index < TaskItemViewModels.Count) TaskItemViewModels[index].StatusDisplay = TaskItemStatus.Skipped;
+                    if (index >= 0 && index < TaskItemViewModels.Count)
+                    {
+                        TaskItemViewModels[index].StatusDisplay = TaskItemStatus.Skipped;
+                    }
+
                     continue;
                 }
 
@@ -2321,16 +2339,26 @@ public class TaskQueueViewModel : Screen
                         {
                             case true:
                                 ++count;
-                                TaskItemViewModels.ElementAtOrDefault(index)?.SetTaskIds(taskIds);
+                                var idsList = taskIds as IList<int> ?? taskIds.ToList();
+                                _logger.Information("[CycleAdv] Append task #{Idx} '{Name}' type={Type} taskIds=[{Ids}]", index, item.NameOrTaskType, item.TaskType, string.Join(",", idsList));
+                                TaskItemViewModels.ElementAtOrDefault(index)?.SetTaskIds(idsList);
                                 break;
                             case false:
                                 taskRet = false;
                                 AddLog(LocalizationHelper.GetStringFormat("TaskAppend.Error", LocalizationHelper.GetString(item.TaskType.ToString()), item.NameOrTaskType), UiLogColor.Error);
-                                if (index >= 0 && index < TaskItemViewModels.Count) TaskItemViewModels[index].StatusDisplay = TaskItemStatus.Error;
+                                if (index >= 0 && index < TaskItemViewModels.Count)
+                                {
+                                    TaskItemViewModels[index].StatusDisplay = TaskItemStatus.Error;
+                                }
+
                                 break;
                             case null:
                                 AddLog(LocalizationHelper.GetStringFormat("TaskAppend.Skip", LocalizationHelper.GetString(item.TaskType.ToString()), item.NameOrTaskType), UiLogColor.Info);
-                                if (index >= 0 && index < TaskItemViewModels.Count) TaskItemViewModels[index].StatusDisplay = TaskItemStatus.Skipped;
+                                if (index >= 0 && index < TaskItemViewModels.Count)
+                                {
+                                    TaskItemViewModels[index].StatusDisplay = TaskItemStatus.Skipped;
+                                }
+
                                 break;
                         }
                     }
@@ -2341,6 +2369,10 @@ public class TaskQueueViewModel : Screen
                     AddLog(LocalizationHelper.GetStringFormat("TaskAppend.Error", LocalizationHelper.GetString(item.TaskType.ToString()), item.NameOrTaskType) + "\n" + ex.Message, UiLogColor.Error);
                 }
             }
+
+            // fix/account_rotation/修改次数: 记录追加结果
+            _logger.Information("[CycleAdv] phase={Phase}, needStartupSwitch={Switch}, count={Count}, taskRet={Ret}",
+                currentPhase, needStartupSwitch, count, taskRet);
 
             // 3) 空步骤递归跳过
             if (count == 0)

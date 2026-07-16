@@ -23,6 +23,7 @@ using MaaWpfGui.Constants.Enums;
 using MaaWpfGui.Extensions;
 using MaaWpfGui.Helper;
 using MaaWpfGui.Utilities.ValueType;
+using MaaWpfGui.ViewModels.UI;
 using Stylet;
 
 namespace MaaWpfGui.ViewModels.UserControl.TaskQueue;
@@ -90,8 +91,16 @@ public class UserDataUpdateSettingsUserControlModel : TaskSettingsViewModel, Use
                 return (null, []);
             }
 
-            bool operBoxTriggerDue = updateTask.UpdateOperBox && IsTriggerDue(Instances.ToolboxViewModel.LastOperBoxSyncTime, updateTask.TriggerInterval);
-            bool depotTriggerDue = updateTask.UpdateDepot && IsTriggerDue(Instances.ToolboxViewModel.LastDepotSyncTime, updateTask.TriggerInterval);
+            // fix/account_rotation/修改次数: 轮换(IsCycling)中忽略触发间隔,
+            // 确保跨账号时每个账号的 OperBox/Depot 子任务都能被追加到 Core,
+            // 不会因为前一步刚同步过,导致后续账号的 IsTriggerDue 返回 false。
+            bool inCycle = TaskQueueViewModel.StartUpTask.IsCycling;
+            bool operBoxTriggerDue = inCycle
+                ? updateTask.UpdateOperBox
+                : updateTask.UpdateOperBox && IsTriggerDue(Instances.ToolboxViewModel.LastOperBoxSyncTime, updateTask.TriggerInterval);
+            bool depotTriggerDue = inCycle
+                ? updateTask.UpdateDepot
+                : updateTask.UpdateDepot && IsTriggerDue(Instances.ToolboxViewModel.LastDepotSyncTime, updateTask.TriggerInterval);
 
             if (!operBoxTriggerDue && !depotTriggerDue)
             {
