@@ -169,7 +169,9 @@ feat 合并到 `branch` 后：
 
 ## 6. 进行中分支速查
 
-**无** — 所有分支均已合入 `branch` 或已清理。
+| 分支 | 角色 | 修复目标 |
+|------|------|---------|
+| `fix/expedite-threshold` | 修复 `feat/expedite-threshold` 重构时遗失的 `m_last_confirmed_min_level` 重置,导致下一槽位读到上一槽位陈旧星级而误加急 | `branch` 自身（修复 `7df4e94e3f` 重构遗漏） |
 
 
 ## 7. 分支生命周期记录

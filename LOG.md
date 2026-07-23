@@ -635,3 +635,62 @@ dotnet build src/MaaWpfGui/MaaWpfGui.csproj -c Release -p:Platform=x64
 | 3 | `AGENTS.md` | 修改 | §6 清空（无进行中分支）；§7.3 更新为已合入状态；§7 开头补充 2026-07-23 删除日期 |
 | 4 | `LOG.md` | 修改 | 本节 |
 
+### fix/expedite-threshold 启动
+
+`feat/expedite-threshold`（`7df4e94e3f`）重构时遗失了 `3529ab0f05` 原版在 `recruit_one()` 入口与加急成功后两处 `m_last_confirmed_min_level = 0;` 重置，导致下一槽位读到上一槽位陈旧星级仍满足 `m_last_confirmed_min_level >= m_expedite_min_level` 而误加急。`fix/expedite-threshold` 从 `branch` 拉出，目标修复 `branch` 自身。
+
+| # | 文件/对象 | 操作 | 说明 |
+|---|----------|------|------|
+| 1 | `fix/expedite-threshold` | 新建分支 | 从 `branch` 拉出，HEAD 同 `9d8d021610` |
+| 2 | `src/MaaCore/Task/Interface/RecruitTask.cpp:55-57` | 临时诊断日志 | `[fix/expedite-threshold/diag] Recruit params: expedite=..., expedite_min_level=...`，用于定位 WPF→JSON→C++ 链路是否正确透传 |
+
+### fix/expedite-threshold 实施完成
+
+诊断阶段确认 `install/debug/maa.log` 中 `expedite_min_level=4` 已正确从 WPF 序列化层传入 C++，真凶锁定为 C++ 决策逻辑缺重置，无需 WPF 链路修复。还原诊断日志后实施 2 个 commit（先不合并入 `branch`）。
+
+| # | 文件 | 操作 | 说明 |
+|---|------|------|------|
+| 1 | `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.cpp:312-314` | 修改 | `recruit_one()` 入口处补回 `m_last_confirmed_min_level = 0;`，杜绝上一槽位陈旧值污染本槽位加急决策 |
+| 2 | `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.cpp:358-359` | 修改 | 加急成功（`recruit_now()` 成功）后补回 `m_last_confirmed_min_level = 0;`，防止下一槽位误判 |
+| 3 | `src/MaaCore/Task/Interface/RecruitTask.cpp:55-57` | 回滚 | 诊断日志 `git checkout --` 还原，不入库 |
+| 4 | `docs/zh-cn/protocol/integration.md:266-270` | 修改 | `::: field name="expedite_min_level"` 字段块，`0 = 不限`，`4/5/6 = 仅对应星级及以上加急` |
+| 5 | `docs/zh-tw/protocol/integration.md:266-270` | 修改 | 五语同步：繁中 |
+| 6 | `docs/en-us/protocol/integration.md:266-270` | 修改 | 五语同步：英文 |
+| 7 | `docs/ja-jp/protocol/integration.md:266-270` | 修改 | 五语同步：日文 |
+| 8 | `docs/ko-kr/protocol/integration.md:255-259` | 修改 | 五语同步：韩文 |
+| 9 | `AGENTS.md §6` | 修改 | 登记 `fix/expedite-threshold` 为进行中分支 |
+| 10 | `LOG.md` | 修改 | 本节 |
+
+**Commit 链**：
+
+| SHA | 标题 |
+|-----|------|
+| `d73f61adc1` | `fix(expedite-threshold): 补回 m_last_confirmed_min_level 重置` |
+| `20cd79d4ca` | `docs: 补 expedite_min_level 字段说明` |
+
+**编译/部署结果**：
+
+| 阶段 | 命令 | 结果 |
+|------|------|------|
+| 构建 | `cmake --build build --target MaaCore` | OK（仅 RelWithDebInfo 默认 config；MaaCore.dll 重新生成） |
+| 安装 | `cmake --install build` | OK（MaaCore.dll 部署至 `install/`；`MAA.Updater.exe` 缺失与本 fix 无关，单目标构建未触及其编译） |
+
+**兼容性核查**：
+
+- 旧 API 用户不传 `expedite_min_level` → C++ 端默认 0 = 不限 → 全加急，行为不变
+- 旧 GUI 用户配置文件中无该字段 → JSON 反序列化默认 0 + CheckBox 未勾选 → 全加急，行为不变
+- 重置仅在 `recruit_one` 入口与加急成功后触发，对未加急路径无副作用；`recruit_calc_task` 的 `m_last_confirmed_min_level = final_combination.min_level;` 写入时机不变（line 562）
+- docs 五语字段块对齐 `expedite_times` 段落的样式（`<br>` 续行、`默认 0` 收束）
+
+**待手动验证（需模拟器环境）**：
+
+| # | 场景 | 期望 |
+|---|------|------|
+| 1 | 门槛 4，准备 4★ + 3★ 槽位 | 4★ 立即完成，3★ 走 9h 倒计时 |
+| 2 | 门槛 5，准备 5★ + 3★ 槽位 | 5★ 立即完成，3★ 走 9h 倒计时 |
+| 3 | 门槛 6，准备 6★ + 5★ 槽位 | 6★ 立即完成，5★ 走 9h 倒计时 |
+| 4 | 门槛 0（不限），任一组合 | 全部加急，行为等同旧版 |
+| 5 | 关掉「使用加急许可」 | 所有槽位走自然倒计时 |
+
+**合入策略**：暂不合并；由用户后续决定 FF（commit 链线性）或 `--no-ff`（保留 fix 拓扑）。`fix/expedite-threshold` 修复 `branch` 自身，按 `§3.3` 合并目标 = `branch`。
+
