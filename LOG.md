@@ -624,3 +624,14 @@ dotnet build src/MaaWpfGui/MaaWpfGui.csproj -c Release -p:Platform=x64
 | 11 | `src/MaaWpfGui/Views/UserControl/TaskQueue/RecruitSettingsUserControl.xaml` | +门槛下拉框 | UI |
 | 12 | `src/MaaWpfGui/Res/Localizations/{zh-cn,en-us,ja-jp,ko-kr,zh-tw}.xaml` | +`ExpediteMinLevel*` 6 个 key | 五语本地化 |
 
+### feat/expedite-threshold 合并入 branch
+
+在 `feat/expedite-threshold` 上补齐未暂存的 UI/本地化适配细节后，FF 合并到 `branch`，本地删除 feat 分支。
+
+| # | 文件/对象 | 操作 | 说明 |
+|---|----------|------|------|
+| 1 | `branch` | FF 合并 | `feat/expedite-threshold` 3 个新 commit（`7df4e94e3f`（feat 初始）+ `9c02b9e41a`（暂存前置变更）+ `cbec3d1fb0`（完善五语本地化与 ViewModel 适配）），HEAD `dc2212d54b` → `cbec3d1fb0` |
+| 2 | `feat/expedite-threshold` | `git branch -d` | 已合入 branch，本地删除 |
+| 3 | `AGENTS.md` | 修改 | §6 清空（无进行中分支）；§7.3 更新为已合入状态；§7 开头补充 2026-07-23 删除日期 |
+| 4 | `LOG.md` | 修改 | 本节 |
+
