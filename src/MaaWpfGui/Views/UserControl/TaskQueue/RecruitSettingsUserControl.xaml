@@ -24,20 +24,15 @@
                 Minimum="0"
                 Value="{Binding RecruitMaxTimes}" />
 
-            <StackPanel Margin="0,10" Orientation="Horizontal">
-                <CheckBox Content="{DynamicResource AutoUseExpedited}" IsChecked="{Binding UseExpeditedWithNull}" />
-                <controls:TooltipBlock TooltipText="{DynamicResource AutoUseExpeditedTip}" />
-            </StackPanel>
-
-            <StackPanel Margin="0,5,0,10" Visibility="{c:Binding UseExpeditedMinLevelVisible}">
+            <StackPanel Margin="0,10">
                 <StackPanel Orientation="Horizontal">
                     <hc:ComboBox
-                        hc:InfoElement.Title="{DynamicResource ExpediteMinLevel}"
+                        hc:InfoElement.Title="{DynamicResource ExpediteMode}"
                         DisplayMemberPath="Display"
-                        ItemsSource="{Binding ExpediteMinLevelList}"
-                        SelectedValue="{Binding UseExpeditedMinLevel}"
+                        ItemsSource="{Binding ExpediteModeList}"
+                        SelectedValue="{Binding ExpediteMode}"
                         SelectedValuePath="Value" />
-                    <controls:TooltipBlock TooltipText="{DynamicResource ExpediteMinLevelTip}" />
+                    <controls:TooltipBlock TooltipText="{DynamicResource ExpediteModeTip}" />
                 </StackPanel>
             </StackPanel>
 

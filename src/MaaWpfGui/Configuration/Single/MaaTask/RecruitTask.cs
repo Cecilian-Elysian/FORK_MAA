@@ -32,7 +32,6 @@ public class RecruitTask : BaseTask, IJsonOnDeserialized
     /// <summary>
     /// Gets or sets a value indicating whether 是否使用公招加速卷
     /// </summary>
-    [JsonIgnore]
     public bool? UseExpedited { get; set; } = false;
 
     /// <summary>
@@ -40,6 +39,30 @@ public class RecruitTask : BaseTask, IJsonOnDeserialized
     /// 0 = 所有星级均加急（默认，向后兼容）；4 / 5 / 6 = 对应星级阈值
     /// </summary>
     public int ExpediteMinLevel { get; set; } = 0;
+
+    /// <summary>
+    /// Gets or sets 加急招募模式（合并总开关与星级门槛）由 ViewModel 维护：
+    /// 0 = 不使用加急；1 = 所有星级均加急；4 / 5 / 6 = 仅对应星级及以上使用加急
+    /// </summary>
+    [JsonIgnore]
+    public int ExpediteMode
+    {
+        get {
+            if (UseExpedited is false) {
+                return 0;
+            }
+            return ExpediteMinLevel == 0 ? 1 : ExpediteMinLevel;
+        }
+        set {
+            bool expedited = value != 0;
+            UseExpedited = expedited;
+            ExpediteMinLevel = value switch {
+                0 => 0,
+                1 => 0,
+                int v => v,
+            };
+        }
+    }
 
     /// <summary>
     /// Gets or sets 单轮最大公招次数

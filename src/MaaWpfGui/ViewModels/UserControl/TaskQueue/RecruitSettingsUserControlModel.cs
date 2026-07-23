@@ -126,48 +126,47 @@ public class RecruitSettingsUserControlModel : TaskSettingsViewModel, RecruitSet
         set => SetTaskConfig<RecruitTask>(t => t.ForceRefresh == value, t => t.ForceRefresh = value);
     }
 
-    public bool? UseExpeditedWithNull
+    /// <summary>
+    /// Gets or sets 加急招募模式（合并总开关与星级门槛）：
+    /// 0 = 不使用加急；1 = 所有星级均加急；4/5/6 = 仅对应星级及以上使用加急
+    /// </summary>
+    public int ExpediteMode
     {
-        get => GetTaskConfig<RecruitTask>().UseExpedited;
-        set {
-            if (value == true)
-            {
-                value = null;
+        get {
+            var config = GetTaskConfig<RecruitTask>();
+            if (config.UseExpedited is false) {
+                return 0;
             }
+            return config.ExpediteMinLevel == 0 ? 1 : config.ExpediteMinLevel;
+        }
+        set {
+            bool expedited = value != 0;
+            bool? newUseExpedited = expedited;
+            int newMinLevel = value switch {
+                0 => 0,
+                1 => 0,
+                int v => v,
+            };
 
-            SetTaskConfig<RecruitTask>(t => t.UseExpedited == value, t => t.UseExpedited = value);
-            NotifyOfPropertyChange(nameof(UseExpeditedMinLevelVisible));
+            SetTaskConfig<RecruitTask>(
+                t => t.UseExpedited == newUseExpedited && t.ExpediteMinLevel == newMinLevel,
+                t => {
+                    t.UseExpedited = newUseExpedited;
+                    t.ExpediteMinLevel = newMinLevel;
+                });
+            NotifyOfPropertyChange(nameof(ExpediteMode));
         }
     }
 
     /// <summary>
-    /// Gets or sets 加急招募门槛（星级）：仅当组合最低星级 ≥ 此值时才使用加急许可
-    /// 0 = 所有星级均加急（默认），4 / 5 / 6 = 对应星级阈值
+    /// Gets 加急招募模式下拉框可选项。
     /// </summary>
-    public int UseExpeditedMinLevel
-    {
-        get => GetTaskConfig<RecruitTask>().ExpediteMinLevel;
-        set => SetTaskConfig<RecruitTask>(t => t.ExpediteMinLevel == value, t => t.ExpediteMinLevel = value);
-    }
-
-    /// <summary>
-    /// Gets 加急门槛下拉框可见性：仅在勾选加急时才显示
-    /// </summary>
-    public bool UseExpeditedMinLevelVisible => UseExpeditedWithNull is not false;
-
-    /// <summary>
-    /// Gets 加急门槛下拉框可选项。
-    /// </summary>
-    public LocalizedObservableList<int> ExpediteMinLevelList { get; } = new(
-        (0, "ExpediteMinLevelAll"),
-        (4, "ExpediteMinLevel4"),
-        (5, "ExpediteMinLevel5"),
-        (6, "ExpediteMinLevel6"));
-
-    public static void ResetRecruitVariables(RecruitTask? recruit)
-    {
-        recruit?.UseExpedited ??= false;
-    }
+    public LocalizedObservableList<int> ExpediteModeList { get; } = new(
+        (0, "ExpediteModeDisabled"),
+        (1, "ExpediteModeAll"),
+        (4, "ExpediteMode4"),
+        (5, "ExpediteMode5"),
+        (6, "ExpediteMode6"));
 
     /// <summary>
     /// Gets the list of auto recruit selecting extra tags.
@@ -297,7 +296,7 @@ public class RecruitSettingsUserControlModel : TaskSettingsViewModel, RecruitSet
     private void RefreshLocalization()
     {
         AutoRecruitSelectExtraTagsList.RefreshLocalization();
-        ExpediteMinLevelList.RefreshLocalization();
+        ExpediteModeList.RefreshLocalization();
     }
 
     private interface ISerialize : ITaskQueueModelSerialize
@@ -312,14 +311,22 @@ public class RecruitSettingsUserControlModel : TaskSettingsViewModel, RecruitSet
             var preserveTags = recruit.PreserveTagEnabled ? RecruitTagHelper.NormalizeTagList(recruit.PreserveTagList) : [];
             var firstTags = recruit.PreferTagEnabled ? RecruitTagHelper.NormalizeTagList(recruit.Level3PreferTags) : [];
 
+            int expediteMode = recruit.ExpediteMode;
+            bool useExpedited = expediteMode != 0;
+            int expediteMinLevel = expediteMode switch {
+                0 => 0,
+                1 => 0,
+                int v => v,
+            };
+
             var task = new AsstRecruitTask() {
                 Refresh = recruit.RefreshLevel3,
                 ForceRefresh = recruit.ForceRefresh,
                 SetRecruitTime = true,
                 RecruitTimes = recruit.MaxTimes,
-                UseExpedited = recruit.UseExpedited is not false,
+                UseExpedited = useExpedited,
                 ExpeditedTimes = recruit.MaxTimes,
-                ExpediteMinLevel = recruit.ExpediteMinLevel,
+                ExpediteMinLevel = expediteMinLevel,
                 SelectExtraTags = recruit.ExtraTagMode,
                 Level3FirstList = firstTags,
                 PreserveTags = preserveTags,

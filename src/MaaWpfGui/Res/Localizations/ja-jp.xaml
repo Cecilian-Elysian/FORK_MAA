@@ -1458,7 +1458,6 @@ DEBUGディレクトリに保存される画像には数量制限があり、超
     <!--  自動募集設定  -->
     <system:String x:Key="AutoRefresh">星3タグを自動的に更新する</system:String>
     <system:String x:Key="ForceRefresh">採用不可でもタグの更新を行う</system:String>
-    <system:String x:Key="AutoUseExpedited">緊急招集票を自動的に使用*</system:String>
     <system:String x:Key="Level3UseShortTime">星3タグを7:40に設定する</system:String>
     <system:String x:Key="Level3UseShortTime2">星3タグを1:00に設定する</system:String>
     <system:String x:Key="Level3UseShortTimeTip">他のレアリティには影響しない</system:String>
@@ -1469,14 +1468,13 @@ DEBUGディレクトリに保存される画像には数量制限があり、超
     <system:String x:Key="AutoSelectLevel5">星5を自動的に確認する</system:String>
     <system:String x:Key="AutoSelectLevel6">星6を自動的に確認する</system:String>
     <system:String x:Key="AutoSelectLevel6Tip">このオプションは設定ファイルの編集でのみ有効にできます</system:String>
-    <system:String x:Key="AutoUseExpeditedTip" xml:space="preserve">一度のみ有効です。
-求人許可の取得速度は消費速度より遅いため、通常は次の公招タスク実行時までに自然に時間が経過します。求人許可が大量に余っているなど、緊急時のみご使用ください</system:String>
-    <system:String x:Key="ExpediteMinLevel">緊急招集の使用条件</system:String>
-    <system:String x:Key="ExpediteMinLevelTip">組み合わせの最低レアリティがこの値以上の場合のみ緊急招集票を使用します。これより低い場合は通常通り 9 時間採用し、黄票を獲得できない組み合わせに許可を浪費しません</system:String>
-    <system:String x:Key="ExpediteMinLevelAll">全レアリティ</system:String>
-    <system:String x:Key="ExpediteMinLevel4">★4以上</system:String>
-    <system:String x:Key="ExpediteMinLevel5">★5以上</system:String>
-    <system:String x:Key="ExpediteMinLevel6">★6のみ</system:String>
+    <system:String x:Key="ExpediteMode">緊急招集</system:String>
+    <system:String x:Key="ExpediteModeTip">緊急招集票の使用設定。閾値未満の組み合わせは通常通り9時間採用し、黄票を獲得できない組み合わせに許可を浪費しません</system:String>
+    <system:String x:Key="ExpediteModeDisabled">使用しない</system:String>
+    <system:String x:Key="ExpediteModeAll">全レアリティ</system:String>
+    <system:String x:Key="ExpediteMode4">★4以上</system:String>
+    <system:String x:Key="ExpediteMode5">★5以上</system:String>
+    <system:String x:Key="ExpediteMode6">★6のみ</system:String>
     <system:String x:Key="PreserveTagsTip">選択したタグのいずれかを認識した場合、その募集をスキップして枠を残します。未選択の場合は何も保留しません。</system:String>
     <!--  !自動募集設定  -->
     <!--  EasterEggs  -->

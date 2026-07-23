@@ -1457,7 +1457,6 @@ Cache files (such as maps, operator avatars, etc.) need to be regenerated after 
     <!--  AutoRecruitSettings  -->
     <system:String x:Key="AutoRefresh">Auto refresh 3★ Tags</system:String>
     <system:String x:Key="ForceRefresh">Continue trying to refresh Tags without recruitment permit</system:String>
-    <system:String x:Key="AutoUseExpedited">Auto use Expedited Plan*</system:String>
     <system:String x:Key="Level3UseShortTime">Set 7:40 instead of 9:00 for 3★ Tags</system:String>
     <system:String x:Key="Level3UseShortTime2">Set 1:00 instead of 9:00 for 3★ Tags</system:String>
     <system:String x:Key="Level3UseShortTimeTip">Doesn't interfere with other ★ stars</system:String>
@@ -1468,14 +1467,13 @@ Cache files (such as maps, operator avatars, etc.) need to be regenerated after 
     <system:String x:Key="AutoSelectLevel5">Auto confirm 5★</system:String>
     <system:String x:Key="AutoSelectLevel6">Auto confirm 6★</system:String>
     <system:String x:Key="AutoSelectLevel6Tip">This option can only be enabled by editing the config file</system:String>
-    <system:String x:Key="AutoUseExpeditedTip" xml:space="preserve">Effective once only.
-Recruitment permits are consumed faster than acquired; normally the timer expires before the next recruit task runs. Use only in emergencies such as severe permit overflow</system:String>
-    <system:String x:Key="ExpediteMinLevel">Expedite threshold</system:String>
-    <system:String x:Key="ExpediteMinLevelTip">Only use expedited plan when the min level of the combination is ≥ this value; lower levels are recruited normally (9h) to avoid wasting permits on combinations that yield no yellow certs</system:String>
-    <system:String x:Key="ExpediteMinLevelAll">All levels</system:String>
-    <system:String x:Key="ExpediteMinLevel4">4★ and above</system:String>
-    <system:String x:Key="ExpediteMinLevel5">5★ and above</system:String>
-    <system:String x:Key="ExpediteMinLevel6">6★ only</system:String>
+    <system:String x:Key="ExpediteMode">Expedited recruit</system:String>
+    <system:String x:Key="ExpediteModeTip">Configure the expedite plan usage; combinations below the threshold recruit normally (9h) to avoid wasting permits on combinations that yield no yellow certs</system:String>
+    <system:String x:Key="ExpediteModeDisabled">Disabled</system:String>
+    <system:String x:Key="ExpediteModeAll">All levels</system:String>
+    <system:String x:Key="ExpediteMode4">4★ and above</system:String>
+    <system:String x:Key="ExpediteMode5">5★ and above</system:String>
+    <system:String x:Key="ExpediteMode6">6★ only</system:String>
     <system:String x:Key="PreserveTagsTip">Skip the recruitment and keep the slot when any selected tag is identified. Leave it empty to preserve none.</system:String>
     <!--  !AutoRecruitSettings  -->
     <!--  EasterEggs  -->

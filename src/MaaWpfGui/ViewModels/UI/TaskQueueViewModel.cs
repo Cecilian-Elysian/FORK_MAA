@@ -1670,7 +1670,6 @@ public class TaskQueueViewModel : Screen
                     break;
 
                 case RecruitTask recruit:
-                    RecruitSettingsUserControlModel.ResetRecruitVariables(recruit);
                     if (refreshUI && TaskSettingVisibilityInfo.CurrentTask == recruit)
                     {
                         RefreshTaskModel(recruit);
