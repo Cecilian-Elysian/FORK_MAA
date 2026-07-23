@@ -309,6 +309,10 @@ asst::AutoRecruitTask::recruit_result asst::AutoRecruitTask::recruit_one(const R
 {
     LogTraceFunction;
 
+    // fix/expedite-threshold: recruit_one 入口重置 m_last_confirmed_min_level,
+    // 避免上一槽位陈旧星级污染本槽位加急决策
+    m_last_confirmed_min_level = 0;
+
     int delay = Config.get_options().task_delay;
 
     ctrler()->click(button);
@@ -352,6 +356,8 @@ asst::AutoRecruitTask::recruit_result asst::AutoRecruitTask::recruit_one(const R
                  m_expedite_min_level, ", using expedited plan.");
         if (recruit_now()) {
             hire_all();
+            // fix/expedite-threshold: 加急成功后立即重置,防止下一槽位误判
+            m_last_confirmed_min_level = 0;
             return recruit_result::confirmed;
         }
         Log.info("Failed to use expedited plan, fall back to normal confirm.");
