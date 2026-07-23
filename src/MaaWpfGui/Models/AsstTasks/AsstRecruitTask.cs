@@ -62,6 +62,12 @@ public class AsstRecruitTask : AsstBaseTask
     public bool UseExpedited { get; set; }
 
     /// <summary>
+    /// Gets or sets 加急招募门槛：仅当组合最低星级 ≥ 此值时使用加急许可，可选，默认 0
+    /// 0 = 所有星级均加急（向后兼容）；4 / 5 / 6 = 对应星级阈值
+    /// </summary>
+    public int ExpediteMinLevel { get; set; }
+
+    /// <summary>
     /// Gets or sets 使用加急许可
     /// </summary>
     public int ExpeditedTimes { get; set; }
@@ -153,6 +159,7 @@ public class AsstRecruitTask : AsstBaseTask
             ["times"] = RecruitTimes,
             ["set_time"] = SetRecruitTime,
             ["expedite"] = UseExpedited,
+            ["expedite_min_level"] = ExpediteMinLevel,
             ["preserve_tags"] = JArray.FromObject(preserveTags),
             ["extra_tags_mode"] = SelectExtraTags,
             ["first_tags"] = JArray.FromObject(firstTags),

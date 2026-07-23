@@ -1075,7 +1075,8 @@ Only level rewards can be farmed; to get the Engraved Medal, all ｢Key Objectiv
     <system:String x:Key="CopilotTaskNameTip">Stage Code, e.g. 1-7</system:String>
     <system:String x:Key="SelectTheFile">Select task file</system:String>
     <system:String x:Key="SelectTheFileTip">Task files can be imported by dragging the mouse</system:String>
-    <system:String x:Key="PasteClipboardTip">Read the clipboard and add it as a job</system:String>
+    <system:String x:Key="PasteClipboardTip">Read clipboard, auto-detect job/job set</system:String>
+    <!-- TODO: Remove PasteClipboardCopilotSetTip after workstation migration -->
     <system:String x:Key="PasteClipboardCopilotSetTip">Read the clipboard and add it as a job set</system:String>
     <system:String x:Key="ImportFilesTip">Import task files</system:String>
     <system:String x:Key="DoYouLikeThisWebJson">Do you like this task file? Rate it!</system:String>
@@ -1151,9 +1152,9 @@ Right-click to clear inactive jobs</system:String>
         3. {key=SSS}: Multiple built-in files are in the resource/copilot folder. First create your squad manually, then start from the screen where the "Start Deployment" button appears in the bottom right. Can be used with ｢{key=LoopTimes}｣.\n\n
         4. {key=ParadoxSimulation}: After selecting Skills, start from the Skill selection screen where the "Start Simulation" button appears. For 1/2★ {key=Operator}s (without Skills), start from the screen with the "Start Simulation" button in the bottom right. If using ｢{key=UseCopilotList}｣, please start from the ｢Level/Rarity｣ tab in the {key=Operator} list.\n\n
         5. {key=Operator}s marked as "Favorite" may affect ｢{key=AutoSquad}｣ recognition and selection. When using ｢{key=AutoSquad}｣, consider removing favorites, or if errors occur, turn off ｢{key=AutoSquad}｣ and manually supplement the missing {key=Operator}s as prompted.\n\n
-        6. In the Copilot workstation, you can paste codes by clicking the paste button on the right side of the input box:\n
-        • Second button = Add a single job.\n
-        • Third button = Add a job set.\n\n
+        6. ZOOT workstation codes can be pasted via the paste button on the right side of the input box. Formats are auto-detected:\n
+        • prts://s = Job set prts:// = Single job\n
+        The third button is for legacy job sets and will be removed later.\n\n
         7. {key=UseCopilotList}:\n
         • After selecting a job, verify the stage name below is correct (e.g., CV-EX-1).\n
         • Add: Left-click for Normal difficulty, right-click for Challenge difficulty.\n
@@ -1469,6 +1470,12 @@ Cache files (such as maps, operator avatars, etc.) need to be regenerated after 
     <system:String x:Key="AutoSelectLevel6Tip">This option can only be enabled by editing the config file</system:String>
     <system:String x:Key="AutoUseExpeditedTip" xml:space="preserve">Effective once only.
 Recruitment permits are consumed faster than acquired; normally the timer expires before the next recruit task runs. Use only in emergencies such as severe permit overflow</system:String>
+    <system:String x:Key="ExpediteMinLevel">Expedite threshold</system:String>
+    <system:String x:Key="ExpediteMinLevelTip">Only use expedited plan when the min level of the combination is ≥ this value; lower levels are recruited normally (9h) to avoid wasting permits on combinations that yield no yellow certs</system:String>
+    <system:String x:Key="ExpediteMinLevelAll">All levels</system:String>
+    <system:String x:Key="ExpediteMinLevel4">4★ and above</system:String>
+    <system:String x:Key="ExpediteMinLevel5">5★ and above</system:String>
+    <system:String x:Key="ExpediteMinLevel6">6★ only</system:String>
     <system:String x:Key="PreserveTagsTip">Skip the recruitment and keep the slot when any selected tag is identified. Leave it empty to preserve none.</system:String>
     <!--  !AutoRecruitSettings  -->
     <!--  EasterEggs  -->

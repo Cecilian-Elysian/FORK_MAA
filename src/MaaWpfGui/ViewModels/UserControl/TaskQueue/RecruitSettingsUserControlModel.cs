@@ -136,8 +136,33 @@ public class RecruitSettingsUserControlModel : TaskSettingsViewModel, RecruitSet
             }
 
             SetTaskConfig<RecruitTask>(t => t.UseExpedited == value, t => t.UseExpedited = value);
+            NotifyOfPropertyChange(nameof(UseExpeditedMinLevelVisible));
         }
     }
+
+    /// <summary>
+    /// Gets or sets 加急招募门槛（星级）：仅当组合最低星级 ≥ 此值时才使用加急许可
+    /// 0 = 所有星级均加急（默认），4 / 5 / 6 = 对应星级阈值
+    /// </summary>
+    public int UseExpeditedMinLevel
+    {
+        get => GetTaskConfig<RecruitTask>().ExpediteMinLevel;
+        set => SetTaskConfig<RecruitTask>(t => t.ExpediteMinLevel == value, t => t.ExpediteMinLevel = value);
+    }
+
+    /// <summary>
+    /// Gets 加急门槛下拉框可见性：仅在勾选加急时才显示
+    /// </summary>
+    public bool UseExpeditedMinLevelVisible => UseExpeditedWithNull is not false;
+
+    /// <summary>
+    /// Gets 加急门槛下拉框可选项。
+    /// </summary>
+    public LocalizedObservableList<int> ExpediteMinLevelList { get; } = new(
+        (0, "ExpediteMinLevelAll"),
+        (4, "ExpediteMinLevel4"),
+        (5, "ExpediteMinLevel5"),
+        (6, "ExpediteMinLevel6"));
 
     public static void ResetRecruitVariables(RecruitTask? recruit)
     {
@@ -272,6 +297,7 @@ public class RecruitSettingsUserControlModel : TaskSettingsViewModel, RecruitSet
     private void RefreshLocalization()
     {
         AutoRecruitSelectExtraTagsList.RefreshLocalization();
+        ExpediteMinLevelList.RefreshLocalization();
     }
 
     private interface ISerialize : ITaskQueueModelSerialize
@@ -293,6 +319,7 @@ public class RecruitSettingsUserControlModel : TaskSettingsViewModel, RecruitSet
                 RecruitTimes = recruit.MaxTimes,
                 UseExpedited = recruit.UseExpedited is not false,
                 ExpeditedTimes = recruit.MaxTimes,
+                ExpediteMinLevel = recruit.ExpediteMinLevel,
                 SelectExtraTags = recruit.ExtraTagMode,
                 Level3FirstList = firstTags,
                 PreserveTags = preserveTags,

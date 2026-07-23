@@ -1076,7 +1076,8 @@ C:\\leidian\\LDPlayer9。\n
     <system:String x:Key="CopilotTaskNameTip">关卡名, 例: 1-7</system:String>
     <system:String x:Key="SelectTheFile">选择作业</system:String>
     <system:String x:Key="SelectTheFileTip">作业文件可以直接用鼠标拖进来哦 (oﾟvﾟ)ノ</system:String>
-    <system:String x:Key="PasteClipboardTip">读取剪贴板并添加为作业</system:String>
+    <system:String x:Key="PasteClipboardTip">读取剪贴板，自动识别作业/作业集</system:String>
+    <!-- TODO: 作业站迁移完成后删除 PasteClipboardCopilotSetTip -->
     <system:String x:Key="PasteClipboardCopilotSetTip">读取剪贴板并添加为作业集</system:String>
     <system:String x:Key="ImportFilesTip">批量导入</system:String>
     <system:String x:Key="DoYouLikeThisWebJson">作业怎么样？评价下吧！</system:String>
@@ -1152,9 +1153,9 @@ C:\\leidian\\LDPlayer9。\n
         3. {key=SSS}: resource/copilot 文件夹内置多份作业。请先手动编队，在右下角存在 ｢开始部署｣ 按钮界面启动，可配合 ｢{key=LoopTimes}｣。\n\n
         4. {key=ParadoxSimulation}: 选好技能后，在技能选择界面存在 ｢开始模拟｣ 按钮界面启动，1/2 星{key=Operator}（无技能）在右下角存在 ｢开始模拟｣ 按钮界面开始。若使用 ｢{key=UseCopilotList}｣，请从{key=Operator}列表 ｢等级/稀有度｣ 筛选下启动。\n\n
         5. {key=Operator}若被标记为 ｢特别关注｣，可能影响 ｢{key=AutoSquad}｣ 的识别与选择。建议使用 ｢{key=AutoSquad}｣ 时移除关注，或在报错后关闭 ｢{key=AutoSquad}｣，根据提示手动补充缺失的{key=Operator}。\n\n
-        6. Copilot 作业站的神秘代码可通过输入框右侧的粘贴按钮粘贴：\n
-        • 单击第 2 个按钮 = 添加作业。\n
-        • 单击第 3 个按钮 = 添加作业集。\n\n
+        6. ZOOT 作业站的神秘代码可通过输入框右侧的粘贴按钮粘贴，自动识别格式：\n
+        • prts://s = 作业集 prts:// = 单个作业\n
+        第三按钮为旧格式作业集入口，后续将移除。\n\n
         7. {key=UseCopilotList}:\n
         • 选择作业后，检查下方关卡名是否正确 (例: CV-EX-1)。\n
         • 添加: 左键 = 普通难度，右键 = 突袭难度。\n
@@ -1470,6 +1471,12 @@ DEBUG 目录下保存的图片有数量限制，超出后会自动清理旧图�
     <system:String x:Key="AutoSelectLevel6Tip">仅可通过修改配置文件开启此选项</system:String>
     <system:String x:Key="AutoUseExpeditedTip" xml:space="preserve">该选项仅生效一次。
 招募券获取速度低于消耗速度，正常情况下下一轮公招任务时自然已到招募时间，仅在招募券严重溢出等应急场景下使用</system:String>
+    <system:String x:Key="ExpediteMinLevel">加急招募门槛</system:String>
+    <system:String x:Key="ExpediteMinLevelTip">仅当招募组合最低星级 ≥ 此值时才使用加急许可；低于此值则正常 9h 招募，不浪费加急卷换不到黄票</system:String>
+    <system:String x:Key="ExpediteMinLevelAll">所有星级均加急</system:String>
+    <system:String x:Key="ExpediteMinLevel4">仅四星以上加急</system:String>
+    <system:String x:Key="ExpediteMinLevel5">仅五星以上加急</system:String>
+    <system:String x:Key="ExpediteMinLevel6">仅六星加急</system:String>
     <system:String x:Key="PreserveTagsTip">识别到任一已选词条时跳过该次招募并保留该栏位；留空时不保留任何词条。</system:String>
     <!--  !AutoRecruitSettings  -->
     <!--  EasterEggs  -->

@@ -474,3 +474,153 @@ dotnet build src/MaaWpfGui/MaaWpfGui.csproj -c Release -p:Platform=x64
 - #2/#3 for 循环与 foreach 行为在无重复项时完全相同;原 foreach + IndexOf 在有重复项时会返回首个匹配索引导致错误 UI 显示,for 循环修复此问题
 - AGENTS.md 仅文档改动,无代码影响
 
+## 2026-07-16
+
+### 已完结功能分支本地删除
+
+将已合入 `branch` 的功能分支从本地删除，远端保留。
+
+| # | 分支 | 操作 | 说明 |
+|---|------|------|------|
+| 1 | `feat/account_rotation` | `git branch -d` | 已合入 branch，本地删除 |
+| 2 | `feat/defer-rogue` | `git branch -d` | 已合入 branch，本地删除 |
+| 3 | `AGENTS.md` | 修改 | 追加「分支生命周期记录」章节 |
+| 4 | `LOG.md` | 修改 | 本节 |
+
+### AGENTS.md 全量重写
+
+工作区中 `AGENTS.md` 长期处于 modified 状态（仅 24 行，只保留分支生命周期记录），缺失命名约定 / 模板 / 工作流 / 构建 / 代码风格 / 进行中分支速查等关键章节。按用户请求**全量重写**为 9 章节 ~318 行结构：项目概述 / 仓库拓扑 / 工作流与文档规范 / feat·fix 工作笔记模板 / 构建·部署·发布 / 代码风格与质量 / 进行中分支速查 / 分支生命周期记录 / 关键参考链接。模板章节恢复自 HEAD 上一个版本（`2b6517fa7a`）的内容并扩充「实施后追加」段落。
+
+| # | 文件 | 操作 | 说明 |
+|---|------|------|------|
+| 1 | `AGENTS.md.local.bak` | 新建 → 删除 | 备份旧 24 行工作区版本；新版本写入并自检后删除（避免污染 git 工作区，新内容已写入正式文件） |
+| 2 | `AGENTS.md:1-389` | 全量重写 | 9 章节结构；§4 模板含「实施记录 / 踩坑 / 待手动验证」「Code Review 议题 / 兼容性核查 / 编译部署结果」扩展段 |
+| 3 | `LOG.md` | 修改 | 本节 |
+
+**章节连续性自检**：
+
+- §1 项目概述（§1.1 定位 / §1.2 技术栈 / §1.3 平台与许可证）
+- §2 仓库拓扑与分支模型（§2.1 远程 / §2.2 本地分支 / §2.3 已完结 feat 分支处理约定）
+- §3 工作流与文档规范（§3.1 工作笔记命名与保留 / §3.2 跟踪文档策略 / §3.3 启动新 feat 标准流程 / §3.4 fix 分支命名与合并目标 / §3.5 本地化）
+- §4 feat / fix 工作笔记模板（§4.1 feat 模板 / §4.2 fix 模板）
+- §5 构建、部署与发布（§5.1 C++ 端 / §5.2 WPF 端 / §5.3 本地运行 / §5.4 打包发布 / §5.5 子模块 / §5.6 辅助工具脚本）
+- §6 代码风格与质量（§6.1 C++ / §6.2 C# / §6.3 提交前检查）
+- §7 进行中分支速查（feat/expedite-threshold 一行速查表）
+- §8 分支生命周期记录（§8.1 feat/account_rotation / §8.2 feat/defer-rogue / §8.3 feat/expedite-threshold 占位）
+- §9 关键参考链接（§9.1 上游文档 / §9.2 本仓集成示例 / §9.3 上游关联项目）
+
+**兼容性核查**：
+
+- 与 HEAD 上一个 AGENTS.md 版本（`2b6517fa7a`）相比：§4 模板章节扩展 8 个「实施后追加」段落（原版仅 5 个），便于记录 commit / 兼容性核查 / 编译日志
+- §7「进行中分支速查」为新增章节，与 §8「分支生命周期记录」形成「进行中 / 已完结」对照
+- §5 / §6 / §9 全部为本版本新增内容
+- 既有 §8 两个已完结 feat 条目（feat/account_rotation / feat/defer-rogue）原样保留
+
+**未提交原因**：用户未明确要求 commit，按 AGENTS.md「提交策略」约定保持工作区状态。
+
+### AGENTS.md 去除 feat / fix 工作笔记（第二次重写）
+
+按用户进一步指令：**不要 feat 或 fix 工作笔记**，仅在 AGENTS.md 中记录分支存在性即可。
+将上一版 9 章节结构缩减为 8 章节，移除以下内容：
+
+- §3.1「feat / fix 工作笔记」（命名约定 / 各分支保留规则 / 提交策略整段删除）
+- §4「feat / fix 工作笔记模板」（feat 模板 + fix 模板两个代码块整段删除）
+- §3.2「跟踪文档策略」中 `feat_<name>.md` / `fix_<name>[_<n>].md` 行（在「是否跟踪」表中）
+- §3.2「启动新 feat 标准流程」原步骤 3/4（创建与维护工作笔记）删除，步骤编号压缩
+- §7「进行中分支速查」表头删除「工作文档」列（无工作笔记后此列无意义）
+
+新增：开头一段摘要明确「本仓库不使用 feat / fix 工作笔记」，§3.1 加 blockquote 强调，所有变更通过 commit message 与 LOG.md 跟踪。
+
+| # | 文件 | 操作 | 说明 |
+|---|------|------|------|
+| 1 | `AGENTS.md:1-269` | 二次重写 | 9 章节 → 8 章节；§3 由 5 小节压缩为 4 小节；§4-§9 重新编号为 §4-§8 |
+| 2 | `LOG.md` | 修改 | 本节追加「AGENTS.md 去除 feat / fix 工作笔记」记录；同时修正前节「AGENTS.md 全量重写」中的描述 |
+
+**新结构自检**：
+
+- §1 项目概述（§1.1 定位 / §1.2 技术栈 / §1.3 平台与许可证）
+- §2 仓库拓扑与分支模型（§2.1 远程 / §2.2 本地分支 / §2.3 已完结 feat 分支处理约定）
+- §3 工作流与文档规范（§3.1 跟踪文档策略 / §3.2 启动新 feat 标准流程 / §3.3 fix 分支命名与合并目标 / §3.4 本地化）
+- §4 构建、部署与发布（§4.1 C++ 端 / §4.2 WPF 端 / §4.3 本地运行 / §4.4 打包发布 / §4.5 子模块 / §4.6 辅助工具脚本）
+- §5 代码风格与质量（§5.1 C++ / §5.2 C# / §5.3 提交前检查）
+- §6 进行中分支速查（feat/expedite-threshold 一行速查表，已去除工作文档列）
+- §7 分支生命周期记录（§7.1 feat/account_rotation / §7.2 feat/defer-rogue / §7.3 feat/expedite-threshold 占位）
+- §8 关键参考链接（§8.1 上游文档 / §8.2 本仓集成示例 / §8.3 上游关联项目）
+
+**兼容性核查**：
+
+- 删除「feat_<name>.md / fix_<name>[_<n>].md 命名约定」「模板章节」意味着后续若有人想建工作笔记将无脚手架可用——按用户要求直接砍掉，不再保留
+- 旧 commit `2b6517fa7a` / `5fcff1e27f` 引入的模板彻底从文档移除，但 git 历史中可回溯
+- `.gitignore` 中保留的 `feat*.md` / `fix*.md` 规则变为「曾使用过」的死代码；按用户「不要 feat 或 fix 工作笔记」的范围外，未触动 `.gitignore`
+- §7「分支生命周期记录」原样保留三个条目（account_rotation / defer-rogue / expedite-threshold 占位）
+- §6「进行中分支速查」保留一行表，去掉「工作文档」列
+
+### AGENTS.md 风格对齐原项目（第三次重写）
+
+按用户强调：「请强调原项目风格和书写习惯，这点很重要」。
+对齐目标为 `LOG.md`（仓库作者 levellmy 既有的条目风格）与上游 `docs/zh-cn/develop/*.md`（vuepress 站点语料），要点：
+
+| 维度 | 调整前 | 调整后 |
+|------|--------|--------|
+| 段落 vs 表格 | 大量 prose 段落描述 | 优先 markdown 表格，行内 `**key**：value` 仅作脚注 |
+| 章节深度 | 3 级（§1.1.1） | 2 级（§1.1），减少嵌套 |
+| 文件引用 | 完整路径散落段中 | `path:line` 集中放在表格「文件 / 操作」列 |
+| emoji / vuepress 容器 | 偶有 `> [!note]` 试探 | 全部移除，无 emoji、无 `::: tip` |
+| 关键术语 | 中英混杂，无明确保留规则 | 明确「branch / feat / fix / FF / PR / 子模块 / cmake / dotnet」等保留英文 |
+| 章节大段 | 整段「启动新 feat 流程」用 prose 串接 | 改为步骤表（`\| # \| 步骤 \| 产物 \|`），与 LOG.md 表格列一致 |
+| 章节小结 | 末尾散文总结 | 删除，直接以表格收束 |
+
+| # | 文件 | 操作 | 说明 |
+|---|------|------|------|
+| 1 | `AGENTS.md:1-242` | 三次重写 | 8 章节 + 20 二级小节，18 张表格；行数 212 → 224（+12 行，但 prose 行数从 ~70 降至 ~30，表格行数从 ~70 增至 ~140）；表格密度（`\|` 起始行）从 71 增至 128 |
+| 2 | `LOG.md` | 修改 | 本节追加「AGENTS.md 风格对齐原项目」记录 |
+
+**章节连续性自检**：
+
+- §1 项目概述（§1.1 一句话 / §1.2 技术栈 / §1.3 平台与许可）
+- §2 仓库拓扑与分支模型（§2.1 远程 / §2.2 本地分支 / §2.3 已完结 feat 处理）
+- §3 工作流与文档规范（§3.1 跟踪文档策略 / §3.2 启动新 feat 标准流程 / §3.3 fix 分支命名与合并目标 / §3.4 本地化）
+- §4 构建、部署与发布（§4.1 构建命令 / §4.2 子模块 / §4.3 打包发布 / §4.4 辅助脚本）
+- §5 代码风格与质量
+- §6 进行中分支速查
+- §7 分支生命周期记录（§7.1 account_rotation / §7.2 defer-rogue / §7.3 expedite-threshold 占位）
+- §8 关键参考链接（§8.1 上游文档 / §8.2 本仓集成示例 / §8.3 上游关联项目）
+
+**兼容性核查**：
+
+- 章节编号与上一版完全一致（8 章节，仅 §1.1 / §1.3 标题文案从「定位 / 平台与许可证」微调为「一句话 / 平台与许可」），无引用失效
+- 二级小节数从 21 减至 20（合并 §5 三个 prose 段落为单一表格）
+- 所有「文件路径 + 行号」描述已迁移至表格列，prose 中不再出现
+- §3.2「启动新 feat」由 7 步 prose 改为 7 行步骤表，与 LOG.md 表格列一致
+- §4.1「构建命令」由 prose bullet 改为单表，与 LOG.md 操作列一致
+
+**未提交原因**：用户未明确要求 commit。
+
+## 2026-07-23
+
+### 删除无用分支
+
+| # | 操作 | 说明 |
+|---|------|------|
+| 1 | 删除分支 `feat/expedite-threshold` | 本地已删除，远端保留（HEAD `5fcff1e27f`，未合入）|
+| 2 | 删除分支 `feat/idea` | 本地已删除，远端保留（HEAD `dc2212d54b`，无独立 commit）|
+| 3 | 删除分支 `fix/account_rotation/5` | 本地已删除，远端保留（HEAD `83a5dc36c1`）|
+| 4 | 更新 AGENTS.md §6 / §7 | `feat/expedite-threshold` 移入生命周期记录；新增 `feat/idea` 记录；`fix/account_rotation/5` 记入 §7.1 子修复分支 |
+
+### feat/expedite-threshold 启动
+
+| # | 文件路径 | 操作 | 说明 |
+|---|----------|------|------|
+| 1 | `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.h` | 新增 setter `set_expedite_min_level` | 加急门槛接口 |
+| 2 | `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.h` | 新增成员 `m_expedite_min_level` / `m_last_confirmed_min_level` | 门槛值与最近确认星级 |
+| 3 | `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.cpp` | 新增 `set_expedite_min_level` 实现 | setter |
+| 4 | `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.cpp` | `_run()` 移除旧的 `try_use_expedited` 块 | 改由 `recruit_one()` 内逐槽判定 |
+| 5 | `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.cpp` | `recruit_calc_task()` 写入 `m_last_confirmed_min_level` | 加急决策依据 |
+| 6 | `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.cpp` | `recruit_one()` 加急分支 | 4★+ 时 `recruit_now()` 替代 `confirm()` |
+| 7 | `src/MaaCore/Task/Interface/RecruitTask.cpp` | 解析 `expedite_min_level` 参数 | 新参数透传 |
+| 8 | `src/MaaWpfGui/Configuration/Single/MaaTask/RecruitTask.cs` | +`ExpediteMinLevel` 属性 | 配置模型 |
+| 9 | `src/MaaWpfGui/Models/AsstTasks/AsstRecruitTask.cs` | +`ExpediteMinLevel` 属性 + 序列化 | DTO |
+| 10 | `src/MaaWpfGui/ViewModels/UserControl/TaskQueue/RecruitSettingsUserControlModel.cs` | +`ExpediteMinLevelList` / `UseExpeditedMinLevel` / `UseExpeditedMinLevelVisible` | ViewModel |
+| 11 | `src/MaaWpfGui/Views/UserControl/TaskQueue/RecruitSettingsUserControl.xaml` | +门槛下拉框 | UI |
+| 12 | `src/MaaWpfGui/Res/Localizations/{zh-cn,en-us,ja-jp,ko-kr,zh-tw}.xaml` | +`ExpediteMinLevel*` 6 个 key | 五语本地化 |
+

@@ -36,6 +36,12 @@ public class RecruitTask : BaseTask, IJsonOnDeserialized
     public bool? UseExpedited { get; set; } = false;
 
     /// <summary>
+    /// Gets or sets 加急招募门槛：仅当组合最低星级 ≥ 此值时使用加急许可
+    /// 0 = 所有星级均加急（默认，向后兼容）；4 / 5 / 6 = 对应星级阈值
+    /// </summary>
+    public int ExpediteMinLevel { get; set; } = 0;
+
+    /// <summary>
     /// Gets or sets 单轮最大公招次数
     /// </summary>
     public int MaxTimes { get; set; } = 4;

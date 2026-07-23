@@ -25,6 +25,7 @@ public:
     AutoRecruitTask& set_need_refresh(bool need_refresh) noexcept;
     AutoRecruitTask& set_max_times(int max_times) noexcept;
     AutoRecruitTask& set_use_expedited(bool use_or_not) noexcept;
+    AutoRecruitTask& set_expedite_min_level(int level) noexcept;
     AutoRecruitTask& set_select_extra_tags(ExtraTagsMode select_extra_tags_mode) noexcept;
     AutoRecruitTask& set_first_tags(std::vector<std::string> first_tags) noexcept;
     AutoRecruitTask& set_preserve_tags(std::vector<RecruitConfig::TagId> skip_tags) noexcept;
@@ -169,6 +170,8 @@ protected:
     std::vector<int> m_confirm_level;
     bool m_need_refresh = false;
     bool m_use_expedited = false; // 是否使用加急许可
+    int m_expedite_min_level = 0;  // 加急门槛：≥ 此星级才加急，0 = 所有星级均加急
+    int m_last_confirmed_min_level = 0; // 最近一次确认的组合最低星级，供加急判定用
     ExtraTagsMode m_select_extra_tags_mode = ExtraTagsMode::NoExtra;
     std::vector<std::string> m_first_tags;
     std::vector<RecruitConfig::TagId> m_preserve_tags = { "支援机械" };

@@ -144,6 +144,12 @@ asst::AutoRecruitTask& asst::AutoRecruitTask::set_use_expedited(bool use_or_not)
     return *this;
 }
 
+asst::AutoRecruitTask& asst::AutoRecruitTask::set_expedite_min_level(int level) noexcept
+{
+    m_expedite_min_level = level;
+    return *this;
+}
+
 asst::AutoRecruitTask& asst::AutoRecruitTask::set_select_extra_tags(ExtraTagsMode select_extra_tags_mode) noexcept
 {
     m_select_extra_tags_mode = select_extra_tags_mode;
@@ -227,8 +233,6 @@ bool asst::AutoRecruitTask::_run()
 
     static constexpr int slot_retry_limit = 3;
 
-    bool try_use_expedited = m_use_expedited;
-
     while (m_cur_times < m_max_times) {
         auto start_rect = try_get_start_button(ctrler()->get_image());
         if (start_rect) {
@@ -257,34 +261,7 @@ bool asst::AutoRecruitTask::_run()
                 return false;
             }
             Log.info("There is no available start button.");
-            if (!try_use_expedited) {
-                return true;
-            }
-        }
-
-        if (try_use_expedited) {
-            if (need_exit()) {
-                return false;
-            }
-            Log.info("ready to use expedited plan");
-            if (recruit_now()) {
-                hire_all();
-            }
-            else {
-                Log.info("Failed to use expedited plan");
-                // There is a small chance that confirm button were clicked twice and got stuck into
-                // the bottom-right slot. ref: #1491
-                if (check_recruit_home_page()) {
-                    // ran out of expedited plan? stop trying
-                    // however, there is another possibility (#7266: all the slots are empty now)
-                    // if we can get another start btn, we still have a chance to continue
-                    try_use_expedited = try_get_start_button(ctrler()->get_image()).has_value();
-                }
-                else {
-                    Log.info("Not in home page after failing to use expedited plan.");
-                    return false;
-                }
-            }
+            return true;
         }
     }
     return true;
@@ -367,6 +344,18 @@ asst::AutoRecruitTask::recruit_result asst::AutoRecruitTask::recruit_one(const R
 
     if (need_exit()) {
         return recruit_result::failed;
+    }
+
+    // 若该槽位组合星级满足加急门槛，优先使用加急许可立即招募
+    if (m_use_expedited && m_last_confirmed_min_level >= m_expedite_min_level) {
+        Log.info("Recruit slot level", m_last_confirmed_min_level, ">= expedite threshold",
+                 m_expedite_min_level, ", using expedited plan.");
+        if (recruit_now()) {
+            hire_all();
+            return recruit_result::confirmed;
+        }
+        Log.info("Failed to use expedited plan, fall back to normal confirm.");
+        // 加急失败（许可耗尽）时降级为正常 9h 招募
     }
 
     if (m_set_time && !check_timer(calc_result.recruitment_time)) {
@@ -570,6 +559,7 @@ asst::AutoRecruitTask::calc_task_result_type asst::AutoRecruitTask::recruit_calc
         }
 
         const auto& final_combination = result_vec.front();
+        m_last_confirmed_min_level = final_combination.min_level;
 
         {
             json::object results_json;
