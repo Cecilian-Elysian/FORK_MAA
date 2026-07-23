@@ -263,6 +263,11 @@ B 服：`張三`，可輸入 `張三`、`張`、`三`
 ::: field name="expedite_times" type="number" optional  
 加急次數，僅在 `expedite` 為 `true` 時有效。預設無限次使用（直到 `times` 達到上限）。  
 :::  
+::: field name="expedite_min_level" type="number" optional default="0"  
+僅在確認招募最低星級 ≥ 設定值時使用加急許可。  
+<br>
+0 = 不限（相容舊行為），4 / 5 / 6 = 僅對應星級及以上加急。預設 0  
+:::  
 ::: field name="skip_robot" type="boolean" optional default="true"  
 已棄用，僅用於相容舊參數。  
 <br>

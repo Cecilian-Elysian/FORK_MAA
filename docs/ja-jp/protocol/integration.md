@@ -263,6 +263,11 @@ Bilibili：`张三`、入力可能：`张三`、`张`、`三`
 ::: field name="expedite_times" type="number" optional  
 緊急招集の回数。`expedite` が true の場合のみ有効です。デフォルトは制限なし（`times` の上限まで）です。  
 :::  
+::: field name="expedite_min_level" type="number" optional default="0"  
+確認した最低星級 ≥ 設定値 のときのみ加急許可を使用。  
+<br>
+0 = 制限なし（旧仕様互換）、4 / 5 / 6 = 当該星級以上のみ加急。デフォルト 0  
+:::  
 ::: field name="skip_robot" type="boolean" optional default="true"  
 非推奨です。旧パラメータ互換のためにのみ残されています。  
 <br>

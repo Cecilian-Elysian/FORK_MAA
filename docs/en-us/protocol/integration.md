@@ -263,6 +263,11 @@ Whether to use Expedited Plans.
 ::: field name="expedite_times" type="number" optional  
 Number of expedites, only effective when `expedite` is true. By default unlimited (until `times` limit is reached).  
 :::  
+::: field name="expedite_min_level" type="number" optional default="0"  
+Only use expedited plan when the confirmed min operator level ≥ threshold.  
+<br>
+0 = unlimited (legacy compat), 4 / 5 / 6 = only expedite that tier or higher. Default 0  
+:::  
 ::: field name="skip_robot" type="boolean" optional default="true"  
 Deprecated and kept only for backward compatibility.  
 <br>

@@ -252,6 +252,11 @@ v6.8.0부터 폐기됨. 대신 `medicine_expire_days`를 사용하세요.
 ::: field name="expedite_times" type="number" optional  
 즉시 완료 사용 횟수, `expedite`가 true일 때만 유효. 기본값은 무제한(즉 `times` 상한까지)  
 :::  
+::: field name="expedite_min_level" type="number" optional default="0"  
+확인된 최소 등급 ≥ 설정값일 때만 가속 채용권 사용.  
+<br>
+0 = 무제한（旧 동작 호환）、4 / 5 / 6 = 해당 등급 이상만 가속. 기본 0  
+:::  
 ::: field name="skip_robot" type="boolean" optional default="true"  
 폐기 예정이며 구형 파라미터 호환용으로만 유지됩니다.  
 <br>
