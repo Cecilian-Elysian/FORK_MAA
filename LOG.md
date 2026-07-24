@@ -635,3 +635,56 @@ dotnet build src/MaaWpfGui/MaaWpfGui.csproj -c Release -p:Platform=x64
 | 3 | `AGENTS.md` | 修改 | §6 清空（无进行中分支）；§7.3 更新为已合入状态；§7 开头补充 2026-07-23 删除日期 |
 | 4 | `LOG.md` | 修改 | 本节 |
 
+## 2026-07-24
+
+### fix/account-official-recognize 启动
+
+「开始唤醒」任务在 **官服（Official）+ 账号轮换** 场景下卡死。`install/debug/asst.log` 实测：MAA 成功识别 `StartToWakeUp.png`（score 0.926）与 `AccountManager.png`（score 0.904），但 `LoginOther` 之后 `AccountManagerOfficial` 与 `AccountManagerBili` 30 次 retry 全失败，`AccountSwitchTask::navigate_to_start_page()` 走不到任一合法返回路径，最终 `Login failed, entering game-restart loop`。
+
+根因（`resource/tasks/tasks.json:805-807`）：
+
+```json
+"AccountManagerOfficial": {
+    "roi": [570, 165, 140, 80]    ← 只有 roi，无 template/algorithm/text
+}
+```
+
+对比 `AccountManagerBili`（第 808-813 行）已有 `algorithm: "OcrDetect"` + `text: ["登录记录"]`，官服定义残缺。修复方案 A+C：补全官服 OCR 识别 + `AccountSwitchTask::navigate_to_start_page()` 加诊断日志。仅在本分支 `fix/account-official-recognize` 修复，不推上游。
+
+| # | 文件/对象 | 操作 | 说明 |
+|---|----------|------|------|
+| 1 | `fix/account-official-recognize` | 新建分支 | 从 `branch` 拉出 |
+| 2 | `resource/tasks/tasks.json:805-807` | 待修改 | `AccountManagerOfficial` 补 OcrDetect 识别「登录记录」 |
+| 3 | `src/MaaCore/Task/Miscellaneous/AccountSwitchTask.cpp:65-84` | 待修改 | `navigate_to_start_page()` 加诊断日志 |
+
+### fix/account-official-recognize 实施完成
+
+| # | 文件 | 操作 | 说明 |
+|---|------|------|------|
+| 1 | `resource/tasks/tasks.json:805-810` | 修改 | `AccountManagerOfficial` 由 `{"roi":[570,165,140,80]}` 补全为 `{"Doc":"官方服账号切换界面识别，与 B 服统一 OCR「登录记录」","algorithm":"OcrDetect","text":["登录记录"],"roi":[237,50,771,242]}`（与 B 服 `AccountManagerBili` 对齐） |
+| 2 | `src/MaaCore/Task/Miscellaneous/AccountSwitchTask.cpp:71` | 修改 | `navigate_to_start_page()` 在 `get_last_task_name()` 之后追加 `Log.info(__FUNCTION__, "last matched task:", last_name);`，便于后续识别失败时定位 |
+| 3 | `src/MaaCore/Task/Miscellaneous/AccountSwitchTask.cpp:71-77` | 修改 | 4 个 `else if` 合并为单 `if (... || ... \|\| ... \|\| ...)`，减少分支嵌套 |
+| 4 | `install/MaaCore.dll` | 部署 | Release 编译产物，时间戳 2026/7/24 12:45:38，字节特征串 `last matched task:` 命中（offset 3384944 / size 4188160） |
+| 5 | `install/resource/tasks/tasks.json` | 部署 | 同步源端 SHA256（`39972BD09F9EDEA0E7B7D71F8E084071126521E333F9DEDD3296115BC6F5C027`），177232 字节，字节特征串 `官方服账号切换` 命中（offset 25825） |
+| 6 | `LOG.md` | 修改 | 本节 |
+
+**编译结果**: `cmake --build build --target MaaCore -j 4 --config Release` 成功，仅遗留标准 `LNK4098` 默认库警告（与上游一致）。`cmake --install build --config Release` 成功（`MaaUpdater` 报错为 AGENTS.md §4.1 已知 VS 2026 SDK 路径 bug，不影响 C++ 端部署）。
+
+**部署产物验证**:
+- `install/MaaCore.dll` 2026/7/24 12:45:38（4188160 字节）
+- `install/resource/tasks/tasks.json` 2026/7/24 12:45:11（177232 字节）
+- 源端 `resource/tasks/tasks.json` ↔ 安装端 SHA256 完全一致
+
+**预期效果**:
+1. 官服账号切换时，`LoginOther` → 识别 `登录记录` OCR → 命中 `AccountManagerOfficial` → 返回 `true` → 进入 `AccountSwitchTask::select_account()` 选择目标账号
+2. 即便 OCR 仍未命中，`Log.info("last matched task:", last_name)` 输出实际最后匹配节点，便于排错
+3. 单账号场景（`AccountName` 为空时 `m_account_switch_task_ptr` 仍被 disable）行为不变
+
+**待手动验证（需模拟器环境）**:
+1. 单账号 + StartGame=true 跑完整日常 → StartUp 完成进入首页
+2. 双账号轮换（192→189）→ 验证 `AccountManagerOfficial` 命中，控制台/日志显示 `last matched task: AccountManagerOfficial`
+3. B 服回归测试 → 不破坏 B 服原有 `登录记录` OCR 行为
+4. 切号中途异常 → 看 `last matched task:` 输出是否仍有诊断信息
+
+**未推送上游**: 仅本仓库 `branch` 修复，不向 upstream 提 PR。
+
