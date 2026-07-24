@@ -21,7 +21,7 @@ asst::StartUpTask::StartUpTask(const AsstCallback& callback, Assistant* inst) :
         ->set_tasks({ "StartAtHome", "StartWithSanity", "SwitchTheme@ToggleSettingsMenu", "StartUpBegin" })
         .set_times_limit("ReturnButton", 0)
         .set_times_limit("StartButton1", 0)
-        .set_task_delay(Config.get_options().task_delay * 2)
+        .set_task_delay(Config.get_options().task_delay)
         .set_retry_times(50);
     m_start_game_task_ptr->set_retry_times(0);
     m_account_switch_task_ptr->set_retry_times(0);

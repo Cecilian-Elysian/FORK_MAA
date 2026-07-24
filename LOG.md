@@ -4,6 +4,32 @@
 
 ## 2026-07-24
 
+### fix/expedite-threshold StartUp 双重缓冲清理
+
+调研 `upstream/dev-v2` 与本仓库对比后确认：`src/MaaCore/Task/Interface/StartUpTask.cpp:24` 的 `.set_task_delay(Config.get_options().task_delay * 2)` 双重缓冲在默认 `task_delay=0`（`GeneralConfig.h:34`）下无任何效果（`0*2=0`），且与 upstream `dev-v2` 一致（无 PR 推动调整）。本次清理纯粹是「删无意义代码」，不修改任何 `postDelay` / `preDelay` / `retry_times` / ROI / OCR 算法，遵循「稳定优先」原则，follow upstream 基线。
+
+| # | 文件 | 操作 | 说明 |
+|---|------|------|------|
+| 1 | `src/MaaCore/Task/Interface/StartUpTask.cpp:24` | 修改 | `.set_task_delay(Config.get_options().task_delay * 2)` → `.set_task_delay(Config.get_options().task_delay)`，删 `* 2` |
+| 2 | `AGENTS.md §6` | 修改 | `fix/expedite-threshold` 角色描述追加 `;StartUp 双重缓冲清理` |
+| 3 | `LOG.md` | 修改 | 本节 |
+
+**行为变化**：默认 `task_delay=0` 时新旧完全等价（`0*2==0`）；仅当用户在 WPF 把 `task_delay` 调到 >0 时，StartUp 阶段不再比日常任务多等一倍，更符合直觉。
+
+**预期效果**：无任何可观测的运行时差异；仅清理一行无意义代码 + 文档同步。
+
+**风险评估**：
+- 编译风险：0（删 4 字符）
+- 运行时回归：0（默认 task_delay=0 等价）
+- 已有用户配置：仅影响手动调高 task_delay 的用户，行为更直观
+- 回退成本：`git revert` 单 commit 即还原
+
+**未做项**（明确排除，遵循 upstream 基线）：
+- `GameStartCheckResourceOCR.postDelay: 5000` / `GameStartUpdateOCR.postDelay: 5000` / `LoginOther.preDelay: 3000` 等 tasks.json 延迟
+- `set_retry_times(50)` / `set_retry_times(30)` 切号重试上限
+- `MaxRestartAttempts=5` 重启循环
+- ROI 缩窄 / OCR 算法调整
+
 ### fix/account-official-recognize cherry-pick 同步到 fix/expedite-threshold
 
 `fix/expedite-threshold`（HEAD `301f90897a`，branch point = `9d8d021610`）branch point 早于 `branch` 上今天 12:46 的官方服账号切换识别补全 `784d9005f6`，导致该分支部署的 `install/MaaCore.dll` 仍带 `AccountManagerOfficial` 残缺定义 bug —— 官服 + 账号轮换场景下 `ProcessTask` 30 次 retry 全失败，进 `Login failed, entering game-restart loop` 卡在登录页。实测环境（MAA 主界面日志 12:19: `StartToWakeUp.png` 命中、登录页 OCR 不识别）确认复现。
