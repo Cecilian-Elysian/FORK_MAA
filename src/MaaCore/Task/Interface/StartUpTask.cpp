@@ -44,11 +44,20 @@ bool asst::StartUpTask::run()
         return false;
     }
 
+    // 1. 先登录到主界面（处理鹰角登录弹窗 / 资源完整性弹窗 / 战斗中识别 等）
+    if (!m_start_up_task_ptr->run()) {
+        Log.warn(__FUNCTION__, "| Login to home failed before account switch");
+    }
+
+    // 2. 切号（已登录状态下；从主界面进入 AccountManager）
     if (m_account_switch_task_ptr->run()) {
+        // 3. 切号后再次登录到主界面（新账号需重新登录）
         if (!m_start_up_task_ptr->run()) {
-            return false;
+            Log.warn(__FUNCTION__, "| Login after account switch failed");
         }
-        return true;
+        else {
+            return true;
+        }
     }
 
     if (!m_start_game) {
@@ -65,12 +74,18 @@ bool asst::StartUpTask::run()
             continue;
         }
 
+        // 改：restart_game 后先登录到主界面
+        if (!m_start_up_task_ptr->run()) {
+            Log.warn(__FUNCTION__, "| Login to home failed after restart, retrying game restart");
+            continue;
+        }
+
         if (!m_account_switch_task_ptr->run()) {
             Log.warn(__FUNCTION__, "| Account switch failed after restart, retrying game restart");
             continue;
         }
 
-        Log.info(__FUNCTION__, "| Game restarted, retrying login navigation");
+        Log.info(__FUNCTION__, "| Game restarted, login + account switch OK");
         if (m_start_up_task_ptr->run()) {
             return true;
         }

@@ -4,6 +4,58 @@
 
 ## 2026-07-24
 
+### fix/expedite-threshold StartUp::run 重排：先登录再切号
+
+多账号切号场景实测发现 20+ 秒等待：游戏启动后停在鹰角登录弹窗（HyperGryph server auth popup，显示 `192****6952` + 「登录」按钮），MAA 的 `AccountSwitchTask::navigate_to_start_page` 立即尝试切号，但 `SwitchAccount@StartUpBegin` 链（`tasks.json:729-737`）只识别**游戏内账号管理界面**（`AccountManagerOfficial` / `AccountManagerBili` / `Txwy`），不识别鹰角登录弹窗；30 retry 全部失败后进入 `Login failed, entering game-restart loop` 5x restart_game 死循环。
+
+实测日志证据（`install/debug/asst.log` 13:47:40-13:47:54）：
+
+```
+13:47:45  GameStartCheckResourceOCR 命中 (5s postDelay)
+13:47:51  GameStart.png 命中 → click (628, 685)
+13:47:54  last matched task: SwitchAccount@GameStart
+13:47:54  WRN "Account switch failed after restart, retrying game restart"
+```
+
+**根因（架构问题，非性能问题）**：`StartUpTask::run` 顺序为 `start_game → account_switch → start_up`，**假设游戏已登录到主界面**。当游戏在鹰角登录弹窗时：
+- `m_account_switch_task_ptr->run()` 立即失败（找不到 AccountManager 页面）
+- 整个 StartUp 任务进入 5x restart_game 循环，每次 restart 同样的事情再发生
+
+**修复**：重排为 `start_game → start_up → account_switch → start_up`，先确保游戏登录到主界面，再切号，再登录。restart_game 循环内也相应先 `m_start_up_task_ptr->run()` 后 `m_account_switch_task_ptr->run()`。
+
+`cherry-pick 784d9005f6`（`AccountManagerOfficial` 残缺 OCR 补全）解决的是「切号场景 30 retry 找不到 AccountManager」的不同子问题，**没有改变架构顺序**；本 commit 才是**架构层面的修复**。
+
+| # | 文件 | 操作 | 说明 |
+|---|------|------|------|
+| 1 | `src/MaaCore/Task/Interface/StartUpTask.cpp:30-81` | 修改 | `StartUpTask::run` 重排：`start_game → start_up → account_switch → start_up`；5x restart_game 循环内同样改为先登录再切号 |
+| 2 | `AGENTS.md §6` | 修改 | `fix/expedite-threshold` 角色描述追加「;StartUp::run 重排（修切号前未登录的 20s 等待）」 |
+| 3 | `LOG.md` | 修改 | 本节 |
+
+**4 类场景行为矩阵**：
+
+| 场景 | 改前 | 改后 |
+|------|------|------|
+| 多账号切号 + 鹰角登录弹窗 | 切号失败 → 5x restart → 失败（20s 等待） | 自动登录 → 切号 → 再次登录 → 成功 |
+| 多账号切号 + 已在主界面 | 切号 → 登录 → 成功 | fast-path 登录 → 切号 → 登录 → 成功（多 0.5s fast-path 开销） |
+| 单账号 + 鹰角登录弹窗 | 切号（disabled）→ 登录 → 成功 | 登录 → 切号（disabled）→ fast-path 登录 → 成功（多 0.5s） |
+| 单账号 + 已在主界面 | 切号（disabled）→ 登录 → 成功 | 登录（fast-path 跳过）→ 切号（disabled）→ 登录（fast-path）→ 成功（多 0.5s） |
+
+**风险评估**：
+- 编译风险：0（仅调整控制流）
+- 单账号流程：多 0.5s fast-path 开销（StartAtHome 模板命中即跳过）
+- 切号流程：fast-path 命中 → 跳过 `start_up` 任务链 → 直接走切号 → 0 影响
+- 与 upstream 偏离：upstream 仍 `切号优先于登录` 架构；本 fork 因多账号场景修正
+- 推 upstream：仅本 fork 修复，不推
+
+**预期效果**：
+- 多账号切号场景：30-40s → **20-30s**（消除 20s 等待）
+- 单账号场景：5-20s → 3-15s（StartAtHome fast-path 多走一次，可忽略）
+
+**手动验收**：
+1. 多账号切号 + 鹰角登录弹窗 → 启动 MAA → 观察自动点「登录」→ 进主界面 → 切号 → 再次登录
+2. 多账号切号 + 已在主界面 → 启动 MAA → 直接切号
+3. 单账号 → 启动 MAA → 正常登录
+
 ### fix/expedite-threshold StartUp 双重缓冲清理
 
 调研 `upstream/dev-v2` 与本仓库对比后确认：`src/MaaCore/Task/Interface/StartUpTask.cpp:24` 的 `.set_task_delay(Config.get_options().task_delay * 2)` 双重缓冲在默认 `task_delay=0`（`GeneralConfig.h:34`）下无任何效果（`0*2=0`），且与 upstream `dev-v2` 一致（无 PR 推动调整）。本次清理纯粹是「删无意义代码」，不修改任何 `postDelay` / `preDelay` / `retry_times` / ROI / OCR 算法，遵循「稳定优先」原则，follow upstream 基线。
