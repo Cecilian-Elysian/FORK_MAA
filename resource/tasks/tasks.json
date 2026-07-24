@@ -811,15 +811,15 @@
         "next": ["AccountManagerOfficial", "AccountManagerBili"]
     },
     "AccountManagerOfficial": {
-        "Doc": "官方服账号切换界面识别，与 B 服统一 OCR「登录记录」",
+        "Doc": "官方服账号切换界面识别，与 B 服统一 OCR「登录记录 / 上次登录」",
         "algorithm": "OcrDetect",
-        "text": ["登录记录"],
+        "text": ["登录记录", "上次登录"],
         "roi": [237, 50, 771, 242]
     },
     "AccountManagerBili": {
         "Doc": "b 服的标题大小会跟着 dpi 变，现在还没特征点匹配，识别文字",
         "algorithm": "OcrDetect",
-        "text": ["登录记录"],
+        "text": ["登录记录", "上次登录"],
         "roi": [237, 50, 771, 242]
     },
     "AccountCurrentOCR": {

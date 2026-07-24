@@ -4,6 +4,49 @@
 
 ## 2026-07-24
 
+### fix/expedite-threshold 账号列表 OCR 适配 UI 改版
+
+**修订上一个 commit (`2715162c3d`)** 的切号链修复。上一版在切号链加了 `SwitchAccount@StartToWakeUpOCR` OCR 兜底以处理鹰角登录弹窗场景，但**主路径 `AccountManagerOfficial` 的 OCR 文本仍是单文本「登录记录」**，与鹰角登录账号列表页改版后的实际 UI 不匹配——用户实际账号列表显示的是「**上次登录 X 分钟前**」而非「登录记录」，导致切号链最终 OCR 检查失败、30 retry 全失败、5x restart_game 死循环。
+
+用户提供的截图证据：
+- 截图 1（主菜单）：「开始唤醒」+「账号管理」按钮
+- 截图 2（鹰角登录弹窗）：「192****6952 (最近)」+「登录」
+- 截图 3（账号列表）：**3 个账号行**：
+  - 192****6952 (最近)
+  - 192****6952 (上次登录 9分钟前)
+  - 189****0830 (上次登录 39分钟前)
+
+**用户提示关键差异**：
+- 「上次登录」字样：经常登录的账号显示
+- 「登录记录」字样：长时间不登陆的账号显示
+
+**修复**：`AccountManagerOfficial.text` 与 `AccountManagerBili.text` 从单文本 `["登录记录"]` 改为双文本 `["登录记录", "上次登录"]`，覆盖新旧 UI 两种显示模式。
+
+| # | 文件 | 操作 | 说明 |
+|---|------|------|------|
+| 1 | `resource/tasks/tasks.json:813-824` | 修改 | `AccountManagerOfficial` 与 `AccountManagerBili` 的 `text` 从 `["登录记录"]` → `["登录记录", "上次登录"]`；Doc 同步更新 |
+| 2 | `AGENTS.md §6` | 修改 | `fix/expedite-threshold` 角色描述追加「;账号列表 OCR 适配 UI 改版（登录记录 / 上次登录 双文本兜底）」 |
+| 3 | `LOG.md` | 修改 | 本节 |
+
+**行为矩阵**：
+
+| 账号使用频率 | 显示文本 | 改前 | 改后 |
+|-------------|---------|------|------|
+| 经常登录 | 「上次登录 X 分钟前」 | ✗ OCR 不命中 → 30 retry 失败 | ✓ 命中 |
+| 长时间未登录 | 「登录记录」 | ✓ 命中（保留） | ✓ 命中 |
+| 混合账号列表 | 同时出现两种 | 部分命中 | 全部命中 |
+
+**风险评估**：
+- 双文本误匹配：`fullMatch: true` 保留 + ROI `[237, 50, 771, 242]` 限定顶部标题栏；其他页面无「登录记录」/「上次登录 X 分钟前」字样
+- 与 upstream 偏离：upstream 仍单文本 `["登录记录"]`；本 fork 因 UI 改版适配，**不推 upstream**
+- ROI 微调：当前 ROI 与原版一致；如新 UI 账号位置超出 ROI 再单独调整
+
+**预期效果**：
+- 多账号切号 + 主菜单（截图 1）→ 点击「账号管理」→ 账号列表（截图 3）→ OCR 命中「上次登录」→ 选号 → 「登录」→ home
+- 全程 30-40s 内完成，无 20s 等待
+
+**推 upstream**：仅本 fork 修复，不推。
+
 ### fix/expedite-threshold StartUp::run 恢复原序 + 切号链 OCR 兜底
 
 **修订上一个 commit (`3f411e494a`)**。上一版将 `StartUpTask::run` 重排为 `start_game → start_up → account_switch → start_up`，在 StartUpTask 层显式调用 `start_up` 处理登录前的鹰角弹窗。但用户反馈该架构过于侵入式——切号应该「先进入账号管理再切账号」，由 `AccountSwitchTask::navigate_to_start_page` 内部负责导航到 AccountManager，而非在 StartUpTask 层拆出登录步骤。
