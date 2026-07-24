@@ -2,6 +2,34 @@
 
 日志规范：每次修改文件后，在此记录修改内容。
 
+## 2026-07-24
+
+### fix/account-official-recognize cherry-pick 同步到 fix/expedite-threshold
+
+`fix/expedite-threshold`（HEAD `301f90897a`，branch point = `9d8d021610`）branch point 早于 `branch` 上今天 12:46 的官方服账号切换识别补全 `784d9005f6`，导致该分支部署的 `install/MaaCore.dll` 仍带 `AccountManagerOfficial` 残缺定义 bug —— 官服 + 账号轮换场景下 `ProcessTask` 30 次 retry 全失败，进 `Login failed, entering game-restart loop` 卡在登录页。实测环境（MAA 主界面日志 12:19: `StartToWakeUp.png` 命中、登录页 OCR 不识别）确认复现。
+
+upstream `MaaAssistantArknights/MaaAssistantArknights` `dev-v2` 仍带同款 bug，无对应 PR；本 fork `branch` 领先 upstream。
+
+| # | 文件 | 操作 | 说明 |
+|---|------|------|------|
+| 1 | `resource/tasks/tasks.json:805-810` | cherry-pick from `784d9005f6` | `AccountManagerOfficial` 由 `{"roi":[570,165,140,80]}` 补全为 `{"Doc":"...","algorithm":"OcrDetect","text":["登录记录"],"roi":[237,50,771,242]}`（与 `AccountManagerBili` 对齐） |
+| 2 | `src/MaaCore/Task/Miscellaneous/AccountSwitchTask.cpp:68-83` | cherry-pick from `784d9005f6` | `navigate_to_start_page()` 加 `Log.info(... last matched task ...)` 诊断日志；4 个 `else if` 合并为单 `if (... \|\| ... \|\| ... \|\| ...)` |
+| 3 | `LOG.md` | cherry-pick from `784d9005f6` | 同步 `### fix/account-official-recognize 启动` 与 `### fix/account-official-recognize 实施完成` 两节；冲突解决：保留本分支 `fix/expedite-threshold` 两节，追加新两节（无内容丢失） |
+| 4 | `AGENTS.md §7.5` | cherry-pick from `da157d163d` | 新增 `fix/account-official-recognize` 生命周期记录小节 |
+| 5 | `AGENTS.md §6` | 不变 | `fix/expedite-threshold` 仍为进行中分支（未合入 branch），待本分支合入 `branch` 时再清除 |
+| 6 | `LOG.md` | 修改 | 本节（cherry-pick 同步事件说明） |
+
+**Commit 链**：
+
+| SHA | 来源 | 标题 |
+|-----|------|------|
+| `6011051af2` | cherry-pick from `784d9005f6` | `fix(startup): 官方服账号切换界面识别补全 + 切号诊断日志` |
+| `f241b2160b` | cherry-pick from `da157d163d` | `docs: 登记 fix/account-official-recognize 分支生命周期` |
+
+**作用域声明**：
+- 与 `§7.5 fix/account-official-recognize` 同名不同分支生命周期——本节记录的是「`branch` 上游修复 cherry-pick 到 `fix/expedite-threshold`」的同步事件，不重复登记上游生命周期。
+- §6 `fix/expedite-threshold` 仍标进行中；待用户后续决定 FF / `--no-ff` 合入 `branch` 时一并清除。
+
 ## 2026-07-15
 
 ### 分支工作文档约束调整
