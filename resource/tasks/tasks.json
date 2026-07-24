@@ -787,10 +787,18 @@
         "next": ["LoginOther"]
     },
     "SwitchAccount@StartToWakeUp": {
-        "Doc": "干掉点击登录",
+        "Doc": "切号场景：开始唤醒按钮识别（与 StartUpThemes@StartToWakeUp 对齐）",
         "template": "StartToWakeUp.png",
         "action": "DoNothing",
-        "next": ["AccountManager"]
+        "next": ["AccountManager", "SwitchAccount@StartToWakeUpOCR"]
+    },
+    "SwitchAccount@StartToWakeUpOCR": {
+        "Doc": "切号场景：鹰角登录弹窗 OCR 兜底（与 StartUpThemes@StartToWakeUpOCR 对齐）",
+        "baseTask": "SwitchAccount@StartToWakeUp",
+        "algorithm": "OcrDetect",
+        "text": ["开始唤醒", "登录", "登", "录"],
+        "fullMatch": true,
+        "roi": [373, 145, 535, 430]
     },
     "AccountManager": {
         "action": "ClickSelf",

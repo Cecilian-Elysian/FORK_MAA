@@ -4,6 +4,69 @@
 
 ## 2026-07-24
 
+### fix/expedite-threshold StartUp::run 恢复原序 + 切号链 OCR 兜底
+
+**修订上一个 commit (`3f411e494a`)**。上一版将 `StartUpTask::run` 重排为 `start_game → start_up → account_switch → start_up`，在 StartUpTask 层显式调用 `start_up` 处理登录前的鹰角弹窗。但用户反馈该架构过于侵入式——切号应该「先进入账号管理再切账号」，由 `AccountSwitchTask::navigate_to_start_page` 内部负责导航到 AccountManager，而非在 StartUpTask 层拆出登录步骤。
+
+**新架构（恢复切号原序 + 切号链补 OCR 兜底）**：
+
+```cpp
+// StartUpTask::run 主流程（恢复原序）
+start_game → account_switch → start_up
+
+// restart_game 循环（恢复原序）
+restart_game → account_switch → start_up
+```
+
+切号 `navigate_to_start_page` 内部走 `SwitchAccount@StartUpBegin` 链，原链中 `SwitchAccount@StartToWakeUp` 仅模板匹配（`tasks.json:789-794`），**缺 OCR 兜底**——当游戏停在鹰角登录弹窗（`StartToWakeUp.png` 不匹配）时无 fallback，导致 30 retry 全失败、5x restart_game 死循环、20s 等待。
+
+**修复**：参考 `StartUpThemes` 的 `StartToWakeUp` + `StartToWakeUpOCR` 配对模式，让切号链也支持 OCR 兜底：
+
+```json
+"SwitchAccount@StartToWakeUp": {
+    "template": "StartToWakeUp.png",
+    "action": "DoNothing",
+    "next": ["AccountManager", "SwitchAccount@StartToWakeUpOCR"]   // 新增 OCR 兜底
+},
+"SwitchAccount@StartToWakeUpOCR": {
+    "baseTask": "SwitchAccount@StartToWakeUp",
+    "algorithm": "OcrDetect",
+    "text": ["开始唤醒", "登录", "登", "录"],
+    "fullMatch": true,
+    "roi": [373, 145, 535, 430]
+}
+```
+
+`next` 顺序：`AccountManager` 在前（模板匹配时直接走），`SwitchAccount@StartToWakeUpOCR` 在后（兜底）；与 `StartUpThemes` 一致。
+
+**4 类场景行为矩阵**：
+
+| 场景 | 上一个 commit (`3f411e494a`) | 本 commit |
+|------|------------------------------|----------|
+| 多账号切号 + 鹰角登录弹窗 | 显式 start_up 点「登录」→ 切号 → 再次登录 | 切号链 OCR 命中「登录」→ 点击 → AccountManager → 切号 → 登录 |
+| 多账号切号 + 已在主界面 | 显式 start_up 走完 → 切号 → 再次登录 | 切号链直接 Settings → Account → 切号 → 登录（少一次 start_up） |
+| 单账号 + 鹰角登录弹窗 | start_up 先登录 → 切号（disabled）→ 再次登录 | 切号链 OCR 命中 → AccountManager（disabled）→ 切号（disabled）→ 登录 |
+| 单账号 + 已在主界面 | 显式 start_up → 切号（disabled）→ 再次登录 | 切号链 Settings → Account（disabled）→ 切号（disabled）→ 登录 |
+
+| # | 文件 | 操作 | 说明 |
+|---|------|------|------|
+| 1 | `src/MaaCore/Task/Interface/StartUpTask.cpp:30-81` | 改回原序 | `start_game → account_switch → start_up`；restart 循环也改回原序 |
+| 2 | `resource/tasks/tasks.json:789-803` | 修改 | `SwitchAccount@StartToWakeUp.next` 追加 `SwitchAccount@StartToWakeUpOCR` 兜底；新增 `SwitchAccount@StartToWakeUpOCR` OCR 任务 |
+| 3 | `AGENTS.md §6` | 修改 | `fix/expedite-threshold` 角色描述更新 |
+| 4 | `LOG.md` | 修改 | 本节 |
+
+**风险评估**：
+- 编译风险：0
+- 行为回归：原序 = 与 upstream 架构一致；单账号 / 多账号 / 已在主界面场景均已覆盖
+- OCR 误识别风险：`SwitchAccount@StartToWakeUpOCR.fullMatch: true` 限定词表「开始唤醒/登录/登/录」；`next` 顺序先模板后 OCR，模板匹配时直接走 AccountManager，不会触发 OCR
+- ROI 微调：当前 ROI `[373, 145, 535, 430]` 与 `StartUpThemes@StartToWakeUpOCR` 一致；如鹰角弹窗「登录」按钮位置超出 ROI，再单独调整
+
+**预期效果**：
+- 多账号切号 + 鹰角登录弹窗：30-40s（含 20s 等待）→ **20-30s**（消除 20s 等待）
+- 单账号 / 已在主界面场景：与原序等价
+
+**推 upstream**：仅本 fork 修复，不推。
+
 ### fix/expedite-threshold StartUp::run 重排：先登录再切号
 
 多账号切号场景实测发现 20+ 秒等待：游戏启动后停在鹰角登录弹窗（HyperGryph server auth popup，显示 `192****6952` + 「登录」按钮），MAA 的 `AccountSwitchTask::navigate_to_start_page` 立即尝试切号，但 `SwitchAccount@StartUpBegin` 链（`tasks.json:729-737`）只识别**游戏内账号管理界面**（`AccountManagerOfficial` / `AccountManagerBili` / `Txwy`），不识别鹰角登录弹窗；30 retry 全部失败后进入 `Login failed, entering game-restart loop` 5x restart_game 死循环。
