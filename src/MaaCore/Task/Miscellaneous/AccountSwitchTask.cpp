@@ -68,16 +68,9 @@ bool asst::AccountSwitchTask::navigate_to_start_page()
     task.set_retry_times(30);
     task.run();
     std::string last_name = task.get_last_task_name();
-    if (last_name == "LoginOther") {
-        return true;
-    }
-    else if (last_name == "AccountManagerOfficial") {
-        return true;
-    }
-    else if (last_name == "AccountManagerBili") {
-        return true;
-    }
-    else if (last_name == "AccountManagerTxwy") {
+    Log.info(__FUNCTION__, "last matched task:", last_name);
+    if (last_name == "LoginOther" || last_name == "AccountManagerOfficial"
+        || last_name == "AccountManagerBili" || last_name == "AccountManagerTxwy") {
         return true;
     }
     return false;
