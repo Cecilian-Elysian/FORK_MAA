@@ -174,7 +174,7 @@ feat 合并到 `branch` 后：
 
 ## 7. 分支生命周期记录
 
-以下分支已完成使命，已于 2026-07-16 / 2026-07-23 删除（本地删，远端保留）。
+以下分支已完成使命，已于 2026-07-16 / 2026-07-23 / 2026-07-24 删除（本地删，远端保留）。
 
 ### 7.1 feat/account_rotation
 
@@ -214,6 +214,19 @@ feat 合并到 `branch` 后：
 | 生命周期 | 创建时间未知 → 2026-07-23 删除 |
 | 关键 commit | `dc2212d54b`（Merge branch 'feat/account_rotation' into branch） |
 | 详见 | 无 |
+
+### 7.5 fix/account-official-recognize
+
+| 项 | 内容 |
+|----|------|
+| 用途 | 修复「开始唤醒」任务在 **官服（Official）+ 账号轮换** 场景下卡死 |
+| 根因 | `resource/tasks/tasks.json` 第 805-807 行 `AccountManagerOfficial` 仅定义 `roi`、无 `algorithm`/`template`/`text`，MAA 无法识别官服账号切换界面，30 次 retry 全失败 → `Login failed, entering game-restart loop` |
+| 修复 | `AccountManagerOfficial` 补全 `OcrDetect` + `text: ["登录记录"]`（与 `AccountManagerBili` 对齐）；`AccountSwitchTask::navigate_to_start_page()` 加 `Log.info("last matched task:", last_name)` 诊断日志 |
+| 生命周期 | 2026-07-24 创建 → 2026-07-24 FF 合入 `branch` |
+| 关键 commit | `784d9005f6`（fix(startup): 官方服账号切换界面识别补全 + 切号诊断日志）|
+| 子修复分支 | 无 |
+| 作用域 | 仅本仓库 `branch` 修复，不推 upstream |
+| 详见 | `LOG.md` 2026-07-24 |
 
 
 ## 8. 关键参考链接
