@@ -216,6 +216,7 @@ feat/<name>, fix/<name> ────────────┘
 |------|------|----------|
 | `fix/account-switch-retry` | LoginOther OCR 不匹配时追加 AccountManagerPageConfirm 模板兜底（DoNothing），消除 ~18s retry 空等；retry_times 保持 30 不变 | `staging`（依赖其诊断日志改动） |
 | `fix/account_rotation/6` | 从 `branch` 拉出，从属 `feat/account_rotation`（已合入） | 账号轮换切号时左侧任务面板不刷新：`AdvanceAccountCycle` 未重置任务行状态/进度计数 + StartUp 行 `_taskIds` 丢失；顺带加「当前账号」Header 解决「误以为同一账号跑两次」的视觉混淆 |
+| `fix/account-switch-template-missing` | 从 `branch` 拉出，修正 `fix/account-switch-retry` 修正版（`41cfcb736b`）漏提交 `AccountManagerPageConfirm.png` 的资源完整性漏洞；`TemplResource::load` 期望 `task_name + .png` 存在，不依赖 `baseTask` 继承 | `staging`（连带修复资源损坏导致 MAA 无法启动的连锁错误） |
 
 
 ## 7. 分支生命周期记录
@@ -273,6 +274,45 @@ feat/<name>, fix/<name> ────────────┘
 | 子修复分支 | 无 |
 | 作用域 | 仅本仓库 `branch` 修复，不推 upstream |
 | 详见 | `LOG.md` 2026-07-24 |
+
+### 7.6 fix/account-switch-retry
+
+| 项 | 内容 |
+|----|------|
+| 用途 | 修切号时 `AccountSwitchTask::navigate_to_start_page` 重试预算与 OCR 兜底 |
+| 根因 | 导航首步（`SwitchAccount@StartUpBegin` 含 22 个 next 候选）最坏需 ~13 次 retry 才有 UI 元素可识别；初版误判 `LoginOther` OCR 30×0.6s = 18s 空等，将 retry_times 降至 5 后 `TaskChainError`；正确修法是保持 retry=30 + 在 `LoginOther.next` 追加 `AccountManagerPageConfirm` 模板兜底 |
+| 修复 | `tasks.json:808-817`：`LoginOther.next` 追加 `AccountManagerPageConfirm`（`baseTask: AccountManagerListAccount` + `action: DoNothing`），OCR 失败时同 retry cycle 内模板命中；`AccountSwitchTask.cpp:68-77`：`set_retry_times(30)` + `last_name` 白名单加 `AccountManagerPageConfirm` |
+| 生命周期 | 2026-07-25 创建 → 2026-07-25 修正版 `--no-ff` 合入 `staging`（`6260abf14a`） |
+| 关键 commit | `cd704f8bbc`（初版 retry=5，`TaskChainError`） → `41cfcb736b`（修正版 retry=30 + 模板兜底） |
+| 子修复分支 | 无（独立分支） |
+| 作用域 | 仅本仓库 `branch` 修复，不推 upstream |
+| 详见 | `LOG.md` 2026-07-25（fix/account-switch-retry LoginOther OCR 模板兜底 + retry_times 分析修正） |
+
+### 7.7 fix/account_rotation/6
+
+| 项 | 内容 |
+|----|------|
+| 用途 | 修账号轮换切号时左侧任务面板不刷新 + 「当前账号」Header 视觉混淆 |
+| 根因 | `LinkStartWithTasks`（首账号）有 `MainTasksCompletedCount = 0` + `ResetTaskItemStatuses()`，但 `AdvanceAccountCycle`（后续账号）全程无等价重置，导致切号后左侧仍是上一账号绿色 Completed + 进度条不出现；`TaskItemViewModel.SetTaskIds` 不重置 `StatusDisplay`；显式切号 taskId 不绑回 StartUp 行 |
+| 修复 | `TaskQueueViewModel.cs`：`AdvanceAccountCycle` 切号前调用 `MainTasksCompletedCount = 0` + `ResetTaskItemStatuses()`，显式切号 taskId 绑回 StartUp 行，新增 `CurrentCycleAccountName` 属性在 5 处路径同步维护；`TaskItemViewModel.SetTaskIds` 末尾重置 `StatusDisplay`；`TaskQueueView.xaml` 左侧 Grid 2 行改 3 行 + Header Border + DataTrigger；五语 xaml 加 `CurrentAccountLabel` |
+| 生命周期 | 2026-07-25 创建 → 2026-07-25 `--no-ff` 合入 `staging`（`6260abf14a`） |
+| 关键 commit | `c5e2ba3831`（代码：8 文件 +74 -2） + `520dab59be`（docs：LOG.md / AGENTS.md §6） |
+| 子修复分支 | 无（独立 fix） |
+| 作用域 | 仅本仓库 `branch` 修复，不推 upstream |
+| 详见 | `LOG.md` 2026-07-25（fix/account_rotation/6 启动 + 实施完成） |
+
+### 7.8 fix/account-switch-template-missing
+
+| 项 | 内容 |
+|----|------|
+| 用途 | 修 `fix/account-switch-retry` 修正版（`41cfcb736b`）漏提交 `AccountManagerPageConfirm.png` 的资源完整性漏洞 |
+| 根因 | `tasks.json:813-817` 新增 `AccountManagerPageConfirm` task（`baseTask: AccountManagerListAccount` + `action: DoNothing`）但未提交对应 PNG。MAA `TemplResource::load` 期望每个 task 有同名 PNG（不依赖 `baseTask` 继承），文件缺失导致 `Templ load failed, file not exists` 与连锁 `TaskData load failed` / `OnnxSessions load failed` / `WordOcr load failed`，UI 报「资源损坏」无法启动 |
+| 修复 | `resource/template/WakeUp/AccountManager/AccountManagerPageConfirm.png`：复制 `AccountManagerListAccount.png`（149 字节）作为 sibling 占位。DoNothing 任务实际不调用模板匹配，仅需文件存在让加载器存在性检查通过 |
+| 生命周期 | 2026-07-25 创建 → 2026-07-25 `--no-ff` 合入 `staging`（`9ac844c10a`） |
+| 关键 commit | `ad03f949e4`（fix(switch-template): 补 AccountManagerPageConfirm.png 满足 TemplResource 存在性检查，2 文件 +32） |
+| 子修复分支 | 无 |
+| 作用域 | 仅本仓库 `branch` 修复，不推 upstream |
+| 详见 | `LOG.md` 2026-07-25（fix/account-switch-template-missing 启动 + 实施完成） |
 
 
 ## 8. 关键参考链接

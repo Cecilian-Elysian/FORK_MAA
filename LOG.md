@@ -1124,3 +1124,64 @@ dotnet build src/MaaWpfGui/MaaWpfGui.csproj -c Release -p:Platform=x64
 3. 查看 `install/debug/asst.log` 应不再有 `Templ load failed, file not exists: AccountManagerPageConfirm.png`
 4. `ResourceLoader::load ret 1` 表示成功
 
+### fix/account-switch-retry 合入 staging
+
+修正版（`41cfcb736b`）经实测验证有效（LoginOther 18s → 0.1s 模板命中），按 AGENTS.md §3.4 攒批 1 节奏以 `--no-ff` 合并到 `staging`。早期初版 `cd704f8bbc`（retry=5 误判）已由修正版覆盖并附说明 commit。
+
+| # | 文件/对象 | 操作 | 说明 |
+|---|----------|------|------|
+| 1 | `staging` | `--no-ff` 合并 | `fix/account-switch-retry` 修正版 `41cfcb736b`（LoginOther 模板兜底），由 staging 之前的同分支 commit 链补完 |
+| 2 | `AGENTS.md` §6 | 修改 | 登记 `fix/account-switch-retry` 为进行中分支速查行 |
+| 3 | `LOG.md` | 修改 | 本节 |
+
+**状态**：仍按 §6 视为进行中（待晋升 `branch`）；分支保留为后续 fix 修复用。
+
+### fix/account_rotation/6 合入 staging
+
+实测确认 4 项手动验证场景全部通过：双账号切号时左侧任务行从绿色重置为 Idle、Header 显示「当前账号: 189****0830」、进度条重新出现；StartUp 行进行中→完成；轮换结束/手动停止时 Header 消失；单账号（非轮换）Header 全程不出现。
+
+按 AGENTS.md §3.4 攒批 1 节奏以 `--no-ff` 合并到 `staging`，提交 `6260abf14a`（双 parent：`41cfcb736b` + `520dab59be`）。
+
+| # | 文件/对象 | 操作 | 说明 |
+|---|----------|------|------|
+| 1 | `staging` | `--no-ff` 合并 | `fix/account_rotation/6` 2 个 commit（`c5e2ba3831` 代码 + `520dab59be` 文档），HEAD → `6260abf14a` |
+| 2 | `AGENTS.md` §6 | 修改 | 登记 `fix/account_rotation/6` 为进行中分支速查行 |
+| 3 | `LOG.md` | 修改 | 本节 |
+| 4 | `fix/account_rotation/6` 本地分支 | 保留 | 按 §2.3 流程需先晋升 `branch` 后才能 `git branch -d`；因 §2.4「不允许随便同步至 branch」约束未动 `branch`，暂保留 |
+| 5 | `staging → branch` | 未晋升 | 等用户进一步指示（待 review 全部 7 批 fix/feat 后批量晋升） |
+
+**冲突解决**：合并时 LOG.md / AGENTS.md / tasks.json / AccountSwitchTask.cpp 共 4 个冲突文件，按以下策略解决：
+- `AccountSwitchTask.cpp` 保留 staging 版本（含 AccountManagerPageConfirm 白名单）
+- `tasks.json` 保留 staging 版本（双文本「登录记录/上次登录」兜底）
+- `AGENTS.md` §6 双行（fix/account-switch-retry + fix/account_rotation/6）都保留
+- `LOG.md` 双方章节保留，删除 conflict marker
+
+### fix/account-switch-template-missing 合入 staging
+
+补 PNG + tasks.json Doc 注释明确 sibling 占位策略，合到 staging（commit `9ac844c10a`）。修复了 `41cfcb736b` 资源完整性漏洞。
+
+| # | 文件/对象 | 操作 | 说明 |
+|---|----------|------|------|
+| 1 | `staging` | `--no-ff` 合并 | `fix/account-switch-template-missing` 1 commit（`ad03f949e4` PNG + LOG.md），HEAD → `9ac844c10a` |
+| 2 | `AGENTS.md` §6 | 修改 | 登记 `fix/account-switch-template-missing` 为进行中分支速查行 |
+| 3 | `LOG.md` | 修改 | 本节 |
+| 4 | `fix/account-switch-template-missing` 本地分支 | 保留 | 同 §2.3 流程，待晋升 `branch` 后才能 `git branch -d` |
+
+**冲突解决**：合并时 LOG.md 3 处 conflict marker，按以下策略解决：
+- 保留 staging 端 899 行已有内容（含 `fix/account_rotation/6` 实施完成表等历史积累）
+- 在末尾 append fix 分支独有的 `fix/account-switch-template-missing` 启动 + 实施完成表（29 行）
+- 无 conflict marker 残留
+
+### chore/account-cycle-status-sync 启动
+
+`fix/account-switch-retry` / `fix/account_rotation/6` / `fix/account-switch-template-missing` 已 `--no-ff` 合入 `staging`，但 AGENTS.md §6 / §7 与 LOG.md 合并登记的更新未集中整理。`chore/account-cycle-status-sync` 从 `branch` 拉出，目标：
+- AGENTS.md §6 增补 `fix/account-switch-template-missing` 进行中分支速查行
+- AGENTS.md §7 新增 §7.6 / §7.7 / §7.8 完整生命周期块
+- LOG.md 2026-07-25 节追加三次 `--no-ff` 合并事件登记
+
+| # | 文件/对象 | 操作 | 说明 |
+|---|----------|------|------|
+| 1 | `chore/account-cycle-status-sync` | 新建分支 | 从 `branch` 拉出（HEAD = `da157d163d`），用 `git checkout staging -- AGENTS.md LOG.md` 同步 staging 文档基线 |
+| 2 | `AGENTS.md` §6 | 待修改 | 增补 `fix/account-switch-template-missing` 行 |
+| 3 | `AGENTS.md` §7 | 待修改 | 新增 §7.6 / §7.7 / §7.8 三个完整生命周期块 |
+| 4 | `LOG.md` 2026-07-25 | 待修改 | 追加三次合并事件登记 + 本节 |
