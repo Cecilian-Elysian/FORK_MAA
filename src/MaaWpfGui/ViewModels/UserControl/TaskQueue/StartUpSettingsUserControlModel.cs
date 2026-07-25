@@ -25,6 +25,7 @@ using MaaWpfGui.Helper;
 using MaaWpfGui.Main;
 using MaaWpfGui.Models;
 using MaaWpfGui.Models.AsstTasks;
+using MaaWpfGui.ViewModels.Orchestration;
 using MaaWpfGui.ViewModels.UI;
 using Stylet;
 using static MaaWpfGui.Main.AsstProxy;
@@ -113,8 +114,13 @@ public class StartUpSettingsUserControlModel : TaskSettingsViewModel, StartUpSet
     #region Account Cycle
 
     private readonly ObservableCollection<AccountCycleItem> _accountCycleItems = [];
-    private readonly HashSet<string> _completedAccounts = [];
-    private bool _isCycling;
+
+    /// <summary>
+    /// feat/account-cycle-refactor: 委托给 <see cref="AccountCycleOrchestrator.Instance"/> 管理
+    /// 步骤列表 / 完成集合 / IsCycling 等轮换状态. 本类仅负责 UI 项列表 (<c>_accountCycleItems</c>)
+    /// 与勾选/编辑交互.
+    /// </summary>
+    private static AccountCycleOrchestrator Orchestrator => AccountCycleOrchestrator.Instance;
 
     public bool AccountCycleEnabled
     {
@@ -194,6 +200,44 @@ public class StartUpSettingsUserControlModel : TaskSettingsViewModel, StartUpSet
         SyncAccountNamesToItems();
     }
 
+    /// <summary>
+    /// feat/account-cycle-refactor: 委托到 Orchestrator.
+    /// </summary>
+    public bool IsCycling
+    {
+        get => Orchestrator.IsCycling;
+        set => Orchestrator.IsCycling = value;
+    }
+
+    /// <summary>feat/account-cycle-refactor: 委托到 Orchestrator.</summary>
+    public int CurrentStepCount => Orchestrator.CurrentStepCount;
+
+    /// <summary>feat/account-cycle-refactor: 委托到 Orchestrator.</summary>
+    public int CurrentStepIndex => Orchestrator.CurrentStepIndex;
+
+    /// <summary>feat/account-cycle-refactor: 委托到 Orchestrator.</summary>
+    public AccountCycleStep? CurrentStep => Orchestrator.CurrentStep;
+
+    /// <summary>feat/account-cycle-refactor: 委托到 Orchestrator.</summary>
+    public AccountCycleStep? GetPreviousStep() => Orchestrator.GetPreviousStep();
+
+    /// <summary>feat/account-cycle-refactor: 委托到 Orchestrator.</summary>
+    public int CurrentPhase => Orchestrator.CurrentPhase;
+
+    /// <summary>feat/account-cycle-refactor: 委托到 Orchestrator.</summary>
+    public void RebuildCycleSteps() => Orchestrator.RebuildCycleSteps(
+        _accountCycleItems
+            .Where(x => x.IsSelected && !string.IsNullOrEmpty(x.AccountName))
+            .OrderBy(x => x.Index)
+            .Select(x => x.AccountName),
+        LateStageRogueAndReclamation
+            && ConfigFactory.CurrentConfig.TaskQueue.Any(t =>
+                IsTaskEnable(t) &&
+                (t.TaskType == TaskType.Roguelike || t.TaskType == TaskType.Reclamation)));
+
+    /// <summary>feat/account-cycle-refactor: 委托到 Orchestrator.</summary>
+    public void AdvanceStepIndex() => Orchestrator.AdvanceStepIndex();
+
     public void SyncAccountNamesToItems()
     {
         var config = CycleConfig;
@@ -240,7 +284,7 @@ public class StartUpSettingsUserControlModel : TaskSettingsViewModel, StartUpSet
                 DisplayName = LocalizationHelper.GetString("AccountCycleNewAccountDefaultName") + (i + 1),
                 AccountName = name,
                 IsSelected = !isDuplicate && (existingSelections.TryGetValue(name, out var selected) ? selected : true),
-                IsCompleted = _completedAccounts.Contains(name),
+                IsCompleted = Orchestrator.IsAccountCompleted(name),
                 Index = i,
             };
             item.PropertyChanged += OnAccountCycleItemPropertyChanged;
@@ -312,7 +356,6 @@ public class StartUpSettingsUserControlModel : TaskSettingsViewModel, StartUpSet
             config.AccountNames.RemoveAt(item.Index);
         }
 
-        _completedAccounts.Remove(item.AccountName);
         item.PropertyChanged -= OnAccountCycleItemPropertyChanged;
         _accountCycleItems.Remove(item);
 
@@ -337,6 +380,7 @@ public class StartUpSettingsUserControlModel : TaskSettingsViewModel, StartUpSet
             .FirstOrDefault()?.AccountName;
     }
 
+    /// <summary>feat/account-cycle-refactor: 委托到 Orchestrator, 同时更新 UI 项.</summary>
     public void MarkAccountCompleted(string accountName)
     {
         if (string.IsNullOrEmpty(accountName))
@@ -344,7 +388,7 @@ public class StartUpSettingsUserControlModel : TaskSettingsViewModel, StartUpSet
             return;
         }
 
-        _completedAccounts.Add(accountName);
+        Orchestrator.MarkAccountCompleted(accountName);
         var item = _accountCycleItems.FirstOrDefault(x => x.AccountName == accountName);
         if (item != null)
         {
@@ -352,115 +396,22 @@ public class StartUpSettingsUserControlModel : TaskSettingsViewModel, StartUpSet
         }
     }
 
-    public void ResetCycle()
-    {
-        _isCycling = false;
-        _cycleSteps.Clear();
-        _currentStepIndex = -1;
-        ClearCompletedAccounts();
-    }
+    /// <summary>feat/account-cycle-refactor: 委托到 Orchestrator.</summary>
+    public void ResetCycle() => Orchestrator.ResetCycle();
 
+    /// <summary>feat/account-cycle-refactor: 委托到 Orchestrator + 重置 UI 项.</summary>
     public void ClearCompletedAccounts()
     {
-        _completedAccounts.Clear();
+        Orchestrator.ClearCompletedAccounts();
         foreach (var item in _accountCycleItems)
         {
             item.IsCompleted = false;
         }
     }
 
-    public bool IsCycling
-    {
-        get => _isCycling;
-        set => SetAndNotify(ref _isCycling, value);
-    }
-
     #endregion
-
-    #region Late Stage (Phase 1 / Phase 2 cycle steps)
-
-    private readonly List<AccountCycleStep> _cycleSteps = [];
-    private int _currentStepIndex = -1;
-
-    /// <summary>
-    /// 当前步骤总数(<c>RebuildCycleSteps</c> 后有效)。
-    /// </summary>
-    public int CurrentStepCount => _cycleSteps.Count;
-
-    /// <summary>
-    /// 当前正在执行或即将执行的步骤的索引。<c>-1</c> 表示尚未开始。
-    /// </summary>
-    public int CurrentStepIndex => _currentStepIndex;
-
-    /// <summary>
-    /// 当前正在执行或即将执行的步骤。<c>-1</c> 表示尚未开始。
-    /// </summary>
-    public AccountCycleStep? CurrentStep =>
-        _currentStepIndex >= 0 && _currentStepIndex < _cycleSteps.Count
-            ? _cycleSteps[_currentStepIndex]
-            : null;
-
-    /// <summary>
-    /// 上一个步骤,用于判断是否需要跨账号切号。无返回 <c>null</c>。
-    /// </summary>
-    public AccountCycleStep? GetPreviousStep() =>
-        _currentStepIndex - 1 >= 0 ? _cycleSteps[_currentStepIndex - 1] : null;
-
-    /// <summary>
-    /// 当前步骤的 Phase (1 = 基础任务, 2 = 收尾任务)。未启动时返回 1。
-    /// </summary>
-    public int CurrentPhase => CurrentStep?.Phase ?? 1;
-
-    /// <summary>
-    /// 根据当前勾选账号与 <see cref="LateStageRogueAndReclamation"/> 重新构建扁平步骤列表。
-    /// Phase 1 = 所有账号的基础任务 (1 个 step/账号);
-    /// Phase 2 = 当开关开启且至少有 1 个肉鸽/生息任务勾选时,每个账号各加 1 个 step。
-    /// </summary>
-    public void RebuildCycleSteps()
-    {
-        _cycleSteps.Clear();
-
-        var accounts = _accountCycleItems
-            .Where(x => x.IsSelected && !string.IsNullOrEmpty(x.AccountName))
-            .OrderBy(x => x.Index)
-            .Select(x => x.AccountName)
-            .ToList();
-
-        // Phase 1: 每个账号各 1 个 step
-        foreach (var acc in accounts)
-        {
-            _cycleSteps.Add(new AccountCycleStep(acc, 1));
-        }
-
-        // Phase 2: 仅当开关开启 + 至少勾了肉鸽/生息时, 每个账号各加 1 个 step
-        if (LateStageRogueAndReclamation
-            && ConfigFactory.CurrentConfig.TaskQueue.Any(t =>
-                IsTaskEnable(t) &&
-                (t.TaskType == TaskType.Roguelike || t.TaskType == TaskType.Reclamation)))
-        {
-            foreach (var acc in accounts)
-            {
-                _cycleSteps.Add(new AccountCycleStep(acc, 2));
-            }
-        }
-
-        _currentStepIndex = _cycleSteps.Count > 0 ? 0 : -1;
-    }
-
-    /// <summary>
-    /// 将步骤索引推进 1,准备下一轮任务的提交。
-    /// </summary>
-    public void AdvanceStepIndex()
-    {
-        if (_currentStepIndex >= 0)
-        {
-            _currentStepIndex++;
-        }
-    }
 
     private static bool IsTaskEnable(BaseTask t) => TaskQueueViewModel.IsTaskEnable(t);
-
-    #endregion
 
     public void ProcSubTaskMsg(AsstMsg msg, AsstSubTaskMsg? details)
     {
