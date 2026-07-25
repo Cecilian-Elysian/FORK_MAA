@@ -171,7 +171,7 @@ feat 合并到 `branch` 后：
 
 | 分支 | 角色 | 修复目标 |
 |------|------|---------|
-| `fix/expedite-threshold` | 修复 `feat/expedite-threshold` 重构时遗失的 `m_last_confirmed_min_level` 重置,导致下一槽位读到上一槽位陈旧星级而误加急;同步 `fix/account-official-recognize` (cherry-pick from `branch`);StartUp 双重缓冲清理;StartUp::run 恢复原序 + 切号链 OCR 兜底（修多账号鹰角弹窗场景 20s 等待）;账号列表 OCR 适配 UI 改版（登录记录 / 上次登录 双文本兜底） | `branch` 自身（修复 `7df4e94e3f` 重构遗漏） |
+| `fix/expedite-threshold` | 修复 `feat/expedite-threshold` 重构时遗失的 `m_last_confirmed_min_level` 重置,导致下一槽位读到上一槽位陈旧星级而误加急;同步 `fix/account-official-recognize` (cherry-pick from `branch`);StartUp 双重缓冲清理;StartUp::run 恢复原序 + 切号链 OCR 兜底（修多账号鹰角弹窗场景 20s 等待）;账号列表 OCR 适配 UI 改版（登录记录 / 上次登录 双文本兜底）;recruit_now 移到 confirm 之后（修详情页无「立即招」按钮导致加急必失败） | `branch` 自身（修复 `7df4e94e3f` 重构遗漏） |
 
 
 ## 7. 分支生命周期记录

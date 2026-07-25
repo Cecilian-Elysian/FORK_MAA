@@ -350,20 +350,6 @@ asst::AutoRecruitTask::recruit_result asst::AutoRecruitTask::recruit_one(const R
         return recruit_result::failed;
     }
 
-    // 若该槽位组合星级满足加急门槛，优先使用加急许可立即招募
-    if (m_use_expedited && m_last_confirmed_min_level >= m_expedite_min_level) {
-        Log.info("Recruit slot level", m_last_confirmed_min_level, ">= expedite threshold",
-                 m_expedite_min_level, ", using expedited plan.");
-        if (recruit_now()) {
-            hire_all();
-            // fix/expedite-threshold: 加急成功后立即重置,防止下一槽位误判
-            m_last_confirmed_min_level = 0;
-            return recruit_result::confirmed;
-        }
-        Log.info("Failed to use expedited plan, fall back to normal confirm.");
-        // 加急失败（许可耗尽）时降级为正常 9h 招募
-    }
-
     if (m_set_time && !check_timer(calc_result.recruitment_time)) {
         // timer was not set to 09:00:00 properly, likely the tag selection was also corrupted
         // see
@@ -384,6 +370,21 @@ asst::AutoRecruitTask::recruit_result asst::AutoRecruitTask::recruit_one(const R
         Log.info("Failed to confirm current recruit config.");
         click_return_button();
         return recruit_result::failed;
+    }
+
+    // fix/expedite-threshold: 加急判定必须在 confirm() 之后。
+    // confirm() 点击「开始招募」启动 9h 倒计时并返回公招主页,
+    // 主页上该 slot 才会出现「立即招 / 立即完成」按钮供 recruit_now() 点击。
+    // 原 feat 将 recruit_now() 放在 confirm() 之前, 详情页无此按钮, OCR 必失败。
+    if (m_use_expedited && m_last_confirmed_min_level >= m_expedite_min_level) {
+        Log.info("Recruit slot level", m_last_confirmed_min_level, ">= expedite threshold",
+                 m_expedite_min_level, ", using expedited plan.");
+        if (recruit_now()) {
+            hire_all();
+            m_last_confirmed_min_level = 0;
+            return recruit_result::confirmed;
+        }
+        Log.info("Failed to use expedited plan, slot already confirmed with normal 9h timer.");
     }
 
     return recruit_result::confirmed;

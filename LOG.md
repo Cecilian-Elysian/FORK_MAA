@@ -2,6 +2,29 @@
 
 日志规范：每次修改文件后，在此记录修改内容。
 
+## 2026-07-25
+
+### fix/expedite-threshold recruit_now 调用顺序修复
+
+`feat/expedite-threshold`（`7df4e94e3f`）重构时把 `recruit_now()` 从 `_run()` 外层循环挪进 `recruit_one()`,但挪到了 `confirm()` 之前。游戏 UI 规则:「立即招 / 立即完成」按钮只存在于公招主页(slot 已开始 9h 倒计时), 详情页(confirm 之前)无此按钮。导致 `RecruitNow` task 的 OCR `["立即招"]` 在 ROI `[0,300,1280,420]` 内 4 次 retry 全空, `recruit_now()` 必失败, 加急判定通过却实际未加急, slot 始终走 9h 倒计时。
+
+`install/debug/asst.bak.log` 多日复现(line 158873-158897, 2026-07-25 14:03:46-48):
+- 加急判定日志 `Recruit slot level 4 >= expedite threshold 4 , using expedited plan.` 正常打印
+- OCR 实际识别文本为「已招募干员 / 远程位 / 近战/回复 / 开始刷新标签 / 招募预期」等详情页元素
+- 4 次 retry 后 `SubTaskError`, `Failed to use expedited plan, fall back to normal confirm.`
+- 随后 `check_timer` + `RecruitConfirm` 走完正常 9h 确认流程
+
+修复: 把加急块从 `confirm()` 之前挪到 `confirm()` 之后, 恢复 `3529ab0f05` 原版的「先确认启动 9h, 再主页点立即完成」语义。`fix/expedite-threshold` 既有的 `m_last_confirmed_min_level` 两处重置(line 312-314 / 358-359)保持不动。
+
+| # | 文件 | 操作 | 说明 |
+|---|------|------|------|
+| 1 | `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.cpp:353-365` | 删除 | 移除 `confirm()` 之前的加急块 |
+| 2 | `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.cpp:389` | 插入 | 在 `confirm()` 成功后、`return` 前插入新加急块, 含「立即完成需在主页」注释 |
+| 3 | `LOG.md` | 修改 | 本节 |
+| 4 | `AGENTS.md §6` | 修改 | `fix/expedite-threshold` 角色描述追加「；recruit_now 移到 confirm 之后（修详情页无「立即招」按钮导致加急必失败）」 |
+
+**推 upstream**: 仅本 fork 修复, 不推。
+
 ## 2026-07-24
 
 ### fix/expedite-threshold 账号列表 OCR 适配 UI 改版
