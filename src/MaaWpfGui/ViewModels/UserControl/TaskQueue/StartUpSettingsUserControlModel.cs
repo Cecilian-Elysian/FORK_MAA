@@ -41,21 +41,44 @@ public class StartUpSettingsUserControlModel : TaskSettingsViewModel, StartUpSet
 
     public static StartUpSettingsUserControlModel Instance { get; }
 
+    /// <summary>
+    /// fix/account-cycle-config-source: 直达配置源, 不依赖 TaskSettingVisibilityInfo.CurrentIndex.
+    /// 替代 <see cref="GetTaskConfig{T}"/> 在焦点离开 StartUp 任务时返回默认空实例导致的潜伏 bug
+    /// (切走基建/集成战略再切回一键长草时轮换列表被清空, RebuildCycleSteps 生成 0 步骤, 静默跳过).
+    /// </summary>
+    private static StartUpTask? CycleConfig =>
+        ConfigFactory.CurrentConfig.TaskQueue.OfType<StartUpTask>().FirstOrDefault();
+
     #region Account Switch (Single)
 
     public string AccountName
     {
-        get => GetTaskConfig<StartUpTask>().AccountName;
-        set {
-            value = value.Trim();
-            SetTaskConfig<StartUpTask>(t => t.AccountName == value, t => t.AccountName = value);
+        get => CycleConfig?.AccountName ?? string.Empty;
+        set
+        {
+            if (CycleConfig == null)
+            {
+                return;
+            }
+
+            CycleConfig.AccountName = value.Trim();
+            NotifyOfPropertyChange();
         }
     }
 
     public bool AccountSwitchEnabled
     {
-        get => GetTaskConfig<StartUpTask>().AccountSwitchEnabled ?? false;
-        set => SetTaskConfig<StartUpTask>(t => t.AccountSwitchEnabled == value, t => t.AccountSwitchEnabled = value);
+        get => CycleConfig?.AccountSwitchEnabled ?? false;
+        set
+        {
+            if (CycleConfig == null)
+            {
+                return;
+            }
+
+            CycleConfig.AccountSwitchEnabled = value;
+            NotifyOfPropertyChange();
+        }
     }
 
     [UsedImplicitly]
@@ -95,10 +118,15 @@ public class StartUpSettingsUserControlModel : TaskSettingsViewModel, StartUpSet
 
     public bool AccountCycleEnabled
     {
-        get => GetTaskConfig<StartUpTask>().AccountCycleEnabled;
+        get => CycleConfig?.AccountCycleEnabled ?? true;
         set
         {
-            SetTaskConfig<StartUpTask>(t => t.AccountCycleEnabled == value, t => t.AccountCycleEnabled = value);
+            if (CycleConfig == null)
+            {
+                return;
+            }
+
+            CycleConfig.AccountCycleEnabled = value;
             if (!value)
             {
                 ResetCycle();
@@ -114,10 +142,17 @@ public class StartUpSettingsUserControlModel : TaskSettingsViewModel, StartUpSet
     /// </summary>
     public bool LateStageRogueAndReclamation
     {
-        get => GetTaskConfig<StartUpTask>().LateStageRogueAndReclamation;
-        set => SetTaskConfig<StartUpTask>(
-            t => t.LateStageRogueAndReclamation == value,
-            t => t.LateStageRogueAndReclamation = value);
+        get => CycleConfig?.LateStageRogueAndReclamation ?? false;
+        set
+        {
+            if (CycleConfig == null)
+            {
+                return;
+            }
+
+            CycleConfig.LateStageRogueAndReclamation = value;
+            NotifyOfPropertyChange();
+        }
     }
 
     public bool ShowEditSection
@@ -161,7 +196,14 @@ public class StartUpSettingsUserControlModel : TaskSettingsViewModel, StartUpSet
 
     public void SyncAccountNamesToItems()
     {
-        var config = GetTaskConfig<StartUpTask>();
+        var config = CycleConfig;
+        if (config == null)
+        {
+            // fix/account-cycle-config-source: 无 StartUp 任务时清空轮换列表 (避免 UI 残留)
+            _accountCycleItems.Clear();
+            NotifyOfPropertyChange(nameof(AccountCycleItems));
+            return;
+        }
 
         // 从单账号切换复制账号名到轮换列表第一项
         if (config.AccountNames.Count > 0 && string.IsNullOrEmpty(config.AccountNames[0]) && !string.IsNullOrEmpty(config.AccountName))
@@ -205,18 +247,23 @@ public class StartUpSettingsUserControlModel : TaskSettingsViewModel, StartUpSet
             return;
         }
 
-        var config = GetTaskConfig<StartUpTask>();
-        if (item.Index < config.AccountNames.Count)
+        var config = CycleConfig;
+        if (config != null && item.Index < config.AccountNames.Count)
         {
             config.AccountNames[item.Index] = item.AccountName;
-            SetTaskConfig<StartUpTask>(_ => false, _ => { });
+            NotifyOfPropertyChange(nameof(AccountCycleItems));
         }
     }
 
     [UsedImplicitly]
     public void AddAccountAfter(AccountCycleItem currentItem)
     {
-        var config = GetTaskConfig<StartUpTask>();
+        var config = CycleConfig;
+        if (config == null)
+        {
+            return;
+        }
+
         int insertIndex = currentItem?.Index + 1 ?? config.AccountNames.Count;
 
         config.AccountNames.Insert(insertIndex, string.Empty);
@@ -233,13 +280,17 @@ public class StartUpSettingsUserControlModel : TaskSettingsViewModel, StartUpSet
         _accountCycleItems.Insert(insertIndex, newItem);
 
         RebuildIndexes();
-        SetTaskConfig<StartUpTask>(_ => false, _ => { });
+        NotifyOfPropertyChange(nameof(AccountCycleItems));
     }
 
     [UsedImplicitly]
     public void RemoveAccount(AccountCycleItem item)
     {
-        var config = GetTaskConfig<StartUpTask>();
+        var config = CycleConfig;
+        if (config == null)
+        {
+            return;
+        }
 
         if (item.Index < config.AccountNames.Count)
         {
@@ -251,7 +302,7 @@ public class StartUpSettingsUserControlModel : TaskSettingsViewModel, StartUpSet
         _accountCycleItems.Remove(item);
 
         RebuildIndexes();
-        SetTaskConfig<StartUpTask>(_ => false, _ => { });
+        NotifyOfPropertyChange(nameof(AccountCycleItems));
     }
 
     private void RebuildIndexes()
