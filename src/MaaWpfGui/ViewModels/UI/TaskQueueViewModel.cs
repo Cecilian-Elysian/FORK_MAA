@@ -1848,7 +1848,7 @@ public class TaskQueueViewModel : Screen
                     cfg.AccountSwitchEnabled = true;
                     cfg.AccountName = firstStep.AccountName;
                     CurrentCycleAccountName = firstStep.AccountName;
-                    AddLog($"[Cycle] Step 0: Account={firstStep.AccountName}, Phase={firstStep.Phase}", UiLogColor.Info);
+                    AddLog($"{LocalizationHelper.GetString("AccountCycleSwitchingTo")}{firstStep.AccountName} (Phase {firstStep.Phase})", UiLogColor.Info);
                 }
                 else
                 {
@@ -2274,7 +2274,7 @@ public class TaskQueueViewModel : Screen
 
         // 轮换推进：不重连模拟器、不重启游戏，仅切号 + 跑任务
         _runningState.SetStopping(false);
-        AddLog($"[Cycle] Account={nextStep.AccountName}, Phase={nextStep.Phase} idx={StartUpTask.CurrentStepIndex}/{StartUpTask.CurrentStepCount}{(needStartupSwitch ? " (switch)" : string.Empty)}", UiLogColor.Info);
+        AddLog($"{LocalizationHelper.GetString("AccountCycleSwitchingTo")}{nextStep.AccountName} (Phase {nextStep.Phase} idx={StartUpTask.CurrentStepIndex}/{StartUpTask.CurrentStepCount}{(needStartupSwitch ? " (switch)" : string.Empty)})", UiLogColor.Info);
 
         bool taskRet = true;
         int count = 0;

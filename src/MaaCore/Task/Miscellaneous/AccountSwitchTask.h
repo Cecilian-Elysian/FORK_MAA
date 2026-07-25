@@ -32,6 +32,12 @@ private:
     // 识别并选择m_account
     bool select_account();
 
+    // chore/account-cycle-cleanup: 集中可调参数 (D1)
+    static constexpr int NavigateRetryTimes = 30;          // navigate_to_start_page 重试预算, 覆盖整个 SwitchAccount@StartUpBegin 链路
+    static constexpr int LoginButtonRetryTimes = 3;         // 账号列表点登录按钮重试
+    static constexpr int MaxSwipeAttempts = 20;             // 滑动找账号上限 (swipe_and_select 循环)
+    static constexpr int SwipeIntervalMs = 200;             // select_account 之间的固定 sleep
+
     std::string m_account;
     std::string m_target_account;
     std::string m_client_type; // 客户端类型
