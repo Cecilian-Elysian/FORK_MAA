@@ -1773,6 +1773,13 @@ public class TaskQueueViewModel : Screen
     public int MainTasksSelectedCount => TaskItemViewModels.Count(x => (x.IsEnable ?? true));
 
     /// <summary>
+    /// fix/account_rotation/6: 当前轮换账号名, 供左侧任务面板 Header 显示。
+    /// 切号时随 <see cref="AdvanceAccountCycle"/> / <see cref="LinkStart"/> 更新;
+    /// 非轮换模式或轮换结束时为空 (Header 隐藏)。
+    /// </summary>
+    public string? CurrentCycleAccountName { get => field; set => SetAndNotify(ref field, value); }
+
+    /// <summary>
     /// updates the main tasks progress.
     /// </summary>
     /// <param name="completedCount">已完成任务数，留空则代表 +1</param>
@@ -1840,6 +1847,7 @@ public class TaskQueueViewModel : Screen
                 {
                     cfg.AccountSwitchEnabled = true;
                     cfg.AccountName = firstStep.AccountName;
+                    CurrentCycleAccountName = firstStep.AccountName;
                     AddLog($"[Cycle] Step 0: Account={firstStep.AccountName}, Phase={firstStep.Phase}", UiLogColor.Info);
                 }
                 else
@@ -1856,6 +1864,7 @@ public class TaskQueueViewModel : Screen
         else
         {
             startUpConfig.ResetCycle();
+            CurrentCycleAccountName = string.Empty;
         }
 
         await LinkStartWithTasks(ConfigFactory.CurrentConfig.TaskQueue);
@@ -2194,6 +2203,9 @@ public class TaskQueueViewModel : Screen
         _runningState.SetStopping(false);
         _runningState.SetIdle(true);
 
+        // fix/account_rotation/6: 停止时清空当前账号显示 (轮换继续的早退分支已提前 return, 不会走到这里)
+        CurrentCycleAccountName = string.Empty;
+
         return true;
     }
 
@@ -2228,6 +2240,7 @@ public class TaskQueueViewModel : Screen
         {
             MarkPreviousStepCompleted(prevStep);
             StartUpTask.IsCycling = false;
+            CurrentCycleAccountName = string.Empty;
             _runningState.SetIdle(true);
             AddLog(LocalizationHelper.GetString("AccountCycleAllDone"), UiLogColor.Info);
             return;
@@ -2237,15 +2250,23 @@ public class TaskQueueViewModel : Screen
         if (cfg == null)
         {
             StartUpTask.IsCycling = false;
+            CurrentCycleAccountName = string.Empty;
             _runningState.SetIdle(true);
             return;
         }
 
         cfg.AccountSwitchEnabled = true;
         cfg.AccountName = nextStep.AccountName;
+        CurrentCycleAccountName = nextStep.AccountName;
 
         // 标记前一个步骤所属账号完成 (仅当跨账号或离开 Phase 2 时)
         MarkPreviousStepCompleted(prevStep);
+
+        // fix/account_rotation/6: 切换到新步骤前重置左侧任务列表状态 + 进度计数,
+        // 对齐 LinkStartWithTasks:1909-1910, 否则上一账号的绿色(Completed)会残留,
+        // 进度条也会因 MainTasksCompletedCount 不归零而不再出现。
+        MainTasksCompletedCount = 0;
+        ResetTaskItemStatuses();
 
         // 跨账号切换: 显式追加一个 StartUp(StartGame=false) 切号
         bool needStartupSwitch = prevStep == null || prevStep.AccountName != nextStep.AccountName;
@@ -2274,6 +2295,16 @@ public class TaskQueueViewModel : Screen
                 if (isSuccess && taskId > 0)
                 {
                     ++count;
+
+                    // fix/account_rotation/6: 把切号 taskId 绑回 StartUp 行。
+                    // 循环内 needStartupSwitch 分支会 continue 跳过 StartUp (行 2313),
+                    // 导致该行 _taskIds 永远指向首账号旧 taskId, 新事件 IndexOf 返回 -1 被丢弃。
+                    var startUpTaskEntry = ConfigFactory.CurrentConfig.TaskQueue.FirstOrDefault(t => t.TaskType == TaskType.StartUp);
+                    int startUpIndex = startUpTaskEntry != null ? ConfigFactory.CurrentConfig.TaskQueue.IndexOf(startUpTaskEntry) : -1;
+                    if (startUpIndex >= 0 && startUpIndex < TaskItemViewModels.Count)
+                    {
+                        TaskItemViewModels[startUpIndex].SetTaskIds([taskId]);
+                    }
                 }
                 else
                 {
@@ -2385,6 +2416,7 @@ public class TaskQueueViewModel : Screen
             {
                 AddLog(LocalizationHelper.GetString("UnknownErrorOccurs"), UiLogColor.Error);
                 StartUpTask.IsCycling = false;
+                CurrentCycleAccountName = string.Empty;
                 SetStopped(runStopScript: false);
             }
         }
@@ -2392,6 +2424,7 @@ public class TaskQueueViewModel : Screen
         {
             AddLog($"[Cycle] AdvanceAccountCycle error: {ex.Message}", UiLogColor.Error);
             StartUpTask.IsCycling = false;
+            CurrentCycleAccountName = string.Empty;
             _runningState.SetIdle(true);
         }
     }

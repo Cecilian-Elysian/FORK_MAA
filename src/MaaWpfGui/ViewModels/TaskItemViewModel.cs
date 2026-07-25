@@ -90,6 +90,10 @@ public class TaskItemViewModel : PropertyChangedBase, IDisposable
     {
         _taskIds = [.. taskIds];
         StatusList = [.. Enumerable.Repeat(TaskItemStatus.Idle, TaskIds.Count)];
+
+        // fix/account_rotation/6: 同步重置 UI 绑定的 StatusDisplay,
+        // 否则切换账号后到 OnTaskStatusChanged 事件到达前的窗口期仍显示上一账号的旧颜色。
+        StatusDisplay = TaskItemStatus.Idle;
     }
 
     private List<TaskItemStatus> StatusList { get; set; } = [];

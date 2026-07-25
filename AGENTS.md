@@ -213,8 +213,9 @@ feat/<name>, fix/<name> ────────────┘
 ## 6. 进行中分支速查
 
 | 分支 | 角色 | 修复目标 |
-|------|------|---------|
+|------|------|----------|
 | `fix/account-switch-retry` | LoginOther OCR 不匹配时追加 AccountManagerPageConfirm 模板兜底（DoNothing），消除 ~18s retry 空等；retry_times 保持 30 不变 | `staging`（依赖其诊断日志改动） |
+| `fix/account_rotation/6` | 从 `branch` 拉出，从属 `feat/account_rotation`（已合入） | 账号轮换切号时左侧任务面板不刷新：`AdvanceAccountCycle` 未重置任务行状态/进度计数 + StartUp 行 `_taskIds` 丢失；顺带加「当前账号」Header 解决「误以为同一账号跑两次」的视觉混淆 |
 
 
 ## 7. 分支生命周期记录

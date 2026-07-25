@@ -1038,3 +1038,60 @@ dotnet build src/MaaWpfGui/MaaWpfGui.csproj -c Release -p:Platform=x64
 
 **未推送上游**: 仅本仓库 `branch` 修复，不向 upstream 提 PR。
 
+## 2026-07-25
+
+### fix/account_rotation/6 启动
+
+账号轮换切号时，左侧任务面板（理智作战 / 信用收支 / 公招 ...）**不刷新**：切到下一个账号后任务行仍是上一账号的绿色（Completed），进度条也不再出现。用户因此误读为「同一账号理智作战跑了两次」（实为两账号各一次，但因左侧无切号提示且状态不重置而看不出来）。
+
+根因（`src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs`）：
+
+- `LinkStartWithTasks`（首账号）在行 1909-1910 调 `MainTasksCompletedCount = 0` + `ResetTaskItemStatuses()`，但 `AdvanceAccountCycle`（后续账号，行 2206-2397）**全程无等价重置**。
+- `TaskItemViewModel.SetTaskIds`（行 89-93）只清内部 `StatusList`，不重置 UI 绑定的 `StatusDisplay`。
+- 显式切号 task（行 2273 追加）**不绑回 StartUp 行**，循环内 StartUp 又被 `continue` 跳过（行 2307），导致 StartUp 行 `_taskIds` 永远指向首账号旧 taskId，新事件 `IndexOf` 返回 -1 被丢弃。
+
+修复方案（A+B+C+D，仅 `src/MaaWpfGui/`，纯 WPF 逻辑 + UI，不涉及 C++）：
+
+| # | 文件/对象 | 操作 | 说明 |
+|---|----------|------|------|
+| 1 | `fix/account_rotation/6` | 新建分支 | 从 `branch` 拉出（`feat/account_rotation` 已合入并删除本地，按 §3.3 修复 branch 自身） |
+| 2 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs` | 待修改 A | `AdvanceAccountCycle` 在 `MarkPreviousStepCompleted` 之后插入 `MainTasksCompletedCount = 0; ResetTaskItemStatuses();` |
+| 3 | `src/MaaWpfGui/ViewModels/TaskItemViewModel.cs` | 待修改 B | `SetTaskIds` 末尾补 `StatusDisplay = TaskItemStatus.Idle;` |
+| 4 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs` | 待修改 C | 切号 task 追加成功后把 taskId 绑回 StartUp 行 |
+| 5 | `src/MaaWpfGui/Views/UI/TaskQueueView.xaml` | 待修改 D | 左侧任务面板加「当前账号」Header（仅轮换中可见） |
+| 6 | `src/MaaWpfGui/Res/Localizations/{五语}.xaml` | 待修改 | 加 `CurrentAccountLabel` |
+
+### fix/account_rotation/6 实施完成
+
+| # | 文件 | 操作 | 说明 |
+|---|------|------|------|
+| 1 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs:1780` | 新增属性 | `CurrentCycleAccountName`（`string?`，`SetAndNotify`），供左侧 Header 显示当前轮换账号 |
+| 2 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs:1850,1867,2207,2243,2253,2260,2419,2427` | 修改 | `LinkStart`（首账号设值 / 非轮换清空）、`AdvanceAccountCycle`（nextStep 设值 / nextStep==null / cfg==null / 异常 / AsstStart 失败 各路径清空）、`SetStopped`（停止时清空）同步维护 `CurrentCycleAccountName` |
+| 3 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs:2265-2267` | 修改 A | `AdvanceAccountCycle` 在 `MarkPreviousStepCompleted(prevStep)` 之后、`try` 之前插入 `MainTasksCompletedCount = 0; ResetTaskItemStatuses();`（对齐 `LinkStartWithTasks:1909-1910`） |
+| 4 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs:2299-2306` | 修改 C | 切号 task（行 2285 `AsstAppendTaskWithEncoding`）追加成功后，用 `FirstOrDefault` + `IndexOf` 定位 StartUp 行并 `SetTaskIds([taskId])` 绑回（`ObservableList<BaseTask>` 无 `FindIndex`，改用 `IndexOf`） |
+| 5 | `src/MaaWpfGui/ViewModels/TaskItemViewModel.cs:94-96` | 修改 B | `SetTaskIds` 末尾补 `StatusDisplay = TaskItemStatus.Idle;` |
+| 6 | `src/MaaWpfGui/Views/UI/TaskQueueView.xaml:75-105` | 修改 D | 左侧 Grid 由 2 行改 3 行（Header `Auto` / ListBox `*` / Footer `40`）；新增 `Border` + `StackPanel` 显示「当前账号: {CurrentCycleAccountName}」，用 `DataTrigger` 在值为 `""` 或 `{x:Null}` 时 `Collapsed`；ListBox 下移 `Grid.Row="1"`、Footer 下移 `Grid.Row="2"`（行 328） |
+| 7 | `src/MaaWpfGui/Res/Localizations/zh-cn.xaml:697` | 修改 | `CurrentAccountLabel` = `当前账号` |
+| 8 | `src/MaaWpfGui/Res/Localizations/zh-tw.xaml:697` | 修改 | `CurrentAccountLabel` = `目前帳號` |
+| 9 | `src/MaaWpfGui/Res/Localizations/en-us.xaml:697` | 修改 | `CurrentAccountLabel` = `Current Account` |
+| 10 | `src/MaaWpfGui/Res/Localizations/ja-jp.xaml:697` | 修改 | `CurrentAccountLabel` = `現在のアカウント` |
+| 11 | `src/MaaWpfGui/Res/Localizations/ko-kr.xaml:697` | 修改 | `CurrentAccountLabel` = `현재 계정` |
+| 12 | `AGENTS.md` §6 | 修改 | 新增 `fix/account_rotation/6` 进行中分支速查行 |
+| 13 | `LOG.md` | 修改 | 本节 |
+
+**代码 commit**: `c5e2ba3831`（`fix(account_rotation): 切号时刷新左侧任务状态 + 当前账号指示`，8 文件 +74 -2）。
+
+**编译结果**: `dotnet build src/MaaWpfGui/MaaWpfGui.csproj -c Release -p:Platform=x64` 成功，0 错误。遗留 4 个 `SA1516` 警告均在非本次改动文件（`RecruitTask.cs` / `RecruitSettingsUserControlModel.cs`），与本次无关。
+
+**设计取舍**:
+- 用专用属性 `CurrentCycleAccountName`（而非直接绑定 `StartUpSettingsUserControlModel.AccountName`）避免触发 StartUp 配置 PropertyChanged 链路的不确定性；DataContext 为 `TaskQueueViewModel`，绑定更直接。
+- `CurrentCycleAccountName` 声明为 `string?`，XAML 用两个 `DataTrigger`（`""` 与 `{x:Null}`）隐藏 Header，兼容初值 null。
+- 不修问题一「理智作战两次」（系两账号各一次的设计行为）；不动 `AccountNames` 列表；不修 `IsSelected` 不持久化（不在本次范围）。
+
+**待手动验证（需模拟器环境）**:
+1. 双账号轮换（192→189）→ 切到 189 时左侧任务行从绿色重置为 Idle、Header 显示「当前账号: 189****0830」、进度条重新出现
+2. StartUp 行在切号时显示进行中 → 完成（不再卡在首账号状态）
+3. 轮换结束 / 手动停止 → Header 消失
+4. 单账号（非轮换）→ Header 全程不出现
+
+**未推送上游**: 仅本仓库 `branch` 修复，不向 upstream 提 PR。
