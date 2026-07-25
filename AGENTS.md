@@ -51,19 +51,61 @@
 | 分支 | 角色 | 备注 |
 |------|------|------|
 | `master` | 上游镜像 | 长期与 `upstream/dev-v2` 保持一致 |
-| `branch` | **本地下游整合** | 所有 feat / fix 最终合并至此 |
-| `feat/<name>` | 新功能 | 从 `branch` 拉出 |
-| `fix/<name>` / `fix/<name>/<n>` | 修复分支 | **必须从对应 `feat/<name>` 拉出**（详见 `§3.3`） |
+| `branch` | **稳定下游基线** | 从 `staging` 攒批晋升 + 与 `master` 上游同步 |
+| `staging` | **待验证整合区** | 所有 feat / fix 的合并目标；攒批测试通过后晋升至 `branch`（详见 `§2.4`） |
+| `feat/<name>` | 新功能 | 从 `branch` 拉出，合并到 `staging` |
+| `fix/<name>` / `fix/<name>/<n>` | 修复分支 | **必须从对应 `feat/<name>` 拉出**（详见 `§3.3`）；合并到 `staging` 或对应 feat |
 
 ### 2.3 已完结 feat 处理
 
-feat 合并到 `branch` 后：
+feat 合并到 `staging` 后：
 
 | 操作 | 说明 |
 |------|------|
 | 本地 | `git branch -d feat/<name>`（已合入，安全删除） |
 | 远端 | 保留不删（便于回溯 / cherry-pick / 行为对比） |
 | 记录 | 写入本文件 `§7` 与 `LOG.md` |
+
+### 2.4 staging 工作流
+
+`staging` 是 `branch` 与 feat / fix 之间的**待验证整合区**，所有 feat / fix 必经此缓冲层才能晋升到 `branch`。
+
+#### 拓扑
+
+```
+master (上游 dev-v2 镜像)
+  │  (rebase / merge 同步节奏不变)
+  ▼
+branch (稳定下游基线) ◄──── staging 晋升 (--no-ff, 攒批)
+  │                                 ▲
+  │ (feat / fix 拉取源)              │ (合并目标)
+  ▼                                 │
+feat/<name>, fix/<name> ────────────┘
+```
+
+#### 规则
+
+| 项 | 说明 |
+|----|------|
+| 合并目标 | 所有 feat / fix 一律合并到 `staging`（不直奔 `branch`） |
+| 拉取源 | feat / fix 一律从 `branch` 拉出（不从 `staging` 拉，避免污染稳定基线引用） |
+| 晋升时机 | 攒一批（建议 3-5 个 feat / fix）后整体测试通过再晋升 |
+| 晋升方式 | `staging` → `branch` 通常分叉（cherry-pick 等价 SHA），用 `--no-ff` 创建合并 commit |
+| 出问题回退 | 从远端保留的 `feat/<name>` / `fix/<name>` 重新拉 `fix/<name>/<n>`，仍合并到 `staging` |
+
+#### 当前待验证内容（截至 2026-07-25）
+
+`staging` 由 `fix/expedite-threshold` 重命名而来，当前领先 `branch` 11 commits、落后 2 commits（branch 上的 `784d9005f6` + `da157d163d` 与 staging 上的 cherry-pick `6011051af2` + `f241b2160b` 内容等价、SHA 不同）。
+
+| 主题 | commit 数 | SHA |
+|------|-----------|-----|
+| StartUp 启动链（双重缓冲清理 / run 重排 / 恢复原序 + OCR 兜底 / 官方服账号识别补全） | 4 | `eb3cc67595` `3f411e494a` `2715162c3d` `6011051af2` |
+| Account-switch OCR 适配 UI 改版（登录记录 / 上次登录 双文本兜底） | 1 | `f9668a0c9c` |
+| Expedite-threshold `m_last_confirmed_min_level` 重置补回 | 1 | `d73f61adc1` |
+| Recruit_now 顺序（移到 confirm 之后） | 1 | `2718046060` |
+| Docs（启动 / 实施完成登记 / cherry-pick 同步 / 字段说明） | 4 | `301f90897a` `20cd79d4ca` `f241b2160b` `1249c9a4dd` |
+
+晋升前需至少实测验证：多账号切号（官服 + B 服）+ 公招加急（4 / 5 / 6 星门槛）+ recruit_now 主页立即完成路径。
 
 
 ## 3. 工作流与文档规范
@@ -88,7 +130,7 @@ feat 合并到 `branch` 后：
 | 3 | 实施期间 commit message 记录关键决策 | commit 历史 |
 | 4 | 实施完成 `LOG.md` 追加「`feat/<name>` 实施完成」表格（文件路径 + 行号 + commit） | 实施记录 |
 | 5 | 编译 / 部署验证 | `install/` |
-| 6 | FF 合并到 `branch`（无分叉时）；分叉时 `--no-ff` | merge commit |
+| 6 | FF 合并到 `staging`（无分叉时）；分叉时 `--no-ff` | merge commit |
 | 7 | `LOG.md` 记录合并事件，按 `§2.3` 处理 feat 分支 | 生命周期 |
 
 ### 3.3 fix 分支命名与合并目标
@@ -96,6 +138,7 @@ feat 合并到 `branch` 后：
 | 约束 | 说明 |
 |------|------|
 | 来源 | fix **必须从被修复的 `feat/<name>` 拉出**；或从 `branch` 拉出修复 `branch` 自身 |
+| 合并目标 | 修 feat 的 fix → 合并到对应 `feat/<name>`；修 branch 自身的 fix → 合并到 `staging` |
 | 跨多 feat 修复 | 合并目标选**依赖链最下游**的 feat；commit message 与 PR 列出所有涉及 feat |
 
 参考：`fix/account_rotation/修改次数` 同时修复 `feat/account_rotation` 与 `feat/defer-rogue` 交互缺陷，合并目标为 `feat/defer-rogue`（下游），详见 `LOG.md` 2026-07-15 同章节。
@@ -169,7 +212,11 @@ feat 合并到 `branch` 后：
 
 ## 6. 进行中分支速查
 
-**无** — 所有分支均已合入 `branch` 或已清理。
+| 分支 | 角色 | 修复目标 |
+|------|------|----------|
+| `fix/account-switch-retry` | LoginOther OCR 不匹配时追加 AccountManagerPageConfirm 模板兜底（DoNothing），消除 ~18s retry 空等；retry_times 保持 30 不变 | `staging`（依赖其诊断日志改动） |
+| `fix/account_rotation/6` | 从 `branch` 拉出，从属 `feat/account_rotation`（已合入） | 账号轮换切号时左侧任务面板不刷新：`AdvanceAccountCycle` 未重置任务行状态/进度计数 + StartUp 行 `_taskIds` 丢失；顺带加「当前账号」Header 解决「误以为同一账号跑两次」的视觉混淆 |
+| `fix/account-switch-template-missing` | 从 `branch` 拉出，修正 `fix/account-switch-retry` 修正版（`41cfcb736b`）漏提交 `AccountManagerPageConfirm.png` 的资源完整性漏洞；`TemplResource::load` 期望 `task_name + .png` 存在，不依赖 `baseTask` 继承 | `staging`（连带修复资源损坏导致 MAA 无法启动的连锁错误） |
 
 
 ## 7. 分支生命周期记录
@@ -227,6 +274,45 @@ feat 合并到 `branch` 后：
 | 子修复分支 | 无 |
 | 作用域 | 仅本仓库 `branch` 修复，不推 upstream |
 | 详见 | `LOG.md` 2026-07-24 |
+
+### 7.6 fix/account-switch-retry
+
+| 项 | 内容 |
+|----|------|
+| 用途 | 修切号时 `AccountSwitchTask::navigate_to_start_page` 重试预算与 OCR 兜底 |
+| 根因 | 导航首步（`SwitchAccount@StartUpBegin` 含 22 个 next 候选）最坏需 ~13 次 retry 才有 UI 元素可识别；初版误判 `LoginOther` OCR 30×0.6s = 18s 空等，将 retry_times 降至 5 后 `TaskChainError`；正确修法是保持 retry=30 + 在 `LoginOther.next` 追加 `AccountManagerPageConfirm` 模板兜底 |
+| 修复 | `tasks.json:808-817`：`LoginOther.next` 追加 `AccountManagerPageConfirm`（`baseTask: AccountManagerListAccount` + `action: DoNothing`），OCR 失败时同 retry cycle 内模板命中；`AccountSwitchTask.cpp:68-77`：`set_retry_times(30)` + `last_name` 白名单加 `AccountManagerPageConfirm` |
+| 生命周期 | 2026-07-25 创建 → 2026-07-25 修正版 `--no-ff` 合入 `staging`（`6260abf14a`） |
+| 关键 commit | `cd704f8bbc`（初版 retry=5，`TaskChainError`） → `41cfcb736b`（修正版 retry=30 + 模板兜底） |
+| 子修复分支 | 无（独立分支） |
+| 作用域 | 仅本仓库 `branch` 修复，不推 upstream |
+| 详见 | `LOG.md` 2026-07-25（fix/account-switch-retry LoginOther OCR 模板兜底 + retry_times 分析修正） |
+
+### 7.7 fix/account_rotation/6
+
+| 项 | 内容 |
+|----|------|
+| 用途 | 修账号轮换切号时左侧任务面板不刷新 + 「当前账号」Header 视觉混淆 |
+| 根因 | `LinkStartWithTasks`（首账号）有 `MainTasksCompletedCount = 0` + `ResetTaskItemStatuses()`，但 `AdvanceAccountCycle`（后续账号）全程无等价重置，导致切号后左侧仍是上一账号绿色 Completed + 进度条不出现；`TaskItemViewModel.SetTaskIds` 不重置 `StatusDisplay`；显式切号 taskId 不绑回 StartUp 行 |
+| 修复 | `TaskQueueViewModel.cs`：`AdvanceAccountCycle` 切号前调用 `MainTasksCompletedCount = 0` + `ResetTaskItemStatuses()`，显式切号 taskId 绑回 StartUp 行，新增 `CurrentCycleAccountName` 属性在 5 处路径同步维护；`TaskItemViewModel.SetTaskIds` 末尾重置 `StatusDisplay`；`TaskQueueView.xaml` 左侧 Grid 2 行改 3 行 + Header Border + DataTrigger；五语 xaml 加 `CurrentAccountLabel` |
+| 生命周期 | 2026-07-25 创建 → 2026-07-25 `--no-ff` 合入 `staging`（`6260abf14a`） |
+| 关键 commit | `c5e2ba3831`（代码：8 文件 +74 -2） + `520dab59be`（docs：LOG.md / AGENTS.md §6） |
+| 子修复分支 | 无（独立 fix） |
+| 作用域 | 仅本仓库 `branch` 修复，不推 upstream |
+| 详见 | `LOG.md` 2026-07-25（fix/account_rotation/6 启动 + 实施完成） |
+
+### 7.8 fix/account-switch-template-missing
+
+| 项 | 内容 |
+|----|------|
+| 用途 | 修 `fix/account-switch-retry` 修正版（`41cfcb736b`）漏提交 `AccountManagerPageConfirm.png` 的资源完整性漏洞 |
+| 根因 | `tasks.json:813-817` 新增 `AccountManagerPageConfirm` task（`baseTask: AccountManagerListAccount` + `action: DoNothing`）但未提交对应 PNG。MAA `TemplResource::load` 期望每个 task 有同名 PNG（不依赖 `baseTask` 继承），文件缺失导致 `Templ load failed, file not exists` 与连锁 `TaskData load failed` / `OnnxSessions load failed` / `WordOcr load failed`，UI 报「资源损坏」无法启动 |
+| 修复 | `resource/template/WakeUp/AccountManager/AccountManagerPageConfirm.png`：复制 `AccountManagerListAccount.png`（149 字节）作为 sibling 占位。DoNothing 任务实际不调用模板匹配，仅需文件存在让加载器存在性检查通过 |
+| 生命周期 | 2026-07-25 创建 → 2026-07-25 `--no-ff` 合入 `staging`（`9ac844c10a`） |
+| 关键 commit | `ad03f949e4`（fix(switch-template): 补 AccountManagerPageConfirm.png 满足 TemplResource 存在性检查，2 文件 +32） |
+| 子修复分支 | 无 |
+| 作用域 | 仅本仓库 `branch` 修复，不推 upstream |
+| 详见 | `LOG.md` 2026-07-25（fix/account-switch-template-missing 启动 + 实施完成） |
 
 
 ## 8. 关键参考链接
