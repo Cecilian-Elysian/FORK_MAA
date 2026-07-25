@@ -169,7 +169,9 @@ feat 合并到 `branch` 后：
 
 ## 6. 进行中分支速查
 
-**无** — 所有分支均已合入 `branch` 或已清理。
+| 分支 | 角色 | 修复目标 |
+|------|------|----------|
+| `fix/account_rotation/6` | 从 `branch` 拉出，从属 `feat/account_rotation`（已合入） | 账号轮换切号时左侧任务面板不刷新：`AdvanceAccountCycle` 未重置任务行状态/进度计数 + StartUp 行 `_taskIds` 丢失；顺带加「当前账号」Header 解决「误以为同一账号跑两次」的视觉混淆 |
 
 
 ## 7. 分支生命周期记录
