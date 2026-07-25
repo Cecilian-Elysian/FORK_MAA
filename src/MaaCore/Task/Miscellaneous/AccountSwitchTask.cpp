@@ -65,7 +65,9 @@ bool asst::AccountSwitchTask::_run()
 bool asst::AccountSwitchTask::navigate_to_start_page()
 {
     auto task = ProcessTask(*this, { "SwitchAccount@StartUpBegin" });
-    task.set_retry_times(30);
+    // fix/account-switch-retry: OCR 词表与实际 UI 不匹配时 30 次 retry 纯浪费 (~18s);
+    // 降至 5 次让 navigate_to_start_page 更快走到 AccountManagerListAccount 模板兜底
+    task.set_retry_times(5);
     task.run();
     std::string last_name = task.get_last_task_name();
     Log.info(__FUNCTION__, "last matched task:", last_name);

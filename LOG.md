@@ -61,6 +61,20 @@ feat/<name>, fix/<name> ────────────┘
 
 **推 upstream**: 仅本 fork 修复, 不推。
 
+### fix/account-switch-retry navigate_to_start_page retry_times 降至 5
+
+`AccountSwitchTask::navigate_to_start_page()` 的 ProcessTask 设 `retry_times=30`, 当 `LoginOther.next` 的 OCR (`AccountManagerOfficial`/`AccountManagerBili`, 词表 `["登录记录","上次登录"]`) 与实际 UI 不匹配时, 30 次 retry × ~0.6s = ~18s 纯浪费。日志确认 OCR 30 次全不命中, 但 retry 块结束后的 `AccountManagerListAccount` 模板匹配首次即命中 (score 0.90)。
+
+降至 5 次: 5 × 0.6s = 3s, 每次 -15s, 两账号 -30s。OCR 偶尔命中时仍有 5 次机会; 不命中时快速走到模板兜底。
+
+| # | 文件 | 操作 | 说明 |
+|---|------|------|------|
+| 1 | `src/MaaCore/Task/Miscellaneous/AccountSwitchTask.cpp:68` | 修改 | `set_retry_times(30)` → `set_retry_times(5)` + 注释 |
+| 2 | `LOG.md` | 修改 | 本节 |
+| 3 | `AGENTS.md §6` | 修改 | 新增 `fix/account-switch-retry` 行 |
+
+**推 upstream**: 仅本 fork 修复, 不推。
+
 ## 2026-07-24
 
 ### fix/expedite-threshold 账号列表 OCR 适配 UI 改版

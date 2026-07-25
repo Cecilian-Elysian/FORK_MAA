@@ -212,7 +212,9 @@ feat/<name>, fix/<name> ────────────┘
 
 ## 6. 进行中分支速查
 
-_无进行中 feat / fix 分支。`staging` 当前内容见 `§2.4`。_
+| 分支 | 角色 | 修复目标 |
+|------|------|---------|
+| `fix/account-switch-retry` | `navigate_to_start_page` retry_times 30→5（修 OCR 不匹配时 ~18s 空等） | `staging`（依赖其诊断日志改动） |
 
 
 ## 7. 分支生命周期记录
