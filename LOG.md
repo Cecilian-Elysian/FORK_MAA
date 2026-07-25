@@ -4,6 +4,42 @@
 
 ## 2026-07-25
 
+### staging 分支引入 + fix/expedite-threshold 重命名
+
+**背景**：`fix/expedite-threshold` 累积了 11 个跨方向 commit（启动链 / 切号 OCR / 加急门槛 / recruit_now 顺序 / docs），已不适合作为单一 fix 分支命名。引入 `staging` 层作为 feat / fix 的合并目标与 `branch` 之间的待验证整合区，攒批测试通过后晋升至 `branch`。
+
+**工作流变更**：
+
+```
+master (上游 dev-v2 镜像)
+  │  (rebase / merge 同步节奏不变)
+  ▼
+branch (稳定下游基线) ◄──── staging 晋升 (--no-ff, 攒批)
+  │                                 ▲
+  │ (feat / fix 拉取源)              │ (合并目标)
+  ▼                                 │
+feat/<name>, fix/<name> ────────────┘
+```
+
+- 所有 feat / fix 一律从 `branch` 拉出，合并到 `staging`
+- `staging` 攒一批（建议 3-5 个）测试通过后再晋升至 `branch`
+- `branch` ↔ `master` 上游同步节奏不变
+- 当前 `staging` 领先 `branch` 11 commits、落后 2 commits（branch 上的 `784d9005f6` + `da157d163d` 与 staging 上的 cherry-pick `6011051af2` + `f241b2160b` 内容等价、SHA 不同），首次晋升将无法 FF，需 `--no-ff`
+
+| # | 文件 | 操作 | 说明 |
+|---|------|------|------|
+| 1 | 本地 git 分支 | 重命名 | `fix/expedite-threshold` → `staging` |
+| 2 | `Github` 远端 | 推送 | 新增 `staging` 分支；旧名 `fix/expedite-threshold` 未推过远端，无需删除 |
+| 3 | `AGENTS.md §2.2` | 修改 | 新增 `staging` 行；`branch` 备注「本地下游整合」→「稳定下游基线」 |
+| 4 | `AGENTS.md §2.3` | 修改 | 「feat 合并到 `branch`」→「feat 合并到 `staging`」 |
+| 5 | `AGENTS.md §2.4` | 新增 | staging 工作流（拓扑 / 规则 / 当前待验证内容） |
+| 6 | `AGENTS.md §3.2` | 修改 | feat 流程步骤 6 合并目标 `branch` → `staging` |
+| 7 | `AGENTS.md §3.3` | 修改 | fix 合并目标补「修 branch 自身的 fix → 合并到 `staging`」 |
+| 8 | `AGENTS.md §6` | 修改 | 删除 `fix/expedite-threshold` 行（staging 是长期角色，不属于 feat/fix 速查） |
+| 9 | `LOG.md` | 修改 | 本节 |
+
+**推 upstream**：仅本 fork 工作流调整，不推。
+
 ### fix/expedite-threshold recruit_now 调用顺序修复
 
 `feat/expedite-threshold`（`7df4e94e3f`）重构时把 `recruit_now()` 从 `_run()` 外层循环挪进 `recruit_one()`,但挪到了 `confirm()` 之前。游戏 UI 规则:「立即招 / 立即完成」按钮只存在于公招主页(slot 已开始 9h 倒计时), 详情页(confirm 之前)无此按钮。导致 `RecruitNow` task 的 OCR `["立即招"]` 在 ROI `[0,300,1280,420]` 内 4 次 retry 全空, `recruit_now()` 必失败, 加急判定通过却实际未加急, slot 始终走 9h 倒计时。

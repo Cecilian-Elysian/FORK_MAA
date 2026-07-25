@@ -51,19 +51,61 @@
 | 分支 | 角色 | 备注 |
 |------|------|------|
 | `master` | 上游镜像 | 长期与 `upstream/dev-v2` 保持一致 |
-| `branch` | **本地下游整合** | 所有 feat / fix 最终合并至此 |
-| `feat/<name>` | 新功能 | 从 `branch` 拉出 |
-| `fix/<name>` / `fix/<name>/<n>` | 修复分支 | **必须从对应 `feat/<name>` 拉出**（详见 `§3.3`） |
+| `branch` | **稳定下游基线** | 从 `staging` 攒批晋升 + 与 `master` 上游同步 |
+| `staging` | **待验证整合区** | 所有 feat / fix 的合并目标；攒批测试通过后晋升至 `branch`（详见 `§2.4`） |
+| `feat/<name>` | 新功能 | 从 `branch` 拉出，合并到 `staging` |
+| `fix/<name>` / `fix/<name>/<n>` | 修复分支 | **必须从对应 `feat/<name>` 拉出**（详见 `§3.3`）；合并到 `staging` 或对应 feat |
 
 ### 2.3 已完结 feat 处理
 
-feat 合并到 `branch` 后：
+feat 合并到 `staging` 后：
 
 | 操作 | 说明 |
 |------|------|
 | 本地 | `git branch -d feat/<name>`（已合入，安全删除） |
 | 远端 | 保留不删（便于回溯 / cherry-pick / 行为对比） |
 | 记录 | 写入本文件 `§7` 与 `LOG.md` |
+
+### 2.4 staging 工作流
+
+`staging` 是 `branch` 与 feat / fix 之间的**待验证整合区**，所有 feat / fix 必经此缓冲层才能晋升到 `branch`。
+
+#### 拓扑
+
+```
+master (上游 dev-v2 镜像)
+  │  (rebase / merge 同步节奏不变)
+  ▼
+branch (稳定下游基线) ◄──── staging 晋升 (--no-ff, 攒批)
+  │                                 ▲
+  │ (feat / fix 拉取源)              │ (合并目标)
+  ▼                                 │
+feat/<name>, fix/<name> ────────────┘
+```
+
+#### 规则
+
+| 项 | 说明 |
+|----|------|
+| 合并目标 | 所有 feat / fix 一律合并到 `staging`（不直奔 `branch`） |
+| 拉取源 | feat / fix 一律从 `branch` 拉出（不从 `staging` 拉，避免污染稳定基线引用） |
+| 晋升时机 | 攒一批（建议 3-5 个 feat / fix）后整体测试通过再晋升 |
+| 晋升方式 | `staging` → `branch` 通常分叉（cherry-pick 等价 SHA），用 `--no-ff` 创建合并 commit |
+| 出问题回退 | 从远端保留的 `feat/<name>` / `fix/<name>` 重新拉 `fix/<name>/<n>`，仍合并到 `staging` |
+
+#### 当前待验证内容（截至 2026-07-25）
+
+`staging` 由 `fix/expedite-threshold` 重命名而来，当前领先 `branch` 11 commits、落后 2 commits（branch 上的 `784d9005f6` + `da157d163d` 与 staging 上的 cherry-pick `6011051af2` + `f241b2160b` 内容等价、SHA 不同）。
+
+| 主题 | commit 数 | SHA |
+|------|-----------|-----|
+| StartUp 启动链（双重缓冲清理 / run 重排 / 恢复原序 + OCR 兜底 / 官方服账号识别补全） | 4 | `eb3cc67595` `3f411e494a` `2715162c3d` `6011051af2` |
+| Account-switch OCR 适配 UI 改版（登录记录 / 上次登录 双文本兜底） | 1 | `f9668a0c9c` |
+| Expedite-threshold `m_last_confirmed_min_level` 重置补回 | 1 | `d73f61adc1` |
+| Recruit_now 顺序（移到 confirm 之后） | 1 | `2718046060` |
+| Docs（启动 / 实施完成登记 / cherry-pick 同步 / 字段说明） | 4 | `301f90897a` `20cd79d4ca` `f241b2160b` `1249c9a4dd` |
+
+晋升前需至少实测验证：多账号切号（官服 + B 服）+ 公招加急（4 / 5 / 6 星门槛）+ recruit_now 主页立即完成路径。
 
 
 ## 3. 工作流与文档规范
@@ -88,7 +130,7 @@ feat 合并到 `branch` 后：
 | 3 | 实施期间 commit message 记录关键决策 | commit 历史 |
 | 4 | 实施完成 `LOG.md` 追加「`feat/<name>` 实施完成」表格（文件路径 + 行号 + commit） | 实施记录 |
 | 5 | 编译 / 部署验证 | `install/` |
-| 6 | FF 合并到 `branch`（无分叉时）；分叉时 `--no-ff` | merge commit |
+| 6 | FF 合并到 `staging`（无分叉时）；分叉时 `--no-ff` | merge commit |
 | 7 | `LOG.md` 记录合并事件，按 `§2.3` 处理 feat 分支 | 生命周期 |
 
 ### 3.3 fix 分支命名与合并目标
@@ -96,6 +138,7 @@ feat 合并到 `branch` 后：
 | 约束 | 说明 |
 |------|------|
 | 来源 | fix **必须从被修复的 `feat/<name>` 拉出**；或从 `branch` 拉出修复 `branch` 自身 |
+| 合并目标 | 修 feat 的 fix → 合并到对应 `feat/<name>`；修 branch 自身的 fix → 合并到 `staging` |
 | 跨多 feat 修复 | 合并目标选**依赖链最下游**的 feat；commit message 与 PR 列出所有涉及 feat |
 
 参考：`fix/account_rotation/修改次数` 同时修复 `feat/account_rotation` 与 `feat/defer-rogue` 交互缺陷，合并目标为 `feat/defer-rogue`（下游），详见 `LOG.md` 2026-07-15 同章节。
@@ -169,9 +212,7 @@ feat 合并到 `branch` 后：
 
 ## 6. 进行中分支速查
 
-| 分支 | 角色 | 修复目标 |
-|------|------|---------|
-| `fix/expedite-threshold` | 修复 `feat/expedite-threshold` 重构时遗失的 `m_last_confirmed_min_level` 重置,导致下一槽位读到上一槽位陈旧星级而误加急;同步 `fix/account-official-recognize` (cherry-pick from `branch`);StartUp 双重缓冲清理;StartUp::run 恢复原序 + 切号链 OCR 兜底（修多账号鹰角弹窗场景 20s 等待）;账号列表 OCR 适配 UI 改版（登录记录 / 上次登录 双文本兜底）;recruit_now 移到 confirm 之后（修详情页无「立即招」按钮导致加急必失败） | `branch` 自身（修复 `7df4e94e3f` 重构遗漏） |
+_无进行中 feat / fix 分支。`staging` 当前内容见 `§2.4`。_
 
 
 ## 7. 分支生命周期记录
