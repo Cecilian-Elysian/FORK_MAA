@@ -688,3 +688,35 @@ dotnet build src/MaaWpfGui/MaaWpfGui.csproj -c Release -p:Platform=x64
 
 **未推送上游**: 仅本仓库 `branch` 修复，不向 upstream 提 PR。
 
+### fix/account-switch-template-missing 启动
+
+`fix/account-switch-retry` 修正版（`41cfcb736b`）在 `tasks.json:813-817` 引用 `AccountManagerPageConfirm.png` 但忘记提交该 PNG。MAA TemplResource::load 期望每个 task 都有同名 PNG（不依赖 `baseTask` 继承），文件缺失导致 `Templ load failed, file not exists: AccountManagerPageConfirm.png` 与连锁 `TaskData load failed` / `OnnxSessions load failed`，UI 显示「资源损坏」无法启动。
+
+`fix/account-switch-template-missing` 从 `branch` 拉出，目标修复该资源完整性漏洞（修 `fix/account-switch-retry` 自身）。
+
+| # | 文件/对象 | 操作 | 说明 |
+|---|----------|------|------|
+| 1 | `fix/account-switch-template-missing` | 新建分支 | 从 `branch` 拉出（HEAD = `da157d163d`） |
+| 2 | `resource/template/WakeUp/AccountManager/AccountManagerPageConfirm.png` | 新增 | `AccountManagerListAccount.png` 同源副本；作为 sibling 占位让 TemplResource 存在性检查通过 |
+| 3 | `LOG.md` | 修改 | 本节 |
+
+### fix/account-switch-template-missing 实施完成
+
+| # | 文件 | 操作 | 说明 |
+|---|------|------|------|
+| 1 | `resource/template/WakeUp/AccountManager/AccountManagerPageConfirm.png` | 新增 | 149 字节，与 `AccountManagerListAccount.png` 内容一致；`DoNothing` 任务实际不需要真实匹配 PNG，仅满足 TemplResource 加载器对 `task_name + .png` 文件存在性检查 |
+| 2 | `tasks.json:813-817` | 不动 | `AccountManagerPageConfirm` 任务定义完整（`baseTask: AccountManagerListAccount` + `action: DoNothing`），TemplResource 看到 PNG 文件存在后即可正常加载 |
+| 3 | `LOG.md` | 修改 | 本节 |
+
+**代码 commit**: 待 commit（1 文件 +1）。
+
+**设计取舍**:
+- 选择复制 `AccountManagerListAccount.png` 作为 sibling 占位：最简实现，PNG 内容不参与任何匹配（DoNothing 任务在识别成功时直接 return，不调用模板），仅满足 TemplResource 文件存在性约束
+- 替代方案：给 `AccountManagerPageConfirm` 加 `template: "AccountManagerListAccount.png"` 字段复用 baseTask 的模板，避免文件复制——但本方案保持 commit 最小化（仅 PNG），后续如需可重构
+
+**手动验证方法**:
+1. `robocopy .\resource .\install\resource /MIR /IS /IT` 同步资源
+2. 启动 `install/MAA.exe`
+3. 查看 `install/debug/asst.log` 应不再有 `Templ load failed, file not exists: AccountManagerPageConfirm.png`
+4. `ResourceLoader::load ret 1` 表示成功
+
