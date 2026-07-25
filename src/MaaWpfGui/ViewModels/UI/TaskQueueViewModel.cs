@@ -2228,6 +2228,7 @@ public class TaskQueueViewModel : Screen
         {
             MarkPreviousStepCompleted(prevStep);
             StartUpTask.IsCycling = false;
+            _consecutiveEmptySteps = 0;
             _runningState.SetIdle(true);
             AddLog(LocalizationHelper.GetString("AccountCycleAllDone"), UiLogColor.Info);
             return;
@@ -2373,13 +2374,27 @@ public class TaskQueueViewModel : Screen
             _logger.Information("[CycleAdv] phase={Phase}, needStartupSwitch={Switch}, count={Count}, taskRet={Ret}",
                 currentPhase, needStartupSwitch, count, taskRet);
 
-            // 3) 空步骤递归跳过
+            // 3) 空步骤跳过 (fix/account-cycle-fault-tolerance: 加保险防止 RebuildCycleSteps 全空步骤
+//    时的无限循环. 实际触发需 RebuildCycleSteps 全部步骤均无任务且未步骤耗尽, 例如
+//    AccountNames 全空 + Phase 2 未配 LateStage 但 Phase 2 步骤仍生成. 保险阈值 64)
+//    成功追加任务时清零.
             if (count == 0)
             {
+                if (++_consecutiveEmptySteps > 64)
+                {
+                    AddLog("[Cycle] Too many consecutive empty steps, stop cycle.", UiLogColor.Error);
+                    StartUpTask.IsCycling = false;
+                    _consecutiveEmptySteps = 0;
+                    SetStopped(runStopScript: false);
+                    return;
+                }
+
                 AddLog($"[Cycle] Step empty (Phase {currentPhase}), advancing to next...", UiLogColor.Info);
                 AdvanceAccountCycle();
                 return;
             }
+
+            _consecutiveEmptySteps = 0;
 
             if (!taskRet || !Instances.AsstProxy.AsstStart())
             {
@@ -2433,6 +2448,12 @@ public class TaskQueueViewModel : Screen
     public bool EnableSetFightParams { get; set; } = true;
 
     public bool Inited { get => field; set => SetAndNotify(ref field, value); }
+
+    /// <summary>
+    /// fix/account-cycle-fault-tolerance: 连续空步骤计数 (advance 触发 count==0 时递增, 成功追加任务时清零).
+    /// 防止 RebuildCycleSteps 生成全空步骤列表时的递归死循环.
+    /// </summary>
+    private int _consecutiveEmptySteps;
 
     private bool _idle;
 

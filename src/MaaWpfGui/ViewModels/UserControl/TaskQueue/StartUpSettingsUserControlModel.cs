@@ -222,19 +222,34 @@ public class StartUpSettingsUserControlModel : TaskSettingsViewModel, StartUpSet
             .ToDictionary(x => x.AccountName, x => x.IsSelected);
 
         _accountCycleItems.Clear();
+
+        // fix/account-cycle-fault-tolerance (C4): 重名校验, 保留首次出现, 后续同名取消勾选并提示
+        var seenNames = new HashSet<string>(System.StringComparer.Ordinal);
+        int duplicateCount = 0;
         for (int i = 0; i < config.AccountNames.Count; i++)
         {
             var name = config.AccountNames[i];
+            bool isDuplicate = !string.IsNullOrEmpty(name) && !seenNames.Add(name);
+            if (isDuplicate)
+            {
+                duplicateCount++;
+            }
+
             var item = new AccountCycleItem
             {
                 DisplayName = LocalizationHelper.GetString("AccountCycleNewAccountDefaultName") + (i + 1),
                 AccountName = name,
-                IsSelected = existingSelections.TryGetValue(name, out var selected) ? selected : true,
+                IsSelected = !isDuplicate && (existingSelections.TryGetValue(name, out var selected) ? selected : true),
                 IsCompleted = _completedAccounts.Contains(name),
                 Index = i,
             };
             item.PropertyChanged += OnAccountCycleItemPropertyChanged;
             _accountCycleItems.Add(item);
+        }
+
+        if (duplicateCount > 0)
+        {
+            Instances.TaskQueueViewModel.AddLog($"[Cycle] Warning: {duplicateCount} duplicate account name(s) detected, duplicates have been deselected.", UiLogColor.Warning);
         }
 
         NotifyOfPropertyChange(nameof(AccountCycleItems));
