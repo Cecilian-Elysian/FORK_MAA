@@ -61,17 +61,23 @@ feat/<name>, fix/<name> ────────────┘
 
 **推 upstream**: 仅本 fork 修复, 不推。
 
-### fix/account-switch-retry navigate_to_start_page retry_times 降至 5
+### fix/account-switch-retry LoginOther OCR 模板兜底 + retry_times 分析修正
 
-`AccountSwitchTask::navigate_to_start_page()` 的 ProcessTask 设 `retry_times=30`, 当 `LoginOther.next` 的 OCR (`AccountManagerOfficial`/`AccountManagerBili`, 词表 `["登录记录","上次登录"]`) 与实际 UI 不匹配时, 30 次 retry × ~0.6s = ~18s 纯浪费。日志确认 OCR 30 次全不命中, 但 retry 块结束后的 `AccountManagerListAccount` 模板匹配首次即命中 (score 0.90)。
+**初版误判**（`cd704f8bbc`）: 将 `navigate_to_start_page` 的 `retry_times` 从 30 降至 5, 以为 30 次 retry 全花在 LoginOther OCR。实测失败（`asst.log` 19:18:57）: `last matched task: SwitchAccount@StartUpBegin`, 导航首步就耗光 5 次 retry, `TaskChainError`。
 
-降至 5 次: 5 × 0.6s = 3s, 每次 -15s, 两账号 -30s。OCR 偶尔命中时仍有 5 次机会; 不命中时快速走到模板兜底。
+**根因修正**: 阅读 `ProcessTask::find_and_run_task()`（`ProcessTask.cpp:336-380`）发现 `cur_retry` 是**局部变量**, 每次 `run()` 循环调用 `find_and_run_task()` 时**独立从 0 开始**。链路每一步各自享有完整的 `m_retry_times` 预算。导航首步（`SwitchAccount@StartUpBegin` → 22 个 `next` 候选）最坏需要 ~13 次 retry 才有 UI 元素可识别, 5 次远远不够。
+
+**正确修法**: 保留 `retry_times=30`（导航余量不变）, 在 `LoginOther.next` 追加 `AccountManagerPageConfirm`（`baseTask: AccountManagerListAccount` + `action: DoNothing`）。OCR 失败时同一 retry cycle 内模板匹配兜底命中（日志历史 score 0.93 稳定）, 不再空耗 30 × 0.6s = 18s retry。由于 `action: DoNothing`, 不改变 UI 状态, 后续 `equal_current_account()` / `show_account_list()` 不受影响。
 
 | # | 文件 | 操作 | 说明 |
 |---|------|------|------|
-| 1 | `src/MaaCore/Task/Miscellaneous/AccountSwitchTask.cpp:68` | 修改 | `set_retry_times(30)` → `set_retry_times(5)` + 注释 |
-| 2 | `LOG.md` | 修改 | 本节 |
-| 3 | `AGENTS.md §6` | 修改 | 新增 `fix/account-switch-retry` 行 |
+| 1 | `src/MaaCore/Task/Miscellaneous/AccountSwitchTask.cpp:68` | 回退 | `set_retry_times(5)` → `set_retry_times(30)` + 注释更新 |
+| 2 | `src/MaaCore/Task/Miscellaneous/AccountSwitchTask.cpp:74` | 修改 | `last_name` 白名单追加 `"AccountManagerPageConfirm"` |
+| 3 | `resource/tasks/tasks.json:808-817` | 修改 | `LoginOther.next` 追加 `"AccountManagerPageConfirm"`; 新增 `AccountManagerPageConfirm` task（`baseTask: AccountManagerListAccount`, `action: DoNothing`） |
+| 4 | `LOG.md` | 修改 | 本节（替换初版的 retry_times=5 描述） |
+| 5 | `AGENTS.md §6` | 修改 | `fix/account-switch-retry` 描述更新 |
+
+**预期效果**: 每次 `navigate_to_start_page` 的 LoginOther 阶段从 ~18s（30 retry × 0.6s）降至 ~0.1s（首个 cycle 模板命中）, 每次 -18s, 两账号 -36s。导航阶段不受影响（retry_times=30 不变）。
 
 **推 upstream**: 仅本 fork 修复, 不推。
 

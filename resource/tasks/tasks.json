@@ -808,7 +808,12 @@
     "LoginOther": {
         "algorithm": "JustReturn",
         "preDelay": 3000,
-        "next": ["AccountManagerOfficial", "AccountManagerBili"]
+        "next": ["AccountManagerOfficial", "AccountManagerBili", "AccountManagerPageConfirm"]
+    },
+    "AccountManagerPageConfirm": {
+        "Doc": "OCR 词表不匹配时的模板兜底, 确认到达账号管理页但不点击 (action=DoNothing)",
+        "baseTask": "AccountManagerListAccount",
+        "action": "DoNothing"
     },
     "AccountManagerOfficial": {
         "Doc": "官方服账号切换界面识别，与 B 服统一 OCR「登录记录 / 上次登录」",

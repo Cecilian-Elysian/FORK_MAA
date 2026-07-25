@@ -214,7 +214,7 @@ feat/<name>, fix/<name> ────────────┘
 
 | 分支 | 角色 | 修复目标 |
 |------|------|---------|
-| `fix/account-switch-retry` | `navigate_to_start_page` retry_times 30→5（修 OCR 不匹配时 ~18s 空等） | `staging`（依赖其诊断日志改动） |
+| `fix/account-switch-retry` | LoginOther OCR 不匹配时追加 AccountManagerPageConfirm 模板兜底（DoNothing），消除 ~18s retry 空等；retry_times 保持 30 不变 | `staging`（依赖其诊断日志改动） |
 
 
 ## 7. 分支生命周期记录
