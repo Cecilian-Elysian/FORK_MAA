@@ -145,12 +145,12 @@ bool asst::AccountSwitchTask::select_account()
     LogTraceFunction;
 
     sleep(SwipeIntervalMs);
-    auto raw_img = ctrler()->get_image();
     OCRer ocr(ctrler()->get_image());
     if (m_client_type == "Official" || m_client_type == "txwy") {
-        ocr.set_use_char_model(true);
+        ocr.set_task_info("AccountListOcr");
     }
     else if (m_client_type == "Bilibili") {
+        ocr.set_task_info("AccountListOcrBili");
     }
     ocr.set_required({ m_account });
     if (!ocr.analyze()) {
