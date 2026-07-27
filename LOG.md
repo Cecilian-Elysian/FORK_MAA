@@ -2,6 +2,21 @@
 
 日志规范：每次修改文件后，在此记录修改内容。
 
+## 2026-07-27
+
+### tools/local-install-staging.bat 创建
+
+`branch` 分支使用 `install/` 作为构建输出目录。新增 `tools/local-install-staging.bat`，结构与 `local-install.bat` 一致，仅将 6 处 `install` 路径改为 `install-staging`，输出到独立目录与 `install/` 并存，互不覆盖。`branch` 与 `staging` 分支各自独立构建，桌面分别快捷。
+
+| # | 文件 | 操作 | 说明 |
+|---|------|------|------|
+| 1 | `tools/local-install-staging.bat` | 新建 | 基于 `local-install.bat`，6 处 `install` 路径改为 `install-staging`（cmake `--prefix`、dotnet `-o`、nbeauty 补丁、清理 `*.h`/`msvc-debug`、robocopy `resource`） |
+| 2 | `LOG.md` | 修改 | 本节 |
+
+**用法**:
+- `branch` 分支：`tools\local-install.bat` → `install\MAA.exe`
+- `staging` 分支：`tools\local-install-staging.bat` → `install-staging\MAA.exe`
+
 ## 2026-07-25
 
 ### staging 分支引入 + fix/expedite-threshold 重命名
