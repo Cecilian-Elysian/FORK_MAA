@@ -26,6 +26,49 @@
 | 1 | `%USERPROFILE%\Desktop\MAA (staging).lnk` | 创建 | PowerShell `WScript.Shell.CreateShortcut()`，目标 `install-staging\MAA.exe`，起始目录 `install-staging\` |
 | 2 | `LOG.md` | 修改 | 本节 |
 
+### tools/local-install{,-staging}.bat global.json 版本锁定修复
+
+首次跑 `tools\local-install-staging.bat` 构建 `install-staging/` 时，**C++ 端构建成功但 WPF `dotnet restore`/`publish` 全失败**，脚本走到 `:error` 退出，`install-staging/` 未生成。撞到 AGENTS.md §4.1 记录的 VS 2026 SDK 路径 bug 与一个之前未记录的脚本坑叠加。
+
+**根因**：`local-install.bat` 第 11 行（`local-install-staging.bat` 同位置）原写：
+
+```bat
+> ".\global.json" echo {"sdk":{"version":"10.0.203","rollForward":"disable"}}
+```
+
+- `"version":"10.0.203"` 锁死 10.0.203，但本机只装 10.0.300 SDK（`dotnet --list-sdks`）
+- `"rollForward":"disable"` 禁用 fallback，连 `latestPatch` / `latestFeature` / `latestMajor` 都不允许
+- MSBuild 找不到 SDK → `MSB4276` / `无法解析 SDK"Microsoft.NET.Sdk"` 报错
+- 该 `global.json` 由脚本注入到仓库根目录，覆盖所有子目录（`src/MaaWpfGui/`）
+- cmake `--build build --parallel` 触发 WPF MSBuild 评估（已知 bug），整链路连锁失败
+
+**修复**：将两个 bat 的第 11 行改为与 AGENTS.md §4.1 描述一致的写法：
+
+```bat
+> ".\global.json" echo {"sdk":{"version":"10.0.100","rollForward":"latestFeature"}}
+```
+
+`10.0.100` + `latestFeature` 允许自动晋升到 10.0.x（包含本机的 10.0.300），向后兼容所有 dotnet 10.x 装机版本。
+
+**首次成功构建 `install-staging/` 的绕过方法**（在脚本修复前手动执行）：
+
+```bash
+cmake --install build --config RelWithDebInfo --prefix install-staging
+dotnet restore src/MaaWpfGui/MaaWpfGui.csproj
+dotnet publish src/MaaWpfGui/MaaWpfGui.csproj -c Release -r win-x64 -o install-staging /p:DisableBeauty=True
+& "$env:USERPROFILE\.nuget\packages\nulastudio.netbeauty\2.1.5\tools\win-x86\nbeauty2.exe" --usepatch "$PWD\install-staging\." ./externals
+# 清理 *.h / msvc-debug / robocopy resource（与 bat 一致）
+```
+
+绕开脚本注入的 global.json，让 dotnet 自动选用本机最高 SDK。
+
+| # | 文件 | 操作 | 说明 |
+|---|------|------|------|
+| 1 | `tools/local-install.bat:11` | 修改 | `global.json` 注入从 `{"version":"10.0.203","rollForward":"disable"}` 改为 `{"version":"10.0.100","rollForward":"latestFeature"}` |
+| 2 | `tools/local-install-staging.bat:11` | 修改 | 同上 |
+| 3 | `install-staging/` | 构建产出 | C++ / WPF 全量构建成功，8775 文件与 `install/resource/` 完全一致；`MAA.exe` 339 KB / `MaaCore.dll` 4.0 MB / `MAA.dll` 3.6 MB |
+| 4 | `LOG.md` | 修改 | 本节 |
+
 ## 2026-07-25
 
 ### staging 分支引入 + fix/expedite-threshold 重命名
