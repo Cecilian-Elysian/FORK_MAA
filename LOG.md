@@ -688,3 +688,16 @@ dotnet build src/MaaWpfGui/MaaWpfGui.csproj -c Release -p:Platform=x64
 
 **未推送上游**: 仅本仓库 `branch` 修复，不向 upstream 提 PR。
 
+## 2026-07-27
+
+### fix/post-battle-sanity-display 启动
+
+`FightTask` MissionStart 日志 (`AsstProxy.cs:1580-1624`) 触发时打印 `理智: {SanityCurrent}/{SanityMax}`，但 `SanityCurrent` 取的是 OCR 战前快照 (`FightTimesTaskPlugin._run()` 发出的 `SanityBeforeStage` 事件，`AsstProxy.cs:2309-2318` 缓存到 `FightSetting.SanityReport`)，与上一行 `开始行动 1~6 次, -126 理智` 的"消耗"语义不连贯：消耗 126 后用户看到 208/208，无法直接判断战后剩余。
+
+按方案 A（GUI 端实时计算）将 `AsstProxy.cs:1607` 的 `SanityCurrent` 替换为 `SanityCurrent - FightReport.SanityCost`（series 实际成本，`change_series` 已按 `fight_times_remain` 在 `FightTimesTaskPlugin.cpp:146-171` 自动减次数，进入本分支时 `SanityCost <= SanityCurrent` 成立，无负数场景）。仅改 MissionStart 这一处，`CurrentSanity` 文案键与五语 xaml 复用，不动 Core / `SanityInfo` / Toast / CompleteTask / AllTasksComplete（恢复时间推算仍按战前语义合理）。
+
+| # | 文件/对象 | 操作 | 说明 |
+|---|----------|------|------|
+| 1 | `fix/post-battle-sanity-display` | 新建分支 | 从 `branch` 拉出 |
+| 2 | `src/MaaWpfGui/Main/AsstProxy.cs:1605-1608` | 待修改 | `MissionStart.FightTask` 日志块内 `SanityReport.SanityCurrent` → `SanityCurrent - FightReport.SanityCost` |
+
