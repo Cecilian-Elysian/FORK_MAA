@@ -3261,7 +3261,7 @@
         "templThreshold": 0.9,
         "roi": [200, 600, 700, 120],
         "postDelay": 5000,
-        "next": ["UnlockCluesIsFake", "InfrastBottomLeftTab"]
+        "next": ["UnlockCluesIsFake"]
     },
     "UnlockCluesIsFake": {
         "Doc": "点了一次解锁了还在这个界面，说明是识别错了",

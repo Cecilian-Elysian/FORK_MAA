@@ -1042,237 +1042,60 @@ dotnet build src/MaaWpfGui/MaaWpfGui.csproj -c Release -p:Platform=x64
 
 ### fix/account_rotation/6 启动
 
-账号轮换切号时，左侧任务面板（理智作战 / 信用收支 / 公招 ...）**不刷新**：切到下一个账号后任务行仍是上一账号的绿色（Completed），进度条也不再出现。用户因此误读为「同一账号理智作战跑了两次」（实为两账号各一次，但因左侧无切号提示且状态不重置而看不出来）。
-
-根因（`src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs`）：
-
-- `LinkStartWithTasks`（首账号）在行 1909-1910 调 `MainTasksCompletedCount = 0` + `ResetTaskItemStatuses()`，但 `AdvanceAccountCycle`（后续账号，行 2206-2397）**全程无等价重置**。
-- `TaskItemViewModel.SetTaskIds`（行 89-93）只清内部 `StatusList`，不重置 UI 绑定的 `StatusDisplay`。
-- 显式切号 task（行 2273 追加）**不绑回 StartUp 行**，循环内 StartUp 又被 `continue` 跳过（行 2307），导致 StartUp 行 `_taskIds` 永远指向首账号旧 taskId，新事件 `IndexOf` 返回 -1 被丢弃。
-
-修复方案（A+B+C+D，仅 `src/MaaWpfGui/`，纯 WPF 逻辑 + UI，不涉及 C++）：
+会客室「填充线索空位」(`use_clue` → `proc_clue_vacancy`) 在官服/B 服均存在 6 个根因（参 7 月 26 日会话分析），上游 Issue #16166 已 closed as "not planned"。本 fix 在 `branch` 上独立修复，不推 upstream。
 
 | # | 文件/对象 | 操作 | 说明 |
 |---|----------|------|------|
-| 1 | `fix/account_rotation/6` | 新建分支 | 从 `branch` 拉出（`feat/account_rotation` 已合入并删除本地，按 §3.3 修复 branch 自身） |
-| 2 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs` | 待修改 A | `AdvanceAccountCycle` 在 `MarkPreviousStepCompleted` 之后插入 `MainTasksCompletedCount = 0; ResetTaskItemStatuses();` |
-| 3 | `src/MaaWpfGui/ViewModels/TaskItemViewModel.cs` | 待修改 B | `SetTaskIds` 末尾补 `StatusDisplay = TaskItemStatus.Idle;` |
-| 4 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs` | 待修改 C | 切号 task 追加成功后把 taskId 绑回 StartUp 行 |
-| 5 | `src/MaaWpfGui/Views/UI/TaskQueueView.xaml` | 待修改 D | 左侧任务面板加「当前账号」Header（仅轮换中可见） |
-| 6 | `src/MaaWpfGui/Res/Localizations/{五语}.xaml` | 待修改 | 加 `CurrentAccountLabel` |
+| 1 | `fix/reception-clue-vacancy` | 新建分支 | 从 `branch` 拉出 |
+| 2 | `LOG.md` | 修改 | 本节 |
 
-### fix/account_rotation/6 实施完成
+### fix/reception-clue-vacancy 实施完成
+
+修复 6 个根因中 4 个直接可改的代码层面问题（修复 ① 涉及共享 helper，作用域广，留待后续 PR；修复 ③ 仅是 `next` 链收紧）：
 
 | # | 文件 | 操作 | 说明 |
 |---|------|------|------|
-| 1 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs:1780` | 新增属性 | `CurrentCycleAccountName`（`string?`，`SetAndNotify`），供左侧 Header 显示当前轮换账号 |
-| 2 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs:1850,1867,2207,2243,2253,2260,2419,2427` | 修改 | `LinkStart`（首账号设值 / 非轮换清空）、`AdvanceAccountCycle`（nextStep 设值 / nextStep==null / cfg==null / 异常 / AsstStart 失败 各路径清空）、`SetStopped`（停止时清空）同步维护 `CurrentCycleAccountName` |
-| 3 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs:2265-2267` | 修改 A | `AdvanceAccountCycle` 在 `MarkPreviousStepCompleted(prevStep)` 之后、`try` 之前插入 `MainTasksCompletedCount = 0; ResetTaskItemStatuses();`（对齐 `LinkStartWithTasks:1909-1910`） |
-| 4 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs:2299-2306` | 修改 C | 切号 task（行 2285 `AsstAppendTaskWithEncoding`）追加成功后，用 `FirstOrDefault` + `IndexOf` 定位 StartUp 行并 `SetTaskIds([taskId])` 绑回（`ObservableList<BaseTask>` 无 `FindIndex`，改用 `IndexOf`） |
-| 5 | `src/MaaWpfGui/ViewModels/TaskItemViewModel.cs:94-96` | 修改 B | `SetTaskIds` 末尾补 `StatusDisplay = TaskItemStatus.Idle;` |
-| 6 | `src/MaaWpfGui/Views/UI/TaskQueueView.xaml:75-105` | 修改 D | 左侧 Grid 由 2 行改 3 行（Header `Auto` / ListBox `*` / Footer `40`）；新增 `Border` + `StackPanel` 显示「当前账号: {CurrentCycleAccountName}」，用 `DataTrigger` 在值为 `""` 或 `{x:Null}` 时 `Collapsed`；ListBox 下移 `Grid.Row="1"`、Footer 下移 `Grid.Row="2"`（行 328） |
-| 7 | `src/MaaWpfGui/Res/Localizations/zh-cn.xaml:697` | 修改 | `CurrentAccountLabel` = `当前账号` |
-| 8 | `src/MaaWpfGui/Res/Localizations/zh-tw.xaml:697` | 修改 | `CurrentAccountLabel` = `目前帳號` |
-| 9 | `src/MaaWpfGui/Res/Localizations/en-us.xaml:697` | 修改 | `CurrentAccountLabel` = `Current Account` |
-| 10 | `src/MaaWpfGui/Res/Localizations/ja-jp.xaml:697` | 修改 | `CurrentAccountLabel` = `現在のアカウント` |
-| 11 | `src/MaaWpfGui/Res/Localizations/ko-kr.xaml:697` | 修改 | `CurrentAccountLabel` = `현재 계정` |
-| 12 | `AGENTS.md` §6 | 修改 | 新增 `fix/account_rotation/6` 进行中分支速查行 |
-| 13 | `LOG.md` | 修改 | 本节 |
+| 1 | `src/MaaCore/Task/Infrast/InfrastReceptionTask.cpp:231-296` | 修改 | **修复②** `proc_clue_vacancy()` 快捷置入路径重写：原 `return true` 无条件触发，导致 4 类失败（OCR 失败 / 数字解析失败 / `available != vacancy_cnt` / `confirm_task` 缺失）都会跳过 legacy 循环。改造控制流：(a) `vacancy_cnt == 0` 视为完成返回 true；(b) `click_performed` 仅在 `available == vacancy_cnt` 时置 true；(c) 任何失败路径降级到 legacy 循环并打印 fallback 日志 |
+| 2 | `src/MaaCore/Task/Infrast/InfrastReceptionTask.cpp:298-303` | 修改 | **修复⑤** Legacy 循环体顶部追加 `image = ctrler()->get_image();`，修复 `continue` 前未刷新导致死循环 |
+| 3 | `src/MaaCore/Task/Infrast/InfrastReceptionTask.cpp:333-340` | 修改 | **修复⑥** 放置线索后检测 `InfrastReceptionIcon`（与 `remove_clue` 同源）并点击关闭右侧线索列表面板，避免下一轮迭代在弹窗上误操作 |
+| 4 | `src/MaaCore/Task/Infrast/InfrastReceptionTask.cpp:171` | 修改 | **修复④** `remove_clue()` 的 `clue_suffix` 由 `{ "1", ..., "7" }` 改为 `{ "No1", ..., "No7" }`，与 `proc_clue_vacancy` / `use_clue` 对齐，使 `InfrastClueVacancyImageAnalyzer` 真正匹配 `ClueVacancyNo*.png`（已放置线索模板）而非 `ClueVacancy*.png`（空位模板） |
+| 5 | `resource/tasks/tasks.json:3258-3263` | 修改 | **修复③** `UnlockClues.next` 移除 `InfrastBottomLeftTab`，避免硬编码 `[0,719,1,1]` 在 720p 下命中底部 Tab 切换按钮，跳转至错误视图。`UnlockCluesIsFake` 二次校验仍保留 |
+| 6 | `install/MaaCore.dll` | 部署 | Release 编译产物，时间戳 2026/7/27 11:01:04，4190208 字节，字节特征串 `quick-insert path done` / `quick-insert skipped: OCR analyze failed` / `quick-insert skipped: confirm task missing` 全部命中 |
+| 7 | `install/resource/tasks/tasks.json` | 部署 | 同步源端 SHA256（`B4AB11A86C2CABE08DCFDD9B1EE209A90763AF6B834EB54DF7D77383129FA342`），字节特征串 `next`:[\"UnlockCluesIsFake\"]` 命中 |
+| 8 | `LOG.md` | 修改 | 本节 |
 
-**代码 commit**: `c5e2ba3831`（`fix(account_rotation): 切号时刷新左侧任务状态 + 当前账号指示`，8 文件 +74 -2）。
+**编译结果**: `cmake --build build --target MaaCore -j 4 --config Release` 成功，仅遗留标准 `LNK4098` 默认库警告。`cmake --install build --config Release` 在 `MaaUpdater` 阶段失败（AGENTS.md §4.1 已知 VS 2026 SDK 路径 bug，与本 fix 无关）；MaaCore 部分部署成功，tasks.json 通过手工 `Copy-Item` 同步到 `install/`。
 
-**编译结果**: `dotnet build src/MaaWpfGui/MaaWpfGui.csproj -c Release -p:Platform=x64` 成功，0 错误。遗留 4 个 `SA1516` 警告均在非本次改动文件（`RecruitTask.cs` / `RecruitSettingsUserControlModel.cs`），与本次无关。
+**未实施修复**:
+- **修复①** `InfrastBottomLeftTab` `JustReturn` + 1px ROI — 共享 helper，作用域涉及全部基础设施 task，非本 fix 范围，留待后续 PR 单独处理
+- **修复③** 的补充：`UnlockClues` 取消 `InfrastBottomLeftTab` 后，弹窗关闭后的导航依赖 `postDelay: 5000` 后调用方（`use_clue`）的 `proc_clue_vacancy` 自带的图像分析兜底（通过 `InfrastClueQuickInsert` 模板匹配或 `InfrastClueVacancy` 模板识别），具备一定容错
 
-**设计取舍**:
-- 用专用属性 `CurrentCycleAccountName`（而非直接绑定 `StartUpSettingsUserControlModel.AccountName`）避免触发 StartUp 配置 PropertyChanged 链路的不确定性；DataContext 为 `TaskQueueViewModel`，绑定更直接。
-- `CurrentCycleAccountName` 声明为 `string?`，XAML 用两个 `DataTrigger`（`""` 与 `{x:Null}`）隐藏 Header，兼容初值 null。
-- 不修问题一「理智作战两次」（系两账号各一次的设计行为）；不动 `AccountNames` 列表；不修 `IsSelected` 不持久化（不在本次范围）。
+**预期效果**:
+1. **官服用户**：`InfrastClueQuickInsert` 按钮存在但 OCR 失败时，旧版立即 `return true` 跳过；新版降级到 legacy 循环逐个放置线索
+2. **B 服用户**（无快捷置入按钮）：旧版 `remove_clue` 因模板错配空操作，遗留已放置线索；新版 `remove_clue` 正确匹配 `ClueVacancyNo*.png`，能腾出空位让后续 `use_clue` 重新装填
+3. **数字不一致场景**：旧版跳过放置；新版 legacy 循环尝试逐个放置（针对 7 类线索遍历）
+4. **所有客户端**：legacy 循环不再因 `image` 缓存陈旧死循环；放置后关闭面板，下一轮从干净视图开始
 
 **待手动验证（需模拟器环境）**:
-1. 双账号轮换（192→189）→ 切到 189 时左侧任务行从绿色重置为 Idle、Header 显示「当前账号: 189****0830」、进度条重新出现
-2. StartUp 行在切号时显示进行中 → 完成（不再卡在首账号状态）
-3. 轮换结束 / 手动停止 → Header 消失
-4. 单账号（非轮换）→ Header 全程不出现
+1. 官服会客室 7 个空位场景 → 观察日志是否走快捷置入路径并完成
+2. 官服会客室 1 个空位 + 6 个已放置线索 → `remove_clue` 是否正确识别 6 个已放置线索并移除
+3. B 服会客室混合空位/已放置线索场景 → 验证 `remove_clue` 不再空操作
+4. OCR 数字读不到场景（屏幕有遮挡） → 验证降级到 legacy 循环正常完成
+5. 任意场景跑完会客室 shift → 控制台日志确认无 `quick-insert skipped:` 异常 fallback（除非真的需要 fallback）
 
 **未推送上游**: 仅本仓库 `branch` 修复，不向 upstream 提 PR。
 
-### fix/account-switch-template-missing 启动
+### fix/reception-clue-vacancy 合入 staging
 
-`fix/account-switch-retry` 修正版（`41cfcb736b`）在 `tasks.json:813-817` 引用 `AccountManagerPageConfirm.png` 但忘记提交该 PNG。MAA TemplResource::load 期望每个 task 都有同名 PNG（不依赖 `baseTask` 继承），文件缺失导致 `Templ load failed, file not exists: AccountManagerPageConfirm.png` 与连锁 `TaskData load failed` / `OnnxSessions load failed`，UI 显示「资源损坏」无法启动。
-
-`fix/account-switch-template-missing` 从 `branch` 拉出，目标修复该资源完整性漏洞（修 `fix/account-switch-retry` 自身）。
+按 AGENTS.md §3.3 修复 branch 自身的 fix → 合并到 `staging` 流程，以 `--no-ff` 合并，commit `ad725916b4`（fix 代码）+ 本 merge commit。
 
 | # | 文件/对象 | 操作 | 说明 |
 |---|----------|------|------|
-| 1 | `fix/account-switch-template-missing` | 新建分支 | 从 `branch` 拉出（HEAD = `da157d163d`） |
-| 2 | `resource/template/WakeUp/AccountManager/AccountManagerPageConfirm.png` | 新增 | `AccountManagerListAccount.png` 同源副本；作为 sibling 占位让 TemplResource 存在性检查通过 |
-| 3 | `LOG.md` | 修改 | 本节 |
-
-### fix/account-switch-template-missing 实施完成
-
-| # | 文件 | 操作 | 说明 |
-|---|------|------|------|
-| 1 | `resource/template/WakeUp/AccountManager/AccountManagerPageConfirm.png` | 新增 | 149 字节，与 `AccountManagerListAccount.png` 内容一致；`DoNothing` 任务实际不需要真实匹配 PNG，仅满足 TemplResource 加载器对 `task_name + .png` 文件存在性检查 |
-| 2 | `tasks.json:813-817` | 不动 | `AccountManagerPageConfirm` 任务定义完整（`baseTask: AccountManagerListAccount` + `action: DoNothing`），TemplResource 看到 PNG 文件存在后即可正常加载 |
-| 3 | `LOG.md` | 修改 | 本节 |
-
-**代码 commit**: `ad03f949e4`（`fix(switch-template): 补 AccountManagerPageConfirm.png 满足 TemplResource 存在性检查`，1 文件 +1）。
-
-**手动验证方法（待 `--no-ff` 合并入 staging 后执行）**:
-1. `robocopy .\resource .\install\resource /MIR /IS /IT` 同步资源
-2. 启动 `install/MAA.exe`
-3. 查看 `install/debug/asst.log` 应不再有 `Templ load failed, file not exists: AccountManagerPageConfirm.png`
-4. `ResourceLoader::load ret 1` 表示成功
-
-### fix/account-switch-retry 合入 staging
-
-修正版（`41cfcb736b`）经实测验证有效（LoginOther 18s → 0.1s 模板命中），按 AGENTS.md §3.4 攒批 1 节奏以 `--no-ff` 合并到 `staging`。早期初版 `cd704f8bbc`（retry=5 误判）已由修正版覆盖并附说明 commit。
-
-| # | 文件/对象 | 操作 | 说明 |
-|---|----------|------|------|
-| 1 | `staging` | `--no-ff` 合并 | `fix/account-switch-retry` 修正版 `41cfcb736b`（LoginOther 模板兜底），由 staging 之前的同分支 commit 链补完 |
-| 2 | `AGENTS.md` §6 | 修改 | 登记 `fix/account-switch-retry` 为进行中分支速查行 |
-| 3 | `LOG.md` | 修改 | 本节 |
-
-**状态**：仍按 §6 视为进行中（待晋升 `branch`）；分支保留为后续 fix 修复用。
-
-### fix/account_rotation/6 合入 staging
-
-实测确认 4 项手动验证场景全部通过：双账号切号时左侧任务行从绿色重置为 Idle、Header 显示「当前账号: 189****0830」、进度条重新出现；StartUp 行进行中→完成；轮换结束/手动停止时 Header 消失；单账号（非轮换）Header 全程不出现。
-
-按 AGENTS.md §3.4 攒批 1 节奏以 `--no-ff` 合并到 `staging`，提交 `6260abf14a`（双 parent：`41cfcb736b` + `520dab59be`）。
-
-| # | 文件/对象 | 操作 | 说明 |
-|---|----------|------|------|
-| 1 | `staging` | `--no-ff` 合并 | `fix/account_rotation/6` 2 个 commit（`c5e2ba3831` 代码 + `520dab59be` 文档），HEAD → `6260abf14a` |
-| 2 | `AGENTS.md` §6 | 修改 | 登记 `fix/account_rotation/6` 为进行中分支速查行 |
-| 3 | `LOG.md` | 修改 | 本节 |
-| 4 | `fix/account_rotation/6` 本地分支 | 保留 | 按 §2.3 流程需先晋升 `branch` 后才能 `git branch -d`；因 §2.4「不允许随便同步至 branch」约束未动 `branch`，暂保留 |
-| 5 | `staging → branch` | 未晋升 | 等用户进一步指示（待 review 全部 7 批 fix/feat 后批量晋升） |
-
-**冲突解决**：合并时 LOG.md / AGENTS.md / tasks.json / AccountSwitchTask.cpp 共 4 个冲突文件，按以下策略解决：
-- `AccountSwitchTask.cpp` 保留 staging 版本（含 AccountManagerPageConfirm 白名单）
-- `tasks.json` 保留 staging 版本（双文本「登录记录/上次登录」兜底）
-- `AGENTS.md` §6 双行（fix/account-switch-retry + fix/account_rotation/6）都保留
-- `LOG.md` 双方章节保留，删除 conflict marker
-
-### fix/account-switch-template-missing 合入 staging
-
-补 PNG + tasks.json Doc 注释明确 sibling 占位策略，合到 staging（commit `9ac844c10a`）。修复了 `41cfcb736b` 资源完整性漏洞。
-
-| # | 文件/对象 | 操作 | 说明 |
-|---|----------|------|------|
-| 1 | `staging` | `--no-ff` 合并 | `fix/account-switch-template-missing` 1 commit（`ad03f949e4` PNG + LOG.md），HEAD → `9ac844c10a` |
-| 2 | `AGENTS.md` §6 | 修改 | 登记 `fix/account-switch-template-missing` 为进行中分支速查行 |
-| 3 | `LOG.md` | 修改 | 本节 |
-| 4 | `fix/account-switch-template-missing` 本地分支 | 保留 | 同 §2.3 流程，待晋升 `branch` 后才能 `git branch -d` |
-
-**冲突解决**：合并时 LOG.md 3 处 conflict marker，按以下策略解决：
-- 保留 staging 端 899 行已有内容（含 `fix/account_rotation/6` 实施完成表等历史积累）
-- 在末尾 append fix 分支独有的 `fix/account-switch-template-missing` 启动 + 实施完成表（29 行）
-- 无 conflict marker 残留
-
-### chore/account-cycle-status-sync 启动
-
-`fix/account-switch-retry` / `fix/account_rotation/6` / `fix/account-switch-template-missing` 已 `--no-ff` 合入 `staging`，但 AGENTS.md §6 / §7 与 LOG.md 合并登记的更新未集中整理。`chore/account-cycle-status-sync` 从 `branch` 拉出，目标：
-- AGENTS.md §6 增补 `fix/account-switch-template-missing` 进行中分支速查行
-- AGENTS.md §7 新增 §7.6 / §7.7 / §7.8 完整生命周期块
-- LOG.md 2026-07-25 节追加三次 `--no-ff` 合并事件登记
-
-| # | 文件/对象 | 操作 | 说明 |
-|---|----------|------|------|
-| 1 | `chore/account-cycle-status-sync` | 新建分支 | 从 `branch` 拉出（HEAD = `da157d163d`），用 `git checkout staging -- AGENTS.md LOG.md` 同步 staging 文档基线 |
-| 2 | `AGENTS.md` §6 | 待修改 | 增补 `fix/account-switch-template-missing` 行 |
-| 3 | `AGENTS.md` §7 | 待修改 | 新增 §7.6 / §7.7 / §7.8 三个完整生命周期块 |
-| 4 | `LOG.md` 2026-07-25 | 待修改 | 追加三次合并事件登记 + 本节 |
-
-## 2026-07-27
-
-### fix/recruit-now-text-aliases 启动
-
-加急许可按钮实际 OCR 文本在新版 Arknights CN UI 已从「立即招」改为「立即完成」(commit `2718046060` 的注释 + LOG.md 已明示)，但 `RecruitNow` task 定义仍只列 `["立即招"]`。`"立即完成".find("立即招") == npos` → 5 次 retry 全空 → `recruit_now()` 走「Failed to use expedited plan」降级 → 加急许可不消耗、slot 落入正常 9h。
-
-复现：单账号 `192****6952`，加急模式「仅四星以上」，4★ 组合（支援+快速复活+治疗）确认后槽位 09:00:00 倒计时未变，截图右侧加急许可计数不变。
-
-| # | 文件/对象 | 操作 | 说明 |
-|---|----------|------|------|
-| 1 | `fix/recruit-now-text-aliases` | 新建分支 | 从 `branch` 拉出 |
-| 2 | `resource/tasks/tasks.json:1741-1748` | 待修改 | `RecruitNow.text` 加 `"立即完成"` 备选；加 `Doc` 注明新旧 UI 文案兼容 |
-
-### fix/recruit-now-text-aliases 实施完成
-
-| # | 文件 | 操作 | 说明 |
-|---|------|------|------|
-| 1 | `resource/tasks/tasks.json:1741-1749` | 修改 | `RecruitNow` 块加 `Doc: "加急许可按钮 OCR,兼容新旧 UI 文案「立即招 / 立即完成」任一命中即视为按钮已渲染。"`；`text` 由 `["立即招"]` 改为 `["立即招", "立即完成"]` |
+| 1 | `staging` | `--no-ff` 合并 | `fix/reception-clue-vacancy` 1 commit（`ad725916b4` 代码 + LOG.md），HEAD 即将更新 |
 | 2 | `LOG.md` | 修改 | 本节 |
-
-**根因交叉验证**:
-- 字节级核查 `resource/tasks/tasks.json` 200+ commit 历史：自 2022-01-04 引入 `RecruitNow` 起 `text` 字段从未改过
-- `src/MaaCore/Vision/OCRer.cpp:125-147` `filter_and_replace_by_required_` 对**单个 detector box 的 `res.text`** 做 substring 匹配，**不跨 box 合并**
-- PaddleOCR word model（`resource/PaddleOCR/rec/keys.txt`）是 6901 行字符表，`立`/`即`/`招`/`募`/`完`/`成` 均存在，但 detector box 边界决定实际返回字符串
-- `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.cpp:377` 注释 + `LOG.md:2026-07-25 §recruit_now 调用顺序修复` 第 45 行 共同明示按钮 UI 文案变体为「立即招 / 立即完成」
-- YoStarKR 已有同类先例：`resource/global/YoStarKR/resource/tasks/tasks.json:1228` `["즉시모집", "측시모집", "즉시"]` 三个备选
-
-**未做的事**: `StartRecruit` (`["开始招"]`)、`RecruitContinue` (`["继续招"]`) 同模式 substring 漂移问题，本次未实测复现，不顺手改。后续触发再单独开 fix 分支。
-
-**编译/部署结果**: (待 `tools/local-install.bat` 跑完补充)
-
-**待手动验证（需模拟器环境）**:
-1. 单账号 + 4★ 组合（支援+快速复活+治疗 等）→ 确认招募 → 槽位立即变「已招募干员」 + 加急许可 -1
-2. 5★+ 门槛、6★ only 门槛回归 → 加急仍能触发
-3. 3★ 组合回归 → 槽位落入正常 9h、不消耗加急许可（门槛机制保持有效）
-4. `install/debug/asst.log` 出现 `Recruit slot level X >= expedite threshold Y, using expedited plan.` 后续 `hire_all()` 命中，不出现 `Failed to use expedited plan`
-
-### fix/post-battle-sanity-display 启动
-
-`FightTask` MissionStart 日志 (`AsstProxy.cs:1580-1624`) 触发时打印 `理智: {SanityCurrent}/{SanityMax}`，但 `SanityCurrent` 取的是 OCR 战前快照 (`FightTimesTaskPlugin._run()` 发出的 `SanityBeforeStage` 事件，`AsstProxy.cs:2309-2318` 缓存到 `FightSetting.SanityReport`)，与上一行 `开始行动 1~6 次, -126 理智` 的"消耗"语义不连贯：消耗 126 后用户看到 208/208，无法直接判断战后剩余。
-
-按方案 A（GUI 端实时计算）将 `AsstProxy.cs:1607` 的 `SanityCurrent` 替换为 `SanityCurrent - FightReport.SanityCost`（series 实际成本，`change_series` 已按 `fight_times_remain` 在 `FightTimesTaskPlugin.cpp:146-171` 自动减次数，进入本分支时 `SanityCost <= SanityCurrent` 成立，无负数场景）。仅改 MissionStart 这一处，`CurrentSanity` 文案键与五语 xaml 复用，不动 Core / `SanityInfo` / Toast / CompleteTask / AllTasksComplete（恢复时间推算仍按战前语义合理）。
-
-| # | 文件/对象 | 操作 | 说明 |
-|---|----------|------|------|
-| 1 | `fix/post-battle-sanity-display` | 新建分支 | 从 `branch` 拉出 |
-| 2 | `src/MaaWpfGui/Main/AsstProxy.cs:1605-1608` | 待修改 | `MissionStart.FightTask` 日志块内 `SanityReport.SanityCurrent` → `SanityCurrent - FightReport.SanityCost` |
-
-### fix/post-battle-sanity-display 实施完成
-
-| # | 文件 | 操作 | 说明 |
-|---|------|------|------|
-| 1 | `src/MaaWpfGui/Main/AsstProxy.cs:1605-1608` | 修改 | `MissionStart.FightTask` 日志块内新增 `int postBattleSanity = FightSetting.SanityReport.SanityCurrent - FightSetting.FightReport!.SanityCost;`；`AppendFormat` 第一参数由 `SanityReport.SanityCurrent` 改为 `postBattleSanity`（series 实际成本战后预测值）。`FightReport!` `!` 后缀与 `AsstProxy.cs:2325 subTaskDetails.ToObject<FightTimes>()!` 风格一致，压制 nullable 警告 |
-| 2 | `LOG.md` | 修改 | 本节 |
-
-**代码 commit**: `d4b23812d3`（`fix(post-battle-sanity): MissionStart 日志理智值改为战后预测`，2 文件 +15 -1）。
-
-**编译结果**: `dotnet build src/MaaWpfGui/MaaWpfGui.csproj -c Release -p:Platform=x64` 成功，0 错误。遗留 2 个 `SA1516` 警告均在非本次改动文件（`RecruitTask.cs` / `RecruitSettingsUserControlModel.cs`），与本次无关。
-
-**设计取舍**:
-- 选方案 A 而非 B（扩 `SanityInfo` 字段）或 C（延迟到 EndOfAction 后补打），因改动面最小、纯展示层语义、不污染 Core 数据结构。
-- 负数场景不需 `clamp(0)`：`change_series` 在 `FightTimesTaskPlugin.cpp:146-171` 已按 `fight_times_remain` 自动减次数，到达 MissionStart 时 `SanityCost <= SanityCurrent` 成立（与用户确认的"不会有负数"一致）。
-- 仅改 MissionStart 一处，AsstProxy.cs:1061 / 1190 / 1295 / 1343 维持战前语义，恢复时间推算基于 `SanityCurrent < SanityMax` 仍合理。
-- 五语 xaml `CurrentSanity` 键文案不变，避免 `zh-cn/zh-tw/en-us/ja-jp/ko-kr` 五处同步维护。
-
-**未做的事**: `SanityReport` 改名为 `PreStageSanityReport`、`SanityInfo` 字段改名、加 `PostBattleSanityReport` 等结构性重构不在本次范围；`recoveryTime` 计算（基于 `SanityCurrent`）语义维持战前。
-
-**待手动验证（需模拟器环境）**:
-1. 单关（如 7-18，sanity_cost=21，sanity=208）→ MissionStart 日志确认 `理智: 187/208`（= 208 − 21）
-2. 1~6 连战（cost=126，sanity≥126）→ 确认 `理智: 82/208`（= 208 − 126）
-3. 连战但 sanity 不足（< 126）→ `change_series` 减次数；`FightReport.SanityCost` 已是减次数后值，无负数
-4. CompleteTask / AllTasksComplete / Toast 的 `Sanity: x/208` 仍按战前值显示（未改动）
-5. `install/debug/asst.log` 无新增异常，编译 0 errors
-
-### fix/post-battle-sanity-display 合入 staging
-
-仅 1 个代码 commit，WPF 编译 0 errors。按 AGENTS.md §2.4 staging 工作流以 `--no-ff` 合并到 `staging`，创建合并 commit 便于回溯。
-
-| # | 文件/对象 | 操作 | 说明 |
-|---|----------|------|------|
-| 1 | `staging` | `--no-ff` 合并 | `fix/post-battle-sanity-display` 1 commit（`d4b23812d3` 代码 + LOG.md），HEAD 即将更新 |
-| 2 | `AGENTS.md` §6 | 修改 | 增补 `fix/post-battle-sanity-display` 为进行中分支速查行 |
-| 3 | `LOG.md` | 修改 | 本节 |
-| 4 | `fix/post-battle-sanity-display` 本地分支 | 保留 | 按 §2.3 流程需先晋升 `branch` 后才能 `git branch -d`；因 §2.4「不允许随便同步至 branch」约束未动 `branch`，暂保留 |
+| 3 | `fix/reception-clue-vacancy` 本地分支 | 保留 | 按 §2.3 流程需先晋升 `branch` 后才能 `git branch -d`；因 §2.4「不允许随便同步至 branch」约束未动 `branch`，暂保留 |
 
 **冲突解决**: LOG.md 1 处 conflict marker，按以下策略解决：
-- 保留 staging 端 1224 行已有内容（`fix/recruit-now-text-aliases` 启动 + 实施完成）
-- 删除 `=======` / `>>>>>>> fix/post-battle-sanity-display` marker
-- 在 `fix/recruit-now-text-aliases` 实施完成表（line 1224）之后追加 `fix/post-battle-sanity-display` 启动 + 实施完成 + 合入 staging 三节
-- 无 conflict marker 残留
+- 保留 staging 端 `fix/account_rotation/6` / `fix/account-switch-template-missing` / `fix/account-switch-retry 合入 staging` / `fix/account_rotation/6 合入 staging` / `fix/account-switch-template-missing 合入 staging` / `chore/account-cycle-status-sync` 启动 / `fix/recruit-now-text-aliases` 启动 + 实施完成 / `fix/post-battle-sanity-display` 启动 + 实施完成 + 合入 staging 共 8 节历史内容
+- 在末尾 append fix 分支独有的 `fix/reception-clue-vacancy` 启动 + 实施完成 + 合入 staging 三节
+- 删除 `=======` / `>>>>>>> fix/reception-clue-vacancy` marker，保留双方章节
