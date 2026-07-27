@@ -1604,7 +1604,8 @@ public class AsstProxy
 
                             if (FightSetting.SanityReport is not null)
                             {
-                                missionStartLogBuilder.AppendFormat(LocalizationHelper.GetString("CurrentSanity"), FightSetting.SanityReport.SanityCurrent, FightSetting.SanityReport.SanityMax);
+                                int postBattleSanity = FightSetting.SanityReport.SanityCurrent - FightSetting.FightReport!.SanityCost;
+                                missionStartLogBuilder.AppendFormat(LocalizationHelper.GetString("CurrentSanity"), postBattleSanity, FightSetting.SanityReport.SanityMax);
                             }
 
                             if (ExpiringMedicineUsedTimes > 0)

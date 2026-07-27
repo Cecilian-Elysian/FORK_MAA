@@ -1222,3 +1222,57 @@ dotnet build src/MaaWpfGui/MaaWpfGui.csproj -c Release -p:Platform=x64
 2. 5★+ 门槛、6★ only 门槛回归 → 加急仍能触发
 3. 3★ 组合回归 → 槽位落入正常 9h、不消耗加急许可（门槛机制保持有效）
 4. `install/debug/asst.log` 出现 `Recruit slot level X >= expedite threshold Y, using expedited plan.` 后续 `hire_all()` 命中，不出现 `Failed to use expedited plan`
+
+### fix/post-battle-sanity-display 启动
+
+`FightTask` MissionStart 日志 (`AsstProxy.cs:1580-1624`) 触发时打印 `理智: {SanityCurrent}/{SanityMax}`，但 `SanityCurrent` 取的是 OCR 战前快照 (`FightTimesTaskPlugin._run()` 发出的 `SanityBeforeStage` 事件，`AsstProxy.cs:2309-2318` 缓存到 `FightSetting.SanityReport`)，与上一行 `开始行动 1~6 次, -126 理智` 的"消耗"语义不连贯：消耗 126 后用户看到 208/208，无法直接判断战后剩余。
+
+按方案 A（GUI 端实时计算）将 `AsstProxy.cs:1607` 的 `SanityCurrent` 替换为 `SanityCurrent - FightReport.SanityCost`（series 实际成本，`change_series` 已按 `fight_times_remain` 在 `FightTimesTaskPlugin.cpp:146-171` 自动减次数，进入本分支时 `SanityCost <= SanityCurrent` 成立，无负数场景）。仅改 MissionStart 这一处，`CurrentSanity` 文案键与五语 xaml 复用，不动 Core / `SanityInfo` / Toast / CompleteTask / AllTasksComplete（恢复时间推算仍按战前语义合理）。
+
+| # | 文件/对象 | 操作 | 说明 |
+|---|----------|------|------|
+| 1 | `fix/post-battle-sanity-display` | 新建分支 | 从 `branch` 拉出 |
+| 2 | `src/MaaWpfGui/Main/AsstProxy.cs:1605-1608` | 待修改 | `MissionStart.FightTask` 日志块内 `SanityReport.SanityCurrent` → `SanityCurrent - FightReport.SanityCost` |
+
+### fix/post-battle-sanity-display 实施完成
+
+| # | 文件 | 操作 | 说明 |
+|---|------|------|------|
+| 1 | `src/MaaWpfGui/Main/AsstProxy.cs:1605-1608` | 修改 | `MissionStart.FightTask` 日志块内新增 `int postBattleSanity = FightSetting.SanityReport.SanityCurrent - FightSetting.FightReport!.SanityCost;`；`AppendFormat` 第一参数由 `SanityReport.SanityCurrent` 改为 `postBattleSanity`（series 实际成本战后预测值）。`FightReport!` `!` 后缀与 `AsstProxy.cs:2325 subTaskDetails.ToObject<FightTimes>()!` 风格一致，压制 nullable 警告 |
+| 2 | `LOG.md` | 修改 | 本节 |
+
+**代码 commit**: `d4b23812d3`（`fix(post-battle-sanity): MissionStart 日志理智值改为战后预测`，2 文件 +15 -1）。
+
+**编译结果**: `dotnet build src/MaaWpfGui/MaaWpfGui.csproj -c Release -p:Platform=x64` 成功，0 错误。遗留 2 个 `SA1516` 警告均在非本次改动文件（`RecruitTask.cs` / `RecruitSettingsUserControlModel.cs`），与本次无关。
+
+**设计取舍**:
+- 选方案 A 而非 B（扩 `SanityInfo` 字段）或 C（延迟到 EndOfAction 后补打），因改动面最小、纯展示层语义、不污染 Core 数据结构。
+- 负数场景不需 `clamp(0)`：`change_series` 在 `FightTimesTaskPlugin.cpp:146-171` 已按 `fight_times_remain` 自动减次数，到达 MissionStart 时 `SanityCost <= SanityCurrent` 成立（与用户确认的"不会有负数"一致）。
+- 仅改 MissionStart 一处，AsstProxy.cs:1061 / 1190 / 1295 / 1343 维持战前语义，恢复时间推算基于 `SanityCurrent < SanityMax` 仍合理。
+- 五语 xaml `CurrentSanity` 键文案不变，避免 `zh-cn/zh-tw/en-us/ja-jp/ko-kr` 五处同步维护。
+
+**未做的事**: `SanityReport` 改名为 `PreStageSanityReport`、`SanityInfo` 字段改名、加 `PostBattleSanityReport` 等结构性重构不在本次范围；`recoveryTime` 计算（基于 `SanityCurrent`）语义维持战前。
+
+**待手动验证（需模拟器环境）**:
+1. 单关（如 7-18，sanity_cost=21，sanity=208）→ MissionStart 日志确认 `理智: 187/208`（= 208 − 21）
+2. 1~6 连战（cost=126，sanity≥126）→ 确认 `理智: 82/208`（= 208 − 126）
+3. 连战但 sanity 不足（< 126）→ `change_series` 减次数；`FightReport.SanityCost` 已是减次数后值，无负数
+4. CompleteTask / AllTasksComplete / Toast 的 `Sanity: x/208` 仍按战前值显示（未改动）
+5. `install/debug/asst.log` 无新增异常，编译 0 errors
+
+### fix/post-battle-sanity-display 合入 staging
+
+仅 1 个代码 commit，WPF 编译 0 errors。按 AGENTS.md §2.4 staging 工作流以 `--no-ff` 合并到 `staging`，创建合并 commit 便于回溯。
+
+| # | 文件/对象 | 操作 | 说明 |
+|---|----------|------|------|
+| 1 | `staging` | `--no-ff` 合并 | `fix/post-battle-sanity-display` 1 commit（`d4b23812d3` 代码 + LOG.md），HEAD 即将更新 |
+| 2 | `AGENTS.md` §6 | 修改 | 增补 `fix/post-battle-sanity-display` 为进行中分支速查行 |
+| 3 | `LOG.md` | 修改 | 本节 |
+| 4 | `fix/post-battle-sanity-display` 本地分支 | 保留 | 按 §2.3 流程需先晋升 `branch` 后才能 `git branch -d`；因 §2.4「不允许随便同步至 branch」约束未动 `branch`，暂保留 |
+
+**冲突解决**: LOG.md 1 处 conflict marker，按以下策略解决：
+- 保留 staging 端 1224 行已有内容（`fix/recruit-now-text-aliases` 启动 + 实施完成）
+- 删除 `=======` / `>>>>>>> fix/post-battle-sanity-display` marker
+- 在 `fix/recruit-now-text-aliases` 实施完成表（line 1224）之后追加 `fix/post-battle-sanity-display` 启动 + 实施完成 + 合入 staging 三节
+- 无 conflict marker 残留
