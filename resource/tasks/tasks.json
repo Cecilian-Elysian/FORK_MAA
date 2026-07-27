@@ -1752,10 +1752,11 @@
         "action": "Stop"
     },
     "RecruitNow": {
+        "Doc": "加急许可按钮 OCR,兼容新旧 UI 文案「立即招 / 立即完成」任一命中即视为按钮已渲染。",
         "algorithm": "OcrDetect",
         "action": "ClickSelf",
         "postDelay": 500,
-        "text": ["立即招"],
+        "text": ["立即招", "立即完成"],
         "roi": [0, 300, 1280, 420],
         "next": ["RecruitNowConfirm"]
     },
