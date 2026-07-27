@@ -699,3 +699,39 @@ dotnet build src/MaaWpfGui/MaaWpfGui.csproj -c Release -p:Platform=x64
 | 1 | `fix/reception-clue-vacancy` | 新建分支 | 从 `branch` 拉出 |
 | 2 | `LOG.md` | 修改 | 本节 |
 
+### fix/reception-clue-vacancy 实施完成
+
+修复 6 个根因中 4 个直接可改的代码层面问题（修复 ① 涉及共享 helper，作用域广，留待后续 PR；修复 ③ 仅是 `next` 链收紧）：
+
+| # | 文件 | 操作 | 说明 |
+|---|------|------|------|
+| 1 | `src/MaaCore/Task/Infrast/InfrastReceptionTask.cpp:231-296` | 修改 | **修复②** `proc_clue_vacancy()` 快捷置入路径重写：原 `return true` 无条件触发，导致 4 类失败（OCR 失败 / 数字解析失败 / `available != vacancy_cnt` / `confirm_task` 缺失）都会跳过 legacy 循环。改造控制流：(a) `vacancy_cnt == 0` 视为完成返回 true；(b) `click_performed` 仅在 `available == vacancy_cnt` 时置 true；(c) 任何失败路径降级到 legacy 循环并打印 fallback 日志 |
+| 2 | `src/MaaCore/Task/Infrast/InfrastReceptionTask.cpp:298-303` | 修改 | **修复⑤** Legacy 循环体顶部追加 `image = ctrler()->get_image();`，修复 `continue` 前未刷新导致死循环 |
+| 3 | `src/MaaCore/Task/Infrast/InfrastReceptionTask.cpp:333-340` | 修改 | **修复⑥** 放置线索后检测 `InfrastReceptionIcon`（与 `remove_clue` 同源）并点击关闭右侧线索列表面板，避免下一轮迭代在弹窗上误操作 |
+| 4 | `src/MaaCore/Task/Infrast/InfrastReceptionTask.cpp:171` | 修改 | **修复④** `remove_clue()` 的 `clue_suffix` 由 `{ "1", ..., "7" }` 改为 `{ "No1", ..., "No7" }`，与 `proc_clue_vacancy` / `use_clue` 对齐，使 `InfrastClueVacancyImageAnalyzer` 真正匹配 `ClueVacancyNo*.png`（已放置线索模板）而非 `ClueVacancy*.png`（空位模板） |
+| 5 | `resource/tasks/tasks.json:3258-3263` | 修改 | **修复③** `UnlockClues.next` 移除 `InfrastBottomLeftTab`，避免硬编码 `[0,719,1,1]` 在 720p 下命中底部 Tab 切换按钮，跳转至错误视图。`UnlockCluesIsFake` 二次校验仍保留 |
+| 6 | `install/MaaCore.dll` | 部署 | Release 编译产物，时间戳 2026/7/27 11:01:04，4190208 字节，字节特征串 `quick-insert path done` / `quick-insert skipped: OCR analyze failed` / `quick-insert skipped: confirm task missing` 全部命中 |
+| 7 | `install/resource/tasks/tasks.json` | 部署 | 同步源端 SHA256（`B4AB11A86C2CABE08DCFDD9B1EE209A90763AF6B834EB54DF7D77383129FA342`），字节特征串 `next`:[\"UnlockCluesIsFake\"]` 命中 |
+| 8 | `LOG.md` | 修改 | 本节 |
+
+**编译结果**: `cmake --build build --target MaaCore -j 4 --config Release` 成功，仅遗留标准 `LNK4098` 默认库警告。`cmake --install build --config Release` 在 `MaaUpdater` 阶段失败（AGENTS.md §4.1 已知 VS 2026 SDK 路径 bug，与本 fix 无关）；MaaCore 部分部署成功，tasks.json 通过手工 `Copy-Item` 同步到 `install/`。
+
+**未实施修复**:
+- **修复①** `InfrastBottomLeftTab` `JustReturn` + 1px ROI — 共享 helper，作用域涉及全部基础设施 task，非本 fix 范围，留待后续 PR 单独处理
+- **修复③** 的补充：`UnlockClues` 取消 `InfrastBottomLeftTab` 后，弹窗关闭后的导航依赖 `postDelay: 5000` 后调用方（`use_clue`）的 `proc_clue_vacancy` 自带的图像分析兜底（通过 `InfrastClueQuickInsert` 模板匹配或 `InfrastClueVacancy` 模板识别），具备一定容错
+
+**预期效果**:
+1. **官服用户**：`InfrastClueQuickInsert` 按钮存在但 OCR 失败时，旧版立即 `return true` 跳过；新版降级到 legacy 循环逐个放置线索
+2. **B 服用户**（无快捷置入按钮）：旧版 `remove_clue` 因模板错配空操作，遗留已放置线索；新版 `remove_clue` 正确匹配 `ClueVacancyNo*.png`，能腾出空位让后续 `use_clue` 重新装填
+3. **数字不一致场景**：旧版跳过放置；新版 legacy 循环尝试逐个放置（针对 7 类线索遍历）
+4. **所有客户端**：legacy 循环不再因 `image` 缓存陈旧死循环；放置后关闭面板，下一轮从干净视图开始
+
+**待手动验证（需模拟器环境）**:
+1. 官服会客室 7 个空位场景 → 观察日志是否走快捷置入路径并完成
+2. 官服会客室 1 个空位 + 6 个已放置线索 → `remove_clue` 是否正确识别 6 个已放置线索并移除
+3. B 服会客室混合空位/已放置线索场景 → 验证 `remove_clue` 不再空操作
+4. OCR 数字读不到场景（屏幕有遮挡） → 验证降级到 legacy 循环正常完成
+5. 任意场景跑完会客室 shift → 控制台日志确认无 `quick-insert skipped:` 异常 fallback（除非真的需要 fallback）
+
+**未推送上游**: 仅本仓库 `branch` 修复，不向 upstream 提 PR。
+
