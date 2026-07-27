@@ -17,6 +17,349 @@
 - `branch` 分支：`tools\local-install.bat` → `install\MAA.exe`
 - `staging` 分支：`tools\local-install-staging.bat` → `install-staging\MAA.exe`
 
+### staging 桌面快捷方式
+
+`%USERPROFILE%\Desktop\MAA (staging).lnk`：指向 `install-staging\MAA.exe`，起始目录 `install-staging\`，图标复用 MAA.exe 自身图标。首次执行前需在 `staging` 分支上先运行 `tools\local-install-staging.bat` 生成构建产物，否则双击报错「找不到文件」。
+
+| # | 路径 | 操作 | 说明 |
+|---|------|------|------|
+| 1 | `%USERPROFILE%\Desktop\MAA (staging).lnk` | 创建 | PowerShell `WScript.Shell.CreateShortcut()`，目标 `install-staging\MAA.exe`，起始目录 `install-staging\` |
+| 2 | `LOG.md` | 修改 | 本节 |
+
+### tools/local-install{,-staging}.bat global.json 版本锁定修复
+
+首次跑 `tools\local-install-staging.bat` 构建 `install-staging/` 时，**C++ 端构建成功但 WPF `dotnet restore`/`publish` 全失败**，脚本走到 `:error` 退出，`install-staging/` 未生成。撞到 AGENTS.md §4.1 记录的 VS 2026 SDK 路径 bug 与一个之前未记录的脚本坑叠加。
+
+**根因**：`local-install.bat` 第 11 行（`local-install-staging.bat` 同位置）原写：
+
+```bat
+> ".\global.json" echo {"sdk":{"version":"10.0.203","rollForward":"disable"}}
+```
+
+- `"version":"10.0.203"` 锁死 10.0.203，但本机只装 10.0.300 SDK（`dotnet --list-sdks`）
+- `"rollForward":"disable"` 禁用 fallback，连 `latestPatch` / `latestFeature` / `latestMajor` 都不允许
+- MSBuild 找不到 SDK → `MSB4276` / `无法解析 SDK"Microsoft.NET.Sdk"` 报错
+- 该 `global.json` 由脚本注入到仓库根目录，覆盖所有子目录（`src/MaaWpfGui/`）
+- cmake `--build build --parallel` 触发 WPF MSBuild 评估（已知 bug），整链路连锁失败
+
+**修复**：将两个 bat 的第 11 行改为与 AGENTS.md §4.1 描述一致的写法：
+
+```bat
+> ".\global.json" echo {"sdk":{"version":"10.0.100","rollForward":"latestFeature"}}
+```
+
+`10.0.100` + `latestFeature` 允许自动晋升到 10.0.x（包含本机的 10.0.300），向后兼容所有 dotnet 10.x 装机版本。
+
+**首次成功构建 `install-staging/` 的绕过方法**（在脚本修复前手动执行）：
+
+```bash
+cmake --install build --config RelWithDebInfo --prefix install-staging
+dotnet restore src/MaaWpfGui/MaaWpfGui.csproj
+dotnet publish src/MaaWpfGui/MaaWpfGui.csproj -c Release -r win-x64 -o install-staging /p:DisableBeauty=True
+& "$env:USERPROFILE\.nuget\packages\nulastudio.netbeauty\2.1.5\tools\win-x86\nbeauty2.exe" --usepatch "$PWD\install-staging\." ./externals
+# 清理 *.h / msvc-debug / robocopy resource（与 bat 一致）
+```
+
+绕开脚本注入的 global.json，让 dotnet 自动选用本机最高 SDK。
+
+| # | 文件 | 操作 | 说明 |
+|---|------|------|------|
+| 1 | `tools/local-install.bat:11` | 修改 | `global.json` 注入从 `{"version":"10.0.203","rollForward":"disable"}` 改为 `{"version":"10.0.100","rollForward":"latestFeature"}` |
+| 2 | `tools/local-install-staging.bat:11` | 修改 | 同上 |
+| 3 | `install-staging/` | 构建产出 | C++ / WPF 全量构建成功，8775 文件与 `install/resource/` 完全一致；`MAA.exe` 339 KB / `MaaCore.dll` 4.0 MB / `MAA.dll` 3.6 MB |
+| 4 | `LOG.md` | 修改 | 本节 |
+
+## 2026-07-25
+
+### staging 分支引入 + fix/expedite-threshold 重命名
+
+**背景**：`fix/expedite-threshold` 累积了 11 个跨方向 commit（启动链 / 切号 OCR / 加急门槛 / recruit_now 顺序 / docs），已不适合作为单一 fix 分支命名。引入 `staging` 层作为 feat / fix 的合并目标与 `branch` 之间的待验证整合区，攒批测试通过后晋升至 `branch`。
+
+**工作流变更**：
+
+```
+master (上游 dev-v2 镜像)
+  │  (rebase / merge 同步节奏不变)
+  ▼
+branch (稳定下游基线) ◄──── staging 晋升 (--no-ff, 攒批)
+  │                                 ▲
+  │ (feat / fix 拉取源)              │ (合并目标)
+  ▼                                 │
+feat/<name>, fix/<name> ────────────┘
+```
+
+- 所有 feat / fix 一律从 `branch` 拉出，合并到 `staging`
+- `staging` 攒一批（建议 3-5 个）测试通过后再晋升至 `branch`
+- `branch` ↔ `master` 上游同步节奏不变
+- 当前 `staging` 领先 `branch` 11 commits、落后 2 commits（branch 上的 `784d9005f6` + `da157d163d` 与 staging 上的 cherry-pick `6011051af2` + `f241b2160b` 内容等价、SHA 不同），首次晋升将无法 FF，需 `--no-ff`
+
+| # | 文件 | 操作 | 说明 |
+|---|------|------|------|
+| 1 | 本地 git 分支 | 重命名 | `fix/expedite-threshold` → `staging` |
+| 2 | `Github` 远端 | 推送 | 新增 `staging` 分支；旧名 `fix/expedite-threshold` 未推过远端，无需删除 |
+| 3 | `AGENTS.md §2.2` | 修改 | 新增 `staging` 行；`branch` 备注「本地下游整合」→「稳定下游基线」 |
+| 4 | `AGENTS.md §2.3` | 修改 | 「feat 合并到 `branch`」→「feat 合并到 `staging`」 |
+| 5 | `AGENTS.md §2.4` | 新增 | staging 工作流（拓扑 / 规则 / 当前待验证内容） |
+| 6 | `AGENTS.md §3.2` | 修改 | feat 流程步骤 6 合并目标 `branch` → `staging` |
+| 7 | `AGENTS.md §3.3` | 修改 | fix 合并目标补「修 branch 自身的 fix → 合并到 `staging`」 |
+| 8 | `AGENTS.md §6` | 修改 | 删除 `fix/expedite-threshold` 行（staging 是长期角色，不属于 feat/fix 速查） |
+| 9 | `LOG.md` | 修改 | 本节 |
+
+**推 upstream**：仅本 fork 工作流调整，不推。
+
+### fix/expedite-threshold recruit_now 调用顺序修复
+
+`feat/expedite-threshold`（`7df4e94e3f`）重构时把 `recruit_now()` 从 `_run()` 外层循环挪进 `recruit_one()`,但挪到了 `confirm()` 之前。游戏 UI 规则:「立即招 / 立即完成」按钮只存在于公招主页(slot 已开始 9h 倒计时), 详情页(confirm 之前)无此按钮。导致 `RecruitNow` task 的 OCR `["立即招"]` 在 ROI `[0,300,1280,420]` 内 4 次 retry 全空, `recruit_now()` 必失败, 加急判定通过却实际未加急, slot 始终走 9h 倒计时。
+
+`install/debug/asst.bak.log` 多日复现(line 158873-158897, 2026-07-25 14:03:46-48):
+- 加急判定日志 `Recruit slot level 4 >= expedite threshold 4 , using expedited plan.` 正常打印
+- OCR 实际识别文本为「已招募干员 / 远程位 / 近战/回复 / 开始刷新标签 / 招募预期」等详情页元素
+- 4 次 retry 后 `SubTaskError`, `Failed to use expedited plan, fall back to normal confirm.`
+- 随后 `check_timer` + `RecruitConfirm` 走完正常 9h 确认流程
+
+修复: 把加急块从 `confirm()` 之前挪到 `confirm()` 之后, 恢复 `3529ab0f05` 原版的「先确认启动 9h, 再主页点立即完成」语义。`fix/expedite-threshold` 既有的 `m_last_confirmed_min_level` 两处重置(line 312-314 / 358-359)保持不动。
+
+| # | 文件 | 操作 | 说明 |
+|---|------|------|------|
+| 1 | `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.cpp:353-365` | 删除 | 移除 `confirm()` 之前的加急块 |
+| 2 | `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.cpp:389` | 插入 | 在 `confirm()` 成功后、`return` 前插入新加急块, 含「立即完成需在主页」注释 |
+| 3 | `LOG.md` | 修改 | 本节 |
+| 4 | `AGENTS.md §6` | 修改 | `fix/expedite-threshold` 角色描述追加「；recruit_now 移到 confirm 之后（修详情页无「立即招」按钮导致加急必失败）」 |
+
+**推 upstream**: 仅本 fork 修复, 不推。
+
+### fix/account-switch-retry LoginOther OCR 模板兜底 + retry_times 分析修正
+
+**初版误判**（`cd704f8bbc`）: 将 `navigate_to_start_page` 的 `retry_times` 从 30 降至 5, 以为 30 次 retry 全花在 LoginOther OCR。实测失败（`asst.log` 19:18:57）: `last matched task: SwitchAccount@StartUpBegin`, 导航首步就耗光 5 次 retry, `TaskChainError`。
+
+**根因修正**: 阅读 `ProcessTask::find_and_run_task()`（`ProcessTask.cpp:336-380`）发现 `cur_retry` 是**局部变量**, 每次 `run()` 循环调用 `find_and_run_task()` 时**独立从 0 开始**。链路每一步各自享有完整的 `m_retry_times` 预算。导航首步（`SwitchAccount@StartUpBegin` → 22 个 `next` 候选）最坏需要 ~13 次 retry 才有 UI 元素可识别, 5 次远远不够。
+
+**正确修法**: 保留 `retry_times=30`（导航余量不变）, 在 `LoginOther.next` 追加 `AccountManagerPageConfirm`（`baseTask: AccountManagerListAccount` + `action: DoNothing`）。OCR 失败时同一 retry cycle 内模板匹配兜底命中（日志历史 score 0.93 稳定）, 不再空耗 30 × 0.6s = 18s retry。由于 `action: DoNothing`, 不改变 UI 状态, 后续 `equal_current_account()` / `show_account_list()` 不受影响。
+
+| # | 文件 | 操作 | 说明 |
+|---|------|------|------|
+| 1 | `src/MaaCore/Task/Miscellaneous/AccountSwitchTask.cpp:68` | 回退 | `set_retry_times(5)` → `set_retry_times(30)` + 注释更新 |
+| 2 | `src/MaaCore/Task/Miscellaneous/AccountSwitchTask.cpp:74` | 修改 | `last_name` 白名单追加 `"AccountManagerPageConfirm"` |
+| 3 | `resource/tasks/tasks.json:808-817` | 修改 | `LoginOther.next` 追加 `"AccountManagerPageConfirm"`; 新增 `AccountManagerPageConfirm` task（`baseTask: AccountManagerListAccount`, `action: DoNothing`） |
+| 4 | `LOG.md` | 修改 | 本节（替换初版的 retry_times=5 描述） |
+| 5 | `AGENTS.md §6` | 修改 | `fix/account-switch-retry` 描述更新 |
+
+**预期效果**: 每次 `navigate_to_start_page` 的 LoginOther 阶段从 ~18s（30 retry × 0.6s）降至 ~0.1s（首个 cycle 模板命中）, 每次 -18s, 两账号 -36s。导航阶段不受影响（retry_times=30 不变）。
+
+**推 upstream**: 仅本 fork 修复, 不推。
+
+## 2026-07-24
+
+### fix/expedite-threshold 账号列表 OCR 适配 UI 改版
+
+**修订上一个 commit (`2715162c3d`)** 的切号链修复。上一版在切号链加了 `SwitchAccount@StartToWakeUpOCR` OCR 兜底以处理鹰角登录弹窗场景，但**主路径 `AccountManagerOfficial` 的 OCR 文本仍是单文本「登录记录」**，与鹰角登录账号列表页改版后的实际 UI 不匹配——用户实际账号列表显示的是「**上次登录 X 分钟前**」而非「登录记录」，导致切号链最终 OCR 检查失败、30 retry 全失败、5x restart_game 死循环。
+
+用户提供的截图证据：
+- 截图 1（主菜单）：「开始唤醒」+「账号管理」按钮
+- 截图 2（鹰角登录弹窗）：「192****6952 (最近)」+「登录」
+- 截图 3（账号列表）：**3 个账号行**：
+  - 192****6952 (最近)
+  - 192****6952 (上次登录 9分钟前)
+  - 189****0830 (上次登录 39分钟前)
+
+**用户提示关键差异**：
+- 「上次登录」字样：经常登录的账号显示
+- 「登录记录」字样：长时间不登陆的账号显示
+
+**修复**：`AccountManagerOfficial.text` 与 `AccountManagerBili.text` 从单文本 `["登录记录"]` 改为双文本 `["登录记录", "上次登录"]`，覆盖新旧 UI 两种显示模式。
+
+| # | 文件 | 操作 | 说明 |
+|---|------|------|------|
+| 1 | `resource/tasks/tasks.json:813-824` | 修改 | `AccountManagerOfficial` 与 `AccountManagerBili` 的 `text` 从 `["登录记录"]` → `["登录记录", "上次登录"]`；Doc 同步更新 |
+| 2 | `AGENTS.md §6` | 修改 | `fix/expedite-threshold` 角色描述追加「;账号列表 OCR 适配 UI 改版（登录记录 / 上次登录 双文本兜底）」 |
+| 3 | `LOG.md` | 修改 | 本节 |
+
+**行为矩阵**：
+
+| 账号使用频率 | 显示文本 | 改前 | 改后 |
+|-------------|---------|------|------|
+| 经常登录 | 「上次登录 X 分钟前」 | ✗ OCR 不命中 → 30 retry 失败 | ✓ 命中 |
+| 长时间未登录 | 「登录记录」 | ✓ 命中（保留） | ✓ 命中 |
+| 混合账号列表 | 同时出现两种 | 部分命中 | 全部命中 |
+
+**风险评估**：
+- 双文本误匹配：`fullMatch: true` 保留 + ROI `[237, 50, 771, 242]` 限定顶部标题栏；其他页面无「登录记录」/「上次登录 X 分钟前」字样
+- 与 upstream 偏离：upstream 仍单文本 `["登录记录"]`；本 fork 因 UI 改版适配，**不推 upstream**
+- ROI 微调：当前 ROI 与原版一致；如新 UI 账号位置超出 ROI 再单独调整
+
+**预期效果**：
+- 多账号切号 + 主菜单（截图 1）→ 点击「账号管理」→ 账号列表（截图 3）→ OCR 命中「上次登录」→ 选号 → 「登录」→ home
+- 全程 30-40s 内完成，无 20s 等待
+
+**推 upstream**：仅本 fork 修复，不推。
+
+### fix/expedite-threshold StartUp::run 恢复原序 + 切号链 OCR 兜底
+
+**修订上一个 commit (`3f411e494a`)**。上一版将 `StartUpTask::run` 重排为 `start_game → start_up → account_switch → start_up`，在 StartUpTask 层显式调用 `start_up` 处理登录前的鹰角弹窗。但用户反馈该架构过于侵入式——切号应该「先进入账号管理再切账号」，由 `AccountSwitchTask::navigate_to_start_page` 内部负责导航到 AccountManager，而非在 StartUpTask 层拆出登录步骤。
+
+**新架构（恢复切号原序 + 切号链补 OCR 兜底）**：
+
+```cpp
+// StartUpTask::run 主流程（恢复原序）
+start_game → account_switch → start_up
+
+// restart_game 循环（恢复原序）
+restart_game → account_switch → start_up
+```
+
+切号 `navigate_to_start_page` 内部走 `SwitchAccount@StartUpBegin` 链，原链中 `SwitchAccount@StartToWakeUp` 仅模板匹配（`tasks.json:789-794`），**缺 OCR 兜底**——当游戏停在鹰角登录弹窗（`StartToWakeUp.png` 不匹配）时无 fallback，导致 30 retry 全失败、5x restart_game 死循环、20s 等待。
+
+**修复**：参考 `StartUpThemes` 的 `StartToWakeUp` + `StartToWakeUpOCR` 配对模式，让切号链也支持 OCR 兜底：
+
+```json
+"SwitchAccount@StartToWakeUp": {
+    "template": "StartToWakeUp.png",
+    "action": "DoNothing",
+    "next": ["AccountManager", "SwitchAccount@StartToWakeUpOCR"]   // 新增 OCR 兜底
+},
+"SwitchAccount@StartToWakeUpOCR": {
+    "baseTask": "SwitchAccount@StartToWakeUp",
+    "algorithm": "OcrDetect",
+    "text": ["开始唤醒", "登录", "登", "录"],
+    "fullMatch": true,
+    "roi": [373, 145, 535, 430]
+}
+```
+
+`next` 顺序：`AccountManager` 在前（模板匹配时直接走），`SwitchAccount@StartToWakeUpOCR` 在后（兜底）；与 `StartUpThemes` 一致。
+
+**4 类场景行为矩阵**：
+
+| 场景 | 上一个 commit (`3f411e494a`) | 本 commit |
+|------|------------------------------|----------|
+| 多账号切号 + 鹰角登录弹窗 | 显式 start_up 点「登录」→ 切号 → 再次登录 | 切号链 OCR 命中「登录」→ 点击 → AccountManager → 切号 → 登录 |
+| 多账号切号 + 已在主界面 | 显式 start_up 走完 → 切号 → 再次登录 | 切号链直接 Settings → Account → 切号 → 登录（少一次 start_up） |
+| 单账号 + 鹰角登录弹窗 | start_up 先登录 → 切号（disabled）→ 再次登录 | 切号链 OCR 命中 → AccountManager（disabled）→ 切号（disabled）→ 登录 |
+| 单账号 + 已在主界面 | 显式 start_up → 切号（disabled）→ 再次登录 | 切号链 Settings → Account（disabled）→ 切号（disabled）→ 登录 |
+
+| # | 文件 | 操作 | 说明 |
+|---|------|------|------|
+| 1 | `src/MaaCore/Task/Interface/StartUpTask.cpp:30-81` | 改回原序 | `start_game → account_switch → start_up`；restart 循环也改回原序 |
+| 2 | `resource/tasks/tasks.json:789-803` | 修改 | `SwitchAccount@StartToWakeUp.next` 追加 `SwitchAccount@StartToWakeUpOCR` 兜底；新增 `SwitchAccount@StartToWakeUpOCR` OCR 任务 |
+| 3 | `AGENTS.md §6` | 修改 | `fix/expedite-threshold` 角色描述更新 |
+| 4 | `LOG.md` | 修改 | 本节 |
+
+**风险评估**：
+- 编译风险：0
+- 行为回归：原序 = 与 upstream 架构一致；单账号 / 多账号 / 已在主界面场景均已覆盖
+- OCR 误识别风险：`SwitchAccount@StartToWakeUpOCR.fullMatch: true` 限定词表「开始唤醒/登录/登/录」；`next` 顺序先模板后 OCR，模板匹配时直接走 AccountManager，不会触发 OCR
+- ROI 微调：当前 ROI `[373, 145, 535, 430]` 与 `StartUpThemes@StartToWakeUpOCR` 一致；如鹰角弹窗「登录」按钮位置超出 ROI，再单独调整
+
+**预期效果**：
+- 多账号切号 + 鹰角登录弹窗：30-40s（含 20s 等待）→ **20-30s**（消除 20s 等待）
+- 单账号 / 已在主界面场景：与原序等价
+
+**推 upstream**：仅本 fork 修复，不推。
+
+### fix/expedite-threshold StartUp::run 重排：先登录再切号
+
+多账号切号场景实测发现 20+ 秒等待：游戏启动后停在鹰角登录弹窗（HyperGryph server auth popup，显示 `192****6952` + 「登录」按钮），MAA 的 `AccountSwitchTask::navigate_to_start_page` 立即尝试切号，但 `SwitchAccount@StartUpBegin` 链（`tasks.json:729-737`）只识别**游戏内账号管理界面**（`AccountManagerOfficial` / `AccountManagerBili` / `Txwy`），不识别鹰角登录弹窗；30 retry 全部失败后进入 `Login failed, entering game-restart loop` 5x restart_game 死循环。
+
+实测日志证据（`install/debug/asst.log` 13:47:40-13:47:54）：
+
+```
+13:47:45  GameStartCheckResourceOCR 命中 (5s postDelay)
+13:47:51  GameStart.png 命中 → click (628, 685)
+13:47:54  last matched task: SwitchAccount@GameStart
+13:47:54  WRN "Account switch failed after restart, retrying game restart"
+```
+
+**根因（架构问题，非性能问题）**：`StartUpTask::run` 顺序为 `start_game → account_switch → start_up`，**假设游戏已登录到主界面**。当游戏在鹰角登录弹窗时：
+- `m_account_switch_task_ptr->run()` 立即失败（找不到 AccountManager 页面）
+- 整个 StartUp 任务进入 5x restart_game 循环，每次 restart 同样的事情再发生
+
+**修复**：重排为 `start_game → start_up → account_switch → start_up`，先确保游戏登录到主界面，再切号，再登录。restart_game 循环内也相应先 `m_start_up_task_ptr->run()` 后 `m_account_switch_task_ptr->run()`。
+
+`cherry-pick 784d9005f6`（`AccountManagerOfficial` 残缺 OCR 补全）解决的是「切号场景 30 retry 找不到 AccountManager」的不同子问题，**没有改变架构顺序**；本 commit 才是**架构层面的修复**。
+
+| # | 文件 | 操作 | 说明 |
+|---|------|------|------|
+| 1 | `src/MaaCore/Task/Interface/StartUpTask.cpp:30-81` | 修改 | `StartUpTask::run` 重排：`start_game → start_up → account_switch → start_up`；5x restart_game 循环内同样改为先登录再切号 |
+| 2 | `AGENTS.md §6` | 修改 | `fix/expedite-threshold` 角色描述追加「;StartUp::run 重排（修切号前未登录的 20s 等待）」 |
+| 3 | `LOG.md` | 修改 | 本节 |
+
+**4 类场景行为矩阵**：
+
+| 场景 | 改前 | 改后 |
+|------|------|------|
+| 多账号切号 + 鹰角登录弹窗 | 切号失败 → 5x restart → 失败（20s 等待） | 自动登录 → 切号 → 再次登录 → 成功 |
+| 多账号切号 + 已在主界面 | 切号 → 登录 → 成功 | fast-path 登录 → 切号 → 登录 → 成功（多 0.5s fast-path 开销） |
+| 单账号 + 鹰角登录弹窗 | 切号（disabled）→ 登录 → 成功 | 登录 → 切号（disabled）→ fast-path 登录 → 成功（多 0.5s） |
+| 单账号 + 已在主界面 | 切号（disabled）→ 登录 → 成功 | 登录（fast-path 跳过）→ 切号（disabled）→ 登录（fast-path）→ 成功（多 0.5s） |
+
+**风险评估**：
+- 编译风险：0（仅调整控制流）
+- 单账号流程：多 0.5s fast-path 开销（StartAtHome 模板命中即跳过）
+- 切号流程：fast-path 命中 → 跳过 `start_up` 任务链 → 直接走切号 → 0 影响
+- 与 upstream 偏离：upstream 仍 `切号优先于登录` 架构；本 fork 因多账号场景修正
+- 推 upstream：仅本 fork 修复，不推
+
+**预期效果**：
+- 多账号切号场景：30-40s → **20-30s**（消除 20s 等待）
+- 单账号场景：5-20s → 3-15s（StartAtHome fast-path 多走一次，可忽略）
+
+**手动验收**：
+1. 多账号切号 + 鹰角登录弹窗 → 启动 MAA → 观察自动点「登录」→ 进主界面 → 切号 → 再次登录
+2. 多账号切号 + 已在主界面 → 启动 MAA → 直接切号
+3. 单账号 → 启动 MAA → 正常登录
+
+### fix/expedite-threshold StartUp 双重缓冲清理
+
+调研 `upstream/dev-v2` 与本仓库对比后确认：`src/MaaCore/Task/Interface/StartUpTask.cpp:24` 的 `.set_task_delay(Config.get_options().task_delay * 2)` 双重缓冲在默认 `task_delay=0`（`GeneralConfig.h:34`）下无任何效果（`0*2=0`），且与 upstream `dev-v2` 一致（无 PR 推动调整）。本次清理纯粹是「删无意义代码」，不修改任何 `postDelay` / `preDelay` / `retry_times` / ROI / OCR 算法，遵循「稳定优先」原则，follow upstream 基线。
+
+| # | 文件 | 操作 | 说明 |
+|---|------|------|------|
+| 1 | `src/MaaCore/Task/Interface/StartUpTask.cpp:24` | 修改 | `.set_task_delay(Config.get_options().task_delay * 2)` → `.set_task_delay(Config.get_options().task_delay)`，删 `* 2` |
+| 2 | `AGENTS.md §6` | 修改 | `fix/expedite-threshold` 角色描述追加 `;StartUp 双重缓冲清理` |
+| 3 | `LOG.md` | 修改 | 本节 |
+
+**行为变化**：默认 `task_delay=0` 时新旧完全等价（`0*2==0`）；仅当用户在 WPF 把 `task_delay` 调到 >0 时，StartUp 阶段不再比日常任务多等一倍，更符合直觉。
+
+**预期效果**：无任何可观测的运行时差异；仅清理一行无意义代码 + 文档同步。
+
+**风险评估**：
+- 编译风险：0（删 4 字符）
+- 运行时回归：0（默认 task_delay=0 等价）
+- 已有用户配置：仅影响手动调高 task_delay 的用户，行为更直观
+- 回退成本：`git revert` 单 commit 即还原
+
+**未做项**（明确排除，遵循 upstream 基线）：
+- `GameStartCheckResourceOCR.postDelay: 5000` / `GameStartUpdateOCR.postDelay: 5000` / `LoginOther.preDelay: 3000` 等 tasks.json 延迟
+- `set_retry_times(50)` / `set_retry_times(30)` 切号重试上限
+- `MaxRestartAttempts=5` 重启循环
+- ROI 缩窄 / OCR 算法调整
+
+### fix/account-official-recognize cherry-pick 同步到 fix/expedite-threshold
+
+`fix/expedite-threshold`（HEAD `301f90897a`，branch point = `9d8d021610`）branch point 早于 `branch` 上今天 12:46 的官方服账号切换识别补全 `784d9005f6`，导致该分支部署的 `install/MaaCore.dll` 仍带 `AccountManagerOfficial` 残缺定义 bug —— 官服 + 账号轮换场景下 `ProcessTask` 30 次 retry 全失败，进 `Login failed, entering game-restart loop` 卡在登录页。实测环境（MAA 主界面日志 12:19: `StartToWakeUp.png` 命中、登录页 OCR 不识别）确认复现。
+
+upstream `MaaAssistantArknights/MaaAssistantArknights` `dev-v2` 仍带同款 bug，无对应 PR；本 fork `branch` 领先 upstream。
+
+| # | 文件 | 操作 | 说明 |
+|---|------|------|------|
+| 1 | `resource/tasks/tasks.json:805-810` | cherry-pick from `784d9005f6` | `AccountManagerOfficial` 由 `{"roi":[570,165,140,80]}` 补全为 `{"Doc":"...","algorithm":"OcrDetect","text":["登录记录"],"roi":[237,50,771,242]}`（与 `AccountManagerBili` 对齐） |
+| 2 | `src/MaaCore/Task/Miscellaneous/AccountSwitchTask.cpp:68-83` | cherry-pick from `784d9005f6` | `navigate_to_start_page()` 加 `Log.info(... last matched task ...)` 诊断日志；4 个 `else if` 合并为单 `if (... \|\| ... \|\| ... \|\| ...)` |
+| 3 | `LOG.md` | cherry-pick from `784d9005f6` | 同步 `### fix/account-official-recognize 启动` 与 `### fix/account-official-recognize 实施完成` 两节；冲突解决：保留本分支 `fix/expedite-threshold` 两节，追加新两节（无内容丢失） |
+| 4 | `AGENTS.md §7.5` | cherry-pick from `da157d163d` | 新增 `fix/account-official-recognize` 生命周期记录小节 |
+| 5 | `AGENTS.md §6` | 不变 | `fix/expedite-threshold` 仍为进行中分支（未合入 branch），待本分支合入 `branch` 时再清除 |
+| 6 | `LOG.md` | 修改 | 本节（cherry-pick 同步事件说明） |
+
+**Commit 链**：
+
+| SHA | 来源 | 标题 |
+|-----|------|------|
+| `6011051af2` | cherry-pick from `784d9005f6` | `fix(startup): 官方服账号切换界面识别补全 + 切号诊断日志` |
+| `f241b2160b` | cherry-pick from `da157d163d` | `docs: 登记 fix/account-official-recognize 分支生命周期` |
+
+**作用域声明**：
+- 与 `§7.5 fix/account-official-recognize` 同名不同分支生命周期——本节记录的是「`branch` 上游修复 cherry-pick 到 `fix/expedite-threshold`」的同步事件，不重复登记上游生命周期。
+- §6 `fix/expedite-threshold` 仍标进行中；待用户后续决定 FF / `--no-ff` 合入 `branch` 时一并清除。
+
 ## 2026-07-15
 
 ### 分支工作文档约束调整
