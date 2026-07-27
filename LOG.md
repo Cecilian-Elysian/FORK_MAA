@@ -1185,3 +1185,40 @@ dotnet build src/MaaWpfGui/MaaWpfGui.csproj -c Release -p:Platform=x64
 | 2 | `AGENTS.md` §6 | 待修改 | 增补 `fix/account-switch-template-missing` 行 |
 | 3 | `AGENTS.md` §7 | 待修改 | 新增 §7.6 / §7.7 / §7.8 三个完整生命周期块 |
 | 4 | `LOG.md` 2026-07-25 | 待修改 | 追加三次合并事件登记 + 本节 |
+
+## 2026-07-27
+
+### fix/recruit-now-text-aliases 启动
+
+加急许可按钮实际 OCR 文本在新版 Arknights CN UI 已从「立即招」改为「立即完成」(commit `2718046060` 的注释 + LOG.md 已明示)，但 `RecruitNow` task 定义仍只列 `["立即招"]`。`"立即完成".find("立即招") == npos` → 5 次 retry 全空 → `recruit_now()` 走「Failed to use expedited plan」降级 → 加急许可不消耗、slot 落入正常 9h。
+
+复现：单账号 `192****6952`，加急模式「仅四星以上」，4★ 组合（支援+快速复活+治疗）确认后槽位 09:00:00 倒计时未变，截图右侧加急许可计数不变。
+
+| # | 文件/对象 | 操作 | 说明 |
+|---|----------|------|------|
+| 1 | `fix/recruit-now-text-aliases` | 新建分支 | 从 `branch` 拉出 |
+| 2 | `resource/tasks/tasks.json:1741-1748` | 待修改 | `RecruitNow.text` 加 `"立即完成"` 备选；加 `Doc` 注明新旧 UI 文案兼容 |
+
+### fix/recruit-now-text-aliases 实施完成
+
+| # | 文件 | 操作 | 说明 |
+|---|------|------|------|
+| 1 | `resource/tasks/tasks.json:1741-1749` | 修改 | `RecruitNow` 块加 `Doc: "加急许可按钮 OCR,兼容新旧 UI 文案「立即招 / 立即完成」任一命中即视为按钮已渲染。"`；`text` 由 `["立即招"]` 改为 `["立即招", "立即完成"]` |
+| 2 | `LOG.md` | 修改 | 本节 |
+
+**根因交叉验证**:
+- 字节级核查 `resource/tasks/tasks.json` 200+ commit 历史：自 2022-01-04 引入 `RecruitNow` 起 `text` 字段从未改过
+- `src/MaaCore/Vision/OCRer.cpp:125-147` `filter_and_replace_by_required_` 对**单个 detector box 的 `res.text`** 做 substring 匹配，**不跨 box 合并**
+- PaddleOCR word model（`resource/PaddleOCR/rec/keys.txt`）是 6901 行字符表，`立`/`即`/`招`/`募`/`完`/`成` 均存在，但 detector box 边界决定实际返回字符串
+- `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.cpp:377` 注释 + `LOG.md:2026-07-25 §recruit_now 调用顺序修复` 第 45 行 共同明示按钮 UI 文案变体为「立即招 / 立即完成」
+- YoStarKR 已有同类先例：`resource/global/YoStarKR/resource/tasks/tasks.json:1228` `["즉시모집", "측시모집", "즉시"]` 三个备选
+
+**未做的事**: `StartRecruit` (`["开始招"]`)、`RecruitContinue` (`["继续招"]`) 同模式 substring 漂移问题，本次未实测复现，不顺手改。后续触发再单独开 fix 分支。
+
+**编译/部署结果**: (待 `tools/local-install.bat` 跑完补充)
+
+**待手动验证（需模拟器环境）**:
+1. 单账号 + 4★ 组合（支援+快速复活+治疗 等）→ 确认招募 → 槽位立即变「已招募干员」 + 加急许可 -1
+2. 5★+ 门槛、6★ only 门槛回归 → 加急仍能触发
+3. 3★ 组合回归 → 槽位落入正常 9h、不消耗加急许可（门槛机制保持有效）
+4. `install/debug/asst.log` 出现 `Recruit slot level X >= expedite threshold Y, using expedited plan.` 后续 `hire_all()` 命中，不出现 `Failed to use expedited plan`
