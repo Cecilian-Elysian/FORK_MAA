@@ -17,6 +17,15 @@
 - `branch` 分支：`tools\local-install.bat` → `install\MAA.exe`
 - `staging` 分支：`tools\local-install-staging.bat` → `install-staging\MAA.exe`
 
+### staging 桌面快捷方式
+
+`%USERPROFILE%\Desktop\MAA (staging).lnk`：指向 `install-staging\MAA.exe`，起始目录 `install-staging\`，图标复用 MAA.exe 自身图标。首次执行前需在 `staging` 分支上先运行 `tools\local-install-staging.bat` 生成构建产物，否则双击报错「找不到文件」。
+
+| # | 路径 | 操作 | 说明 |
+|---|------|------|------|
+| 1 | `%USERPROFILE%\Desktop\MAA (staging).lnk` | 创建 | PowerShell `WScript.Shell.CreateShortcut()`，目标 `install-staging\MAA.exe`，起始目录 `install-staging\` |
+| 2 | `LOG.md` | 修改 | 本节 |
+
 ## 2026-07-25
 
 ### staging 分支引入 + fix/expedite-threshold 重命名
