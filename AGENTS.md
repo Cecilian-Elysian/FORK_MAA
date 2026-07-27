@@ -218,6 +218,7 @@ feat/<name>, fix/<name> ────────────┘
 | `fix/account_rotation/6` | 从 `branch` 拉出，从属 `feat/account_rotation`（已合入） | 账号轮换切号时左侧任务面板不刷新：`AdvanceAccountCycle` 未重置任务行状态/进度计数 + StartUp 行 `_taskIds` 丢失；顺带加「当前账号」Header 解决「误以为同一账号跑两次」的视觉混淆 |
 | `fix/account-switch-template-missing` | 从 `branch` 拉出，修正 `fix/account-switch-retry` 修正版（`41cfcb736b`）漏提交 `AccountManagerPageConfirm.png` 的资源完整性漏洞；`TemplResource::load` 期望 `task_name + .png` 存在，不依赖 `baseTask` 继承 | `staging`（连带修复资源损坏导致 MAA 无法启动的连锁错误） |
 | `fix/recruit-now-text-aliases` | 修公招加急按钮 OCR 文本漂移（新版 Arknights CN UI「立即完成」不被旧 `text:["立即招"]` 命中 → 加急必失败降级为正常 9h）。修法同 YoStarKR 3 备选先例 | `staging`（不阻塞晋升），关键 commit `9179d5e3a6` → `2f84118b07` → `633e8523f4`，详见 `LOG.md` 2026-07-27 |
+| `fix/post-battle-sanity-display` | 修 `FightTask` MissionStart 日志「理智: x/y」展示语义：原 `x = SanityCurrent`（OCR 战前快照）与上一行「开始行动 1~6 次, -126 理智」消耗语义不连贯 → `x = SanityCurrent - FightReport.SanityCost`（series 实际成本战后预测）。仅 MissionStart 一处，不动 `SanityInfo` / Toast / CompleteTask / AllTasksComplete | `staging`（不阻塞晋升），关键 commit `d4b23812d3`，详见 `LOG.md` 2026-07-27 |
 
 
 ## 7. 分支生命周期记录
