@@ -688,3 +688,14 @@ dotnet build src/MaaWpfGui/MaaWpfGui.csproj -c Release -p:Platform=x64
 
 **未推送上游**: 仅本仓库 `branch` 修复，不向 upstream 提 PR。
 
+## 2026-07-27
+
+### fix/reception-clue-vacancy 启动
+
+会客室「填充线索空位」(`use_clue` → `proc_clue_vacancy`) 在官服/B 服均存在 6 个根因（参 7 月 26 日会话分析），上游 Issue #16166 已 closed as "not planned"。本 fix 在 `branch` 上独立修复，不推 upstream。
+
+| # | 文件/对象 | 操作 | 说明 |
+|---|----------|------|------|
+| 1 | `fix/reception-clue-vacancy` | 新建分支 | 从 `branch` 拉出 |
+| 2 | `LOG.md` | 修改 | 本节 |
+
