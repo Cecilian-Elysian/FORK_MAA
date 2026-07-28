@@ -1046,3 +1046,18 @@ dotnet build src/MaaWpfGui/MaaWpfGui.csproj -c Release -p:Platform=x64
 
 **未推送上游**: 仅本仓库 `branch` 修复，不向 upstream 提 PR。
 
+## 2026-07-28
+
+### feat/downstream-changes 启动
+
+为支持「改任何文件前先查下游改动文件清单」流程，新增一个自动从 LOG.md 表格提取所有被改过文件、按目录分组生成 markdown 文档的工具 + 首次产物。
+
+脚本只读解析 LOG.md 的 4 列「`#` `文件/对象` `操作` `说明`」表格，提取列 2 反引号包裹的路径，去行号后缀、过滤 `install*/`/分支名/`LOG.md`/`AGENTS.md` 等非源码条目，按顶层目录分组、统计每个文件被改过几次（同文件多次改动标注为「高敏感」），输出到 `docs/downstream-changes.md`。
+
+**合入目标**: `branch`（不在 staging 攒批，直接从 branch 拉出，仅改工具与文档，无 C++ 代码改动，不需单测）。
+
+| # | 文件/对象 | 操作 | 说明 |
+|---|----------|------|------|
+| 1 | `feat/downstream-changes` | 新建分支 | 从 `branch` 拉出（`git switch -c feat/downstream-changes branch`） |
+| 2 | `LOG.md` | 修改 | 本节（启动记录） |
+
