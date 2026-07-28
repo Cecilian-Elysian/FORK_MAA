@@ -84,12 +84,16 @@ feat 合并到 `branch` 后：
 | # | 步骤 | 产物 |
 |---|------|------|
 | 1 | `git switch -c feat/<name> branch` | 新分支 |
+| 1.5 | 查阅 [`docs/downstream-changes.md`](./docs/downstream-changes.md)，确认本次改动文件不在清单「高敏感」段（多轮 feat/fix 反复动过的代码改动需特别谨慎）；如要改动清单中的文件，commit message 注明「downstream: 该文件曾被 feat/fix X 改动，本次改动原因」 | 防回归 |
 | 2 | `LOG.md` 追加「`feat/<name>` 启动」表格 | 启动记录 |
 | 3 | 实施期间 commit message 记录关键决策 | commit 历史 |
 | 4 | 实施完成 `LOG.md` 追加「`feat/<name>` 实施完成」表格（文件路径 + 行号 + commit） | 实施记录 |
 | 5 | 编译 / 部署验证 | `install/` |
 | 6 | FF 合并到 `branch`（无分叉时）；分叉时 `--no-ff` | merge commit |
 | 7 | `LOG.md` 记录合并事件，按 `§2.3` 处理 feat 分支 | 生命周期 |
+| 8 | 合并后重跑 `py tools/gen-downstream-changes.py` 刷新 [`docs/downstream-changes.md`](./docs/downstream-changes.md) | 清单维护 |
+
+> **`docs/downstream-changes.md`** 由 `tools/gen-downstream-changes.py` 自动从 `LOG.md` 提取，含文件路径 + 改动次数 + 操作列 + 说明列。改前查它能看清「这个文件之前被谁改过、改过几次」。
 
 ### 3.3 fix 分支命名与合并目标
 

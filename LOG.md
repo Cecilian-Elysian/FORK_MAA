@@ -1061,3 +1061,27 @@ dotnet build src/MaaWpfGui/MaaWpfGui.csproj -c Release -p:Platform=x64
 | 1 | `feat/downstream-changes` | 新建分支 | 从 `branch` 拉出（`git switch -c feat/downstream-changes branch`） |
 | 2 | `LOG.md` | 修改 | 本节（启动记录） |
 
+### feat/downstream-changes 实施完成
+
+| # | 文件 | 操作 | 说明 |
+|---|------|------|------|
+| 1 | `tools/gen-downstream-changes.py` | 新建 | 解析 LOG.md 4 列表格（`# / 文件(对象) / 操作 / 说明`），提取列 2 反引号路径：去行号后缀（`path:123-456` → `path`）、brace-aware 逗号切分（保留 `{zh-cn,en-us}` 内逗号）、shell brace 展开（`{a,b,c}.xaml` → 多个文件）、过滤 `install*/`/`build/`/`debug/`/`config/`/`cache/`/`data/`/`reports/` 等非源码产物；按顶层目录分组，被改 ≥ 3 次标 `[HOT]`，否则 `[TGT]`；输出 markdown 表格。支持 `--log` / `--out` / `--dry-run` 参数 |
+| 2 | `docs/downstream-changes.md` | 新建 | 首次运行产物：36 个唯一源文件，覆盖 220 行 LOG.md 表格。仓库根（`.gitignore`/`VERSION`）+ `.github/` + `docs/` + `resource/`（`tasks.json` [HOT]）+ `src/` 26 文件（`TaskQueueViewModel.cs` [HOT] 23 次）+ `tools/` 5 文件 |
+| 3 | `AGENTS.md §3.2` | 修改 | 启动新 feat 流程加步骤 1.5「查 `docs/downstream-changes.md`」与步骤 8「合入后重跑脚本刷新清单」+ 末尾新增说明段（脚本数据来源 / 维护方式） |
+| 4 | `LOG.md` | 修改 | 本节（实施完成记录） |
+
+**运行验证**：`py tools/gen-downstream-changes.py --dry-run` 输出 36 文件清单（含 12 个 `[HOT]` 高敏感）；`py tools/gen-downstream-changes.py` 生成 `docs/downstream-changes.md` 332 行。
+
+**关键设计**：
+- 兼容 LOG.md 实际存在的多种表格怪相：`path:123` 单行号 / `path:123-456` 行号范围 / `path:68-83, 173, 186` 单文件多位置（用 brace-aware 逗号切分）/ `{zh-cn,en-us,ja-jp,ko-kr,zh-tw}.xaml` shell brace expansion 展开为 5 个独立追踪文件
+- 操作列用 `.+?` 而非 `\S+`，兼容 `cherry-pick from xxx`、`+ExpediteMinLevel* 6 个 key`、`git rm` 等自由文本
+- 根级 dotfile（`.gitignore`）与裸文件（`VERSION`）归到「仓库根」分组，不加 `/` 后缀
+- emoji 改 ASCII 标记（`[OK]`/`[TGT]`/`[HOT]`），避免 PowerShell GBK 控制台编码问题（GBK 报 `UnicodeEncodeError` on `🔴`）
+
+**预期效果**：
+1. 开新 feat 时第一步查 `docs/downstream-changes.md`，看到目标文件是 `[HOT]` 多改动的（如 `TaskQueueViewModel.cs` 23 次、`AutoRecruitTask.cpp` 10 次），改前先读对应 LOG.md 段落确认是否冲突
+2. 合入 feat 后跑一次脚本刷新清单，最新改动自动归类
+3. 无运行依赖：纯 Python 3 stdlib，无需 numpy/Cairo 等；与上游脚本 `tools/TaskSorter/` 同构（`py` 启动）
+
+**后续**：待手动验证项目仅为「文档可读性」——若 `[OK]`/`[TGT]`/`[HOT]` ASCII 标记觉得不够直观，下个 feat 可改用纯文字（`OK`/`MOD`/`HOT`）。本次保持简洁不引入 emoji。
+
