@@ -1,1168 +1,985 @@
-# 修改日志
+# 淇敼鏃ュ織
 
-日志规范：每次修改文件后，在此记录修改内容。
-
+鏃ュ織瑙勮寖锛氭瘡娆′慨鏀规枃浠跺悗锛屽湪姝よ褰曚慨鏀瑰唴瀹广€?
 ## 2026-07-27
 
-### tools/local-install-staging.bat 创建
+### tools/local-install-staging.bat 鍒涘缓
 
-`branch` 分支使用 `install/` 作为构建输出目录。新增 `tools/local-install-staging.bat`，结构与 `local-install.bat` 一致，仅将 6 处 `install` 路径改为 `install-staging`，输出到独立目录与 `install/` 并存，互不覆盖。`branch` 与 `staging` 分支各自独立构建，桌面分别快捷。
-
-| # | 文件 | 操作 | 说明 |
+`branch` 鍒嗘敮浣跨敤 `install/` 浣滀负鏋勫缓杈撳嚭鐩綍銆傛柊澧?`tools/local-install-staging.bat`锛岀粨鏋勪笌 `local-install.bat` 涓€鑷达紝浠呭皢 6 澶?`install` 璺緞鏀逛负 `install-staging`锛岃緭鍑哄埌鐙珛鐩綍涓?`install/` 骞跺瓨锛屼簰涓嶈鐩栥€俙branch` 涓?`staging` 鍒嗘敮鍚勮嚜鐙珛鏋勫缓锛屾闈㈠垎鍒揩鎹枫€?
+| # | 鏂囦欢 | 鎿嶄綔 | 璇存槑 |
 |---|------|------|------|
-| 1 | `tools/local-install-staging.bat` | 新建 | 基于 `local-install.bat`，6 处 `install` 路径改为 `install-staging`（cmake `--prefix`、dotnet `-o`、nbeauty 补丁、清理 `*.h`/`msvc-debug`、robocopy `resource`） |
-| 2 | `LOG.md` | 修改 | 本节 |
+| 1 | `tools/local-install-staging.bat` | 鏂板缓 | 鍩轰簬 `local-install.bat`锛? 澶?`install` 璺緞鏀逛负 `install-staging`锛坈make `--prefix`銆乨otnet `-o`銆乶beauty 琛ヤ竵銆佹竻鐞?`*.h`/`msvc-debug`銆乺obocopy `resource`锛?|
+| 2 | `LOG.md` | 淇敼 | 鏈妭 |
 
-**用法**:
-- `branch` 分支：`tools\local-install.bat` → `install\MAA.exe`
-- `staging` 分支：`tools\local-install-staging.bat` → `install-staging\MAA.exe`
+**鐢ㄦ硶**:
+- `branch` 鍒嗘敮锛歚tools\local-install.bat` 鈫?`install\MAA.exe`
+- `staging` 鍒嗘敮锛歚tools\local-install-staging.bat` 鈫?`install-staging\MAA.exe`
 
-### staging 桌面快捷方式
+### staging 妗岄潰蹇嵎鏂瑰紡
 
-`%USERPROFILE%\Desktop\MAA (staging).lnk`：指向 `install-staging\MAA.exe`，起始目录 `install-staging\`，图标复用 MAA.exe 自身图标。首次执行前需在 `staging` 分支上先运行 `tools\local-install-staging.bat` 生成构建产物，否则双击报错「找不到文件」。
-
-| # | 路径 | 操作 | 说明 |
+`%USERPROFILE%\Desktop\MAA (staging).lnk`锛氭寚鍚?`install-staging\MAA.exe`锛岃捣濮嬬洰褰?`install-staging\`锛屽浘鏍囧鐢?MAA.exe 鑷韩鍥炬爣銆傞娆℃墽琛屽墠闇€鍦?`staging` 鍒嗘敮涓婂厛杩愯 `tools\local-install-staging.bat` 鐢熸垚鏋勫缓浜х墿锛屽惁鍒欏弻鍑绘姤閿欍€屾壘涓嶅埌鏂囦欢銆嶃€?
+| # | 璺緞 | 鎿嶄綔 | 璇存槑 |
 |---|------|------|------|
-| 1 | `%USERPROFILE%\Desktop\MAA (staging).lnk` | 创建 | PowerShell `WScript.Shell.CreateShortcut()`，目标 `install-staging\MAA.exe`，起始目录 `install-staging\` |
-| 2 | `LOG.md` | 修改 | 本节 |
+| 1 | `%USERPROFILE%\Desktop\MAA (staging).lnk` | 鍒涘缓 | PowerShell `WScript.Shell.CreateShortcut()`锛岀洰鏍?`install-staging\MAA.exe`锛岃捣濮嬬洰褰?`install-staging\` |
+| 2 | `LOG.md` | 淇敼 | 鏈妭 |
 
-### tools/local-install{,-staging}.bat global.json 版本锁定修复
+### tools/local-install{,-staging}.bat global.json 鐗堟湰閿佸畾淇
 
-首次跑 `tools\local-install-staging.bat` 构建 `install-staging/` 时，**C++ 端构建成功但 WPF `dotnet restore`/`publish` 全失败**，脚本走到 `:error` 退出，`install-staging/` 未生成。撞到 AGENTS.md §4.1 记录的 VS 2026 SDK 路径 bug 与一个之前未记录的脚本坑叠加。
-
-**根因**：`local-install.bat` 第 11 行（`local-install-staging.bat` 同位置）原写：
-
+棣栨璺?`tools\local-install-staging.bat` 鏋勫缓 `install-staging/` 鏃讹紝**C++ 绔瀯寤烘垚鍔熶絾 WPF `dotnet restore`/`publish` 鍏ㄥけ璐?*锛岃剼鏈蛋鍒?`:error` 閫€鍑猴紝`install-staging/` 鏈敓鎴愩€傛挒鍒?AGENTS.md 搂4.1 璁板綍鐨?VS 2026 SDK 璺緞 bug 涓庝竴涓箣鍓嶆湭璁板綍鐨勮剼鏈潙鍙犲姞銆?
+**鏍瑰洜**锛歚local-install.bat` 绗?11 琛岋紙`local-install-staging.bat` 鍚屼綅缃級鍘熷啓锛?
 ```bat
 > ".\global.json" echo {"sdk":{"version":"10.0.203","rollForward":"disable"}}
 ```
 
-- `"version":"10.0.203"` 锁死 10.0.203，但本机只装 10.0.300 SDK（`dotnet --list-sdks`）
-- `"rollForward":"disable"` 禁用 fallback，连 `latestPatch` / `latestFeature` / `latestMajor` 都不允许
-- MSBuild 找不到 SDK → `MSB4276` / `无法解析 SDK"Microsoft.NET.Sdk"` 报错
-- 该 `global.json` 由脚本注入到仓库根目录，覆盖所有子目录（`src/MaaWpfGui/`）
-- cmake `--build build --parallel` 触发 WPF MSBuild 评估（已知 bug），整链路连锁失败
-
-**修复**：将两个 bat 的第 11 行改为与 AGENTS.md §4.1 描述一致的写法：
-
+- `"version":"10.0.203"` 閿佹 10.0.203锛屼絾鏈満鍙 10.0.300 SDK锛坄dotnet --list-sdks`锛?- `"rollForward":"disable"` 绂佺敤 fallback锛岃繛 `latestPatch` / `latestFeature` / `latestMajor` 閮戒笉鍏佽
+- MSBuild 鎵句笉鍒?SDK 鈫?`MSB4276` / `鏃犳硶瑙ｆ瀽 SDK"Microsoft.NET.Sdk"` 鎶ラ敊
+- 璇?`global.json` 鐢辫剼鏈敞鍏ュ埌浠撳簱鏍圭洰褰曪紝瑕嗙洊鎵€鏈夊瓙鐩綍锛坄src/MaaWpfGui/`锛?- cmake `--build build --parallel` 瑙﹀彂 WPF MSBuild 璇勪及锛堝凡鐭?bug锛夛紝鏁撮摼璺繛閿佸け璐?
+**淇**锛氬皢涓や釜 bat 鐨勭 11 琛屾敼涓轰笌 AGENTS.md 搂4.1 鎻忚堪涓€鑷寸殑鍐欐硶锛?
 ```bat
 > ".\global.json" echo {"sdk":{"version":"10.0.100","rollForward":"latestFeature"}}
 ```
 
-`10.0.100` + `latestFeature` 允许自动晋升到 10.0.x（包含本机的 10.0.300），向后兼容所有 dotnet 10.x 装机版本。
-
-**首次成功构建 `install-staging/` 的绕过方法**（在脚本修复前手动执行）：
-
+`10.0.100` + `latestFeature` 鍏佽鑷姩鏅嬪崌鍒?10.0.x锛堝寘鍚湰鏈虹殑 10.0.300锛夛紝鍚戝悗鍏煎鎵€鏈?dotnet 10.x 瑁呮満鐗堟湰銆?
+**棣栨鎴愬姛鏋勫缓 `install-staging/` 鐨勭粫杩囨柟娉?*锛堝湪鑴氭湰淇鍓嶆墜鍔ㄦ墽琛岋級锛?
 ```bash
 cmake --install build --config RelWithDebInfo --prefix install-staging
 dotnet restore src/MaaWpfGui/MaaWpfGui.csproj
 dotnet publish src/MaaWpfGui/MaaWpfGui.csproj -c Release -r win-x64 -o install-staging /p:DisableBeauty=True
 & "$env:USERPROFILE\.nuget\packages\nulastudio.netbeauty\2.1.5\tools\win-x86\nbeauty2.exe" --usepatch "$PWD\install-staging\." ./externals
-# 清理 *.h / msvc-debug / robocopy resource（与 bat 一致）
+# 娓呯悊 *.h / msvc-debug / robocopy resource锛堜笌 bat 涓€鑷达級
 ```
 
-绕开脚本注入的 global.json，让 dotnet 自动选用本机最高 SDK。
-
-| # | 文件 | 操作 | 说明 |
+缁曞紑鑴氭湰娉ㄥ叆鐨?global.json锛岃 dotnet 鑷姩閫夌敤鏈満鏈€楂?SDK銆?
+| # | 鏂囦欢 | 鎿嶄綔 | 璇存槑 |
 |---|------|------|------|
-| 1 | `tools/local-install.bat:11` | 修改 | `global.json` 注入从 `{"version":"10.0.203","rollForward":"disable"}` 改为 `{"version":"10.0.100","rollForward":"latestFeature"}` |
-| 2 | `tools/local-install-staging.bat:11` | 修改 | 同上 |
-| 3 | `install-staging/` | 构建产出 | C++ / WPF 全量构建成功，8775 文件与 `install/resource/` 完全一致；`MAA.exe` 339 KB / `MaaCore.dll` 4.0 MB / `MAA.dll` 3.6 MB |
-| 4 | `LOG.md` | 修改 | 本节 |
+| 1 | `tools/local-install.bat:11` | 淇敼 | `global.json` 娉ㄥ叆浠?`{"version":"10.0.203","rollForward":"disable"}` 鏀逛负 `{"version":"10.0.100","rollForward":"latestFeature"}` |
+| 2 | `tools/local-install-staging.bat:11` | 淇敼 | 鍚屼笂 |
+| 3 | `install-staging/` | 鏋勫缓浜у嚭 | C++ / WPF 鍏ㄩ噺鏋勫缓鎴愬姛锛?775 鏂囦欢涓?`install/resource/` 瀹屽叏涓€鑷达紱`MAA.exe` 339 KB / `MaaCore.dll` 4.0 MB / `MAA.dll` 3.6 MB |
+| 4 | `LOG.md` | 淇敼 | 鏈妭 |
 
 ## 2026-07-25
 
-### staging 分支引入 + fix/expedite-threshold 重命名
-
-**背景**：`fix/expedite-threshold` 累积了 11 个跨方向 commit（启动链 / 切号 OCR / 加急门槛 / recruit_now 顺序 / docs），已不适合作为单一 fix 分支命名。引入 `staging` 层作为 feat / fix 的合并目标与 `branch` 之间的待验证整合区，攒批测试通过后晋升至 `branch`。
-
-**工作流变更**：
-
+### staging 鍒嗘敮寮曞叆 + fix/expedite-threshold 閲嶅懡鍚?
+**鑳屾櫙**锛歚fix/expedite-threshold` 绱Н浜?11 涓法鏂瑰悜 commit锛堝惎鍔ㄩ摼 / 鍒囧彿 OCR / 鍔犳€ラ棬妲?/ recruit_now 椤哄簭 / docs锛夛紝宸蹭笉閫傚悎浣滀负鍗曚竴 fix 鍒嗘敮鍛藉悕銆傚紩鍏?`staging` 灞備綔涓?feat / fix 鐨勫悎骞剁洰鏍囦笌 `branch` 涔嬮棿鐨勫緟楠岃瘉鏁村悎鍖猴紝鏀掓壒娴嬭瘯閫氳繃鍚庢檵鍗囪嚦 `branch`銆?
+**宸ヤ綔娴佸彉鏇?*锛?
 ```
-master (上游 dev-v2 镜像)
-  │  (rebase / merge 同步节奏不变)
-  ▼
-branch (稳定下游基线) ◄──── staging 晋升 (--no-ff, 攒批)
-  │                                 ▲
-  │ (feat / fix 拉取源)              │ (合并目标)
-  ▼                                 │
-feat/<name>, fix/<name> ────────────┘
-```
+master (涓婃父 dev-v2 闀滃儚)
+  鈹? (rebase / merge 鍚屾鑺傚涓嶅彉)
+  鈻?branch (绋冲畾涓嬫父鍩虹嚎) 鈼勨攢鈹€鈹€鈹€ staging 鏅嬪崌 (--no-ff, 鏀掓壒)
+  鈹?                                鈻?  鈹?(feat / fix 鎷夊彇婧?              鈹?(鍚堝苟鐩爣)
+  鈻?                                鈹?feat/<name>, fix/<name> 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹?```
 
-- 所有 feat / fix 一律从 `branch` 拉出，合并到 `staging`
-- `staging` 攒一批（建议 3-5 个）测试通过后再晋升至 `branch`
-- `branch` ↔ `master` 上游同步节奏不变
-- 当前 `staging` 领先 `branch` 11 commits、落后 2 commits（branch 上的 `784d9005f6` + `da157d163d` 与 staging 上的 cherry-pick `6011051af2` + `f241b2160b` 内容等价、SHA 不同），首次晋升将无法 FF，需 `--no-ff`
+- 鎵€鏈?feat / fix 涓€寰嬩粠 `branch` 鎷夊嚭锛屽悎骞跺埌 `staging`
+- `staging` 鏀掍竴鎵癸紙寤鸿 3-5 涓級娴嬭瘯閫氳繃鍚庡啀鏅嬪崌鑷?`branch`
+- `branch` 鈫?`master` 涓婃父鍚屾鑺傚涓嶅彉
+- 褰撳墠 `staging` 棰嗗厛 `branch` 11 commits銆佽惤鍚?2 commits锛坆ranch 涓婄殑 `784d9005f6` + `da157d163d` 涓?staging 涓婄殑 cherry-pick `6011051af2` + `f241b2160b` 鍐呭绛変环銆丼HA 涓嶅悓锛夛紝棣栨鏅嬪崌灏嗘棤娉?FF锛岄渶 `--no-ff`
 
-| # | 文件 | 操作 | 说明 |
+| # | 鏂囦欢 | 鎿嶄綔 | 璇存槑 |
 |---|------|------|------|
-| 1 | 本地 git 分支 | 重命名 | `fix/expedite-threshold` → `staging` |
-| 2 | `Github` 远端 | 推送 | 新增 `staging` 分支；旧名 `fix/expedite-threshold` 未推过远端，无需删除 |
-| 3 | `AGENTS.md §2.2` | 修改 | 新增 `staging` 行；`branch` 备注「本地下游整合」→「稳定下游基线」 |
-| 4 | `AGENTS.md §2.3` | 修改 | 「feat 合并到 `branch`」→「feat 合并到 `staging`」 |
-| 5 | `AGENTS.md §2.4` | 新增 | staging 工作流（拓扑 / 规则 / 当前待验证内容） |
-| 6 | `AGENTS.md §3.2` | 修改 | feat 流程步骤 6 合并目标 `branch` → `staging` |
-| 7 | `AGENTS.md §3.3` | 修改 | fix 合并目标补「修 branch 自身的 fix → 合并到 `staging`」 |
-| 8 | `AGENTS.md §6` | 修改 | 删除 `fix/expedite-threshold` 行（staging 是长期角色，不属于 feat/fix 速查） |
-| 9 | `LOG.md` | 修改 | 本节 |
+| 1 | 鏈湴 git 鍒嗘敮 | 閲嶅懡鍚?| `fix/expedite-threshold` 鈫?`staging` |
+| 2 | `Github` 杩滅 | 鎺ㄩ€?| 鏂板 `staging` 鍒嗘敮锛涙棫鍚?`fix/expedite-threshold` 鏈帹杩囪繙绔紝鏃犻渶鍒犻櫎 |
+| 3 | `AGENTS.md 搂2.2` | 淇敼 | 鏂板 `staging` 琛岋紱`branch` 澶囨敞銆屾湰鍦颁笅娓告暣鍚堛€嶁啋銆岀ǔ瀹氫笅娓稿熀绾裤€?|
+| 4 | `AGENTS.md 搂2.3` | 淇敼 | 銆宖eat 鍚堝苟鍒?`branch`銆嶁啋銆宖eat 鍚堝苟鍒?`staging`銆?|
+| 5 | `AGENTS.md 搂2.4` | 鏂板 | staging 宸ヤ綔娴侊紙鎷撴墤 / 瑙勫垯 / 褰撳墠寰呴獙璇佸唴瀹癸級 |
+| 6 | `AGENTS.md 搂3.2` | 淇敼 | feat 娴佺▼姝ラ 6 鍚堝苟鐩爣 `branch` 鈫?`staging` |
+| 7 | `AGENTS.md 搂3.3` | 淇敼 | fix 鍚堝苟鐩爣琛ャ€屼慨 branch 鑷韩鐨?fix 鈫?鍚堝苟鍒?`staging`銆?|
+| 8 | `AGENTS.md 搂6` | 淇敼 | 鍒犻櫎 `fix/expedite-threshold` 琛岋紙staging 鏄暱鏈熻鑹诧紝涓嶅睘浜?feat/fix 閫熸煡锛?|
+| 9 | `LOG.md` | 淇敼 | 鏈妭 |
 
-**推 upstream**：仅本 fork 工作流调整，不推。
+**鎺?upstream**锛氫粎鏈?fork 宸ヤ綔娴佽皟鏁达紝涓嶆帹銆?
+### fix/expedite-threshold recruit_now 璋冪敤椤哄簭淇
 
-### fix/expedite-threshold recruit_now 调用顺序修复
+`feat/expedite-threshold`锛坄7df4e94e3f`锛夐噸鏋勬椂鎶?`recruit_now()` 浠?`_run()` 澶栧眰寰幆鎸繘 `recruit_one()`,浣嗘尓鍒颁簡 `confirm()` 涔嬪墠銆傛父鎴?UI 瑙勫垯:銆岀珛鍗虫嫑 / 绔嬪嵆瀹屾垚銆嶆寜閽彧瀛樺湪浜庡叕鎷涗富椤?slot 宸插紑濮?9h 鍊掕鏃?, 璇︽儏椤?confirm 涔嬪墠)鏃犳鎸夐挳銆傚鑷?`RecruitNow` task 鐨?OCR `["绔嬪嵆鎷?]` 鍦?ROI `[0,300,1280,420]` 鍐?4 娆?retry 鍏ㄧ┖, `recruit_now()` 蹇呭け璐? 鍔犳€ュ垽瀹氶€氳繃鍗村疄闄呮湭鍔犳€? slot 濮嬬粓璧?9h 鍊掕鏃躲€?
+`install/debug/asst.bak.log` 澶氭棩澶嶇幇(line 158873-158897, 2026-07-25 14:03:46-48):
+- 鍔犳€ュ垽瀹氭棩蹇?`Recruit slot level 4 >= expedite threshold 4 , using expedited plan.` 姝ｅ父鎵撳嵃
+- OCR 瀹為檯璇嗗埆鏂囨湰涓恒€屽凡鎷涘嫙骞插憳 / 杩滅▼浣?/ 杩戞垬/鍥炲 / 寮€濮嬪埛鏂版爣绛?/ 鎷涘嫙棰勬湡銆嶇瓑璇︽儏椤靛厓绱?- 4 娆?retry 鍚?`SubTaskError`, `Failed to use expedited plan, fall back to normal confirm.`
+- 闅忓悗 `check_timer` + `RecruitConfirm` 璧板畬姝ｅ父 9h 纭娴佺▼
 
-`feat/expedite-threshold`（`7df4e94e3f`）重构时把 `recruit_now()` 从 `_run()` 外层循环挪进 `recruit_one()`,但挪到了 `confirm()` 之前。游戏 UI 规则:「立即招 / 立即完成」按钮只存在于公招主页(slot 已开始 9h 倒计时), 详情页(confirm 之前)无此按钮。导致 `RecruitNow` task 的 OCR `["立即招"]` 在 ROI `[0,300,1280,420]` 内 4 次 retry 全空, `recruit_now()` 必失败, 加急判定通过却实际未加急, slot 始终走 9h 倒计时。
-
-`install/debug/asst.bak.log` 多日复现(line 158873-158897, 2026-07-25 14:03:46-48):
-- 加急判定日志 `Recruit slot level 4 >= expedite threshold 4 , using expedited plan.` 正常打印
-- OCR 实际识别文本为「已招募干员 / 远程位 / 近战/回复 / 开始刷新标签 / 招募预期」等详情页元素
-- 4 次 retry 后 `SubTaskError`, `Failed to use expedited plan, fall back to normal confirm.`
-- 随后 `check_timer` + `RecruitConfirm` 走完正常 9h 确认流程
-
-修复: 把加急块从 `confirm()` 之前挪到 `confirm()` 之后, 恢复 `3529ab0f05` 原版的「先确认启动 9h, 再主页点立即完成」语义。`fix/expedite-threshold` 既有的 `m_last_confirmed_min_level` 两处重置(line 312-314 / 358-359)保持不动。
-
-| # | 文件 | 操作 | 说明 |
+淇: 鎶婂姞鎬ュ潡浠?`confirm()` 涔嬪墠鎸埌 `confirm()` 涔嬪悗, 鎭㈠ `3529ab0f05` 鍘熺増鐨勩€屽厛纭鍚姩 9h, 鍐嶄富椤电偣绔嬪嵆瀹屾垚銆嶈涔夈€俙fix/expedite-threshold` 鏃㈡湁鐨?`m_last_confirmed_min_level` 涓ゅ閲嶇疆(line 312-314 / 358-359)淇濇寔涓嶅姩銆?
+| # | 鏂囦欢 | 鎿嶄綔 | 璇存槑 |
 |---|------|------|------|
-| 1 | `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.cpp:353-365` | 删除 | 移除 `confirm()` 之前的加急块 |
-| 2 | `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.cpp:389` | 插入 | 在 `confirm()` 成功后、`return` 前插入新加急块, 含「立即完成需在主页」注释 |
-| 3 | `LOG.md` | 修改 | 本节 |
-| 4 | `AGENTS.md §6` | 修改 | `fix/expedite-threshold` 角色描述追加「；recruit_now 移到 confirm 之后（修详情页无「立即招」按钮导致加急必失败）」 |
+| 1 | `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.cpp:353-365` | 鍒犻櫎 | 绉婚櫎 `confirm()` 涔嬪墠鐨勫姞鎬ュ潡 |
+| 2 | `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.cpp:389` | 鎻掑叆 | 鍦?`confirm()` 鎴愬姛鍚庛€乣return` 鍓嶆彃鍏ユ柊鍔犳€ュ潡, 鍚€岀珛鍗冲畬鎴愰渶鍦ㄤ富椤点€嶆敞閲?|
+| 3 | `LOG.md` | 淇敼 | 鏈妭 |
+| 4 | `AGENTS.md 搂6` | 淇敼 | `fix/expedite-threshold` 瑙掕壊鎻忚堪杩藉姞銆岋紱recruit_now 绉诲埌 confirm 涔嬪悗锛堜慨璇︽儏椤垫棤銆岀珛鍗虫嫑銆嶆寜閽鑷村姞鎬ュ繀澶辫触锛夈€?|
 
-**推 upstream**: 仅本 fork 修复, 不推。
+**鎺?upstream**: 浠呮湰 fork 淇, 涓嶆帹銆?
+### fix/account-switch-retry LoginOther OCR 妯℃澘鍏滃簳 + retry_times 鍒嗘瀽淇
 
-### fix/account-switch-retry LoginOther OCR 模板兜底 + retry_times 分析修正
-
-**初版误判**（`cd704f8bbc`）: 将 `navigate_to_start_page` 的 `retry_times` 从 30 降至 5, 以为 30 次 retry 全花在 LoginOther OCR。实测失败（`asst.log` 19:18:57）: `last matched task: SwitchAccount@StartUpBegin`, 导航首步就耗光 5 次 retry, `TaskChainError`。
-
-**根因修正**: 阅读 `ProcessTask::find_and_run_task()`（`ProcessTask.cpp:336-380`）发现 `cur_retry` 是**局部变量**, 每次 `run()` 循环调用 `find_and_run_task()` 时**独立从 0 开始**。链路每一步各自享有完整的 `m_retry_times` 预算。导航首步（`SwitchAccount@StartUpBegin` → 22 个 `next` 候选）最坏需要 ~13 次 retry 才有 UI 元素可识别, 5 次远远不够。
-
-**正确修法**: 保留 `retry_times=30`（导航余量不变）, 在 `LoginOther.next` 追加 `AccountManagerPageConfirm`（`baseTask: AccountManagerListAccount` + `action: DoNothing`）。OCR 失败时同一 retry cycle 内模板匹配兜底命中（日志历史 score 0.93 稳定）, 不再空耗 30 × 0.6s = 18s retry。由于 `action: DoNothing`, 不改变 UI 状态, 后续 `equal_current_account()` / `show_account_list()` 不受影响。
-
-| # | 文件 | 操作 | 说明 |
+**鍒濈増璇垽**锛坄cd704f8bbc`锛? 灏?`navigate_to_start_page` 鐨?`retry_times` 浠?30 闄嶈嚦 5, 浠ヤ负 30 娆?retry 鍏ㄨ姳鍦?LoginOther OCR銆傚疄娴嬪け璐ワ紙`asst.log` 19:18:57锛? `last matched task: SwitchAccount@StartUpBegin`, 瀵艰埅棣栨灏辫€楀厜 5 娆?retry, `TaskChainError`銆?
+**鏍瑰洜淇**: 闃呰 `ProcessTask::find_and_run_task()`锛坄ProcessTask.cpp:336-380`锛夊彂鐜?`cur_retry` 鏄?*灞€閮ㄥ彉閲?*, 姣忔 `run()` 寰幆璋冪敤 `find_and_run_task()` 鏃?*鐙珛浠?0 寮€濮?*銆傞摼璺瘡涓€姝ュ悇鑷韩鏈夊畬鏁寸殑 `m_retry_times` 棰勭畻銆傚鑸姝ワ紙`SwitchAccount@StartUpBegin` 鈫?22 涓?`next` 鍊欓€夛級鏈€鍧忛渶瑕?~13 娆?retry 鎵嶆湁 UI 鍏冪礌鍙瘑鍒? 5 娆¤繙杩滀笉澶熴€?
+**姝ｇ‘淇硶**: 淇濈暀 `retry_times=30`锛堝鑸綑閲忎笉鍙橈級, 鍦?`LoginOther.next` 杩藉姞 `AccountManagerPageConfirm`锛坄baseTask: AccountManagerListAccount` + `action: DoNothing`锛夈€侽CR 澶辫触鏃跺悓涓€ retry cycle 鍐呮ā鏉垮尮閰嶅厹搴曞懡涓紙鏃ュ織鍘嗗彶 score 0.93 绋冲畾锛? 涓嶅啀绌鸿€?30 脳 0.6s = 18s retry銆傜敱浜?`action: DoNothing`, 涓嶆敼鍙?UI 鐘舵€? 鍚庣画 `equal_current_account()` / `show_account_list()` 涓嶅彈褰卞搷銆?
+| # | 鏂囦欢 | 鎿嶄綔 | 璇存槑 |
 |---|------|------|------|
-| 1 | `src/MaaCore/Task/Miscellaneous/AccountSwitchTask.cpp:68` | 回退 | `set_retry_times(5)` → `set_retry_times(30)` + 注释更新 |
-| 2 | `src/MaaCore/Task/Miscellaneous/AccountSwitchTask.cpp:74` | 修改 | `last_name` 白名单追加 `"AccountManagerPageConfirm"` |
-| 3 | `resource/tasks/tasks.json:808-817` | 修改 | `LoginOther.next` 追加 `"AccountManagerPageConfirm"`; 新增 `AccountManagerPageConfirm` task（`baseTask: AccountManagerListAccount`, `action: DoNothing`） |
-| 4 | `LOG.md` | 修改 | 本节（替换初版的 retry_times=5 描述） |
-| 5 | `AGENTS.md §6` | 修改 | `fix/account-switch-retry` 描述更新 |
+| 1 | `src/MaaCore/Task/Miscellaneous/AccountSwitchTask.cpp:68` | 鍥為€€ | `set_retry_times(5)` 鈫?`set_retry_times(30)` + 娉ㄩ噴鏇存柊 |
+| 2 | `src/MaaCore/Task/Miscellaneous/AccountSwitchTask.cpp:74` | 淇敼 | `last_name` 鐧藉悕鍗曡拷鍔?`"AccountManagerPageConfirm"` |
+| 3 | `resource/tasks/tasks.json:808-817` | 淇敼 | `LoginOther.next` 杩藉姞 `"AccountManagerPageConfirm"`; 鏂板 `AccountManagerPageConfirm` task锛坄baseTask: AccountManagerListAccount`, `action: DoNothing`锛?|
+| 4 | `LOG.md` | 淇敼 | 鏈妭锛堟浛鎹㈠垵鐗堢殑 retry_times=5 鎻忚堪锛?|
+| 5 | `AGENTS.md 搂6` | 淇敼 | `fix/account-switch-retry` 鎻忚堪鏇存柊 |
 
-**预期效果**: 每次 `navigate_to_start_page` 的 LoginOther 阶段从 ~18s（30 retry × 0.6s）降至 ~0.1s（首个 cycle 模板命中）, 每次 -18s, 两账号 -36s。导航阶段不受影响（retry_times=30 不变）。
-
-**推 upstream**: 仅本 fork 修复, 不推。
-
+**棰勬湡鏁堟灉**: 姣忔 `navigate_to_start_page` 鐨?LoginOther 闃舵浠?~18s锛?0 retry 脳 0.6s锛夐檷鑷?~0.1s锛堥涓?cycle 妯℃澘鍛戒腑锛? 姣忔 -18s, 涓よ处鍙?-36s銆傚鑸樁娈典笉鍙楀奖鍝嶏紙retry_times=30 涓嶅彉锛夈€?
+**鎺?upstream**: 浠呮湰 fork 淇, 涓嶆帹銆?
 ## 2026-07-24
 
-### fix/expedite-threshold 账号列表 OCR 适配 UI 改版
+### fix/expedite-threshold 璐﹀彿鍒楄〃 OCR 閫傞厤 UI 鏀圭増
 
-**修订上一个 commit (`2715162c3d`)** 的切号链修复。上一版在切号链加了 `SwitchAccount@StartToWakeUpOCR` OCR 兜底以处理鹰角登录弹窗场景，但**主路径 `AccountManagerOfficial` 的 OCR 文本仍是单文本「登录记录」**，与鹰角登录账号列表页改版后的实际 UI 不匹配——用户实际账号列表显示的是「**上次登录 X 分钟前**」而非「登录记录」，导致切号链最终 OCR 检查失败、30 retry 全失败、5x restart_game 死循环。
+**淇涓婁竴涓?commit (`2715162c3d`)** 鐨勫垏鍙烽摼淇銆備笂涓€鐗堝湪鍒囧彿閾惧姞浜?`SwitchAccount@StartToWakeUpOCR` OCR 鍏滃簳浠ュ鐞嗛拱瑙掔櫥褰曞脊绐楀満鏅紝浣?*涓昏矾寰?`AccountManagerOfficial` 鐨?OCR 鏂囨湰浠嶆槸鍗曟枃鏈€岀櫥褰曡褰曘€?*锛屼笌楣拌鐧诲綍璐﹀彿鍒楄〃椤垫敼鐗堝悗鐨勫疄闄?UI 涓嶅尮閰嶁€斺€旂敤鎴峰疄闄呰处鍙峰垪琛ㄦ樉绀虹殑鏄€?*涓婃鐧诲綍 X 鍒嗛挓鍓?*銆嶈€岄潪銆岀櫥褰曡褰曘€嶏紝瀵艰嚧鍒囧彿閾炬渶缁?OCR 妫€鏌ュけ璐ャ€?0 retry 鍏ㄥけ璐ャ€?x restart_game 姝诲惊鐜€?
+鐢ㄦ埛鎻愪緵鐨勬埅鍥捐瘉鎹細
+- 鎴浘 1锛堜富鑿滃崟锛夛細銆屽紑濮嬪敜閱掋€?銆岃处鍙风鐞嗐€嶆寜閽?- 鎴浘 2锛堥拱瑙掔櫥褰曞脊绐楋級锛氥€?92****6952 (鏈€杩?銆?銆岀櫥褰曘€?- 鎴浘 3锛堣处鍙峰垪琛級锛?*3 涓处鍙疯**锛?  - 192****6952 (鏈€杩?
+  - 192****6952 (涓婃鐧诲綍 9鍒嗛挓鍓?
+  - 189****0830 (涓婃鐧诲綍 39鍒嗛挓鍓?
 
-用户提供的截图证据：
-- 截图 1（主菜单）：「开始唤醒」+「账号管理」按钮
-- 截图 2（鹰角登录弹窗）：「192****6952 (最近)」+「登录」
-- 截图 3（账号列表）：**3 个账号行**：
-  - 192****6952 (最近)
-  - 192****6952 (上次登录 9分钟前)
-  - 189****0830 (上次登录 39分钟前)
-
-**用户提示关键差异**：
-- 「上次登录」字样：经常登录的账号显示
-- 「登录记录」字样：长时间不登陆的账号显示
-
-**修复**：`AccountManagerOfficial.text` 与 `AccountManagerBili.text` 从单文本 `["登录记录"]` 改为双文本 `["登录记录", "上次登录"]`，覆盖新旧 UI 两种显示模式。
-
-| # | 文件 | 操作 | 说明 |
+**鐢ㄦ埛鎻愮ず鍏抽敭宸紓**锛?- 銆屼笂娆＄櫥褰曘€嶅瓧鏍凤細缁忓父鐧诲綍鐨勮处鍙锋樉绀?- 銆岀櫥褰曡褰曘€嶅瓧鏍凤細闀挎椂闂翠笉鐧婚檰鐨勮处鍙锋樉绀?
+**淇**锛歚AccountManagerOfficial.text` 涓?`AccountManagerBili.text` 浠庡崟鏂囨湰 `["鐧诲綍璁板綍"]` 鏀逛负鍙屾枃鏈?`["鐧诲綍璁板綍", "涓婃鐧诲綍"]`锛岃鐩栨柊鏃?UI 涓ょ鏄剧ず妯″紡銆?
+| # | 鏂囦欢 | 鎿嶄綔 | 璇存槑 |
 |---|------|------|------|
-| 1 | `resource/tasks/tasks.json:813-824` | 修改 | `AccountManagerOfficial` 与 `AccountManagerBili` 的 `text` 从 `["登录记录"]` → `["登录记录", "上次登录"]`；Doc 同步更新 |
-| 2 | `AGENTS.md §6` | 修改 | `fix/expedite-threshold` 角色描述追加「;账号列表 OCR 适配 UI 改版（登录记录 / 上次登录 双文本兜底）」 |
-| 3 | `LOG.md` | 修改 | 本节 |
+| 1 | `resource/tasks/tasks.json:813-824` | 淇敼 | `AccountManagerOfficial` 涓?`AccountManagerBili` 鐨?`text` 浠?`["鐧诲綍璁板綍"]` 鈫?`["鐧诲綍璁板綍", "涓婃鐧诲綍"]`锛汥oc 鍚屾鏇存柊 |
+| 2 | `AGENTS.md 搂6` | 淇敼 | `fix/expedite-threshold` 瑙掕壊鎻忚堪杩藉姞銆?璐﹀彿鍒楄〃 OCR 閫傞厤 UI 鏀圭増锛堢櫥褰曡褰?/ 涓婃鐧诲綍 鍙屾枃鏈厹搴曪級銆?|
+| 3 | `LOG.md` | 淇敼 | 鏈妭 |
 
-**行为矩阵**：
-
-| 账号使用频率 | 显示文本 | 改前 | 改后 |
+**琛屼负鐭╅樀**锛?
+| 璐﹀彿浣跨敤棰戠巼 | 鏄剧ず鏂囨湰 | 鏀瑰墠 | 鏀瑰悗 |
 |-------------|---------|------|------|
-| 经常登录 | 「上次登录 X 分钟前」 | ✗ OCR 不命中 → 30 retry 失败 | ✓ 命中 |
-| 长时间未登录 | 「登录记录」 | ✓ 命中（保留） | ✓ 命中 |
-| 混合账号列表 | 同时出现两种 | 部分命中 | 全部命中 |
+| 缁忓父鐧诲綍 | 銆屼笂娆＄櫥褰?X 鍒嗛挓鍓嶃€?| 鉁?OCR 涓嶅懡涓?鈫?30 retry 澶辫触 | 鉁?鍛戒腑 |
+| 闀挎椂闂存湭鐧诲綍 | 銆岀櫥褰曡褰曘€?| 鉁?鍛戒腑锛堜繚鐣欙級 | 鉁?鍛戒腑 |
+| 娣峰悎璐﹀彿鍒楄〃 | 鍚屾椂鍑虹幇涓ょ | 閮ㄥ垎鍛戒腑 | 鍏ㄩ儴鍛戒腑 |
 
-**风险评估**：
-- 双文本误匹配：`fullMatch: true` 保留 + ROI `[237, 50, 771, 242]` 限定顶部标题栏；其他页面无「登录记录」/「上次登录 X 分钟前」字样
-- 与 upstream 偏离：upstream 仍单文本 `["登录记录"]`；本 fork 因 UI 改版适配，**不推 upstream**
-- ROI 微调：当前 ROI 与原版一致；如新 UI 账号位置超出 ROI 再单独调整
+**椋庨櫓璇勪及**锛?- 鍙屾枃鏈鍖归厤锛歚fullMatch: true` 淇濈暀 + ROI `[237, 50, 771, 242]` 闄愬畾椤堕儴鏍囬鏍忥紱鍏朵粬椤甸潰鏃犮€岀櫥褰曡褰曘€?銆屼笂娆＄櫥褰?X 鍒嗛挓鍓嶃€嶅瓧鏍?- 涓?upstream 鍋忕锛歶pstream 浠嶅崟鏂囨湰 `["鐧诲綍璁板綍"]`锛涙湰 fork 鍥?UI 鏀圭増閫傞厤锛?*涓嶆帹 upstream**
+- ROI 寰皟锛氬綋鍓?ROI 涓庡師鐗堜竴鑷达紱濡傛柊 UI 璐﹀彿浣嶇疆瓒呭嚭 ROI 鍐嶅崟鐙皟鏁?
+**棰勬湡鏁堟灉**锛?- 澶氳处鍙峰垏鍙?+ 涓昏彍鍗曪紙鎴浘 1锛夆啋 鐐瑰嚮銆岃处鍙风鐞嗐€嶁啋 璐﹀彿鍒楄〃锛堟埅鍥?3锛夆啋 OCR 鍛戒腑銆屼笂娆＄櫥褰曘€嶁啋 閫夊彿 鈫?銆岀櫥褰曘€嶁啋 home
+- 鍏ㄧ▼ 30-40s 鍐呭畬鎴愶紝鏃?20s 绛夊緟
 
-**预期效果**：
-- 多账号切号 + 主菜单（截图 1）→ 点击「账号管理」→ 账号列表（截图 3）→ OCR 命中「上次登录」→ 选号 → 「登录」→ home
-- 全程 30-40s 内完成，无 20s 等待
+**鎺?upstream**锛氫粎鏈?fork 淇锛屼笉鎺ㄣ€?
+### fix/expedite-threshold StartUp::run 鎭㈠鍘熷簭 + 鍒囧彿閾?OCR 鍏滃簳
 
-**推 upstream**：仅本 fork 修复，不推。
-
-### fix/expedite-threshold StartUp::run 恢复原序 + 切号链 OCR 兜底
-
-**修订上一个 commit (`3f411e494a`)**。上一版将 `StartUpTask::run` 重排为 `start_game → start_up → account_switch → start_up`，在 StartUpTask 层显式调用 `start_up` 处理登录前的鹰角弹窗。但用户反馈该架构过于侵入式——切号应该「先进入账号管理再切账号」，由 `AccountSwitchTask::navigate_to_start_page` 内部负责导航到 AccountManager，而非在 StartUpTask 层拆出登录步骤。
-
-**新架构（恢复切号原序 + 切号链补 OCR 兜底）**：
-
+**淇涓婁竴涓?commit (`3f411e494a`)**銆備笂涓€鐗堝皢 `StartUpTask::run` 閲嶆帓涓?`start_game 鈫?start_up 鈫?account_switch 鈫?start_up`锛屽湪 StartUpTask 灞傛樉寮忚皟鐢?`start_up` 澶勭悊鐧诲綍鍓嶇殑楣拌寮圭獥銆備絾鐢ㄦ埛鍙嶉璇ユ灦鏋勮繃浜庝镜鍏ュ紡鈥斺€斿垏鍙峰簲璇ャ€屽厛杩涘叆璐﹀彿绠＄悊鍐嶅垏璐﹀彿銆嶏紝鐢?`AccountSwitchTask::navigate_to_start_page` 鍐呴儴璐熻矗瀵艰埅鍒?AccountManager锛岃€岄潪鍦?StartUpTask 灞傛媶鍑虹櫥褰曟楠ゃ€?
+**鏂版灦鏋勶紙鎭㈠鍒囧彿鍘熷簭 + 鍒囧彿閾捐ˉ OCR 鍏滃簳锛?*锛?
 ```cpp
-// StartUpTask::run 主流程（恢复原序）
-start_game → account_switch → start_up
+// StartUpTask::run 涓绘祦绋嬶紙鎭㈠鍘熷簭锛?start_game 鈫?account_switch 鈫?start_up
 
-// restart_game 循环（恢复原序）
-restart_game → account_switch → start_up
+// restart_game 寰幆锛堟仮澶嶅師搴忥級
+restart_game 鈫?account_switch 鈫?start_up
 ```
 
-切号 `navigate_to_start_page` 内部走 `SwitchAccount@StartUpBegin` 链，原链中 `SwitchAccount@StartToWakeUp` 仅模板匹配（`tasks.json:789-794`），**缺 OCR 兜底**——当游戏停在鹰角登录弹窗（`StartToWakeUp.png` 不匹配）时无 fallback，导致 30 retry 全失败、5x restart_game 死循环、20s 等待。
-
-**修复**：参考 `StartUpThemes` 的 `StartToWakeUp` + `StartToWakeUpOCR` 配对模式，让切号链也支持 OCR 兜底：
-
+鍒囧彿 `navigate_to_start_page` 鍐呴儴璧?`SwitchAccount@StartUpBegin` 閾撅紝鍘熼摼涓?`SwitchAccount@StartToWakeUp` 浠呮ā鏉垮尮閰嶏紙`tasks.json:789-794`锛夛紝**缂?OCR 鍏滃簳**鈥斺€斿綋娓告垙鍋滃湪楣拌鐧诲綍寮圭獥锛坄StartToWakeUp.png` 涓嶅尮閰嶏級鏃舵棤 fallback锛屽鑷?30 retry 鍏ㄥけ璐ャ€?x restart_game 姝诲惊鐜€?0s 绛夊緟銆?
+**淇**锛氬弬鑰?`StartUpThemes` 鐨?`StartToWakeUp` + `StartToWakeUpOCR` 閰嶅妯″紡锛岃鍒囧彿閾句篃鏀寔 OCR 鍏滃簳锛?
 ```json
 "SwitchAccount@StartToWakeUp": {
     "template": "StartToWakeUp.png",
     "action": "DoNothing",
-    "next": ["AccountManager", "SwitchAccount@StartToWakeUpOCR"]   // 新增 OCR 兜底
+    "next": ["AccountManager", "SwitchAccount@StartToWakeUpOCR"]   // 鏂板 OCR 鍏滃簳
 },
 "SwitchAccount@StartToWakeUpOCR": {
     "baseTask": "SwitchAccount@StartToWakeUp",
     "algorithm": "OcrDetect",
-    "text": ["开始唤醒", "登录", "登", "录"],
+    "text": ["寮€濮嬪敜閱?, "鐧诲綍", "鐧?, "褰?],
     "fullMatch": true,
     "roi": [373, 145, 535, 430]
 }
 ```
 
-`next` 顺序：`AccountManager` 在前（模板匹配时直接走），`SwitchAccount@StartToWakeUpOCR` 在后（兜底）；与 `StartUpThemes` 一致。
-
-**4 类场景行为矩阵**：
-
-| 场景 | 上一个 commit (`3f411e494a`) | 本 commit |
+`next` 椤哄簭锛歚AccountManager` 鍦ㄥ墠锛堟ā鏉垮尮閰嶆椂鐩存帴璧帮級锛宍SwitchAccount@StartToWakeUpOCR` 鍦ㄥ悗锛堝厹搴曪級锛涗笌 `StartUpThemes` 涓€鑷淬€?
+**4 绫诲満鏅涓虹煩闃?*锛?
+| 鍦烘櫙 | 涓婁竴涓?commit (`3f411e494a`) | 鏈?commit |
 |------|------------------------------|----------|
-| 多账号切号 + 鹰角登录弹窗 | 显式 start_up 点「登录」→ 切号 → 再次登录 | 切号链 OCR 命中「登录」→ 点击 → AccountManager → 切号 → 登录 |
-| 多账号切号 + 已在主界面 | 显式 start_up 走完 → 切号 → 再次登录 | 切号链直接 Settings → Account → 切号 → 登录（少一次 start_up） |
-| 单账号 + 鹰角登录弹窗 | start_up 先登录 → 切号（disabled）→ 再次登录 | 切号链 OCR 命中 → AccountManager（disabled）→ 切号（disabled）→ 登录 |
-| 单账号 + 已在主界面 | 显式 start_up → 切号（disabled）→ 再次登录 | 切号链 Settings → Account（disabled）→ 切号（disabled）→ 登录 |
+| 澶氳处鍙峰垏鍙?+ 楣拌鐧诲綍寮圭獥 | 鏄惧紡 start_up 鐐广€岀櫥褰曘€嶁啋 鍒囧彿 鈫?鍐嶆鐧诲綍 | 鍒囧彿閾?OCR 鍛戒腑銆岀櫥褰曘€嶁啋 鐐瑰嚮 鈫?AccountManager 鈫?鍒囧彿 鈫?鐧诲綍 |
+| 澶氳处鍙峰垏鍙?+ 宸插湪涓荤晫闈?| 鏄惧紡 start_up 璧板畬 鈫?鍒囧彿 鈫?鍐嶆鐧诲綍 | 鍒囧彿閾剧洿鎺?Settings 鈫?Account 鈫?鍒囧彿 鈫?鐧诲綍锛堝皯涓€娆?start_up锛?|
+| 鍗曡处鍙?+ 楣拌鐧诲綍寮圭獥 | start_up 鍏堢櫥褰?鈫?鍒囧彿锛坉isabled锛夆啋 鍐嶆鐧诲綍 | 鍒囧彿閾?OCR 鍛戒腑 鈫?AccountManager锛坉isabled锛夆啋 鍒囧彿锛坉isabled锛夆啋 鐧诲綍 |
+| 鍗曡处鍙?+ 宸插湪涓荤晫闈?| 鏄惧紡 start_up 鈫?鍒囧彿锛坉isabled锛夆啋 鍐嶆鐧诲綍 | 鍒囧彿閾?Settings 鈫?Account锛坉isabled锛夆啋 鍒囧彿锛坉isabled锛夆啋 鐧诲綍 |
 
-| # | 文件 | 操作 | 说明 |
+| # | 鏂囦欢 | 鎿嶄綔 | 璇存槑 |
 |---|------|------|------|
-| 1 | `src/MaaCore/Task/Interface/StartUpTask.cpp:30-81` | 改回原序 | `start_game → account_switch → start_up`；restart 循环也改回原序 |
-| 2 | `resource/tasks/tasks.json:789-803` | 修改 | `SwitchAccount@StartToWakeUp.next` 追加 `SwitchAccount@StartToWakeUpOCR` 兜底；新增 `SwitchAccount@StartToWakeUpOCR` OCR 任务 |
-| 3 | `AGENTS.md §6` | 修改 | `fix/expedite-threshold` 角色描述更新 |
-| 4 | `LOG.md` | 修改 | 本节 |
+| 1 | `src/MaaCore/Task/Interface/StartUpTask.cpp:30-81` | 鏀瑰洖鍘熷簭 | `start_game 鈫?account_switch 鈫?start_up`锛況estart 寰幆涔熸敼鍥炲師搴?|
+| 2 | `resource/tasks/tasks.json:789-803` | 淇敼 | `SwitchAccount@StartToWakeUp.next` 杩藉姞 `SwitchAccount@StartToWakeUpOCR` 鍏滃簳锛涙柊澧?`SwitchAccount@StartToWakeUpOCR` OCR 浠诲姟 |
+| 3 | `AGENTS.md 搂6` | 淇敼 | `fix/expedite-threshold` 瑙掕壊鎻忚堪鏇存柊 |
+| 4 | `LOG.md` | 淇敼 | 鏈妭 |
 
-**风险评估**：
-- 编译风险：0
-- 行为回归：原序 = 与 upstream 架构一致；单账号 / 多账号 / 已在主界面场景均已覆盖
-- OCR 误识别风险：`SwitchAccount@StartToWakeUpOCR.fullMatch: true` 限定词表「开始唤醒/登录/登/录」；`next` 顺序先模板后 OCR，模板匹配时直接走 AccountManager，不会触发 OCR
-- ROI 微调：当前 ROI `[373, 145, 535, 430]` 与 `StartUpThemes@StartToWakeUpOCR` 一致；如鹰角弹窗「登录」按钮位置超出 ROI，再单独调整
+**椋庨櫓璇勪及**锛?- 缂栬瘧椋庨櫓锛?
+- 琛屼负鍥炲綊锛氬師搴?= 涓?upstream 鏋舵瀯涓€鑷达紱鍗曡处鍙?/ 澶氳处鍙?/ 宸插湪涓荤晫闈㈠満鏅潎宸茶鐩?- OCR 璇瘑鍒闄╋細`SwitchAccount@StartToWakeUpOCR.fullMatch: true` 闄愬畾璇嶈〃銆屽紑濮嬪敜閱?鐧诲綍/鐧?褰曘€嶏紱`next` 椤哄簭鍏堟ā鏉垮悗 OCR锛屾ā鏉垮尮閰嶆椂鐩存帴璧?AccountManager锛屼笉浼氳Е鍙?OCR
+- ROI 寰皟锛氬綋鍓?ROI `[373, 145, 535, 430]` 涓?`StartUpThemes@StartToWakeUpOCR` 涓€鑷达紱濡傞拱瑙掑脊绐椼€岀櫥褰曘€嶆寜閽綅缃秴鍑?ROI锛屽啀鍗曠嫭璋冩暣
 
-**预期效果**：
-- 多账号切号 + 鹰角登录弹窗：30-40s（含 20s 等待）→ **20-30s**（消除 20s 等待）
-- 单账号 / 已在主界面场景：与原序等价
-
-**推 upstream**：仅本 fork 修复，不推。
-
-### fix/expedite-threshold StartUp::run 重排：先登录再切号
-
-多账号切号场景实测发现 20+ 秒等待：游戏启动后停在鹰角登录弹窗（HyperGryph server auth popup，显示 `192****6952` + 「登录」按钮），MAA 的 `AccountSwitchTask::navigate_to_start_page` 立即尝试切号，但 `SwitchAccount@StartUpBegin` 链（`tasks.json:729-737`）只识别**游戏内账号管理界面**（`AccountManagerOfficial` / `AccountManagerBili` / `Txwy`），不识别鹰角登录弹窗；30 retry 全部失败后进入 `Login failed, entering game-restart loop` 5x restart_game 死循环。
-
-实测日志证据（`install/debug/asst.log` 13:47:40-13:47:54）：
+**棰勬湡鏁堟灉**锛?- 澶氳处鍙峰垏鍙?+ 楣拌鐧诲綍寮圭獥锛?0-40s锛堝惈 20s 绛夊緟锛夆啋 **20-30s**锛堟秷闄?20s 绛夊緟锛?- 鍗曡处鍙?/ 宸插湪涓荤晫闈㈠満鏅細涓庡師搴忕瓑浠?
+**鎺?upstream**锛氫粎鏈?fork 淇锛屼笉鎺ㄣ€?
+### fix/expedite-threshold StartUp::run 閲嶆帓锛氬厛鐧诲綍鍐嶅垏鍙?
+澶氳处鍙峰垏鍙峰満鏅疄娴嬪彂鐜?20+ 绉掔瓑寰咃細娓告垙鍚姩鍚庡仠鍦ㄩ拱瑙掔櫥褰曞脊绐楋紙HyperGryph server auth popup锛屾樉绀?`192****6952` + 銆岀櫥褰曘€嶆寜閽級锛孧AA 鐨?`AccountSwitchTask::navigate_to_start_page` 绔嬪嵆灏濊瘯鍒囧彿锛屼絾 `SwitchAccount@StartUpBegin` 閾撅紙`tasks.json:729-737`锛夊彧璇嗗埆**娓告垙鍐呰处鍙风鐞嗙晫闈?*锛坄AccountManagerOfficial` / `AccountManagerBili` / `Txwy`锛夛紝涓嶈瘑鍒拱瑙掔櫥褰曞脊绐楋紱30 retry 鍏ㄩ儴澶辫触鍚庤繘鍏?`Login failed, entering game-restart loop` 5x restart_game 姝诲惊鐜€?
+瀹炴祴鏃ュ織璇佹嵁锛坄install/debug/asst.log` 13:47:40-13:47:54锛夛細
 
 ```
-13:47:45  GameStartCheckResourceOCR 命中 (5s postDelay)
-13:47:51  GameStart.png 命中 → click (628, 685)
+13:47:45  GameStartCheckResourceOCR 鍛戒腑 (5s postDelay)
+13:47:51  GameStart.png 鍛戒腑 鈫?click (628, 685)
 13:47:54  last matched task: SwitchAccount@GameStart
 13:47:54  WRN "Account switch failed after restart, retrying game restart"
 ```
 
-**根因（架构问题，非性能问题）**：`StartUpTask::run` 顺序为 `start_game → account_switch → start_up`，**假设游戏已登录到主界面**。当游戏在鹰角登录弹窗时：
-- `m_account_switch_task_ptr->run()` 立即失败（找不到 AccountManager 页面）
-- 整个 StartUp 任务进入 5x restart_game 循环，每次 restart 同样的事情再发生
+**鏍瑰洜锛堟灦鏋勯棶棰橈紝闈炴€ц兘闂锛?*锛歚StartUpTask::run` 椤哄簭涓?`start_game 鈫?account_switch 鈫?start_up`锛?*鍋囪娓告垙宸茬櫥褰曞埌涓荤晫闈?*銆傚綋娓告垙鍦ㄩ拱瑙掔櫥褰曞脊绐楁椂锛?- `m_account_switch_task_ptr->run()` 绔嬪嵆澶辫触锛堟壘涓嶅埌 AccountManager 椤甸潰锛?- 鏁翠釜 StartUp 浠诲姟杩涘叆 5x restart_game 寰幆锛屾瘡娆?restart 鍚屾牱鐨勪簨鎯呭啀鍙戠敓
 
-**修复**：重排为 `start_game → start_up → account_switch → start_up`，先确保游戏登录到主界面，再切号，再登录。restart_game 循环内也相应先 `m_start_up_task_ptr->run()` 后 `m_account_switch_task_ptr->run()`。
-
-`cherry-pick 784d9005f6`（`AccountManagerOfficial` 残缺 OCR 补全）解决的是「切号场景 30 retry 找不到 AccountManager」的不同子问题，**没有改变架构顺序**；本 commit 才是**架构层面的修复**。
-
-| # | 文件 | 操作 | 说明 |
+**淇**锛氶噸鎺掍负 `start_game 鈫?start_up 鈫?account_switch 鈫?start_up`锛屽厛纭繚娓告垙鐧诲綍鍒颁富鐣岄潰锛屽啀鍒囧彿锛屽啀鐧诲綍銆俽estart_game 寰幆鍐呬篃鐩稿簲鍏?`m_start_up_task_ptr->run()` 鍚?`m_account_switch_task_ptr->run()`銆?
+`cherry-pick 784d9005f6`锛坄AccountManagerOfficial` 娈嬬己 OCR 琛ュ叏锛夎В鍐崇殑鏄€屽垏鍙峰満鏅?30 retry 鎵句笉鍒?AccountManager銆嶇殑涓嶅悓瀛愰棶棰橈紝**娌℃湁鏀瑰彉鏋舵瀯椤哄簭**锛涙湰 commit 鎵嶆槸**鏋舵瀯灞傞潰鐨勪慨澶?*銆?
+| # | 鏂囦欢 | 鎿嶄綔 | 璇存槑 |
 |---|------|------|------|
-| 1 | `src/MaaCore/Task/Interface/StartUpTask.cpp:30-81` | 修改 | `StartUpTask::run` 重排：`start_game → start_up → account_switch → start_up`；5x restart_game 循环内同样改为先登录再切号 |
-| 2 | `AGENTS.md §6` | 修改 | `fix/expedite-threshold` 角色描述追加「;StartUp::run 重排（修切号前未登录的 20s 等待）」 |
-| 3 | `LOG.md` | 修改 | 本节 |
+| 1 | `src/MaaCore/Task/Interface/StartUpTask.cpp:30-81` | 淇敼 | `StartUpTask::run` 閲嶆帓锛歚start_game 鈫?start_up 鈫?account_switch 鈫?start_up`锛?x restart_game 寰幆鍐呭悓鏍锋敼涓哄厛鐧诲綍鍐嶅垏鍙?|
+| 2 | `AGENTS.md 搂6` | 淇敼 | `fix/expedite-threshold` 瑙掕壊鎻忚堪杩藉姞銆?StartUp::run 閲嶆帓锛堜慨鍒囧彿鍓嶆湭鐧诲綍鐨?20s 绛夊緟锛夈€?|
+| 3 | `LOG.md` | 淇敼 | 鏈妭 |
 
-**4 类场景行为矩阵**：
-
-| 场景 | 改前 | 改后 |
+**4 绫诲満鏅涓虹煩闃?*锛?
+| 鍦烘櫙 | 鏀瑰墠 | 鏀瑰悗 |
 |------|------|------|
-| 多账号切号 + 鹰角登录弹窗 | 切号失败 → 5x restart → 失败（20s 等待） | 自动登录 → 切号 → 再次登录 → 成功 |
-| 多账号切号 + 已在主界面 | 切号 → 登录 → 成功 | fast-path 登录 → 切号 → 登录 → 成功（多 0.5s fast-path 开销） |
-| 单账号 + 鹰角登录弹窗 | 切号（disabled）→ 登录 → 成功 | 登录 → 切号（disabled）→ fast-path 登录 → 成功（多 0.5s） |
-| 单账号 + 已在主界面 | 切号（disabled）→ 登录 → 成功 | 登录（fast-path 跳过）→ 切号（disabled）→ 登录（fast-path）→ 成功（多 0.5s） |
+| 澶氳处鍙峰垏鍙?+ 楣拌鐧诲綍寮圭獥 | 鍒囧彿澶辫触 鈫?5x restart 鈫?澶辫触锛?0s 绛夊緟锛?| 鑷姩鐧诲綍 鈫?鍒囧彿 鈫?鍐嶆鐧诲綍 鈫?鎴愬姛 |
+| 澶氳处鍙峰垏鍙?+ 宸插湪涓荤晫闈?| 鍒囧彿 鈫?鐧诲綍 鈫?鎴愬姛 | fast-path 鐧诲綍 鈫?鍒囧彿 鈫?鐧诲綍 鈫?鎴愬姛锛堝 0.5s fast-path 寮€閿€锛?|
+| 鍗曡处鍙?+ 楣拌鐧诲綍寮圭獥 | 鍒囧彿锛坉isabled锛夆啋 鐧诲綍 鈫?鎴愬姛 | 鐧诲綍 鈫?鍒囧彿锛坉isabled锛夆啋 fast-path 鐧诲綍 鈫?鎴愬姛锛堝 0.5s锛?|
+| 鍗曡处鍙?+ 宸插湪涓荤晫闈?| 鍒囧彿锛坉isabled锛夆啋 鐧诲綍 鈫?鎴愬姛 | 鐧诲綍锛坒ast-path 璺宠繃锛夆啋 鍒囧彿锛坉isabled锛夆啋 鐧诲綍锛坒ast-path锛夆啋 鎴愬姛锛堝 0.5s锛?|
 
-**风险评估**：
-- 编译风险：0（仅调整控制流）
-- 单账号流程：多 0.5s fast-path 开销（StartAtHome 模板命中即跳过）
-- 切号流程：fast-path 命中 → 跳过 `start_up` 任务链 → 直接走切号 → 0 影响
-- 与 upstream 偏离：upstream 仍 `切号优先于登录` 架构；本 fork 因多账号场景修正
-- 推 upstream：仅本 fork 修复，不推
+**椋庨櫓璇勪及**锛?- 缂栬瘧椋庨櫓锛?锛堜粎璋冩暣鎺у埗娴侊級
+- 鍗曡处鍙锋祦绋嬶細澶?0.5s fast-path 寮€閿€锛圫tartAtHome 妯℃澘鍛戒腑鍗宠烦杩囷級
+- 鍒囧彿娴佺▼锛歠ast-path 鍛戒腑 鈫?璺宠繃 `start_up` 浠诲姟閾?鈫?鐩存帴璧板垏鍙?鈫?0 褰卞搷
+- 涓?upstream 鍋忕锛歶pstream 浠?`鍒囧彿浼樺厛浜庣櫥褰昤 鏋舵瀯锛涙湰 fork 鍥犲璐﹀彿鍦烘櫙淇
+- 鎺?upstream锛氫粎鏈?fork 淇锛屼笉鎺?
+**棰勬湡鏁堟灉**锛?- 澶氳处鍙峰垏鍙峰満鏅細30-40s 鈫?**20-30s**锛堟秷闄?20s 绛夊緟锛?- 鍗曡处鍙峰満鏅細5-20s 鈫?3-15s锛圫tartAtHome fast-path 澶氳蛋涓€娆★紝鍙拷鐣ワ級
 
-**预期效果**：
-- 多账号切号场景：30-40s → **20-30s**（消除 20s 等待）
-- 单账号场景：5-20s → 3-15s（StartAtHome fast-path 多走一次，可忽略）
+**鎵嬪姩楠屾敹**锛?1. 澶氳处鍙峰垏鍙?+ 楣拌鐧诲綍寮圭獥 鈫?鍚姩 MAA 鈫?瑙傚療鑷姩鐐广€岀櫥褰曘€嶁啋 杩涗富鐣岄潰 鈫?鍒囧彿 鈫?鍐嶆鐧诲綍
+2. 澶氳处鍙峰垏鍙?+ 宸插湪涓荤晫闈?鈫?鍚姩 MAA 鈫?鐩存帴鍒囧彿
+3. 鍗曡处鍙?鈫?鍚姩 MAA 鈫?姝ｅ父鐧诲綍
 
-**手动验收**：
-1. 多账号切号 + 鹰角登录弹窗 → 启动 MAA → 观察自动点「登录」→ 进主界面 → 切号 → 再次登录
-2. 多账号切号 + 已在主界面 → 启动 MAA → 直接切号
-3. 单账号 → 启动 MAA → 正常登录
+### fix/expedite-threshold StartUp 鍙岄噸缂撳啿娓呯悊
 
-### fix/expedite-threshold StartUp 双重缓冲清理
-
-调研 `upstream/dev-v2` 与本仓库对比后确认：`src/MaaCore/Task/Interface/StartUpTask.cpp:24` 的 `.set_task_delay(Config.get_options().task_delay * 2)` 双重缓冲在默认 `task_delay=0`（`GeneralConfig.h:34`）下无任何效果（`0*2=0`），且与 upstream `dev-v2` 一致（无 PR 推动调整）。本次清理纯粹是「删无意义代码」，不修改任何 `postDelay` / `preDelay` / `retry_times` / ROI / OCR 算法，遵循「稳定优先」原则，follow upstream 基线。
-
-| # | 文件 | 操作 | 说明 |
+璋冪爺 `upstream/dev-v2` 涓庢湰浠撳簱瀵规瘮鍚庣‘璁わ細`src/MaaCore/Task/Interface/StartUpTask.cpp:24` 鐨?`.set_task_delay(Config.get_options().task_delay * 2)` 鍙岄噸缂撳啿鍦ㄩ粯璁?`task_delay=0`锛坄GeneralConfig.h:34`锛変笅鏃犱换浣曟晥鏋滐紙`0*2=0`锛夛紝涓斾笌 upstream `dev-v2` 涓€鑷达紙鏃?PR 鎺ㄥ姩璋冩暣锛夈€傛湰娆℃竻鐞嗙函绮规槸銆屽垹鏃犳剰涔変唬鐮併€嶏紝涓嶄慨鏀逛换浣?`postDelay` / `preDelay` / `retry_times` / ROI / OCR 绠楁硶锛岄伒寰€岀ǔ瀹氫紭鍏堛€嶅師鍒欙紝follow upstream 鍩虹嚎銆?
+| # | 鏂囦欢 | 鎿嶄綔 | 璇存槑 |
 |---|------|------|------|
-| 1 | `src/MaaCore/Task/Interface/StartUpTask.cpp:24` | 修改 | `.set_task_delay(Config.get_options().task_delay * 2)` → `.set_task_delay(Config.get_options().task_delay)`，删 `* 2` |
-| 2 | `AGENTS.md §6` | 修改 | `fix/expedite-threshold` 角色描述追加 `;StartUp 双重缓冲清理` |
-| 3 | `LOG.md` | 修改 | 本节 |
+| 1 | `src/MaaCore/Task/Interface/StartUpTask.cpp:24` | 淇敼 | `.set_task_delay(Config.get_options().task_delay * 2)` 鈫?`.set_task_delay(Config.get_options().task_delay)`锛屽垹 `* 2` |
+| 2 | `AGENTS.md 搂6` | 淇敼 | `fix/expedite-threshold` 瑙掕壊鎻忚堪杩藉姞 `;StartUp 鍙岄噸缂撳啿娓呯悊` |
+| 3 | `LOG.md` | 淇敼 | 鏈妭 |
 
-**行为变化**：默认 `task_delay=0` 时新旧完全等价（`0*2==0`）；仅当用户在 WPF 把 `task_delay` 调到 >0 时，StartUp 阶段不再比日常任务多等一倍，更符合直觉。
+**琛屼负鍙樺寲**锛氶粯璁?`task_delay=0` 鏃舵柊鏃у畬鍏ㄧ瓑浠凤紙`0*2==0`锛夛紱浠呭綋鐢ㄦ埛鍦?WPF 鎶?`task_delay` 璋冨埌 >0 鏃讹紝StartUp 闃舵涓嶅啀姣旀棩甯镐换鍔″绛変竴鍊嶏紝鏇寸鍚堢洿瑙夈€?
+**棰勬湡鏁堟灉**锛氭棤浠讳綍鍙娴嬬殑杩愯鏃跺樊寮傦紱浠呮竻鐞嗕竴琛屾棤鎰忎箟浠ｇ爜 + 鏂囨。鍚屾銆?
+**椋庨櫓璇勪及**锛?- 缂栬瘧椋庨櫓锛?锛堝垹 4 瀛楃锛?- 杩愯鏃跺洖褰掞細0锛堥粯璁?task_delay=0 绛変环锛?- 宸叉湁鐢ㄦ埛閰嶇疆锛氫粎褰卞搷鎵嬪姩璋冮珮 task_delay 鐨勭敤鎴凤紝琛屼负鏇寸洿瑙?- 鍥為€€鎴愭湰锛歚git revert` 鍗?commit 鍗宠繕鍘?
+**鏈仛椤?*锛堟槑纭帓闄わ紝閬靛惊 upstream 鍩虹嚎锛夛細
+- `GameStartCheckResourceOCR.postDelay: 5000` / `GameStartUpdateOCR.postDelay: 5000` / `LoginOther.preDelay: 3000` 绛?tasks.json 寤惰繜
+- `set_retry_times(50)` / `set_retry_times(30)` 鍒囧彿閲嶈瘯涓婇檺
+- `MaxRestartAttempts=5` 閲嶅惎寰幆
+- ROI 缂╃獎 / OCR 绠楁硶璋冩暣
 
-**预期效果**：无任何可观测的运行时差异；仅清理一行无意义代码 + 文档同步。
+### fix/account-official-recognize cherry-pick 鍚屾鍒?fix/expedite-threshold
 
-**风险评估**：
-- 编译风险：0（删 4 字符）
-- 运行时回归：0（默认 task_delay=0 等价）
-- 已有用户配置：仅影响手动调高 task_delay 的用户，行为更直观
-- 回退成本：`git revert` 单 commit 即还原
-
-**未做项**（明确排除，遵循 upstream 基线）：
-- `GameStartCheckResourceOCR.postDelay: 5000` / `GameStartUpdateOCR.postDelay: 5000` / `LoginOther.preDelay: 3000` 等 tasks.json 延迟
-- `set_retry_times(50)` / `set_retry_times(30)` 切号重试上限
-- `MaxRestartAttempts=5` 重启循环
-- ROI 缩窄 / OCR 算法调整
-
-### fix/account-official-recognize cherry-pick 同步到 fix/expedite-threshold
-
-`fix/expedite-threshold`（HEAD `301f90897a`，branch point = `9d8d021610`）branch point 早于 `branch` 上今天 12:46 的官方服账号切换识别补全 `784d9005f6`，导致该分支部署的 `install/MaaCore.dll` 仍带 `AccountManagerOfficial` 残缺定义 bug —— 官服 + 账号轮换场景下 `ProcessTask` 30 次 retry 全失败，进 `Login failed, entering game-restart loop` 卡在登录页。实测环境（MAA 主界面日志 12:19: `StartToWakeUp.png` 命中、登录页 OCR 不识别）确认复现。
-
-upstream `MaaAssistantArknights/MaaAssistantArknights` `dev-v2` 仍带同款 bug，无对应 PR；本 fork `branch` 领先 upstream。
-
-| # | 文件 | 操作 | 说明 |
+`fix/expedite-threshold`锛圚EAD `301f90897a`锛宐ranch point = `9d8d021610`锛塨ranch point 鏃╀簬 `branch` 涓婁粖澶?12:46 鐨勫畼鏂规湇璐﹀彿鍒囨崲璇嗗埆琛ュ叏 `784d9005f6`锛屽鑷磋鍒嗘敮閮ㄧ讲鐨?`install/MaaCore.dll` 浠嶅甫 `AccountManagerOfficial` 娈嬬己瀹氫箟 bug 鈥斺€?瀹樻湇 + 璐﹀彿杞崲鍦烘櫙涓?`ProcessTask` 30 娆?retry 鍏ㄥけ璐ワ紝杩?`Login failed, entering game-restart loop` 鍗″湪鐧诲綍椤点€傚疄娴嬬幆澧冿紙MAA 涓荤晫闈㈡棩蹇?12:19: `StartToWakeUp.png` 鍛戒腑銆佺櫥褰曢〉 OCR 涓嶈瘑鍒級纭澶嶇幇銆?
+upstream `MaaAssistantArknights/MaaAssistantArknights` `dev-v2` 浠嶅甫鍚屾 bug锛屾棤瀵瑰簲 PR锛涙湰 fork `branch` 棰嗗厛 upstream銆?
+| # | 鏂囦欢 | 鎿嶄綔 | 璇存槑 |
 |---|------|------|------|
-| 1 | `resource/tasks/tasks.json:805-810` | cherry-pick from `784d9005f6` | `AccountManagerOfficial` 由 `{"roi":[570,165,140,80]}` 补全为 `{"Doc":"...","algorithm":"OcrDetect","text":["登录记录"],"roi":[237,50,771,242]}`（与 `AccountManagerBili` 对齐） |
-| 2 | `src/MaaCore/Task/Miscellaneous/AccountSwitchTask.cpp:68-83` | cherry-pick from `784d9005f6` | `navigate_to_start_page()` 加 `Log.info(... last matched task ...)` 诊断日志；4 个 `else if` 合并为单 `if (... \|\| ... \|\| ... \|\| ...)` |
-| 3 | `LOG.md` | cherry-pick from `784d9005f6` | 同步 `### fix/account-official-recognize 启动` 与 `### fix/account-official-recognize 实施完成` 两节；冲突解决：保留本分支 `fix/expedite-threshold` 两节，追加新两节（无内容丢失） |
-| 4 | `AGENTS.md §7.5` | cherry-pick from `da157d163d` | 新增 `fix/account-official-recognize` 生命周期记录小节 |
-| 5 | `AGENTS.md §6` | 不变 | `fix/expedite-threshold` 仍为进行中分支（未合入 branch），待本分支合入 `branch` 时再清除 |
-| 6 | `LOG.md` | 修改 | 本节（cherry-pick 同步事件说明） |
+| 1 | `resource/tasks/tasks.json:805-810` | cherry-pick from `784d9005f6` | `AccountManagerOfficial` 鐢?`{"roi":[570,165,140,80]}` 琛ュ叏涓?`{"Doc":"...","algorithm":"OcrDetect","text":["鐧诲綍璁板綍"],"roi":[237,50,771,242]}`锛堜笌 `AccountManagerBili` 瀵归綈锛?|
+| 2 | `src/MaaCore/Task/Miscellaneous/AccountSwitchTask.cpp:68-83` | cherry-pick from `784d9005f6` | `navigate_to_start_page()` 鍔?`Log.info(... last matched task ...)` 璇婃柇鏃ュ織锛? 涓?`else if` 鍚堝苟涓哄崟 `if (... \|\| ... \|\| ... \|\| ...)` |
+| 3 | `LOG.md` | cherry-pick from `784d9005f6` | 鍚屾 `### fix/account-official-recognize 鍚姩` 涓?`### fix/account-official-recognize 瀹炴柦瀹屾垚` 涓よ妭锛涘啿绐佽В鍐筹細淇濈暀鏈垎鏀?`fix/expedite-threshold` 涓よ妭锛岃拷鍔犳柊涓よ妭锛堟棤鍐呭涓㈠け锛?|
+| 4 | `AGENTS.md 搂7.5` | cherry-pick from `da157d163d` | 鏂板 `fix/account-official-recognize` 鐢熷懡鍛ㄦ湡璁板綍灏忚妭 |
+| 5 | `AGENTS.md 搂6` | 涓嶅彉 | `fix/expedite-threshold` 浠嶄负杩涜涓垎鏀紙鏈悎鍏?branch锛夛紝寰呮湰鍒嗘敮鍚堝叆 `branch` 鏃跺啀娓呴櫎 |
+| 6 | `LOG.md` | 淇敼 | 鏈妭锛坈herry-pick 鍚屾浜嬩欢璇存槑锛?|
 
-**Commit 链**：
-
-| SHA | 来源 | 标题 |
+**Commit 閾?*锛?
+| SHA | 鏉ユ簮 | 鏍囬 |
 |-----|------|------|
-| `6011051af2` | cherry-pick from `784d9005f6` | `fix(startup): 官方服账号切换界面识别补全 + 切号诊断日志` |
-| `f241b2160b` | cherry-pick from `da157d163d` | `docs: 登记 fix/account-official-recognize 分支生命周期` |
+| `6011051af2` | cherry-pick from `784d9005f6` | `fix(startup): 瀹樻柟鏈嶈处鍙峰垏鎹㈢晫闈㈣瘑鍒ˉ鍏?+ 鍒囧彿璇婃柇鏃ュ織` |
+| `f241b2160b` | cherry-pick from `da157d163d` | `docs: 鐧昏 fix/account-official-recognize 鍒嗘敮鐢熷懡鍛ㄦ湡` |
 
-**作用域声明**：
-- 与 `§7.5 fix/account-official-recognize` 同名不同分支生命周期——本节记录的是「`branch` 上游修复 cherry-pick 到 `fix/expedite-threshold`」的同步事件，不重复登记上游生命周期。
-- §6 `fix/expedite-threshold` 仍标进行中；待用户后续决定 FF / `--no-ff` 合入 `branch` 时一并清除。
+**浣滅敤鍩熷０鏄?*锛?- 涓?`搂7.5 fix/account-official-recognize` 鍚屽悕涓嶅悓鍒嗘敮鐢熷懡鍛ㄦ湡鈥斺€旀湰鑺傝褰曠殑鏄€宍branch` 涓婃父淇 cherry-pick 鍒?`fix/expedite-threshold`銆嶇殑鍚屾浜嬩欢锛屼笉閲嶅鐧昏涓婃父鐢熷懡鍛ㄦ湡銆?- 搂6 `fix/expedite-threshold` 浠嶆爣杩涜涓紱寰呯敤鎴峰悗缁喅瀹?FF / `--no-ff` 鍚堝叆 `branch` 鏃朵竴骞舵竻闄ゃ€?
+## 2026-07-15
+
+### 鍒嗘敮宸ヤ綔鏂囨。绾︽潫璋冩暣
+
+LOG.md / AGENTS.md 浠?`.gitignore` 绉婚櫎锛屾敼涓烘墍鏈夊垎鏀窡韪紱feat*.md / fix*.md 淇濈暀 gitignore锛屾案涓嶆彁浜ゃ€?
+| # | 鏂囦欢 | 鎿嶄綔 | 璇存槑 |
+|---|------|------|------|
+| 1 | `.gitignore:515-516` | 鍒犻櫎 | 绉婚櫎 `LOG.md`銆乣AGENTS.md` 蹇界暐瑙勫垯 |
+| 2 | `.gitignore:514` | 淇敼 | 娉ㄩ噴鏀逛负 `# Feature/fix working documents (local only, never committed)` |
+| 3 | `LOG.md` | 淇敼 | 鏈妭 |
+
+### feat/expedite-threshold 鍚姩
+
+鍏嫑鍔犳€?`expedite`)鍘熸湰鍙湁"寮€/鍏?涓ょ鐘舵€侊紝涓庢槦绾у垽鏂畬鍏ㄨ劚閽┿€傛柊澧?*鍔犳€ラ棬妲?*鏈哄埗:鍙粎鍦ㄦ湰娆＄‘璁ょ殑鎷涘嫙缁勫悎鏈€浣庢槦绾?鈮?4/5/6 鏃舵墠浣跨敤鍔犳€ヨ鍙紝3鈽?涓嶆氮璐瑰姞鎬ヨ鍙€?
+| # | 鏂囦欢/瀵硅薄 | 鎿嶄綔 | 璇存槑 |
+|---|----------|------|------|
+| 1 | `feat/expedite-threshold` | 鏂板缓鍒嗘敮 | 浠?`branch` 鎷夊嚭 |
+| 2 | `feat_expedite-threshold.md` | 鏂板缓 | 宸ヤ綔鏂囨。(宸?.gitignore) |
+
+### feat/expedite-threshold 瀹炴柦瀹屾垚
+
+| # | 鏂囦欢 | 鎿嶄綔 | 璇存槑 |
+|---|------|------|------|
+| 1 | `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.h:28, 173, 186` | 淇敼 | +1 setter 澹版槑 `set_expedite_min_level`;+2 鎴愬憳 `m_expedite_min_level`(榛樿 0)銆乣m_last_confirmed_min_level`(榛樿 0) |
+| 2 | `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.cpp:147-152` | 淇敼 | +1 setter 瀹炵幇 `set_expedite_min_level` |
+| 3 | `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.cpp:228-303` | 淇敼 | `_run` 涓诲惊鐜Щ闄?`try_use_expedited` 灞€閮ㄥ彉閲?鍔犳€ュ垽瀹氭敼涓?*姣忔杩涘叆鍓嶉噸鏂版眰鍊?* `m_use_expedited && m_last_confirmed_min_level >= m_expedite_min_level`;鍔犳€ユ垚鍔熷悗绔嬪嵆閲嶇疆 `m_last_confirmed_min_level = 0` 闃叉闄堟棫鐘舵€佽澶嶇敤;鍔犳€ュけ璐ユ椂鏄惧紡閫€鍑轰互閬垮厤闃堝€?0 鏃舵寰幆 |
+| 4 | `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.cpp:340-347` | 淇敼 | `recruit_one` 寮€澶撮噸缃?`m_last_confirmed_min_level = 0`,浠呭綋 `recruit_calc_task` 璧板埌 success / nothing_to_select 璺緞鏃舵墠浼氳閲嶆柊璧嬪€?|
+| 5 | `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.cpp:740-743, 770-772` | 淇敼 | `recruit_calc_task` 鍦?`nothing_to_select` 涓?`success` 涓ゆ潯杩斿洖璺緞鍓嶈祴鍊?`m_last_confirmed_min_level = final_combination.min_level` |
+| 6 | `src/MaaCore/Task/Interface/RecruitTask.cpp:54, 87` | 淇敼 | +1 鍙傛暟瑙ｆ瀽 `expedite_min_level`(榛樿 0);閾惧紡璋冪敤閫忎紶缁?AutoRecruitTask |
+| 7 | `src/MaaWpfGui/Configuration/Single/MaaTask/RecruitTask.cs:38-42` | 淇敼 | +1 瀛楁 `ExpediteMinLevel`(榛樿 0) |
+| 8 | `src/MaaWpfGui/Models/AsstTasks/AsstRecruitTask.cs:69-72, 161` | 淇敼 | +1 瀛楁 `ExpediteMinLevel`;`Serialize` 濮嬬粓鍐欏叆 `expedite_min_level` 鍒?params |
+| 9 | `src/MaaWpfGui/ViewModels/UserControl/TaskQueue/RecruitSettingsUserControlModel.cs:142-174, 329` | 淇敼 | +3 VM 鎴愬憳:`ExpediteMinLevelEnabled`(甯冨皵,setter 鎺у埗 0/4 鍒囨崲)銆乣ExpediteMinLevel`(int,setter 鐧藉悕鍗?0/4/5/6)銆乣ExpediteMinLevelOptions`(4/5/6 涓夋。 ComboBox 閫夐」);Serialize 闃舵鍐欏叆 `ExpediteMinLevel` |
+| 10 | `src/MaaWpfGui/Views/UserControl/TaskQueue/RecruitSettingsUserControl.xaml:162-182` | 淇敼 | 楂樼骇璁剧疆鍖烘湯灏捐拷鍔?CheckBox + ComboBox;鏁磋 Visibility 缁戝畾鍒?`UseExpeditedWithNull == true` |
+| 11 | `src/MaaWpfGui/Res/Localizations/zh-cn.xaml:1474-1479` | 淇敼 | +5 string key:`ExpediteMinLevelLabel` / `ExpediteMinLevelTip` / `ExpediteMinLevel_4Plus` / `ExpediteMinLevel_5Plus` / `ExpediteMinLevel_6Plus` |
+| 12 | `docs/zh-cn/protocol/integration.md:263-276` | 淇敼 | +1 瀛楁璇存槑 `expedite_min_level`,鍚?0/4/5/6 璇箟 |
+| 13 | `feat_expedite-threshold.md` | 淇敼 | 杩藉姞绔犺妭 涓?鍥?浜?璁板綍瀹炴柦缁撴灉涓庤俯鍧?|
+| 14 | `LOG.md` | 淇敼 | 鏈妭 |
+
+**缂栬瘧/閮ㄧ讲缁撴灉**: (寰呰ˉ鍏?
+
+**鍏煎鎬ф牳鏌?*:
+- 鏃?API 鐢ㄦ埛涓嶄紶 `expedite_min_level` 鈫?C++ 绔粯璁?0 = 涓嶉檺 鈫?鍏ㄥ姞鎬?琛屼负涓嶅彉
+- 鏃?GUI 鐢ㄦ埛閰嶇疆鏂囦欢涓棤璇ュ瓧娈?鈫?JSON 鍙嶅簭鍒楀寲榛樿 0 + CheckBox 鏈嬀閫?鈫?鍏ㄥ姞鎬?琛屼负涓嶅彉
+- 鏂扮敤鎴烽娆″惎鍔?鈫?CheckBox 鏈嬀閫?榛樿 0) 鈫?鍏ㄥ姞鎬?绛夊悓鏃ц涓?
+**寰呮墜鍔ㄩ獙璇?(闇€妯℃嫙鍣ㄧ幆澧?**:
+1. 鍑嗗 4鈽?缁勫悎 鈫?閫?Tag 鈫?纭 鈫?绔嬪嵆瀹屾垚 鈫?寰幆鍒颁笅涓€鏍?2. 鍑嗗 5鈽?缁勫悎 鈫?閫?Tag 鈫?纭 鈫?绔嬪嵆瀹屾垚 鈫?寰幆鍒颁笅涓€鏍?3. 鍑嗗 3鈽?缁勫悎 鈫?閫?Tag 鈫?纭 鈫?绛夊緟 9 灏忔椂(涓嶅姞鎬?
+4. 鍏虫帀"鑷姩鍔犳€? 鈫?鎵€鏈夋爮浣嶈蛋鑷劧鍊掕鏃?5. 涓嬫媺妗嗘敼 "5鈽?" 鈫?4鈽?鏍忎綅璧拌嚜鐒跺€掕鏃?5鈽? 绔嬪嵆瀹屾垚
+6. 涓嬫媺妗嗘敼 "6鈽?" 鈫?4鈽?5鈽?閮借蛋鑷劧鍊掕鏃?6鈽?绔嬪嵆瀹屾垚
 
 ## 2026-07-15
 
-### 分支工作文档约束调整
+### feat/defer-rogue 鍚姩
 
-LOG.md / AGENTS.md 从 `.gitignore` 移除，改为所有分支跟踪；feat*.md / fix*.md 保留 gitignore，永不提交。
-
-| # | 文件 | 操作 | 说明 |
-|---|------|------|------|
-| 1 | `.gitignore:515-516` | 删除 | 移除 `LOG.md`、`AGENTS.md` 忽略规则 |
-| 2 | `.gitignore:514` | 修改 | 注释改为 `# Feature/fix working documents (local only, never committed)` |
-| 3 | `LOG.md` | 修改 | 本节 |
-
-### feat/expedite-threshold 启动
-
-公招加急(`expedite`)原本只有"开/关"两种状态，与星级判断完全脱钩。新增**加急门槛**机制:可仅在本次确认的招募组合最低星级 ≥ 4/5/6 时才使用加急许可，3★ 不浪费加急许可。
-
-| # | 文件/对象 | 操作 | 说明 |
+鍚敤璐﹀彿杞崲鏃舵妸鑲夐附 (Roguelike) 涓庣敓鎭紨绠?(Reclamation) 寤跺悗鍒版墍鏈夎处鍙峰熀纭€浠诲姟瀹屾垚鍚庢墽琛屻€傛墽琛岄『搴? A-1 鈫?B-1 鈫?A-2 鈫?B-2 (璺ㄨ处鍙疯疆杞?Phase)銆傞粯璁ゅ叧闂互淇濇寔鍚戝悗鍏煎銆?
+| # | 鏂囦欢/瀵硅薄 | 鎿嶄綔 | 璇存槑 |
 |---|----------|------|------|
-| 1 | `feat/expedite-threshold` | 新建分支 | 从 `branch` 拉出 |
-| 2 | `feat_expedite-threshold.md` | 新建 | 工作文档(已 .gitignore) |
+| 1 | `feat/defer-rogue` | 鏂板缓鍒嗘敮 | 浠?`branch` 鎷夊嚭,鏈湴宸ヤ綔鍒嗘敮 |
+| 2 | `feat_defer-rogue.md` | 鏂板缓 | 宸ヤ綔鏂囨。(宸?.gitignore) |
 
-### feat/expedite-threshold 实施完成
+### feat/defer-rogue 瀹炴柦瀹屾垚
 
-| # | 文件 | 操作 | 说明 |
+| # | 鏂囦欢 | 鎿嶄綔 | 璇存槑 |
 |---|------|------|------|
-| 1 | `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.h:28, 173, 186` | 修改 | +1 setter 声明 `set_expedite_min_level`;+2 成员 `m_expedite_min_level`(默认 0)、`m_last_confirmed_min_level`(默认 0) |
-| 2 | `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.cpp:147-152` | 修改 | +1 setter 实现 `set_expedite_min_level` |
-| 3 | `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.cpp:228-303` | 修改 | `_run` 主循环移除 `try_use_expedited` 局部变量,加急判定改为**每次进入前重新求值** `m_use_expedited && m_last_confirmed_min_level >= m_expedite_min_level`;加急成功后立即重置 `m_last_confirmed_min_level = 0` 防止陈旧状态被复用;加急失败时显式退出以避免阈值=0 时死循环 |
-| 4 | `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.cpp:340-347` | 修改 | `recruit_one` 开头重置 `m_last_confirmed_min_level = 0`,仅当 `recruit_calc_task` 走到 success / nothing_to_select 路径时才会被重新赋值 |
-| 5 | `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.cpp:740-743, 770-772` | 修改 | `recruit_calc_task` 在 `nothing_to_select` 与 `success` 两条返回路径前赋值 `m_last_confirmed_min_level = final_combination.min_level` |
-| 6 | `src/MaaCore/Task/Interface/RecruitTask.cpp:54, 87` | 修改 | +1 参数解析 `expedite_min_level`(默认 0);链式调用透传给 AutoRecruitTask |
-| 7 | `src/MaaWpfGui/Configuration/Single/MaaTask/RecruitTask.cs:38-42` | 修改 | +1 字段 `ExpediteMinLevel`(默认 0) |
-| 8 | `src/MaaWpfGui/Models/AsstTasks/AsstRecruitTask.cs:69-72, 161` | 修改 | +1 字段 `ExpediteMinLevel`;`Serialize` 始终写入 `expedite_min_level` 到 params |
-| 9 | `src/MaaWpfGui/ViewModels/UserControl/TaskQueue/RecruitSettingsUserControlModel.cs:142-174, 329` | 修改 | +3 VM 成员:`ExpediteMinLevelEnabled`(布尔,setter 控制 0/4 切换)、`ExpediteMinLevel`(int,setter 白名单 0/4/5/6)、`ExpediteMinLevelOptions`(4/5/6 三档 ComboBox 选项);Serialize 阶段写入 `ExpediteMinLevel` |
-| 10 | `src/MaaWpfGui/Views/UserControl/TaskQueue/RecruitSettingsUserControl.xaml:162-182` | 修改 | 高级设置区末尾追加 CheckBox + ComboBox;整行 Visibility 绑定到 `UseExpeditedWithNull == true` |
-| 11 | `src/MaaWpfGui/Res/Localizations/zh-cn.xaml:1474-1479` | 修改 | +5 string key:`ExpediteMinLevelLabel` / `ExpediteMinLevelTip` / `ExpediteMinLevel_4Plus` / `ExpediteMinLevel_5Plus` / `ExpediteMinLevel_6Plus` |
-| 12 | `docs/zh-cn/protocol/integration.md:263-276` | 修改 | +1 字段说明 `expedite_min_level`,含 0/4/5/6 语义 |
-| 13 | `feat_expedite-threshold.md` | 修改 | 追加章节 三/四/五,记录实施结果与踩坑 |
-| 14 | `LOG.md` | 修改 | 本节 |
+| 1 | `src/MaaWpfGui/Configuration/Single/MaaTask/StartUpTask.cs:36-44` | 淇敼 | 鏂板 `LateStageRogueAndReclamation : bool = false`,榛樿鍏抽棴浠ヤ繚鎸佸悜鍚庡吋瀹?|
+| 2 | `src/MaaWpfGui/Models/AccountCycleStep.cs` | 鏂板缓 | `record AccountCycleStep(string AccountName, int Phase)`,姝ラ鎵佸钩鍒楄〃鐨勮浇浣?|
+| 3 | `src/MaaWpfGui/ViewModels/UserControl/TaskQueue/StartUpSettingsUserControlModel.cs:95-176` | 淇敼 | (a) `LateStageRogueAndReclamation` VM 灞炴€?鐓ф惉 `AccountSwitchEnabled`);(b) 鏂板 `#region Late Stage` 鍚?`_cycleSteps` / `_currentStepIndex` / `RebuildCycleSteps` / `AdvanceStepIndex` / `CurrentStep` / `GetPreviousStep` / `CurrentPhase`;(c) `ResetCycle` 鍚屾娓呯┖姝ラ鍒楄〃 |
+| 4 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs:1813-1851` | 淇敼 | `LinkStart` 鏀逛负 `RebuildCycleSteps` + 鍙?`CurrentStep` 鍐冲畾棣栦釜璐﹀彿 |
+| 5 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs:1939-1982` | 淇敼 | `LinkStartWithTasks` foreach 鏂板 Phase 杩囨护(`IsInCurrentPhase` 鐢?`lateStageOn` 闂搁棬,LateStage 鍏抽棴鏃?no-op) |
+| 6 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs:2172-2355` | 淇敼 | `AdvanceAccountCycle` 鍏ㄩ噺閲嶅啓:鎵佸钩姝ラ鎺ㄨ繘 + `needStartupSwitch` 鏄惧紡鍒囧彿 + 绌烘楠ら€掑綊璺宠繃 + `MarkAccountCompleted` 鎸?LateStage 鐘舵€佸樊寮傚寲瑙﹀彂 |
+| 7 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs:2359-2367` | 淇敼 | 鏂板闈欐€佸姪鎵?`IsInCurrentPhase(TaskType, int phase)` |
+| 8 | `src/MaaWpfGui/Views/UserControl/TaskQueue/StartUpTaskUserControl.xaml:134-149` | 淇敼 | AccountCycle 瀛愰潰鏉挎湯灏炬柊澧?CheckBox + TooltipBlock(闀?Wrap + MaxWidth CalcBinding 闃叉尋鍘? |
+| 9 | `src/MaaWpfGui/Res/Localizations/zh-cn.xaml:696-697` | 淇敼 | +2 string key:`LateStageRogueAndReclamation` / `LateStageRogueAndReclamationTip` |
+| 10 | `src/MaaWpfGui/Res/Localizations/zh-tw.xaml:696-697` | 淇敼 | 鍚屼笂(绻佷綋) |
+| 11 | `src/MaaWpfGui/Res/Localizations/en-us.xaml:696-697` | 淇敼 | 鍚屼笂(鑻辨枃) |
+| 12 | `src/MaaWpfGui/Res/Localizations/ja-jp.xaml:696-697` | 淇敼 | 鍚屼笂(鏃ユ枃) |
+| 13 | `src/MaaWpfGui/Res/Localizations/ko-kr.xaml:696-697` | 淇敼 | 鍚屼笂(闊╂枃) |
+| 14 | `install/MAA.dll` | 鏇存柊 | `dotnet publish` 閮ㄧ讲鏃堕棿 2026-07-15 11:48 |
+| 15 | `install/MaaCore.dll`, `install/MaaUtils.dll`, `install/MAA.Updater.exe` | 鏇存柊 | `cmake --install` 閮ㄧ讲 |
+| 16 | `feat_defer-rogue.md` | 淇敼 | 杩藉姞绔犺妭 涓?鍥?浜?璁板綍瀹炴柦缁撴灉涓庤俯鍧?|
+| 17 | `LOG.md` | 淇敼 | 鏈妭 |
 
-**编译/部署结果**: (待补充)
-
-**兼容性核查**:
-- 旧 API 用户不传 `expedite_min_level` → C++ 端默认 0 = 不限 → 全加急,行为不变
-- 旧 GUI 用户配置文件中无该字段 → JSON 反序列化默认 0 + CheckBox 未勾选 → 全加急,行为不变
-- 新用户首次启动 → CheckBox 未勾选(默认 0) → 全加急,等同旧行为
-
-**待手动验证 (需模拟器环境)**:
-1. 准备 4★ 组合 → 选 Tag → 确认 → 立即完成 → 循环到下一栏
-2. 准备 5★ 组合 → 选 Tag → 确认 → 立即完成 → 循环到下一栏
-3. 准备 3★ 组合 → 选 Tag → 确认 → 等待 9 小时(不加急)
-4. 关掉"自动加急" → 所有栏位走自然倒计时
-5. 下拉框改 "5★+" → 4★ 栏位走自然倒计时,5★+ 立即完成
-6. 下拉框改 "6★+" → 4★/5★ 都走自然倒计时,6★ 立即完成
-
-## 2026-07-15
-
-### feat/defer-rogue 启动
-
-启用账号轮换时把肉鸽 (Roguelike) 与生息演算 (Reclamation) 延后到所有账号基础任务完成后执行。执行顺序: A-1 → B-1 → A-2 → B-2 (跨账号轮转 Phase)。默认关闭以保持向后兼容。
-
-| # | 文件/对象 | 操作 | 说明 |
-|---|----------|------|------|
-| 1 | `feat/defer-rogue` | 新建分支 | 从 `branch` 拉出,本地工作分支 |
-| 2 | `feat_defer-rogue.md` | 新建 | 工作文档(已 .gitignore) |
-
-### feat/defer-rogue 实施完成
-
-| # | 文件 | 操作 | 说明 |
-|---|------|------|------|
-| 1 | `src/MaaWpfGui/Configuration/Single/MaaTask/StartUpTask.cs:36-44` | 修改 | 新增 `LateStageRogueAndReclamation : bool = false`,默认关闭以保持向后兼容 |
-| 2 | `src/MaaWpfGui/Models/AccountCycleStep.cs` | 新建 | `record AccountCycleStep(string AccountName, int Phase)`,步骤扁平列表的载体 |
-| 3 | `src/MaaWpfGui/ViewModels/UserControl/TaskQueue/StartUpSettingsUserControlModel.cs:95-176` | 修改 | (a) `LateStageRogueAndReclamation` VM 属性(照搬 `AccountSwitchEnabled`);(b) 新增 `#region Late Stage` 含 `_cycleSteps` / `_currentStepIndex` / `RebuildCycleSteps` / `AdvanceStepIndex` / `CurrentStep` / `GetPreviousStep` / `CurrentPhase`;(c) `ResetCycle` 同步清空步骤列表 |
-| 4 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs:1813-1851` | 修改 | `LinkStart` 改为 `RebuildCycleSteps` + 取 `CurrentStep` 决定首个账号 |
-| 5 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs:1939-1982` | 修改 | `LinkStartWithTasks` foreach 新增 Phase 过滤(`IsInCurrentPhase` 由 `lateStageOn` 闸门,LateStage 关闭时 no-op) |
-| 6 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs:2172-2355` | 修改 | `AdvanceAccountCycle` 全量重写:扁平步骤推进 + `needStartupSwitch` 显式切号 + 空步骤递归跳过 + `MarkAccountCompleted` 按 LateStage 状态差异化触发 |
-| 7 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs:2359-2367` | 修改 | 新增静态助手 `IsInCurrentPhase(TaskType, int phase)` |
-| 8 | `src/MaaWpfGui/Views/UserControl/TaskQueue/StartUpTaskUserControl.xaml:134-149` | 修改 | AccountCycle 子面板末尾新增 CheckBox + TooltipBlock(长 Wrap + MaxWidth CalcBinding 防挤压) |
-| 9 | `src/MaaWpfGui/Res/Localizations/zh-cn.xaml:696-697` | 修改 | +2 string key:`LateStageRogueAndReclamation` / `LateStageRogueAndReclamationTip` |
-| 10 | `src/MaaWpfGui/Res/Localizations/zh-tw.xaml:696-697` | 修改 | 同上(繁体) |
-| 11 | `src/MaaWpfGui/Res/Localizations/en-us.xaml:696-697` | 修改 | 同上(英文) |
-| 12 | `src/MaaWpfGui/Res/Localizations/ja-jp.xaml:696-697` | 修改 | 同上(日文) |
-| 13 | `src/MaaWpfGui/Res/Localizations/ko-kr.xaml:696-697` | 修改 | 同上(韩文) |
-| 14 | `install/MAA.dll` | 更新 | `dotnet publish` 部署时间 2026-07-15 11:48 |
-| 15 | `install/MaaCore.dll`, `install/MaaUtils.dll`, `install/MAA.Updater.exe` | 更新 | `cmake --install` 部署 |
-| 16 | `feat_defer-rogue.md` | 修改 | 追加章节 三/四/五,记录实施结果与踩坑 |
-| 17 | `LOG.md` | 修改 | 本节 |
-
-**编译/部署结果**: `dotnet build -c Release` 0 error, 3 warning (SA1503, 与原版同款写法);`cmake --build` + `cmake --install` + `dotnet publish` 全部通过;最终 `install/MAA.dll` 时间戳为今日。
-
-**踩坑**:
-- cmake 触发 WPF MSBuild 评估时撞到 LOG.md 记录的 VS2026 SDK 路径 bug,绕用 standalone `dotnet publish`
-- Phase 2 不包含 StartUp 任务,跨账号切号需在 AdvanceAccountCycle 顶部显式补 `StartGame=false StartUp`,避免 Phase 2 步骤卡死在错误账号
-
-**待手动验证 (需模拟器环境)**:
-1. 2 账号 + 开关 ON + 全勾 → 日志应见 `[Cycle] Account=A, Phase=1` 后切号 → Account=B, Phase=1 → 切号 → A, Phase=2 → B, Phase=2 → 全部完成
-2. 2 账号 + 开关 ON + 不勾肉鸽生息 → Phase 2 自动跳过
-3. 2 账号 + 开关 OFF → 旧版行为
-4. 1 账号 + 开关 ON → A-1 → A-2 (同账号不切号)
-5. 1 账号 + 开关 OFF → 单账号旧行为
+**缂栬瘧/閮ㄧ讲缁撴灉**: `dotnet build -c Release` 0 error, 3 warning (SA1503, 涓庡師鐗堝悓娆惧啓娉?;`cmake --build` + `cmake --install` + `dotnet publish` 鍏ㄩ儴閫氳繃;鏈€缁?`install/MAA.dll` 鏃堕棿鎴充负浠婃棩銆?
+**韪╁潙**:
+- cmake 瑙﹀彂 WPF MSBuild 璇勪及鏃舵挒鍒?LOG.md 璁板綍鐨?VS2026 SDK 璺緞 bug,缁曠敤 standalone `dotnet publish`
+- Phase 2 涓嶅寘鍚?StartUp 浠诲姟,璺ㄨ处鍙峰垏鍙烽渶鍦?AdvanceAccountCycle 椤堕儴鏄惧紡琛?`StartGame=false StartUp`,閬垮厤 Phase 2 姝ラ鍗℃鍦ㄩ敊璇处鍙?
+**寰呮墜鍔ㄩ獙璇?(闇€妯℃嫙鍣ㄧ幆澧?**:
+1. 2 璐﹀彿 + 寮€鍏?ON + 鍏ㄥ嬀 鈫?鏃ュ織搴旇 `[Cycle] Account=A, Phase=1` 鍚庡垏鍙?鈫?Account=B, Phase=1 鈫?鍒囧彿 鈫?A, Phase=2 鈫?B, Phase=2 鈫?鍏ㄩ儴瀹屾垚
+2. 2 璐﹀彿 + 寮€鍏?ON + 涓嶅嬀鑲夐附鐢熸伅 鈫?Phase 2 鑷姩璺宠繃
+3. 2 璐﹀彿 + 寮€鍏?OFF 鈫?鏃х増琛屼负
+4. 1 璐﹀彿 + 寮€鍏?ON 鈫?A-1 鈫?A-2 (鍚岃处鍙蜂笉鍒囧彿)
+5. 1 璐﹀彿 + 寮€鍏?OFF 鈫?鍗曡处鍙锋棫琛屼负
 
 ## 2026-07-14
 
-### fix/account_rotation/3 — 版本不一致误报修复
-
-| # | 文件/操作 | 说明 |
+### fix/account_rotation/3 鈥?鐗堟湰涓嶄竴鑷磋鎶ヤ慨澶?
+| # | 鏂囦欢/鎿嶄綔 | 璇存槑 |
 |---|----------|------|
-| 1 | cmake 缓存重置 | `cmake -DMAA_HASH_VERSION=DEBUG_VERSION`，清除上次 release 脚本遗留的 `v6.14.0-fork.20260714` |
-| 2 | `src/MaaWpfGui/ViewModels/UI/RootViewModel.cs:117` | `uiVersion` 追加 `.TrimStart('v', 'V')` |
-| 3 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs:1882` | 同上 |
-| 4 | `feat/account_rotation` | FF 合并 `fix/account_rotation/3` |
-| 5 | `branch` | 合并 `feat/account_rotation`，同步修复 |
-| 6 | `Github/branch`, `Github/feat/account_rotation` | 推送至远程 |
+| 1 | cmake 缂撳瓨閲嶇疆 | `cmake -DMAA_HASH_VERSION=DEBUG_VERSION`锛屾竻闄や笂娆?release 鑴氭湰閬楃暀鐨?`v6.14.0-fork.20260714` |
+| 2 | `src/MaaWpfGui/ViewModels/UI/RootViewModel.cs:117` | `uiVersion` 杩藉姞 `.TrimStart('v', 'V')` |
+| 3 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs:1882` | 鍚屼笂 |
+| 4 | `feat/account_rotation` | FF 鍚堝苟 `fix/account_rotation/3` |
+| 5 | `branch` | 鍚堝苟 `feat/account_rotation`锛屽悓姝ヤ慨澶?|
+| 6 | `Github/branch`, `Github/feat/account_rotation` | 鎺ㄩ€佽嚦杩滅▼ |
 
-### 移除发布打包文件 + 清理 install 目录
+### 绉婚櫎鍙戝竷鎵撳寘鏂囦欢 + 娓呯悊 install 鐩綍
 
-从仓库和 `install/` 中移除不再需要的发布打包相关文件。后续本地运行直接从 `build/bin/RelWithDebInfo/` 启动。
-
-| # | 文件 | 操作 | 说明 |
+浠庝粨搴撳拰 `install/` 涓Щ闄や笉鍐嶉渶瑕佺殑鍙戝竷鎵撳寘鐩稿叧鏂囦欢銆傚悗缁湰鍦拌繍琛岀洿鎺ヤ粠 `build/bin/RelWithDebInfo/` 鍚姩銆?
+| # | 鏂囦欢 | 鎿嶄綔 | 璇存槑 |
 |---|------|------|------|
-| 1 | `VERSION` | git rm | 仅 release 脚本读取，不再需要 |
-| 2 | `.github/workflows/release-fork.yml` | git rm | fork 的 GitHub CI，本地运行不需要 |
-| 3 | `tools/release-zip.ps1` | git rm | 发布打包脚本，不再需要 |
-| 4 | `tools/release-zip.bat` | git rm | 发布打包脚本，不再需要 |
-| 5 | `tools/DependencySetup_依赖库安装.bat` | git rm | 终端用户依赖安装脚本，不再需要 |
-| 6 | `install/DependencySetup_依赖库安装.bat` | 删除 | install 目录副本同步清理 |
-| 7 | `install/filelist.txt` | 删除 | 打包校验清单，运行时无用 |
-| 8 | `install/Python/` | 删除 | Python 绑定，WPF GUI 不需要 |
-| 9 | `install/.gitignore` | 删除 | 产物目录中不应有 git 忽略规则 |
-| 10 | `src/MaaWpfGui/ViewModels/UI/RootViewModel.cs` | 修改 | 版本比较时 `uiVersion` 也 `TrimStart('v', 'V')`，修复 UI 和 Core 版本号一致仍弹警告的 bug |
-| 11 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs` | 修改 | 同一处版本比较，补上 `uiVersion.TrimStart` |
+| 1 | `VERSION` | git rm | 浠?release 鑴氭湰璇诲彇锛屼笉鍐嶉渶瑕?|
+| 2 | `.github/workflows/release-fork.yml` | git rm | fork 鐨?GitHub CI锛屾湰鍦拌繍琛屼笉闇€瑕?|
+| 3 | `tools/release-zip.ps1` | git rm | 鍙戝竷鎵撳寘鑴氭湰锛屼笉鍐嶉渶瑕?|
+| 4 | `tools/release-zip.bat` | git rm | 鍙戝竷鎵撳寘鑴氭湰锛屼笉鍐嶉渶瑕?|
+| 5 | `tools/DependencySetup_渚濊禆搴撳畨瑁?bat` | git rm | 缁堢鐢ㄦ埛渚濊禆瀹夎鑴氭湰锛屼笉鍐嶉渶瑕?|
+| 6 | `install/DependencySetup_渚濊禆搴撳畨瑁?bat` | 鍒犻櫎 | install 鐩綍鍓湰鍚屾娓呯悊 |
+| 7 | `install/filelist.txt` | 鍒犻櫎 | 鎵撳寘鏍￠獙娓呭崟锛岃繍琛屾椂鏃犵敤 |
+| 8 | `install/Python/` | 鍒犻櫎 | Python 缁戝畾锛學PF GUI 涓嶉渶瑕?|
+| 9 | `install/.gitignore` | 鍒犻櫎 | 浜х墿鐩綍涓笉搴旀湁 git 蹇界暐瑙勫垯 |
+| 10 | `src/MaaWpfGui/ViewModels/UI/RootViewModel.cs` | 淇敼 | 鐗堟湰姣旇緝鏃?`uiVersion` 涔?`TrimStart('v', 'V')`锛屼慨澶?UI 鍜?Core 鐗堟湰鍙蜂竴鑷翠粛寮硅鍛婄殑 bug |
+| 11 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs` | 淇敼 | 鍚屼竴澶勭増鏈瘮杈冿紝琛ヤ笂 `uiVersion.TrimStart` |
 
-### 实际跑通 release-zip + 4 个 bug 修复
+### 瀹為檯璺戦€?release-zip + 4 涓?bug 淇
 
-按上一节方案第一次运行 `tools\release-zip.bat` 跑通，产出 `installer/MAA-v6.14.0-fork.20260714-win-x64.zip`（250.5 MB，9297 entries）。过程中踩到 4 个本机环境问题，均已修复并入脚本或 .gitignore。
-
-| # | 问题 | 修复 | 影响 |
+鎸変笂涓€鑺傛柟妗堢涓€娆¤繍琛?`tools\release-zip.bat` 璺戦€氾紝浜у嚭 `installer/MAA-v6.14.0-fork.20260714-win-x64.zip`锛?50.5 MB锛?297 entries锛夈€傝繃绋嬩腑韪╁埌 4 涓湰鏈虹幆澧冮棶棰橈紝鍧囧凡淇骞跺叆鑴氭湰鎴?.gitignore銆?
+| # | 闂 | 淇 | 褰卞搷 |
 |---|------|------|------|
-| 1 | `cmake --build --preset windows-publish-x64` 触发 cmake MSBuild 评估 MaaWpfGui.csproj 时报 `Microsoft.NET.Sdk` 找不到：VS 2026 装在 `E:\visual stduio community 2026\VIUAL\`（拼写错），其 `MSBuild\Sdks\Microsoft.NET.Sdk\Sdk` 目录缺失。 | 改用 `cmake --build build --target MaaCore` 单目标 C++ 构建；WPF 改走 standalone `dotnet publish`（用 `C:\Program Files\dotnet` 的 SDK，与 cmake 带的 MSBuild 解耦）。脚本改一处（2 行 cmake 命令）。 | 跳过 cmake 的 WPF 评估，走和 `local-install.bat` 一致的"先 cmake 装 C++，再 dotnet publish WPF"双轨流程。 |
-| 2 | 临时 `global.json` 强制 `10.0.203` + `rollForward:disable`，但本机 `dotnet --list-sdks` 只装 `10.0.300`，SDK 解析失败。 | 改为 `10.0.100` + `rollForward:latestFeature`：要求 .NET 10 特性带内（10.0.x.x），但不锁小版本。 | 任何装 10.0.x SDK 的机器都能跑；本机 10.0.300 自动启用。 |
-| 3 | `install\.git\` 是个真实 git 子目录（含 hooks/info/objects/refs），原 staging 漏排，导致它被打进 zip（约 50 个无关文件）。 | robocopy `/XD` 列表追加 `.git`。 | zip 不再携带意外目录。 |
-| 4 | `.gitignore` 第 510 行 `DependencySetup_依赖库安装.bat` 无 `install/` 前缀，误伤 `tools/DependencySetup_依赖库安装.bat`，导致源文件长期无法入仓。 | 规则改为 `install/DependencySetup_*.bat`，只屏蔽 install/ 副本。 | tools/ 源可入仓，build 可复现。 |
+| 1 | `cmake --build --preset windows-publish-x64` 瑙﹀彂 cmake MSBuild 璇勪及 MaaWpfGui.csproj 鏃舵姤 `Microsoft.NET.Sdk` 鎵句笉鍒帮細VS 2026 瑁呭湪 `E:\visual stduio community 2026\VIUAL\`锛堟嫾鍐欓敊锛夛紝鍏?`MSBuild\Sdks\Microsoft.NET.Sdk\Sdk` 鐩綍缂哄け銆?| 鏀圭敤 `cmake --build build --target MaaCore` 鍗曠洰鏍?C++ 鏋勫缓锛沇PF 鏀硅蛋 standalone `dotnet publish`锛堢敤 `C:\Program Files\dotnet` 鐨?SDK锛屼笌 cmake 甯︾殑 MSBuild 瑙ｈ€︼級銆傝剼鏈敼涓€澶勶紙2 琛?cmake 鍛戒护锛夈€?| 璺宠繃 cmake 鐨?WPF 璇勪及锛岃蛋鍜?`local-install.bat` 涓€鑷寸殑"鍏?cmake 瑁?C++锛屽啀 dotnet publish WPF"鍙岃建娴佺▼銆?|
+| 2 | 涓存椂 `global.json` 寮哄埗 `10.0.203` + `rollForward:disable`锛屼絾鏈満 `dotnet --list-sdks` 鍙 `10.0.300`锛孲DK 瑙ｆ瀽澶辫触銆?| 鏀逛负 `10.0.100` + `rollForward:latestFeature`锛氳姹?.NET 10 鐗规€у甫鍐咃紙10.0.x.x锛夛紝浣嗕笉閿佸皬鐗堟湰銆?| 浠讳綍瑁?10.0.x SDK 鐨勬満鍣ㄩ兘鑳借窇锛涙湰鏈?10.0.300 鑷姩鍚敤銆?|
+| 3 | `install\.git\` 鏄釜鐪熷疄 git 瀛愮洰褰曪紙鍚?hooks/info/objects/refs锛夛紝鍘?staging 婕忔帓锛屽鑷村畠琚墦杩?zip锛堢害 50 涓棤鍏虫枃浠讹級銆?| robocopy `/XD` 鍒楄〃杩藉姞 `.git`銆?| zip 涓嶅啀鎼哄甫鎰忓鐩綍銆?|
+| 4 | `.gitignore` 绗?510 琛?`DependencySetup_渚濊禆搴撳畨瑁?bat` 鏃?`install/` 鍓嶇紑锛岃浼?`tools/DependencySetup_渚濊禆搴撳畨瑁?bat`锛屽鑷存簮鏂囦欢闀挎湡鏃犳硶鍏ヤ粨銆?| 瑙勫垯鏀逛负 `install/DependencySetup_*.bat`锛屽彧灞忚斀 install/ 鍓湰銆?| tools/ 婧愬彲鍏ヤ粨锛宐uild 鍙鐜般€?|
 
-附加修复：发现 `tools\DependencySetup_依赖库安装.bat` 在 git 跟踪中实际已不存在（仅 `install/` 里有副本），从 `install/` 还原回 `tools/`，脚本的 `Copy-Item` 才有源。
-
-最终 8 步全过日志：`<install>/installer-build.log`（9362 行，2.6 MB）。
-
-**zip 结构 vs `D:\MAA\MAA-v5.21.2-win-x64` 对照**：
-
-- 共同：16 个顶层 DLL/EXE 文件（`MAA.exe` / `MAA.dll` / `MaaCore.dll` / `MaaUtils.dll` / 4 个 ControlUnit / DirectML / fastdeploy_ppocr_maa / onnxruntime_maa / opencv_world4_maa / `MAA.Updater.exe` 等）+ 4 个顶层目录（`externals/`、`Python/`、`Res/`、`resource/`）+ `DependencySetup_依赖库安装.bat`
-- 差异（正向）：我们额外有 `libloader.dll`（libloader.dll 启动钩子）、`res_updater.exe`（资源自更新器）— 本仓库历史加入
-- 差异（负向）：官方有 `hostfxr.dll` / `hostpolicy.dll`（dotnet 启动器）、`filelist.txt`（CI 产物清单）— 本机用 SelfContained 发布模式不需要，`filelist.txt` 在 .gitignore 已排
-- 用户数据目录（`cache/` / `config/` / `data/` / `debug/`）：我们**正确排除** ✓（官方不知为何保留在 release 解压后的目录里，可能是发布前被预热过）
-
-| # | 文件 | 操作 | 说明 |
+闄勫姞淇锛氬彂鐜?`tools\DependencySetup_渚濊禆搴撳畨瑁?bat` 鍦?git 璺熻釜涓疄闄呭凡涓嶅瓨鍦紙浠?`install/` 閲屾湁鍓湰锛夛紝浠?`install/` 杩樺師鍥?`tools/`锛岃剼鏈殑 `Copy-Item` 鎵嶆湁婧愩€?
+鏈€缁?8 姝ュ叏杩囨棩蹇楋細`<install>/installer-build.log`锛?362 琛岋紝2.6 MB锛夈€?
+**zip 缁撴瀯 vs `D:\MAA\MAA-v5.21.2-win-x64` 瀵圭収**锛?
+- 鍏卞悓锛?6 涓《灞?DLL/EXE 鏂囦欢锛坄MAA.exe` / `MAA.dll` / `MaaCore.dll` / `MaaUtils.dll` / 4 涓?ControlUnit / DirectML / fastdeploy_ppocr_maa / onnxruntime_maa / opencv_world4_maa / `MAA.Updater.exe` 绛夛級+ 4 涓《灞傜洰褰曪紙`externals/`銆乣Python/`銆乣Res/`銆乣resource/`锛? `DependencySetup_渚濊禆搴撳畨瑁?bat`
+- 宸紓锛堟鍚戯級锛氭垜浠澶栨湁 `libloader.dll`锛坙ibloader.dll 鍚姩閽╁瓙锛夈€乣res_updater.exe`锛堣祫婧愯嚜鏇存柊鍣級鈥?鏈粨搴撳巻鍙插姞鍏?- 宸紓锛堣礋鍚戯級锛氬畼鏂规湁 `hostfxr.dll` / `hostpolicy.dll`锛坉otnet 鍚姩鍣級銆乣filelist.txt`锛圕I 浜х墿娓呭崟锛夆€?鏈満鐢?SelfContained 鍙戝竷妯″紡涓嶉渶瑕侊紝`filelist.txt` 鍦?.gitignore 宸叉帓
+- 鐢ㄦ埛鏁版嵁鐩綍锛坄cache/` / `config/` / `data/` / `debug/`锛夛細鎴戜滑**姝ｇ‘鎺掗櫎** 鉁擄紙瀹樻柟涓嶇煡涓轰綍淇濈暀鍦?release 瑙ｅ帇鍚庣殑鐩綍閲岋紝鍙兘鏄彂甯冨墠琚鐑繃锛?
+| # | 鏂囦欢 | 鎿嶄綔 | 璇存槑 |
 |---|------|------|------|
-| 1 | `tools/release-zip.ps1` | 修改 | 步骤 2 改单目标 cmake build；步骤 6 改 global.json 为 `10.0.100 + latestFeature`；步骤 8 staging `/XD` 加 `.git`；脚本注释说明改动原因 |
-| 2 | `tools/DependencySetup_依赖库安装.bat` | 还原 | 从 `install/` 副本拷回 `tools/`，恢复 `Copy-Item` 源；并入 git |
-| 3 | `.gitignore` | 修改 | (a) 追加 `/installer-build.log`（2.6 MB 临时日志不入仓）；(b) 修正第 510 行规则 `DependencySetup_依赖库安装.bat` 误伤 `tools/`，改为 `install/DependencySetup_*.bat`（只屏蔽 install/ 副本） |
-| 4 | `LOG.md` | 修改 | 本节记录首次跑通与 4 个 bug 修复 |
+| 1 | `tools/release-zip.ps1` | 淇敼 | 姝ラ 2 鏀瑰崟鐩爣 cmake build锛涙楠?6 鏀?global.json 涓?`10.0.100 + latestFeature`锛涙楠?8 staging `/XD` 鍔?`.git`锛涜剼鏈敞閲婅鏄庢敼鍔ㄥ師鍥?|
+| 2 | `tools/DependencySetup_渚濊禆搴撳畨瑁?bat` | 杩樺師 | 浠?`install/` 鍓湰鎷峰洖 `tools/`锛屾仮澶?`Copy-Item` 婧愶紱骞跺叆 git |
+| 3 | `.gitignore` | 淇敼 | (a) 杩藉姞 `/installer-build.log`锛?.6 MB 涓存椂鏃ュ織涓嶅叆浠擄級锛?b) 淇绗?510 琛岃鍒?`DependencySetup_渚濊禆搴撳畨瑁?bat` 璇激 `tools/`锛屾敼涓?`install/DependencySetup_*.bat`锛堝彧灞忚斀 install/ 鍓湰锛?|
+| 4 | `LOG.md` | 淇敼 | 鏈妭璁板綍棣栨璺戦€氫笌 4 涓?bug 淇 |
 
 
 
-### 一键发布包脚本（installer/）
-
-新增 `tools/release-zip.{bat,ps1}`，对照上游 `.github/workflows/ci.yml` 的 `Build for Windows` 作业实现本地等价流程：从 `VERSION` 读版本号 → `cmake --preset windows-publish-x64 -DMAA_HASH_VERSION=<v>` → 构建 `MAA.Updater` → `cmake --install` → 同步 `resource/` → 临时改 csproj 4 个 Version 字段后 `dotnet publish` → 剥 `*.pdb` `*.h` `*.bak` `msvc-debug/` `MAAComponent-DebugSymbol-*.zip` → 拷 `DependencySetup_依赖库安装.bat` → 用 `System.IO.Compression.ZipFile` 压缩到 `installer/MAA-<v>-win-x64.zip`，staging 目录排除 `cache/` `config/` `data/` `debug/`（用户数据不入包）。
-
-| # | 文件 | 操作 | 说明 |
+### 涓€閿彂甯冨寘鑴氭湰锛坕nstaller/锛?
+鏂板 `tools/release-zip.{bat,ps1}`锛屽鐓т笂娓?`.github/workflows/ci.yml` 鐨?`Build for Windows` 浣滀笟瀹炵幇鏈湴绛変环娴佺▼锛氫粠 `VERSION` 璇荤増鏈彿 鈫?`cmake --preset windows-publish-x64 -DMAA_HASH_VERSION=<v>` 鈫?鏋勫缓 `MAA.Updater` 鈫?`cmake --install` 鈫?鍚屾 `resource/` 鈫?涓存椂鏀?csproj 4 涓?Version 瀛楁鍚?`dotnet publish` 鈫?鍓?`*.pdb` `*.h` `*.bak` `msvc-debug/` `MAAComponent-DebugSymbol-*.zip` 鈫?鎷?`DependencySetup_渚濊禆搴撳畨瑁?bat` 鈫?鐢?`System.IO.Compression.ZipFile` 鍘嬬缉鍒?`installer/MAA-<v>-win-x64.zip`锛宻taging 鐩綍鎺掗櫎 `cache/` `config/` `data/` `debug/`锛堢敤鎴锋暟鎹笉鍏ュ寘锛夈€?
+| # | 鏂囦欢 | 鎿嶄綔 | 璇存槑 |
 |---|------|------|------|
-| 1 | `VERSION` | 新建 | 内容 `v6.14.0-fork.20260714`，作为 `MAA_HASH_VERSION` 和 zip 文件名单一来源 |
-| 2 | `tools/release-zip.bat` | 新建 | bat 外壳，调 ps1 后 `pause`；失败时 `errorlevel` 透传 |
-| 3 | `tools/release-zip.ps1` | 新建 | 核心 PowerShell 脚本（~180 行），`-Version` / `-SkipBuild` / `-KeepInstallerDir` 三个开关 |
-| 4 | `.gitignore` | 修改 | 末尾追加 `/installer/`（产物不入仓），与 `install/` 一致不污染 git |
-| 5 | `LOG.md` | 修改 | 本节 |
+| 1 | `VERSION` | 鏂板缓 | 鍐呭 `v6.14.0-fork.20260714`锛屼綔涓?`MAA_HASH_VERSION` 鍜?zip 鏂囦欢鍚嶅崟涓€鏉ユ簮 |
+| 2 | `tools/release-zip.bat` | 鏂板缓 | bat 澶栧３锛岃皟 ps1 鍚?`pause`锛涘け璐ユ椂 `errorlevel` 閫忎紶 |
+| 3 | `tools/release-zip.ps1` | 鏂板缓 | 鏍稿績 PowerShell 鑴氭湰锛垀180 琛岋級锛宍-Version` / `-SkipBuild` / `-KeepInstallerDir` 涓変釜寮€鍏?|
+| 4 | `.gitignore` | 淇敼 | 鏈熬杩藉姞 `/installer/`锛堜骇鐗╀笉鍏ヤ粨锛夛紝涓?`install/` 涓€鑷翠笉姹℃煋 git |
+| 5 | `LOG.md` | 淇敼 | 鏈妭 |
 
-**关键设计**：
+**鍏抽敭璁捐**锛?
+- **try/finally 淇濇姢浠撳簱鐘舵€?*锛歝sproj 澶囦唤鍒?`.bak` 鍚庢敼 4 涓?Version 瀛楁锛屾棤璁?dotnet publish 鎴愬姛鎴栧け璐ラ兘杩樺師锛沗global.json` 鍚屾牱澶勭悊锛堟寜 AGENTS.md 绾﹀畾鍐?10.0.203锛夆啋 浠撳簱**姘歌繙涓嶅彉鑴?*
+- **涓嶈仈缃戞媺 MaaFramework**锛氬鐢?install/ 鐜版湁鐨?`MaaAdbControlUnit.dll` / `MaaWin32ControlUnit.dll`锛岀己鍒欐姤閿欙紙鐢ㄦ埛鍦?install/ 閲屽凡鏈夎繖涓や釜鏂囦欢锛?- **staging 鐩綍涓存椂鏋勯€?*锛氶伩鍏嶆妸 `cache/config/data/debug` 杩?4 涓敤鎴锋暟鎹洰褰曟墦杩?zip锛涚敤 `robocopy /MIR /XD` 瀹炵幇
+- **`-SkipBuild` 寮€鍏?*锛氬彧鎯抽噸鏂版墦 zip 涓嶉噸缂栬瘧鏃跺彲鐢?- **涓嶈鍓?`externals/`**锛氫笌涓婃父 CI 琛屼负涓€鑷达紝闆堕闄?- **涓嶇敓鎴?DebugSymbol 鍓寘**锛氱敤鎴风‘璁や笉闇€瑕?- **鑴氭湰鍛藉悕 `release-zip.*` 鑰岄潪 `build-release-zip.*`**锛氭牴 `.gitignore` 绗?6 琛屾湁 `build-*` 瑙勫垯锛圕Make 鏋勫缓浜х墿锛夛紝鍘熷懡鍚嶄細琚悶鎺夛紱鏀瑰悕鍓?git check-ignore 楠岃瘉纭
 
-- **try/finally 保护仓库状态**：csproj 备份到 `.bak` 后改 4 个 Version 字段，无论 dotnet publish 成功或失败都还原；`global.json` 同样处理（按 AGENTS.md 约定写 10.0.203）→ 仓库**永远不变脏**
-- **不联网拉 MaaFramework**：复用 install/ 现有的 `MaaAdbControlUnit.dll` / `MaaWin32ControlUnit.dll`，缺则报错（用户在 install/ 里已有这两个文件）
-- **staging 目录临时构造**：避免把 `cache/config/data/debug` 这 4 个用户数据目录打进 zip；用 `robocopy /MIR /XD` 实现
-- **`-SkipBuild` 开关**：只想重新打 zip 不重编译时可用
-- **不裁剪 `externals/`**：与上游 CI 行为一致，零风险
-- **不生成 DebugSymbol 副包**：用户确认不需要
-- **脚本命名 `release-zip.*` 而非 `build-release-zip.*`**：根 `.gitignore` 第 6 行有 `build-*` 规则（CMake 构建产物），原命名会被吞掉；改名前 git check-ignore 验证确认
-
-**版本号格式**：`vX.Y.Z-fork.YYYYMMDD`（如 `v6.14.0-fork.20260714`）。SemVer 解析为 prerelease，SemVer 严格支持；上游新版本（如 `v6.14.1`）按 SemVer 排序能正确触发更新提示。
-
-**使用方式**：
-```bat
-:: 标准用法（双击或命令行）
+**鐗堟湰鍙锋牸寮?*锛歚vX.Y.Z-fork.YYYYMMDD`锛堝 `v6.14.0-fork.20260714`锛夈€係emVer 瑙ｆ瀽涓?prerelease锛孲emVer 涓ユ牸鏀寔锛涗笂娓告柊鐗堟湰锛堝 `v6.14.1`锛夋寜 SemVer 鎺掑簭鑳芥纭Е鍙戞洿鏂版彁绀恒€?
+**浣跨敤鏂瑰紡**锛?```bat
+:: 鏍囧噯鐢ㄦ硶锛堝弻鍑绘垨鍛戒护琛岋級
 tools\release-zip.bat
 
-:: 跳过编译、只重新打包（install/ 已是最新时）
-powershell -File tools\release-zip.ps1 -SkipBuild
+:: 璺宠繃缂栬瘧銆佸彧閲嶆柊鎵撳寘锛坕nstall/ 宸叉槸鏈€鏂版椂锛?powershell -File tools\release-zip.ps1 -SkipBuild
 
-:: 指定版本（跳过 VERSION 文件）
-powershell -File tools\release-zip.ps1 -Version v6.14.0-fork.20260715
+:: 鎸囧畾鐗堟湰锛堣烦杩?VERSION 鏂囦欢锛?powershell -File tools\release-zip.ps1 -Version v6.14.0-fork.20260715
 ```
 
-**与传统 local-install.bat 的区别**：
-
-| 项 | `local-install.bat` | `release-zip.{bat,ps1}` |
+**涓庝紶缁?local-install.bat 鐨勫尯鍒?*锛?
+| 椤?| `local-install.bat` | `release-zip.{bat,ps1}` |
 |----|---------------------|-------------------------|
-| 用途 | 本地开发自用 | **打包给其他人** |
-| 产物 | `install/` 直接可跑 | `installer/MAA-vX.X.X-fork.YYYYMMDD-win-x64.zip` |
-| `csproj` 改 | 不改 | 临时改 4 个 Version 字段再还原 |
-| `*.pdb` `*.h` | 保留 | 剥 |
-| NetBeauty | 启用 | 启用 |
-| 资源 | 同步到 `install/` | 同步到 `install/` 然后排除用户数据后打 zip |
+| 鐢ㄩ€?| 鏈湴寮€鍙戣嚜鐢?| **鎵撳寘缁欏叾浠栦汉** |
+| 浜х墿 | `install/` 鐩存帴鍙窇 | `installer/MAA-vX.X.X-fork.YYYYMMDD-win-x64.zip` |
+| `csproj` 鏀?| 涓嶆敼 | 涓存椂鏀?4 涓?Version 瀛楁鍐嶈繕鍘?|
+| `*.pdb` `*.h` | 淇濈暀 | 鍓?|
+| NetBeauty | 鍚敤 | 鍚敤 |
+| 璧勬簮 | 鍚屾鍒?`install/` | 鍚屾鍒?`install/` 鐒跺悗鎺掗櫎鐢ㄦ埛鏁版嵁鍚庢墦 zip |
 
-### 工作区清理 + 工具脚本归档 + 子模块初始化
+### 宸ヤ綔鍖烘竻鐞?+ 宸ュ叿鑴氭湰褰掓。 + 瀛愭ā鍧楀垵濮嬪寲
 
-| # | 文件 | 操作 | 说明 |
+| # | 鏂囦欢 | 鎿嶄綔 | 璇存槑 |
 |---|------|------|------|
-| 1 | `true` | 删除 | 0 字节空文件，误产生，清理 |
-| 2 | `add_maa_to_nahimic_whitelist.ps1` | 移动 | 从根目录移入 `tools/`，脚本用途：将 MAA.exe 添加到 Nahimic DLL 注入白名单，绕过 Nahimic 拦截 |
-| 3 | `disable_nahimic.ps1` | 移动 | 从根目录移入 `tools/`，脚本用途：停止并禁用 NahimicService 开机自启，彻底阻止 DLL 注入 |
-| 4 | `src/MaaUtils` | 子模块初始化 | 引用上游 `MaaXYZ/MaaUtils`（HEAD `0c2556cfc`），提交至 feat/fix 索引 |
-| 5 | `3rdparty/EmulatorExtras` | 子模块初始化 | 引用上游 `MaaXYZ/EmulatorExtras`（HEAD `54d3a3ad4`），提交至 feat/fix 索引 |
+| 1 | `true` | 鍒犻櫎 | 0 瀛楄妭绌烘枃浠讹紝璇骇鐢燂紝娓呯悊 |
+| 2 | `add_maa_to_nahimic_whitelist.ps1` | 绉诲姩 | 浠庢牴鐩綍绉诲叆 `tools/`锛岃剼鏈敤閫旓細灏?MAA.exe 娣诲姞鍒?Nahimic DLL 娉ㄥ叆鐧藉悕鍗曪紝缁曡繃 Nahimic 鎷︽埅 |
+| 3 | `disable_nahimic.ps1` | 绉诲姩 | 浠庢牴鐩綍绉诲叆 `tools/`锛岃剼鏈敤閫旓細鍋滄骞剁鐢?NahimicService 寮€鏈鸿嚜鍚紝褰诲簳闃绘 DLL 娉ㄥ叆 |
+| 4 | `src/MaaUtils` | 瀛愭ā鍧楀垵濮嬪寲 | 寮曠敤涓婃父 `MaaXYZ/MaaUtils`锛圚EAD `0c2556cfc`锛夛紝鎻愪氦鑷?feat/fix 绱㈠紩 |
+| 5 | `3rdparty/EmulatorExtras` | 瀛愭ā鍧楀垵濮嬪寲 | 寮曠敤涓婃父 `MaaXYZ/EmulatorExtras`锛圚EAD `54d3a3ad4`锛夛紝鎻愪氦鑷?feat/fix 绱㈠紩 |
 
-### feat/account_rotation 分支收尾
+### feat/account_rotation 鍒嗘敮鏀跺熬
 
-将 `fix/account_rotation/1` + `fix/account_rotation/2` 合并至 `feat/account_rotation`，形成单一主分支。
-
+灏?`fix/account_rotation/1` + `fix/account_rotation/2` 鍚堝苟鑷?`feat/account_rotation`锛屽舰鎴愬崟涓€涓诲垎鏀€?
 ## 2026-07-13
 
-### 账号轮换：停止卡死 + 切换报错后无法恢复
-
-| # | 文件 | 操作 | 说明 |
+### 璐﹀彿杞崲锛氬仠姝㈠崱姝?+ 鍒囨崲鎶ラ敊鍚庢棤娉曟仮澶?
+| # | 鏂囦欢 | 鎿嶄綔 | 璇存槑 |
 |---|------|------|------|
-| 1 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs` | 修改 | `SetStopped` 中 `IsCycling` 短路分支增加"是否被强制停止"判断：`runStopScript && _runningState.GetStopping()` 时落空 `IsCycling` 走完整重置流程,清 `Stopping` 标志;正常轮换推进路径保持不变(直接 return)。修复点停止按钮后 UI 永远卡在"正在停止"且按钮不可用的问题。 |
-| 2 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs` | 修改 | `AdvanceAccountCycle` 两个失败分支(`count == 0` 无任务被附加、`AsstStart()` 失败)改为调用 `SetStopped(runStopScript: false)`,统一重置 `Stopping/Idle/IsCycling`。修复"切换第二个账号任务出错"后状态卡住、按钮变灰、标题不恢复的问题。 |
+| 1 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs` | 淇敼 | `SetStopped` 涓?`IsCycling` 鐭矾鍒嗘敮澧炲姞"鏄惁琚己鍒跺仠姝?鍒ゆ柇锛歚runStopScript && _runningState.GetStopping()` 鏃惰惤绌?`IsCycling` 璧板畬鏁撮噸缃祦绋?娓?`Stopping` 鏍囧織;姝ｅ父杞崲鎺ㄨ繘璺緞淇濇寔涓嶅彉(鐩存帴 return)銆備慨澶嶇偣鍋滄鎸夐挳鍚?UI 姘歌繙鍗″湪"姝ｅ湪鍋滄"涓旀寜閽笉鍙敤鐨勯棶棰樸€?|
+| 2 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs` | 淇敼 | `AdvanceAccountCycle` 涓や釜澶辫触鍒嗘敮(`count == 0` 鏃犱换鍔¤闄勫姞銆乣AsstStart()` 澶辫触)鏀逛负璋冪敤 `SetStopped(runStopScript: false)`,缁熶竴閲嶇疆 `Stopping/Idle/IsCycling`銆備慨澶?鍒囨崲绗簩涓处鍙蜂换鍔″嚭閿?鍚庣姸鎬佸崱浣忋€佹寜閽彉鐏般€佹爣棰樹笉鎭㈠鐨勯棶棰樸€?|
 
 ## 2026-07-11
 
-### 漏洞修复与配置调整
-
-| # | 文件 | 操作 | 说明 |
+### 婕忔礊淇涓庨厤缃皟鏁?
+| # | 鏂囦欢 | 鎿嶄綔 | 璇存槑 |
 |---|------|------|------|
-| 1 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs` | 修改 | `LinkStart` 补上 `AccountSwitchEnabled = true`；`TryStartNextCycleAccount` 处理 `cfg` 为 null 的边界情况；包裹 try-catch 防止 `async void` 静默吞异常；通过 `Execute.OnUIThreadAsync` 确保 UI 线程执行 |
-| 2 | `src/MaaWpfGui/ViewModels/UserControl/TaskQueue/StartUpSettingsUserControlModel.cs` | 修改 | `GetCurrentCycleAccount` 简化：去掉 `_currentCycleIndex` 状态跟踪，改为直接取第一个符合条件的账号；去掉 `ResetCycleIndex` 方法 |
-| 3 | `src/MaaWpfGui/Views/UserControl/TaskQueue/StartUpTaskUserControl.xaml` | 修改 | 添加/删除按钮图标统一字号和居中 |
-| 4 | `.gitignore` | 修改 | 追加运行时缓存忽略规则；追加 `.crush/` / `.claude/` / `.cursor/` 规则；追加 `LOG.md` / `AGENTS.md` 忽略 |
-| 5 | `src/MaaWpfGui/Main/AsstProxy.cs` | 修改 | `AllTasksCompleted` 回调中补上轮换推进逻辑：正常完成时调用 `MarkAccountCompleted` + `GetCurrentCycleAccount` + `LinkStart`，并 `break` 跳过标准完成日志，防止新一轮启动后仍打出"所有任务完成" |
+| 1 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs` | 淇敼 | `LinkStart` 琛ヤ笂 `AccountSwitchEnabled = true`锛沗TryStartNextCycleAccount` 澶勭悊 `cfg` 涓?null 鐨勮竟鐣屾儏鍐碉紱鍖呰９ try-catch 闃叉 `async void` 闈欓粯鍚炲紓甯革紱閫氳繃 `Execute.OnUIThreadAsync` 纭繚 UI 绾跨▼鎵ц |
+| 2 | `src/MaaWpfGui/ViewModels/UserControl/TaskQueue/StartUpSettingsUserControlModel.cs` | 淇敼 | `GetCurrentCycleAccount` 绠€鍖栵細鍘绘帀 `_currentCycleIndex` 鐘舵€佽窡韪紝鏀逛负鐩存帴鍙栫涓€涓鍚堟潯浠剁殑璐﹀彿锛涘幓鎺?`ResetCycleIndex` 鏂规硶 |
+| 3 | `src/MaaWpfGui/Views/UserControl/TaskQueue/StartUpTaskUserControl.xaml` | 淇敼 | 娣诲姞/鍒犻櫎鎸夐挳鍥炬爣缁熶竴瀛楀彿鍜屽眳涓?|
+| 4 | `.gitignore` | 淇敼 | 杩藉姞杩愯鏃剁紦瀛樺拷鐣ヨ鍒欙紱杩藉姞 `.crush/` / `.claude/` / `.cursor/` 瑙勫垯锛涜拷鍔?`LOG.md` / `AGENTS.md` 蹇界暐 |
+| 5 | `src/MaaWpfGui/Main/AsstProxy.cs` | 淇敼 | `AllTasksCompleted` 鍥炶皟涓ˉ涓婅疆鎹㈡帹杩涢€昏緫锛氭甯稿畬鎴愭椂璋冪敤 `MarkAccountCompleted` + `GetCurrentCycleAccount` + `LinkStart`锛屽苟 `break` 璺宠繃鏍囧噯瀹屾垚鏃ュ織锛岄槻姝㈡柊涓€杞惎鍔ㄥ悗浠嶆墦鍑?鎵€鏈変换鍔″畬鎴? |
 
-### install 目录重构
+### install 鐩綍閲嶆瀯
 
-| # | 文件 | 操作 | 说明 |
+| # | 鏂囦欢 | 鎿嶄綔 | 璇存槑 |
 |---|------|------|------|
-| 1 | `install/debug/oper` | 删除 | 空目录清理 |
-| 2 | `install/debug/drops` | 删除 | 空目录清理 |
-| 3 | `install/debug/other` | 删除 | 空目录清理 |
-| 4 | `install/debug/infrast` | 删除 | 空目录清理 |
-| 5 | `install/debug/interface` | 删除 | 空目录清理 |
-| 6 | `install/cache/avatars` | 删除 | 空目录清理 |
-| 7 | `install/filelist.txt` | 修改 | 重新生成，与实际文件同步 |
-| 8 | `install/MAA.dll`, `install/MAA.pdb`, `install/MAA.exe`, `install/MAA.deps.json`, `install/MAA.runtimeconfig.json` | 更新 | 编译 MaaWpfGui 后部署；修复 `AsstProxy.cs` 中 `StartUpTask` 静态属性用实例访问的编译错误；修复 `TaskQueueViewModel.cs` 缩进和多余空行 |
-| 9 | `install/MaaCore.dll`, `install/MaaUtils.dll` | 更新 | 完整 CMake 构建后部署 （RelWithDebInfo）|
-| 10 | `src/MaaWpfGui/MaaWpfGui.csproj` | 修改 | `SelfContained` 改为 `false`，禁用 NetBeauty2 打包（不兼容 .NET 10.0.300） |
-| 11 | `install/msvc-debug/` | 删除 | CMake 安装产生的 debug 符号目录，非必需 |
-| 12 | `install/filelist.txt` | 更新 | 重新生成 |
-| 13 | `src/MaaCore/Assistant.cpp` | 修改 | `AllTasksCompleted` 后立即设 `m_thread_idle=true`，修复第二轮 `AsstStart` 因竞态返回 false 的 bug |
-| 14 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs` | 修改 | 新增 `AdvanceAccountCycle()` 方法替代 `SetStopped` 做轮换推进；`SetStopped` 剥离轮换逻辑，只处理停止 |
-| 15 | `src/MaaWpfGui/Main/AsstProxy.cs` | 修改 | `AllTasksCompleted` 回调调 `AdvanceAccountCycle` 替代 `SetStopped` |
-| 16 | `src/MaaWpfGui/ViewModels/UserControl/TaskQueue/StartUpSettingsUserControlModel.cs` | 修改 | `SyncAccountNamesToItems` 保留已有项 `IsSelected` 状态，用户可自由勾选参与轮换的账号 |
+| 1 | `install/debug/oper` | 鍒犻櫎 | 绌虹洰褰曟竻鐞?|
+| 2 | `install/debug/drops` | 鍒犻櫎 | 绌虹洰褰曟竻鐞?|
+| 3 | `install/debug/other` | 鍒犻櫎 | 绌虹洰褰曟竻鐞?|
+| 4 | `install/debug/infrast` | 鍒犻櫎 | 绌虹洰褰曟竻鐞?|
+| 5 | `install/debug/interface` | 鍒犻櫎 | 绌虹洰褰曟竻鐞?|
+| 6 | `install/cache/avatars` | 鍒犻櫎 | 绌虹洰褰曟竻鐞?|
+| 7 | `install/filelist.txt` | 淇敼 | 閲嶆柊鐢熸垚锛屼笌瀹為檯鏂囦欢鍚屾 |
+| 8 | `install/MAA.dll`, `install/MAA.pdb`, `install/MAA.exe`, `install/MAA.deps.json`, `install/MAA.runtimeconfig.json` | 鏇存柊 | 缂栬瘧 MaaWpfGui 鍚庨儴缃诧紱淇 `AsstProxy.cs` 涓?`StartUpTask` 闈欐€佸睘鎬х敤瀹炰緥璁块棶鐨勭紪璇戦敊璇紱淇 `TaskQueueViewModel.cs` 缂╄繘鍜屽浣欑┖琛?|
+| 9 | `install/MaaCore.dll`, `install/MaaUtils.dll` | 鏇存柊 | 瀹屾暣 CMake 鏋勫缓鍚庨儴缃?锛圧elWithDebInfo锛墊
+| 10 | `src/MaaWpfGui/MaaWpfGui.csproj` | 淇敼 | `SelfContained` 鏀逛负 `false`锛岀鐢?NetBeauty2 鎵撳寘锛堜笉鍏煎 .NET 10.0.300锛?|
+| 11 | `install/msvc-debug/` | 鍒犻櫎 | CMake 瀹夎浜х敓鐨?debug 绗﹀彿鐩綍锛岄潪蹇呴渶 |
+| 12 | `install/filelist.txt` | 鏇存柊 | 閲嶆柊鐢熸垚 |
+| 13 | `src/MaaCore/Assistant.cpp` | 淇敼 | `AllTasksCompleted` 鍚庣珛鍗宠 `m_thread_idle=true`锛屼慨澶嶇浜岃疆 `AsstStart` 鍥犵珵鎬佽繑鍥?false 鐨?bug |
+| 14 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs` | 淇敼 | 鏂板 `AdvanceAccountCycle()` 鏂规硶鏇夸唬 `SetStopped` 鍋氳疆鎹㈡帹杩涳紱`SetStopped` 鍓ョ杞崲閫昏緫锛屽彧澶勭悊鍋滄 |
+| 15 | `src/MaaWpfGui/Main/AsstProxy.cs` | 淇敼 | `AllTasksCompleted` 鍥炶皟璋?`AdvanceAccountCycle` 鏇夸唬 `SetStopped` |
+| 16 | `src/MaaWpfGui/ViewModels/UserControl/TaskQueue/StartUpSettingsUserControlModel.cs` | 淇敼 | `SyncAccountNamesToItems` 淇濈暀宸叉湁椤?`IsSelected` 鐘舵€侊紝鐢ㄦ埛鍙嚜鐢卞嬀閫夊弬涓庤疆鎹㈢殑璐﹀彿 |
 
-### install 目录标准化
-
-| # | 文件 | 操作 | 说明 |
+### install 鐩綍鏍囧噯鍖?
+| # | 鏂囦欢 | 鎿嶄綔 | 璇存槑 |
 |---|------|------|------|
-| 1 | `install/MAA.runtimeconfig.json` | 修改 | 添加 `additionalProbingPaths: ["./externals"]` 和 `STARTUP_HOOKS: libloader` |
-| 2 | `install/MAA.deps.json` | 替换 | 替换为参考版（NetBeauty2 正确修补的版本） |
-| 3 | `install/externals/` | 重建 | 将 279 个托管 DLL 移入 `externals/`；区域卫星程序集移至 `externals/locales/{lang}/` |
-| 4 | `install/` 根目录 | 清理 | 仅保留 11 个核心 DLL + 2 个 EXE + 配置文件 |
-| 5 | `install/filelist.txt` | 新增 | 从参考版复制 |
-| 6 | `install/MAA.dll` | 更新 | 多次重建部署 |
-| 7 | 空目录清理 | 删除 | 删除 10 个空目录（子模块占位等） |
-| 8 | 冗余 DLL 清理 | 删除 | 删除根目录 33 个 .NET runtime DLL + install 目录 245 个 |
+| 1 | `install/MAA.runtimeconfig.json` | 淇敼 | 娣诲姞 `additionalProbingPaths: ["./externals"]` 鍜?`STARTUP_HOOKS: libloader` |
+| 2 | `install/MAA.deps.json` | 鏇挎崲 | 鏇挎崲涓哄弬鑰冪増锛圢etBeauty2 姝ｇ‘淇ˉ鐨勭増鏈級 |
+| 3 | `install/externals/` | 閲嶅缓 | 灏?279 涓墭绠?DLL 绉诲叆 `externals/`锛涘尯鍩熷崼鏄熺▼搴忛泦绉昏嚦 `externals/locales/{lang}/` |
+| 4 | `install/` 鏍圭洰褰?| 娓呯悊 | 浠呬繚鐣?11 涓牳蹇?DLL + 2 涓?EXE + 閰嶇疆鏂囦欢 |
+| 5 | `install/filelist.txt` | 鏂板 | 浠庡弬鑰冪増澶嶅埗 |
+| 6 | `install/MAA.dll` | 鏇存柊 | 澶氭閲嶅缓閮ㄧ讲 |
+| 7 | 绌虹洰褰曟竻鐞?| 鍒犻櫎 | 鍒犻櫎 10 涓┖鐩綍锛堝瓙妯″潡鍗犱綅绛夛級 |
+| 8 | 鍐椾綑 DLL 娓呯悊 | 鍒犻櫎 | 鍒犻櫎鏍圭洰褰?33 涓?.NET runtime DLL + install 鐩綍 245 涓?|
 
-### Skills 迁移
+### Skills 杩佺Щ
 
-| # | 文件 | 操作 | 说明 |
+| # | 鏂囦欢 | 鎿嶄綔 | 璇存槑 |
 |---|------|------|------|
-| 1 | `.crush/skills/` | 新建 | 从 `.claude/skills/` 和 `.cursor/skills/` 迁入 5 个 skill |
-| 2 | `.claude/` | 删除 | 空目录清理 |
-| 3 | `.cursor/` | 删除 | 空目录清理 |
+| 1 | `.crush/skills/` | 鏂板缓 | 浠?`.claude/skills/` 鍜?`.cursor/skills/` 杩佸叆 5 涓?skill |
+| 2 | `.claude/` | 鍒犻櫎 | 绌虹洰褰曟竻鐞?|
+| 3 | `.cursor/` | 鍒犻櫎 | 绌虹洰褰曟竻鐞?|
 
-### branch 接受 feat/account_rotation 合并
+### branch 鎺ュ彈 feat/account_rotation 鍚堝苟
 
-将 `feat/account_rotation` 通过 Fast-forward 方式合入 `branch`，完成该功能的正式发布流程。
-
-| # | 文件/对象 | 操作 | 说明 |
+灏?`feat/account_rotation` 閫氳繃 Fast-forward 鏂瑰紡鍚堝叆 `branch`锛屽畬鎴愯鍔熻兘鐨勬寮忓彂甯冩祦绋嬨€?
+| # | 鏂囦欢/瀵硅薄 | 鎿嶄綔 | 璇存槑 |
 |---|-----------|------|------|
-| 1 | `branch` | FF 合并 | 接收 `feat/account_rotation` 全部 7 个新提交，HEAD 由 `c8c8e75be5` → `23b1bf3167`。`merge-base` 等于 `branch` 旧 HEAD，无分叉、无合并提交、无冲突 |
-| 2 | `Github/branch` | 推送 | 远程 `branch` 同步到 `23b1bf3167`（`git push Github branch`）|
-| 3 | `Github/feat/account_rotation` | 删除 | feat 功能正式合入 `branch`，远程 feat 分支清理（`git push Github --delete feat/account_rotation`）。本地 `feat/account_rotation` 保留以备回溯与对照 |
-| 4 | `feat_account_rotation.md` | 修改 | 追加 `## 十一、feat→branch 合并完成` 沉淀段落，更新 `## 九、待办` 完成项 |
-| 5 | `LOG.md` | 修改 | 新增本节，记录合并事件 |
+| 1 | `branch` | FF 鍚堝苟 | 鎺ユ敹 `feat/account_rotation` 鍏ㄩ儴 7 涓柊鎻愪氦锛孒EAD 鐢?`c8c8e75be5` 鈫?`23b1bf3167`銆俙merge-base` 绛変簬 `branch` 鏃?HEAD锛屾棤鍒嗗弶銆佹棤鍚堝苟鎻愪氦銆佹棤鍐茬獊 |
+| 2 | `Github/branch` | 鎺ㄩ€?| 杩滅▼ `branch` 鍚屾鍒?`23b1bf3167`锛坄git push Github branch`锛墊
+| 3 | `Github/feat/account_rotation` | 鍒犻櫎 | feat 鍔熻兘姝ｅ紡鍚堝叆 `branch`锛岃繙绋?feat 鍒嗘敮娓呯悊锛坄git push Github --delete feat/account_rotation`锛夈€傛湰鍦?`feat/account_rotation` 淇濈暀浠ュ鍥炴函涓庡鐓?|
+| 4 | `feat_account_rotation.md` | 淇敼 | 杩藉姞 `## 鍗佷竴銆乫eat鈫抌ranch 鍚堝苟瀹屾垚` 娌夋穩娈佃惤锛屾洿鏂?`## 涔濄€佸緟鍔瀈 瀹屾垚椤?|
+| 5 | `LOG.md` | 淇敼 | 鏂板鏈妭锛岃褰曞悎骞朵簨浠?|
 
-合并前后 `branch` 对比：
-
+鍚堝苟鍓嶅悗 `branch` 瀵规瘮锛?
 ```
 c8c8e75be5  Initial commit: MAA fork base with account rotation feature
-   ↓ +7 commits
-23b1bf3167  fix: 停止卡死 + 切换报错后无法恢复; chore: 归档 Nahimic 脚本到 tools/; build: 初始化 MaaUtils/EmulatorExtras 子模块
-```
+   鈫?+7 commits
+23b1bf3167  fix: 鍋滄鍗℃ + 鍒囨崲鎶ラ敊鍚庢棤娉曟仮澶? chore: 褰掓。 Nahimic 鑴氭湰鍒?tools/; build: 鍒濆鍖?MaaUtils/EmulatorExtras 瀛愭ā鍧?```
 
-关键决策：
+鍏抽敭鍐崇瓥锛?
+- **FF 鑰岄潪 --no-ff**锛歚branch` 鏄?`feat/account_rotation` 鐨勪弗鏍肩鍏堬紝鏃犱换浣曞垎鍙夈€俙--no-ff` 浼氫骇鐢熸棤淇℃伅澧為噺鐨勫啑浣?merge commit锛屼笌 AGENTS.md 鎺ㄥ磭鐨?PR 绠€娲佸巻鍙?鐩告倴
+- **鏈湴淇濈暀 feat 鍒嗘敮**锛歠eat 鍔熻兘铏藉凡鍚堝苟鍒?`branch`锛屼絾淇濈暀鏈湴 `feat/account_rotation` 鎸囬拡渚夸簬鍥炴函锛堝瀵规瘮 feat 琛屼负宸紓銆乧herry-pick 淇绛夛級銆俙fix/account_rotation/1` 鍜?`fix/account_rotation/2` 淇濈暀鍚屾牱鐞嗙敱
+- **杩滅▼鍒犻櫎 feat**锛氳繙绔?feat 鍒嗘敮宸叉棤瀛樺湪浠峰€硷紙鍔熻兘鍦?`branch` 涓級锛屾竻鐞嗗彲鍑忓皯杩滅▼鍒嗘敮鍒楄〃鍣煶
 
-- **FF 而非 --no-ff**：`branch` 是 `feat/account_rotation` 的严格祖先，无任何分叉。`--no-ff` 会产生无信息增量的冗余 merge commit，与 AGENTS.md 推崇的"PR 简洁历史"相悖
-- **本地保留 feat 分支**：feat 功能虽已合并到 `branch`，但保留本地 `feat/account_rotation` 指针便于回溯（如对比 feat 行为差异、cherry-pick 修复等）。`fix/account_rotation/1` 和 `fix/account_rotation/2` 保留同样理由
-- **远程删除 feat**：远端 feat 分支已无存在价值（功能在 `branch` 中），清理可减少远程分支列表噪音
+### 杩滅▼ feat/account_rotation 鎭㈠锛堝喅绛栦慨姝ｏ級
 
-### 远程 feat/account_rotation 恢复（决策修正）
-
-事后澄清：`fix/account_rotation/{1,2}` 与 `feat/account_rotation` 是从属关系，远程 fix/* 不应孤立存在。修正先前"删除远程 feat"的决策，将远程 feat 恢复。
-
-| # | 文件/对象 | 操作 | 说明 |
+浜嬪悗婢勬竻锛歚fix/account_rotation/{1,2}` 涓?`feat/account_rotation` 鏄粠灞炲叧绯伙紝杩滅▼ fix/* 涓嶅簲瀛ょ珛瀛樺湪銆備慨姝ｅ厛鍓?鍒犻櫎杩滅▼ feat"鐨勫喅绛栵紝灏嗚繙绋?feat 鎭㈠銆?
+| # | 鏂囦欢/瀵硅薄 | 鎿嶄綔 | 璇存槑 |
 |---|-----------|------|------|
-| 1 | `Github/feat/account_rotation` | 恢复 | `git push Github feat/account_rotation`，在远端重建 `refs/heads/feat/account_rotation` → `23b1bf3167` |
-| 2 | `feat/account_rotation` | 设置 upstream | `git branch --set-upstream-to=Github/feat/account_rotation feat/account_rotation`，后续 push/pull 无需指定远端 |
-| 3 | `Github/fix/account_rotation/{1,2}` | 不动 | 按用户确认保留两个远程 fix 分支，不删除 |
-| 4 | `feat_account_rotation.md` | 修改 | 追加 `## 十二、远程 feat 恢复记录`，记录决策修正与修复后分支层级 |
+| 1 | `Github/feat/account_rotation` | 鎭㈠ | `git push Github feat/account_rotation`锛屽湪杩滅閲嶅缓 `refs/heads/feat/account_rotation` 鈫?`23b1bf3167` |
+| 2 | `feat/account_rotation` | 璁剧疆 upstream | `git branch --set-upstream-to=Github/feat/account_rotation feat/account_rotation`锛屽悗缁?push/pull 鏃犻渶鎸囧畾杩滅 |
+| 3 | `Github/fix/account_rotation/{1,2}` | 涓嶅姩 | 鎸夌敤鎴风‘璁や繚鐣欎袱涓繙绋?fix 鍒嗘敮锛屼笉鍒犻櫎 |
+| 4 | `feat_account_rotation.md` | 淇敼 | 杩藉姞 `## 鍗佷簩銆佽繙绋?feat 鎭㈠璁板綍`锛岃褰曞喅绛栦慨姝ｄ笌淇鍚庡垎鏀眰绾?|
 
-修复后远程分支结构：
+淇鍚庤繙绋嬪垎鏀粨鏋勶細
 
 ```
-branch                          (23b1bf3167, 生产就绪)
-└─ feat/account_rotation        (23b1bf3167, 从属, 恢复)
-   ├─ fix/account_rotation/1    (f3413f24f5, 从属, 落后 feat 1 commit)
-   └─ fix/account_rotation/2    (23b1bf3167, 从属, 与 feat 同位)
+branch                          (23b1bf3167, 鐢熶骇灏辩华)
+鈹斺攢 feat/account_rotation        (23b1bf3167, 浠庡睘, 鎭㈠)
+   鈹溾攢 fix/account_rotation/1    (f3413f24f5, 浠庡睘, 钀藉悗 feat 1 commit)
+   鈹斺攢 fix/account_rotation/2    (23b1bf3167, 浠庡睘, 涓?feat 鍚屼綅)
 ```
 
-### 工作文档命名规范化
-
-按 AGENTS.md 分支工作流约定，feat/fix 工作文档名应对齐分支名。中文文件名在跨平台 / 终端场景下存在编码兼容问题，统一改为英文命名。
-
-| # | 文件 | 操作 | 说明 |
+### 宸ヤ綔鏂囨。鍛藉悕瑙勮寖鍖?
+鎸?AGENTS.md 鍒嗘敮宸ヤ綔娴佺害瀹氾紝feat/fix 宸ヤ綔鏂囨。鍚嶅簲瀵归綈鍒嗘敮鍚嶃€備腑鏂囨枃浠跺悕鍦ㄨ法骞冲彴 / 缁堢鍦烘櫙涓嬪瓨鍦ㄧ紪鐮佸吋瀹归棶棰橈紝缁熶竴鏀逛负鑻辨枃鍛藉悕銆?
+| # | 鏂囦欢 | 鎿嶄綔 | 璇存槑 |
 |---|------|------|------|
-| 1 | `feat_账号轮换.md` | 删除 | 中文文件名；内容已拆分：上半段（章节 一~十一 合并日志）已存在于 `feat_account_rotation.md`、无重复；末尾独立设计文档（标题"账号轮换功能设计与实现"，11 章 ~9000 字）被合入 `feat_account_rotation.md` 作为新章节十二 |
-| 2 | `feat_account_rotation.md` | 修改 | 新增 `## 十二、账号轮换功能设计文档`：覆盖功能架构、数据模型、编辑模式、轮换生命周期、UI 布局与交互、本地化字符串、手动切换、C++ 后端流程、默认配置、文件清单、约束与注意事项。原 `## 十二、远程 feat 恢复记录` 重编号为 `## 十三、`（含 `### 12.x` → `### 13.x`） |
-| 3 | `fix_账号轮换.md` | 重命名 | → `fix_account_rotation_1.md`，对齐分支名 `fix/account_rotation/1`，证明是 `feat/account_rotation` 分支的第一次修复 |
+| 1 | `feat_璐﹀彿杞崲.md` | 鍒犻櫎 | 涓枃鏂囦欢鍚嶏紱鍐呭宸叉媶鍒嗭細涓婂崐娈碉紙绔犺妭 涓€~鍗佷竴 鍚堝苟鏃ュ織锛夊凡瀛樺湪浜?`feat_account_rotation.md`銆佹棤閲嶅锛涙湯灏剧嫭绔嬭璁℃枃妗ｏ紙鏍囬"璐﹀彿杞崲鍔熻兘璁捐涓庡疄鐜?锛?1 绔?~9000 瀛楋級琚悎鍏?`feat_account_rotation.md` 浣滀负鏂扮珷鑺傚崄浜?|
+| 2 | `feat_account_rotation.md` | 淇敼 | 鏂板 `## 鍗佷簩銆佽处鍙疯疆鎹㈠姛鑳借璁℃枃妗锛氳鐩栧姛鑳芥灦鏋勩€佹暟鎹ā鍨嬨€佺紪杈戞ā寮忋€佽疆鎹㈢敓鍛藉懆鏈熴€乁I 甯冨眬涓庝氦浜掋€佹湰鍦板寲瀛楃涓层€佹墜鍔ㄥ垏鎹€丆++ 鍚庣娴佺▼銆侀粯璁ら厤缃€佹枃浠舵竻鍗曘€佺害鏉熶笌娉ㄦ剰浜嬮」銆傚師 `## 鍗佷簩銆佽繙绋?feat 鎭㈠璁板綍` 閲嶇紪鍙蜂负 `## 鍗佷笁銆乣锛堝惈 `### 12.x` 鈫?`### 13.x`锛?|
+| 3 | `fix_璐﹀彿杞崲.md` | 閲嶅懡鍚?| 鈫?`fix_account_rotation_1.md`锛屽榻愬垎鏀悕 `fix/account_rotation/1`锛岃瘉鏄庢槸 `feat/account_rotation` 鍒嗘敮鐨勭涓€娆′慨澶?|
 
-**文件整理前后**：
-
+**鏂囦欢鏁寸悊鍓嶅悗**锛?
 ```
-整理前                                    整理后
-feat_account_rotation.md  (16050 B)       feat_account_rotation.md  (31223 B, 章节 11 → 13)
-feat_账号轮换.md          (14834 B)  →  fix_account_rotation_1.md  (2154 B)
-fix_账号轮换.md           ( 2154 B)
+鏁寸悊鍓?                                   鏁寸悊鍚?feat_account_rotation.md  (16050 B)       feat_account_rotation.md  (31223 B, 绔犺妭 11 鈫?13)
+feat_璐﹀彿杞崲.md          (14834 B)  鈫? fix_account_rotation_1.md  (2154 B)
+fix_璐﹀彿杞崲.md           ( 2154 B)
 ```
 
-**为什么新增的是章节十二而非其他位置**：
-
-- 设计文档是 feat 分支的**核心交付物**（UI 架构 / 数据流 / 约束），理应作为长期知识沉淀，位置应靠前
-- 原章节十二（远程 feat 恢复记录）是**操作流水**，时效性强、长期参考价值低，重编号为十三不影响阅读
-- 章节十一（feat→branch 合并完成）是分支生命周期记录，作为收官章节保持不动
-
-**为什么 fix 文件用 `fix_account_rotation_1.md`（下划线）而非目录形式**：
-
-- Windows 文件名不支持 `/`，无法使用 `fix_account_rotation/1.md` 路径分两段
-- 下划线 `_` 与 AGENTS.md "feat_*.md / fix_*.md" 现有约定一致（如 `feat_账号轮换.md`）
-- 阿拉伯数字后缀 `_1` 隐含序列语义，未来 `fix/account_rotation/2` 对应 `fix_account_rotation_2.md`，一一对应
+**涓轰粈涔堟柊澧炵殑鏄珷鑺傚崄浜岃€岄潪鍏朵粬浣嶇疆**锛?
+- 璁捐鏂囨。鏄?feat 鍒嗘敮鐨?*鏍稿績浜や粯鐗?*锛圲I 鏋舵瀯 / 鏁版嵁娴?/ 绾︽潫锛夛紝鐞嗗簲浣滀负闀挎湡鐭ヨ瘑娌夋穩锛屼綅缃簲闈犲墠
+- 鍘熺珷鑺傚崄浜岋紙杩滅▼ feat 鎭㈠璁板綍锛夋槸**鎿嶄綔娴佹按**锛屾椂鏁堟€у己銆侀暱鏈熷弬鑰冧环鍊间綆锛岄噸缂栧彿涓哄崄涓変笉褰卞搷闃呰
+- 绔犺妭鍗佷竴锛坒eat鈫抌ranch 鍚堝苟瀹屾垚锛夋槸鍒嗘敮鐢熷懡鍛ㄦ湡璁板綍锛屼綔涓烘敹瀹樼珷鑺備繚鎸佷笉鍔?
+**涓轰粈涔?fix 鏂囦欢鐢?`fix_account_rotation_1.md`锛堜笅鍒掔嚎锛夎€岄潪鐩綍褰㈠紡**锛?
+- Windows 鏂囦欢鍚嶄笉鏀寔 `/`锛屾棤娉曚娇鐢?`fix_account_rotation/1.md` 璺緞鍒嗕袱娈?- 涓嬪垝绾?`_` 涓?AGENTS.md "feat_*.md / fix_*.md" 鐜版湁绾﹀畾涓€鑷达紙濡?`feat_璐﹀彿杞崲.md`锛?- 闃挎媺浼暟瀛楀悗缂€ `_1` 闅愬惈搴忓垪璇箟锛屾湭鏉?`fix/account_rotation/2` 瀵瑰簲 `fix_account_rotation_2.md`锛屼竴涓€瀵瑰簲
 
 ## 2026-07-10
 
-### 账号轮换漏洞修复
+### 璐﹀彿杞崲婕忔礊淇
 
-| # | 文件 | 操作 | 说明 |
+| # | 鏂囦欢 | 鎿嶄綔 | 璇存槑 |
 |---|------|------|------|
-| 1 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs` | 修改 | `SetStopped` 新增轮换逻辑：完成任务后调用 `MarkAccountCompleted` 标记当前账号完成，若还有未完成账号则自动触发 `LinkStart` 继续下一账号 |
+| 1 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs` | 淇敼 | `SetStopped` 鏂板杞崲閫昏緫锛氬畬鎴愪换鍔″悗璋冪敤 `MarkAccountCompleted` 鏍囪褰撳墠璐﹀彿瀹屾垚锛岃嫢杩樻湁鏈畬鎴愯处鍙峰垯鑷姩瑙﹀彂 `LinkStart` 缁х画涓嬩竴璐﹀彿 |
 
 ## 2026-07-10
 
-### 账号轮换功能实现
+### 璐﹀彿杞崲鍔熻兘瀹炵幇
 
-实现了完整的账号轮换功能，允许用户配置多个账号，MAA 在每次完整任务队列执行完毕后自动切换到列表中的下一个未完成账号，并重新启动任务队列，直到所有账号全部完成一轮。
-
-| # | 文件 | 操作 | 说明 |
+瀹炵幇浜嗗畬鏁寸殑璐﹀彿杞崲鍔熻兘锛屽厑璁哥敤鎴烽厤缃涓处鍙凤紝MAA 鍦ㄦ瘡娆″畬鏁翠换鍔￠槦鍒楁墽琛屽畬姣曞悗鑷姩鍒囨崲鍒板垪琛ㄤ腑鐨勪笅涓€涓湭瀹屾垚璐﹀彿锛屽苟閲嶆柊鍚姩浠诲姟闃熷垪锛岀洿鍒版墍鏈夎处鍙峰叏閮ㄥ畬鎴愪竴杞€?
+| # | 鏂囦欢 | 鎿嶄綔 | 璇存槑 |
 |---|------|------|------|
-| 1 | `src/MaaWpfGui/Configuration/Single/MaaTask/StartUpTask.cs` | 修改 | 添加 `AccountCycleEnabled` (bool, 默认 true) 和 `AccountNames` (List\<string\>, 默认 ["", ""]) |
-| 2 | `src/MaaWpfGui/Models/AccountCycleItem.cs` | 新建 | 轮换账号数据模型（DisplayName / AccountName / IsSelected / IsCompleted / Index） |
-| 3 | `src/MaaWpfGui/Res/Localizations/zh-cn.xaml` | 修改 | 添加 7 个 AccountCycle 本地化 key |
-| 4 | `src/MaaWpfGui/Res/Localizations/en-us.xaml` | 修改 | 同上（英文） |
-| 5 | `src/MaaWpfGui/Res/Localizations/ja-jp.xaml` | 修改 | 同上（日文） |
-| 6 | `src/MaaWpfGui/Res/Localizations/ko-kr.xaml` | 修改 | 同上（韩文） |
-| 7 | `src/MaaWpfGui/Res/Localizations/zh-tw.xaml` | 修改 | 同上（繁体中文） |
-| 8 | `src/MaaWpfGui/ViewModels/UserControl/TaskQueue/StartUpSettingsUserControlModel.cs` | 修改 | 添加轮换 CRUD、GetCurrentCycleAccount、MarkAccountCompleted、SyncAccountNamesToItems 等方法 |
-| 9 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs` | 修改 | LinkStart 加入轮换判定，SetStopped 后调用 TryStartNextCycleAccount 自动推进 |
-| 10 | `src/MaaWpfGui/ViewModels/UI/RootViewModel.cs` | 修改 | 版本比较忽略 `v` 前缀 |
-| 11 | `src/MaaWpfGui/Views/UserControl/TaskQueue/StartUpTaskUserControl.xaml` | 修改 | 添加轮换 CheckBox、账号列表 ItemsControl、编辑模式 ComboBox、IsCompleted 蓝色高亮 |
-| 12 | `src/MaaWpfGui/MaaWpfGui.csproj` | 修改 | 版本号从 0.0.1 改为 6.14.0 |
-| 13 | `install/config/gui.new.json` | 修改 | StartUpTask 添加 AccountCycleEnabled / AccountNames 默认字段 |
-| 14 | `install/config/gui.new.json.bak` | 修改 | 同上（备份文件同步） |
+| 1 | `src/MaaWpfGui/Configuration/Single/MaaTask/StartUpTask.cs` | 淇敼 | 娣诲姞 `AccountCycleEnabled` (bool, 榛樿 true) 鍜?`AccountNames` (List\<string\>, 榛樿 ["", ""]) |
+| 2 | `src/MaaWpfGui/Models/AccountCycleItem.cs` | 鏂板缓 | 杞崲璐﹀彿鏁版嵁妯″瀷锛圖isplayName / AccountName / IsSelected / IsCompleted / Index锛?|
+| 3 | `src/MaaWpfGui/Res/Localizations/zh-cn.xaml` | 淇敼 | 娣诲姞 7 涓?AccountCycle 鏈湴鍖?key |
+| 4 | `src/MaaWpfGui/Res/Localizations/en-us.xaml` | 淇敼 | 鍚屼笂锛堣嫳鏂囷級 |
+| 5 | `src/MaaWpfGui/Res/Localizations/ja-jp.xaml` | 淇敼 | 鍚屼笂锛堟棩鏂囷級 |
+| 6 | `src/MaaWpfGui/Res/Localizations/ko-kr.xaml` | 淇敼 | 鍚屼笂锛堥煩鏂囷級 |
+| 7 | `src/MaaWpfGui/Res/Localizations/zh-tw.xaml` | 淇敼 | 鍚屼笂锛堢箒浣撲腑鏂囷級 |
+| 8 | `src/MaaWpfGui/ViewModels/UserControl/TaskQueue/StartUpSettingsUserControlModel.cs` | 淇敼 | 娣诲姞杞崲 CRUD銆丟etCurrentCycleAccount銆丮arkAccountCompleted銆丼yncAccountNamesToItems 绛夋柟娉?|
+| 9 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs` | 淇敼 | LinkStart 鍔犲叆杞崲鍒ゅ畾锛孲etStopped 鍚庤皟鐢?TryStartNextCycleAccount 鑷姩鎺ㄨ繘 |
+| 10 | `src/MaaWpfGui/ViewModels/UI/RootViewModel.cs` | 淇敼 | 鐗堟湰姣旇緝蹇界暐 `v` 鍓嶇紑 |
+| 11 | `src/MaaWpfGui/Views/UserControl/TaskQueue/StartUpTaskUserControl.xaml` | 淇敼 | 娣诲姞杞崲 CheckBox銆佽处鍙峰垪琛?ItemsControl銆佺紪杈戞ā寮?ComboBox銆両sCompleted 钃濊壊楂樹寒 |
+| 12 | `src/MaaWpfGui/MaaWpfGui.csproj` | 淇敼 | 鐗堟湰鍙蜂粠 0.0.1 鏀逛负 6.14.0 |
+| 13 | `install/config/gui.new.json` | 淇敼 | StartUpTask 娣诲姞 AccountCycleEnabled / AccountNames 榛樿瀛楁 |
+| 14 | `install/config/gui.new.json.bak` | 淇敼 | 鍚屼笂锛堝浠芥枃浠跺悓姝ワ級 |
 
-### fix/defer-rogue/1 启动
+### fix/defer-rogue/1 鍚姩
 
-基于 `feat/defer-rogue` (commit `31b84f44a3`) 的 code review,发现 3 个问题:
+鍩轰簬 `feat/defer-rogue` (commit `31b84f44a3`) 鐨?code review,鍙戠幇 3 涓棶棰?
 
-| ID | 严重度 | 主题 |
+| ID | 涓ラ噸搴?| 涓婚 |
 |----|--------|------|
-| A1 | CRITICAL | 步骤耗尽时,最后一个账号不会被 `MarkAccountCompleted` |
-| A7 | WARNING | Cycle 运行中 `LateStageRogueAndReclamation` CheckBox 仍可点击 |
-| A8 | WARNING | `LinkStart` 无 re-entrancy guard,运行中再次点击会重置 _cycleSteps/_currentStepIndex |
+| A1 | CRITICAL | 姝ラ鑰楀敖鏃?鏈€鍚庝竴涓处鍙蜂笉浼氳 `MarkAccountCompleted` |
+| A7 | WARNING | Cycle 杩愯涓?`LateStageRogueAndReclamation` CheckBox 浠嶅彲鐐瑰嚮 |
+| A8 | WARNING | `LinkStart` 鏃?re-entrancy guard,杩愯涓啀娆＄偣鍑讳細閲嶇疆 _cycleSteps/_currentStepIndex |
 
-按 AGENTS.md 新约定(`fix/*` 必须从对应 `feat/*` 拉出),从 `feat/defer-rogue` 拉出 `fix/defer-rogue/1`。
-
-| # | 文件/对象 | 操作 | 说明 |
+鎸?AGENTS.md 鏂扮害瀹?`fix/*` 蹇呴』浠庡搴?`feat/*` 鎷夊嚭),浠?`feat/defer-rogue` 鎷夊嚭 `fix/defer-rogue/1`銆?
+| # | 鏂囦欢/瀵硅薄 | 鎿嶄綔 | 璇存槑 |
 |---|----------|------|------|
-| 1 | `fix/defer-rogue/1` | 新建分支 | 从 `feat/defer-rogue` 拉出 |
-| 2 | `fix_defer-rogue_1.md` | 新建 | 工作文档(已 .gitignore) |
-| 3 | `AGENTS.md` | 修改 | 把"修复分支挂在对应 feat 下"写入正式约定:更新分支命名表 + 增加"修复分支必须挂在对应 feat 之下"小节 + 更新工作流示意图 |
+| 1 | `fix/defer-rogue/1` | 鏂板缓鍒嗘敮 | 浠?`feat/defer-rogue` 鎷夊嚭 |
+| 2 | `fix_defer-rogue_1.md` | 鏂板缓 | 宸ヤ綔鏂囨。(宸?.gitignore) |
+| 3 | `AGENTS.md` | 淇敼 | 鎶?淇鍒嗘敮鎸傚湪瀵瑰簲 feat 涓?鍐欏叆姝ｅ紡绾﹀畾:鏇存柊鍒嗘敮鍛藉悕琛?+ 澧炲姞"淇鍒嗘敮蹇呴』鎸傚湪瀵瑰簲 feat 涔嬩笅"灏忚妭 + 鏇存柊宸ヤ綔娴佺ず鎰忓浘 |
 
-### fix/defer-rogue/1 实施完成
+### fix/defer-rogue/1 瀹炴柦瀹屾垚
 
-| # | 文件 | 操作 | 说明 |
+| # | 鏂囦欢 | 鎿嶄綔 | 璇存槑 |
 |---|------|------|------|
-| 1 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs:2195-2200` | 修改 | `AdvanceAccountCycle` 文档注释追加 fix/defer-rogue/1 段落 |
-| 2 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs:2208-2222` | 修改 | **A1**: 把 `prevStep = GetPreviousStep()` 移到 `nextStep == null` 早退分支**之前**;早退分支里先调用 `MarkPreviousStepCompleted(prevStep)` 再 `return` |
-| 3 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs:2235-2236` | 修改 | **A1**: 普通推进路径移除原 inline 块,改为调用 `MarkPreviousStepCompleted(prevStep)` |
-| 4 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs:2382-2400` | 修改 | **A1**: 新增私有方法 `MarkPreviousStepCompleted(AccountCycleStep?)`,语义与原 inline 块一致(`leftPhase2 \|\| lateStageOff`) |
-| 5 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs:1813-1826` | 修改 | **A8**: `LinkStart` 顶部加 `if (startUpConfig.IsCycling) { Release; return; }` guard,防止 Stop 后再次点击 / 定时器 / 快捷键在 cycle 中重置进度 |
-| 6 | `src/MaaWpfGui/Views/UserControl/TaskQueue/StartUpTaskUserControl.xaml:140` | 修改 | **A7**: `LateStageRogueAndReclamation` CheckBox 加 `IsEnabled="{c:Binding '!IsCycling'}"`,Cycle 运行中灰显 |
-| 7 | `LOG.md` | 修改 | 本节 |
+| 1 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs:2195-2200` | 淇敼 | `AdvanceAccountCycle` 鏂囨。娉ㄩ噴杩藉姞 fix/defer-rogue/1 娈佃惤 |
+| 2 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs:2208-2222` | 淇敼 | **A1**: 鎶?`prevStep = GetPreviousStep()` 绉诲埌 `nextStep == null` 鏃╅€€鍒嗘敮**涔嬪墠**;鏃╅€€鍒嗘敮閲屽厛璋冪敤 `MarkPreviousStepCompleted(prevStep)` 鍐?`return` |
+| 3 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs:2235-2236` | 淇敼 | **A1**: 鏅€氭帹杩涜矾寰勭Щ闄ゅ師 inline 鍧?鏀逛负璋冪敤 `MarkPreviousStepCompleted(prevStep)` |
+| 4 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs:2382-2400` | 淇敼 | **A1**: 鏂板绉佹湁鏂规硶 `MarkPreviousStepCompleted(AccountCycleStep?)`,璇箟涓庡師 inline 鍧椾竴鑷?`leftPhase2 \|\| lateStageOff`) |
+| 5 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs:1813-1826` | 淇敼 | **A8**: `LinkStart` 椤堕儴鍔?`if (startUpConfig.IsCycling) { Release; return; }` guard,闃叉 Stop 鍚庡啀娆＄偣鍑?/ 瀹氭椂鍣?/ 蹇嵎閿湪 cycle 涓噸缃繘搴?|
+| 6 | `src/MaaWpfGui/Views/UserControl/TaskQueue/StartUpTaskUserControl.xaml:140` | 淇敼 | **A7**: `LateStageRogueAndReclamation` CheckBox 鍔?`IsEnabled="{c:Binding '!IsCycling'}"`,Cycle 杩愯涓伆鏄?|
+| 7 | `LOG.md` | 淇敼 | 鏈妭 |
 
-**编译结果**:
+**缂栬瘧缁撴灉**:
 ```
 dotnet build src/MaaWpfGui/MaaWpfGui.csproj -c Release -p:Platform=x64
-0 个错误, 6 个 warning (3 个 SA1503 来自原 feat/defer-rogue 代码 2279/2329/2333 行,与本次修复无关)
+0 涓敊璇? 6 涓?warning (3 涓?SA1503 鏉ヨ嚜鍘?feat/defer-rogue 浠ｇ爜 2279/2329/2333 琛?涓庢湰娆′慨澶嶆棤鍏?
 ```
 
-**兼容性核查**:
-- A1 修复仅改变 last step 路径的标记时机,不影响中间步骤
-- A7 仅 UI 层禁用,VM 行为不变
-- A8 仅在 `IsCycling == true` 时早退,不进入 LinkStart 主流程,不会改变已有行为;用户体感为"轮换运行时再点开始按钮没反应"(符合预期)
-- AGENTS.md 仅文档改动,无代码影响
+**鍏煎鎬ф牳鏌?*:
+- A1 淇浠呮敼鍙?last step 璺緞鐨勬爣璁版椂鏈?涓嶅奖鍝嶄腑闂存楠?- A7 浠?UI 灞傜鐢?VM 琛屼负涓嶅彉
+- A8 浠呭湪 `IsCycling == true` 鏃舵棭閫€,涓嶈繘鍏?LinkStart 涓绘祦绋?涓嶄細鏀瑰彉宸叉湁琛屼负;鐢ㄦ埛浣撴劅涓?杞崲杩愯鏃跺啀鐐瑰紑濮嬫寜閽病鍙嶅簲"(绗﹀悎棰勬湡)
+- AGENTS.md 浠呮枃妗ｆ敼鍔?鏃犱唬鐮佸奖鍝?
+**閮ㄧ讲楠岃瘉**: (寰呰ˉ鍏?闇€鍦?`install/` 鍚姩 MAA 璧颁竴閬?2 璐﹀彿 cycle,纭鏈€鍚庝竴涓处鍙?IsCompleted 鍙樿摑)
+**閮ㄧ讲楠岃瘉**: (寰呰ˉ鍏?闇€鍦?`install/` 鍚姩 MAA 璧颁竴閬?2 璐﹀彿 cycle,纭鏈€鍚庝竴涓处鍙?IsCompleted 鍙樿摑)
 
-**部署验证**: (待补充,需在 `install/` 启动 MAA 走一遍 2 账号 cycle,确认最后一个账号 IsCompleted 变蓝)
-**部署验证**: (待补充,需在 `install/` 启动 MAA 走一遍 2 账号 cycle,确认最后一个账号 IsCompleted 变蓝)
+### fix/account_rotation/淇敼娆℃暟 鈥?娴嬭瘯鍙戠幇鐨?6 椤?cycle 琛屼负寮傚父淇
 
-### fix/account_rotation/修改次数 — 测试发现的 6 项 cycle 行为异常修复
-
-从 `feat/defer-rogue` 拉出 `fix/account_rotation/修改次数`。该 fix 同时修复 `feat/defer-rogue` 与 `feat/account_rotation` 交互产生的缺陷，合并目标为 `feat/defer-rogue`（在依赖链中位于下游）。
-
-**测试发现的问题**:
-- A 账号 Phase 1 显示两个"更新数据"（实为 OperBox+Depot 子任务共用 UserDataUpdate 名称）
-- B 账号 Phase 1 显示带括号的"(干员识别)/(仓库识别)"（TaskItemViewModel taskId 查找失败 → 索引不一致）
-- 肉鸽跑错阶段（可能是上号状态残留）
-- UserDataUpdate 的 `IsTriggerDue` 跨账号跳过 → 子任务丢失
-
-| # | 文件 | 操作 | 说明 |
+浠?`feat/defer-rogue` 鎷夊嚭 `fix/account_rotation/淇敼娆℃暟`銆傝 fix 鍚屾椂淇 `feat/defer-rogue` 涓?`feat/account_rotation` 浜や簰浜х敓鐨勭己闄凤紝鍚堝苟鐩爣涓?`feat/defer-rogue`锛堝湪渚濊禆閾句腑浣嶄簬涓嬫父锛夈€?
+**娴嬭瘯鍙戠幇鐨勯棶棰?*:
+- A 璐﹀彿 Phase 1 鏄剧ず涓や釜"鏇存柊鏁版嵁"锛堝疄涓?OperBox+Depot 瀛愪换鍔″叡鐢?UserDataUpdate 鍚嶇О锛?- B 璐﹀彿 Phase 1 鏄剧ず甯︽嫭鍙风殑"(骞插憳璇嗗埆)/(浠撳簱璇嗗埆)"锛圱askItemViewModel taskId 鏌ユ壘澶辫触 鈫?绱㈠紩涓嶄竴鑷达級
+- 鑲夐附璺戦敊闃舵锛堝彲鑳芥槸涓婂彿鐘舵€佹畫鐣欙級
+- UserDataUpdate 鐨?`IsTriggerDue` 璺ㄨ处鍙疯烦杩?鈫?瀛愪换鍔′涪澶?
+| # | 鏂囦欢 | 鎿嶄綔 | 璇存槑 |
 |---|------|------|------|
-| 1 | `src/MaaWpfGui/ViewModels/UserControl/TaskQueue/UserDataUpdateSettingsUserControlModel.cs:91-97` | 修改 | **#1**: cycle 中 (`GetAccountSwitchEnabled()`) 跳过 `IsTriggerDue` 检查,保证每个账号的 OperBox/Depot 子任务都被追加 |
-| 2 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs:2155-2192` | 修改 | **#6**: `SetStopped` 将 cycling 检查移到 idle 检查之前,当 `IsCycling=true && Idle=true`（LinkStartWithTasks 早退路径）时清理 cycling 状态,让正常停止接管,防止轮换永久卡住 |
-| 3 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs:2232-2234` | 修改 | **#5**: `AdvanceAccountCycle` 入口加 `_logger.Information` 日志记录 stepIdx/prev/next 信息 |
-| 4 | `src/MaaWpfGui/ViewModels/UserControl/TaskQueue/StartUpSettingsUserControlModel.cs:326` | 修改 | **#5**: 新增 `CurrentStepIndex` 公开属性支持日志 |
-| 5 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs:2360-2362` | 修改 | **#5**: AdvanceAccountCycle 循环后追加 `_logger.Information` 记录 phase/switch/count/ret |
-| 6 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs:2337-2339` | 修改 | **#5**: AdvanceAccountCycle 中 Append task 时记录 `[CycleAdv] Append task #Idx` 日志 |
-| 7 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs:1983-1985` | 修改 | **#5**: LinkStartWithTasks 中 Append task 时记录 `[LinkStart] Append task #Idx` 日志 |
-| 8 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs:2287-2358` | 修改 | **#2/#3**: AdvanceAccountCycle 的 Phase 任务循环由 foreach + `IndexOf` 改为 **for 循环** (`int index = i`),消除重复项/顺序变更时的索引错误;同时保持原有 Phase 过滤/StartUp 跳过/`SetTaskIds` 逻辑不变 |
-| 9 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs:2256` | 修改 | **#4**: AdvanceAccountCycle 初始日志追加 `idx={CurrentStepIndex}/{CurrentStepCount}` 显示步骤位置 |
-| 10 | `AGENTS.md` | 修改 | 新增跨多个 feat 的 fix 分支命名约束:合并目标选依赖链最下游的 feat,PR 说明列出所有涉及 feat |
-| 11 | `LOG.md` | 修改 | 本节 |
+| 1 | `src/MaaWpfGui/ViewModels/UserControl/TaskQueue/UserDataUpdateSettingsUserControlModel.cs:91-97` | 淇敼 | **#1**: cycle 涓?(`GetAccountSwitchEnabled()`) 璺宠繃 `IsTriggerDue` 妫€鏌?淇濊瘉姣忎釜璐﹀彿鐨?OperBox/Depot 瀛愪换鍔￠兘琚拷鍔?|
+| 2 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs:2155-2192` | 淇敼 | **#6**: `SetStopped` 灏?cycling 妫€鏌ョЩ鍒?idle 妫€鏌ヤ箣鍓?褰?`IsCycling=true && Idle=true`锛圠inkStartWithTasks 鏃╅€€璺緞锛夋椂娓呯悊 cycling 鐘舵€?璁╂甯稿仠姝㈡帴绠?闃叉杞崲姘镐箙鍗′綇 |
+| 3 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs:2232-2234` | 淇敼 | **#5**: `AdvanceAccountCycle` 鍏ュ彛鍔?`_logger.Information` 鏃ュ織璁板綍 stepIdx/prev/next 淇℃伅 |
+| 4 | `src/MaaWpfGui/ViewModels/UserControl/TaskQueue/StartUpSettingsUserControlModel.cs:326` | 淇敼 | **#5**: 鏂板 `CurrentStepIndex` 鍏紑灞炴€ф敮鎸佹棩蹇?|
+| 5 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs:2360-2362` | 淇敼 | **#5**: AdvanceAccountCycle 寰幆鍚庤拷鍔?`_logger.Information` 璁板綍 phase/switch/count/ret |
+| 6 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs:2337-2339` | 淇敼 | **#5**: AdvanceAccountCycle 涓?Append task 鏃惰褰?`[CycleAdv] Append task #Idx` 鏃ュ織 |
+| 7 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs:1983-1985` | 淇敼 | **#5**: LinkStartWithTasks 涓?Append task 鏃惰褰?`[LinkStart] Append task #Idx` 鏃ュ織 |
+| 8 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs:2287-2358` | 淇敼 | **#2/#3**: AdvanceAccountCycle 鐨?Phase 浠诲姟寰幆鐢?foreach + `IndexOf` 鏀逛负 **for 寰幆** (`int index = i`),娑堥櫎閲嶅椤?椤哄簭鍙樻洿鏃剁殑绱㈠紩閿欒;鍚屾椂淇濇寔鍘熸湁 Phase 杩囨护/StartUp 璺宠繃/`SetTaskIds` 閫昏緫涓嶅彉 |
+| 9 | `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs:2256` | 淇敼 | **#4**: AdvanceAccountCycle 鍒濆鏃ュ織杩藉姞 `idx={CurrentStepIndex}/{CurrentStepCount}` 鏄剧ず姝ラ浣嶇疆 |
+| 10 | `AGENTS.md` | 淇敼 | 鏂板璺ㄥ涓?feat 鐨?fix 鍒嗘敮鍛藉悕绾︽潫:鍚堝苟鐩爣閫変緷璧栭摼鏈€涓嬫父鐨?feat,PR 璇存槑鍒楀嚭鎵€鏈夋秹鍙?feat |
+| 11 | `LOG.md` | 淇敼 | 鏈妭 |
 
-**编译结果**: `dotnet build -c Release` 0 error, 0 warning
+**缂栬瘧缁撴灉**: `dotnet build -c Release` 0 error, 0 warning
 
-**兼容性核查**:
-- #1 仅在 cycle 运行时跳过 `IsTriggerDue`,非 cycle 路径行为不变
-- #6 仅在 `IsCycling=true` 时按新顺序命中,非 cycle 路径完全等价
-- #2/#3 for 循环与 foreach 行为在无重复项时完全相同;原 foreach + IndexOf 在有重复项时会返回首个匹配索引导致错误 UI 显示,for 循环修复此问题
-- AGENTS.md 仅文档改动,无代码影响
-
+**鍏煎鎬ф牳鏌?*:
+- #1 浠呭湪 cycle 杩愯鏃惰烦杩?`IsTriggerDue`,闈?cycle 璺緞琛屼负涓嶅彉
+- #6 浠呭湪 `IsCycling=true` 鏃舵寜鏂伴『搴忓懡涓?闈?cycle 璺緞瀹屽叏绛変环
+- #2/#3 for 寰幆涓?foreach 琛屼负鍦ㄦ棤閲嶅椤规椂瀹屽叏鐩稿悓;鍘?foreach + IndexOf 鍦ㄦ湁閲嶅椤规椂浼氳繑鍥為涓尮閰嶇储寮曞鑷撮敊璇?UI 鏄剧ず,for 寰幆淇姝ら棶棰?- AGENTS.md 浠呮枃妗ｆ敼鍔?鏃犱唬鐮佸奖鍝?
 ## 2026-07-16
 
-### 已完结功能分支本地删除
-
-将已合入 `branch` 的功能分支从本地删除，远端保留。
-
-| # | 分支 | 操作 | 说明 |
+### 宸插畬缁撳姛鑳藉垎鏀湰鍦板垹闄?
+灏嗗凡鍚堝叆 `branch` 鐨勫姛鑳藉垎鏀粠鏈湴鍒犻櫎锛岃繙绔繚鐣欍€?
+| # | 鍒嗘敮 | 鎿嶄綔 | 璇存槑 |
 |---|------|------|------|
-| 1 | `feat/account_rotation` | `git branch -d` | 已合入 branch，本地删除 |
-| 2 | `feat/defer-rogue` | `git branch -d` | 已合入 branch，本地删除 |
-| 3 | `AGENTS.md` | 修改 | 追加「分支生命周期记录」章节 |
-| 4 | `LOG.md` | 修改 | 本节 |
+| 1 | `feat/account_rotation` | `git branch -d` | 宸插悎鍏?branch锛屾湰鍦板垹闄?|
+| 2 | `feat/defer-rogue` | `git branch -d` | 宸插悎鍏?branch锛屾湰鍦板垹闄?|
+| 3 | `AGENTS.md` | 淇敼 | 杩藉姞銆屽垎鏀敓鍛藉懆鏈熻褰曘€嶇珷鑺?|
+| 4 | `LOG.md` | 淇敼 | 鏈妭 |
 
-### AGENTS.md 全量重写
+### AGENTS.md 鍏ㄩ噺閲嶅啓
 
-工作区中 `AGENTS.md` 长期处于 modified 状态（仅 24 行，只保留分支生命周期记录），缺失命名约定 / 模板 / 工作流 / 构建 / 代码风格 / 进行中分支速查等关键章节。按用户请求**全量重写**为 9 章节 ~318 行结构：项目概述 / 仓库拓扑 / 工作流与文档规范 / feat·fix 工作笔记模板 / 构建·部署·发布 / 代码风格与质量 / 进行中分支速查 / 分支生命周期记录 / 关键参考链接。模板章节恢复自 HEAD 上一个版本（`2b6517fa7a`）的内容并扩充「实施后追加」段落。
-
-| # | 文件 | 操作 | 说明 |
+宸ヤ綔鍖轰腑 `AGENTS.md` 闀挎湡澶勪簬 modified 鐘舵€侊紙浠?24 琛岋紝鍙繚鐣欏垎鏀敓鍛藉懆鏈熻褰曪級锛岀己澶卞懡鍚嶇害瀹?/ 妯℃澘 / 宸ヤ綔娴?/ 鏋勫缓 / 浠ｇ爜椋庢牸 / 杩涜涓垎鏀€熸煡绛夊叧閿珷鑺傘€傛寜鐢ㄦ埛璇锋眰**鍏ㄩ噺閲嶅啓**涓?9 绔犺妭 ~318 琛岀粨鏋勶細椤圭洰姒傝堪 / 浠撳簱鎷撴墤 / 宸ヤ綔娴佷笌鏂囨。瑙勮寖 / feat路fix 宸ヤ綔绗旇妯℃澘 / 鏋勫缓路閮ㄧ讲路鍙戝竷 / 浠ｇ爜椋庢牸涓庤川閲?/ 杩涜涓垎鏀€熸煡 / 鍒嗘敮鐢熷懡鍛ㄦ湡璁板綍 / 鍏抽敭鍙傝€冮摼鎺ャ€傛ā鏉跨珷鑺傛仮澶嶈嚜 HEAD 涓婁竴涓増鏈紙`2b6517fa7a`锛夌殑鍐呭骞舵墿鍏呫€屽疄鏂藉悗杩藉姞銆嶆钀姐€?
+| # | 鏂囦欢 | 鎿嶄綔 | 璇存槑 |
 |---|------|------|------|
-| 1 | `AGENTS.md.local.bak` | 新建 → 删除 | 备份旧 24 行工作区版本；新版本写入并自检后删除（避免污染 git 工作区，新内容已写入正式文件） |
-| 2 | `AGENTS.md:1-389` | 全量重写 | 9 章节结构；§4 模板含「实施记录 / 踩坑 / 待手动验证」「Code Review 议题 / 兼容性核查 / 编译部署结果」扩展段 |
-| 3 | `LOG.md` | 修改 | 本节 |
+| 1 | `AGENTS.md.local.bak` | 鏂板缓 鈫?鍒犻櫎 | 澶囦唤鏃?24 琛屽伐浣滃尯鐗堟湰锛涙柊鐗堟湰鍐欏叆骞惰嚜妫€鍚庡垹闄わ紙閬垮厤姹℃煋 git 宸ヤ綔鍖猴紝鏂板唴瀹瑰凡鍐欏叆姝ｅ紡鏂囦欢锛?|
+| 2 | `AGENTS.md:1-389` | 鍏ㄩ噺閲嶅啓 | 9 绔犺妭缁撴瀯锛浡? 妯℃澘鍚€屽疄鏂借褰?/ 韪╁潙 / 寰呮墜鍔ㄩ獙璇併€嶃€孋ode Review 璁 / 鍏煎鎬ф牳鏌?/ 缂栬瘧閮ㄧ讲缁撴灉銆嶆墿灞曟 |
+| 3 | `LOG.md` | 淇敼 | 鏈妭 |
 
-**章节连续性自检**：
+**绔犺妭杩炵画鎬ц嚜妫€**锛?
+- 搂1 椤圭洰姒傝堪锛埪?.1 瀹氫綅 / 搂1.2 鎶€鏈爤 / 搂1.3 骞冲彴涓庤鍙瘉锛?- 搂2 浠撳簱鎷撴墤涓庡垎鏀ā鍨嬶紙搂2.1 杩滅▼ / 搂2.2 鏈湴鍒嗘敮 / 搂2.3 宸插畬缁?feat 鍒嗘敮澶勭悊绾﹀畾锛?- 搂3 宸ヤ綔娴佷笌鏂囨。瑙勮寖锛埪?.1 宸ヤ綔绗旇鍛藉悕涓庝繚鐣?/ 搂3.2 璺熻釜鏂囨。绛栫暐 / 搂3.3 鍚姩鏂?feat 鏍囧噯娴佺▼ / 搂3.4 fix 鍒嗘敮鍛藉悕涓庡悎骞剁洰鏍?/ 搂3.5 鏈湴鍖栵級
+- 搂4 feat / fix 宸ヤ綔绗旇妯℃澘锛埪?.1 feat 妯℃澘 / 搂4.2 fix 妯℃澘锛?- 搂5 鏋勫缓銆侀儴缃蹭笌鍙戝竷锛埪?.1 C++ 绔?/ 搂5.2 WPF 绔?/ 搂5.3 鏈湴杩愯 / 搂5.4 鎵撳寘鍙戝竷 / 搂5.5 瀛愭ā鍧?/ 搂5.6 杈呭姪宸ュ叿鑴氭湰锛?- 搂6 浠ｇ爜椋庢牸涓庤川閲忥紙搂6.1 C++ / 搂6.2 C# / 搂6.3 鎻愪氦鍓嶆鏌ワ級
+- 搂7 杩涜涓垎鏀€熸煡锛坒eat/expedite-threshold 涓€琛岄€熸煡琛級
+- 搂8 鍒嗘敮鐢熷懡鍛ㄦ湡璁板綍锛埪?.1 feat/account_rotation / 搂8.2 feat/defer-rogue / 搂8.3 feat/expedite-threshold 鍗犱綅锛?- 搂9 鍏抽敭鍙傝€冮摼鎺ワ紙搂9.1 涓婃父鏂囨。 / 搂9.2 鏈粨闆嗘垚绀轰緥 / 搂9.3 涓婃父鍏宠仈椤圭洰锛?
+**鍏煎鎬ф牳鏌?*锛?
+- 涓?HEAD 涓婁竴涓?AGENTS.md 鐗堟湰锛坄2b6517fa7a`锛夌浉姣旓細搂4 妯℃澘绔犺妭鎵╁睍 8 涓€屽疄鏂藉悗杩藉姞銆嶆钀斤紙鍘熺増浠?5 涓級锛屼究浜庤褰?commit / 鍏煎鎬ф牳鏌?/ 缂栬瘧鏃ュ織
+- 搂7銆岃繘琛屼腑鍒嗘敮閫熸煡銆嶄负鏂板绔犺妭锛屼笌 搂8銆屽垎鏀敓鍛藉懆鏈熻褰曘€嶅舰鎴愩€岃繘琛屼腑 / 宸插畬缁撱€嶅鐓?- 搂5 / 搂6 / 搂9 鍏ㄩ儴涓烘湰鐗堟湰鏂板鍐呭
+- 鏃㈡湁 搂8 涓や釜宸插畬缁?feat 鏉＄洰锛坒eat/account_rotation / feat/defer-rogue锛夊師鏍蜂繚鐣?
+**鏈彁浜ゅ師鍥?*锛氱敤鎴锋湭鏄庣‘瑕佹眰 commit锛屾寜 AGENTS.md銆屾彁浜ょ瓥鐣ャ€嶇害瀹氫繚鎸佸伐浣滃尯鐘舵€併€?
+### AGENTS.md 鍘婚櫎 feat / fix 宸ヤ綔绗旇锛堢浜屾閲嶅啓锛?
+鎸夌敤鎴疯繘涓€姝ユ寚浠わ細**涓嶈 feat 鎴?fix 宸ヤ綔绗旇**锛屼粎鍦?AGENTS.md 涓褰曞垎鏀瓨鍦ㄦ€у嵆鍙€?灏嗕笂涓€鐗?9 绔犺妭缁撴瀯缂╁噺涓?8 绔犺妭锛岀Щ闄や互涓嬪唴瀹癸細
 
-- §1 项目概述（§1.1 定位 / §1.2 技术栈 / §1.3 平台与许可证）
-- §2 仓库拓扑与分支模型（§2.1 远程 / §2.2 本地分支 / §2.3 已完结 feat 分支处理约定）
-- §3 工作流与文档规范（§3.1 工作笔记命名与保留 / §3.2 跟踪文档策略 / §3.3 启动新 feat 标准流程 / §3.4 fix 分支命名与合并目标 / §3.5 本地化）
-- §4 feat / fix 工作笔记模板（§4.1 feat 模板 / §4.2 fix 模板）
-- §5 构建、部署与发布（§5.1 C++ 端 / §5.2 WPF 端 / §5.3 本地运行 / §5.4 打包发布 / §5.5 子模块 / §5.6 辅助工具脚本）
-- §6 代码风格与质量（§6.1 C++ / §6.2 C# / §6.3 提交前检查）
-- §7 进行中分支速查（feat/expedite-threshold 一行速查表）
-- §8 分支生命周期记录（§8.1 feat/account_rotation / §8.2 feat/defer-rogue / §8.3 feat/expedite-threshold 占位）
-- §9 关键参考链接（§9.1 上游文档 / §9.2 本仓集成示例 / §9.3 上游关联项目）
-
-**兼容性核查**：
-
-- 与 HEAD 上一个 AGENTS.md 版本（`2b6517fa7a`）相比：§4 模板章节扩展 8 个「实施后追加」段落（原版仅 5 个），便于记录 commit / 兼容性核查 / 编译日志
-- §7「进行中分支速查」为新增章节，与 §8「分支生命周期记录」形成「进行中 / 已完结」对照
-- §5 / §6 / §9 全部为本版本新增内容
-- 既有 §8 两个已完结 feat 条目（feat/account_rotation / feat/defer-rogue）原样保留
-
-**未提交原因**：用户未明确要求 commit，按 AGENTS.md「提交策略」约定保持工作区状态。
-
-### AGENTS.md 去除 feat / fix 工作笔记（第二次重写）
-
-按用户进一步指令：**不要 feat 或 fix 工作笔记**，仅在 AGENTS.md 中记录分支存在性即可。
-将上一版 9 章节结构缩减为 8 章节，移除以下内容：
-
-- §3.1「feat / fix 工作笔记」（命名约定 / 各分支保留规则 / 提交策略整段删除）
-- §4「feat / fix 工作笔记模板」（feat 模板 + fix 模板两个代码块整段删除）
-- §3.2「跟踪文档策略」中 `feat_<name>.md` / `fix_<name>[_<n>].md` 行（在「是否跟踪」表中）
-- §3.2「启动新 feat 标准流程」原步骤 3/4（创建与维护工作笔记）删除，步骤编号压缩
-- §7「进行中分支速查」表头删除「工作文档」列（无工作笔记后此列无意义）
-
-新增：开头一段摘要明确「本仓库不使用 feat / fix 工作笔记」，§3.1 加 blockquote 强调，所有变更通过 commit message 与 LOG.md 跟踪。
-
-| # | 文件 | 操作 | 说明 |
+- 搂3.1銆宖eat / fix 宸ヤ綔绗旇銆嶏紙鍛藉悕绾﹀畾 / 鍚勫垎鏀繚鐣欒鍒?/ 鎻愪氦绛栫暐鏁存鍒犻櫎锛?- 搂4銆宖eat / fix 宸ヤ綔绗旇妯℃澘銆嶏紙feat 妯℃澘 + fix 妯℃澘涓や釜浠ｇ爜鍧楁暣娈靛垹闄わ級
+- 搂3.2銆岃窡韪枃妗ｇ瓥鐣ャ€嶄腑 `feat_<name>.md` / `fix_<name>[_<n>].md` 琛岋紙鍦ㄣ€屾槸鍚﹁窡韪€嶈〃涓級
+- 搂3.2銆屽惎鍔ㄦ柊 feat 鏍囧噯娴佺▼銆嶅師姝ラ 3/4锛堝垱寤轰笌缁存姢宸ヤ綔绗旇锛夊垹闄わ紝姝ラ缂栧彿鍘嬬缉
+- 搂7銆岃繘琛屼腑鍒嗘敮閫熸煡銆嶈〃澶村垹闄ゃ€屽伐浣滄枃妗ｃ€嶅垪锛堟棤宸ヤ綔绗旇鍚庢鍒楁棤鎰忎箟锛?
+鏂板锛氬紑澶翠竴娈垫憳瑕佹槑纭€屾湰浠撳簱涓嶄娇鐢?feat / fix 宸ヤ綔绗旇銆嶏紝搂3.1 鍔?blockquote 寮鸿皟锛屾墍鏈夊彉鏇撮€氳繃 commit message 涓?LOG.md 璺熻釜銆?
+| # | 鏂囦欢 | 鎿嶄綔 | 璇存槑 |
 |---|------|------|------|
-| 1 | `AGENTS.md:1-269` | 二次重写 | 9 章节 → 8 章节；§3 由 5 小节压缩为 4 小节；§4-§9 重新编号为 §4-§8 |
-| 2 | `LOG.md` | 修改 | 本节追加「AGENTS.md 去除 feat / fix 工作笔记」记录；同时修正前节「AGENTS.md 全量重写」中的描述 |
+| 1 | `AGENTS.md:1-269` | 浜屾閲嶅啓 | 9 绔犺妭 鈫?8 绔犺妭锛浡? 鐢?5 灏忚妭鍘嬬缉涓?4 灏忚妭锛浡?-搂9 閲嶆柊缂栧彿涓?搂4-搂8 |
+| 2 | `LOG.md` | 淇敼 | 鏈妭杩藉姞銆孉GENTS.md 鍘婚櫎 feat / fix 宸ヤ綔绗旇銆嶈褰曪紱鍚屾椂淇鍓嶈妭銆孉GENTS.md 鍏ㄩ噺閲嶅啓銆嶄腑鐨勬弿杩?|
 
-**新结构自检**：
+**鏂扮粨鏋勮嚜妫€**锛?
+- 搂1 椤圭洰姒傝堪锛埪?.1 瀹氫綅 / 搂1.2 鎶€鏈爤 / 搂1.3 骞冲彴涓庤鍙瘉锛?- 搂2 浠撳簱鎷撴墤涓庡垎鏀ā鍨嬶紙搂2.1 杩滅▼ / 搂2.2 鏈湴鍒嗘敮 / 搂2.3 宸插畬缁?feat 鍒嗘敮澶勭悊绾﹀畾锛?- 搂3 宸ヤ綔娴佷笌鏂囨。瑙勮寖锛埪?.1 璺熻釜鏂囨。绛栫暐 / 搂3.2 鍚姩鏂?feat 鏍囧噯娴佺▼ / 搂3.3 fix 鍒嗘敮鍛藉悕涓庡悎骞剁洰鏍?/ 搂3.4 鏈湴鍖栵級
+- 搂4 鏋勫缓銆侀儴缃蹭笌鍙戝竷锛埪?.1 C++ 绔?/ 搂4.2 WPF 绔?/ 搂4.3 鏈湴杩愯 / 搂4.4 鎵撳寘鍙戝竷 / 搂4.5 瀛愭ā鍧?/ 搂4.6 杈呭姪宸ュ叿鑴氭湰锛?- 搂5 浠ｇ爜椋庢牸涓庤川閲忥紙搂5.1 C++ / 搂5.2 C# / 搂5.3 鎻愪氦鍓嶆鏌ワ級
+- 搂6 杩涜涓垎鏀€熸煡锛坒eat/expedite-threshold 涓€琛岄€熸煡琛紝宸插幓闄ゅ伐浣滄枃妗ｅ垪锛?- 搂7 鍒嗘敮鐢熷懡鍛ㄦ湡璁板綍锛埪?.1 feat/account_rotation / 搂7.2 feat/defer-rogue / 搂7.3 feat/expedite-threshold 鍗犱綅锛?- 搂8 鍏抽敭鍙傝€冮摼鎺ワ紙搂8.1 涓婃父鏂囨。 / 搂8.2 鏈粨闆嗘垚绀轰緥 / 搂8.3 涓婃父鍏宠仈椤圭洰锛?
+**鍏煎鎬ф牳鏌?*锛?
+- 鍒犻櫎銆宖eat_<name>.md / fix_<name>[_<n>].md 鍛藉悕绾﹀畾銆嶃€屾ā鏉跨珷鑺傘€嶆剰鍛崇潃鍚庣画鑻ユ湁浜烘兂寤哄伐浣滅瑪璁板皢鏃犺剼鎵嬫灦鍙敤鈥斺€旀寜鐢ㄦ埛瑕佹眰鐩存帴鐮嶆帀锛屼笉鍐嶄繚鐣?- 鏃?commit `2b6517fa7a` / `5fcff1e27f` 寮曞叆鐨勬ā鏉垮交搴曚粠鏂囨。绉婚櫎锛屼絾 git 鍘嗗彶涓彲鍥炴函
+- `.gitignore` 涓繚鐣欑殑 `feat*.md` / `fix*.md` 瑙勫垯鍙樹负銆屾浘浣跨敤杩囥€嶇殑姝讳唬鐮侊紱鎸夌敤鎴枫€屼笉瑕?feat 鎴?fix 宸ヤ綔绗旇銆嶇殑鑼冨洿澶栵紝鏈Е鍔?`.gitignore`
+- 搂7銆屽垎鏀敓鍛藉懆鏈熻褰曘€嶅師鏍蜂繚鐣欎笁涓潯鐩紙account_rotation / defer-rogue / expedite-threshold 鍗犱綅锛?- 搂6銆岃繘琛屼腑鍒嗘敮閫熸煡銆嶄繚鐣欎竴琛岃〃锛屽幓鎺夈€屽伐浣滄枃妗ｃ€嶅垪
 
-- §1 项目概述（§1.1 定位 / §1.2 技术栈 / §1.3 平台与许可证）
-- §2 仓库拓扑与分支模型（§2.1 远程 / §2.2 本地分支 / §2.3 已完结 feat 分支处理约定）
-- §3 工作流与文档规范（§3.1 跟踪文档策略 / §3.2 启动新 feat 标准流程 / §3.3 fix 分支命名与合并目标 / §3.4 本地化）
-- §4 构建、部署与发布（§4.1 C++ 端 / §4.2 WPF 端 / §4.3 本地运行 / §4.4 打包发布 / §4.5 子模块 / §4.6 辅助工具脚本）
-- §5 代码风格与质量（§5.1 C++ / §5.2 C# / §5.3 提交前检查）
-- §6 进行中分支速查（feat/expedite-threshold 一行速查表，已去除工作文档列）
-- §7 分支生命周期记录（§7.1 feat/account_rotation / §7.2 feat/defer-rogue / §7.3 feat/expedite-threshold 占位）
-- §8 关键参考链接（§8.1 上游文档 / §8.2 本仓集成示例 / §8.3 上游关联项目）
+### AGENTS.md 椋庢牸瀵归綈鍘熼」鐩紙绗笁娆￠噸鍐欙級
 
-**兼容性核查**：
-
-- 删除「feat_<name>.md / fix_<name>[_<n>].md 命名约定」「模板章节」意味着后续若有人想建工作笔记将无脚手架可用——按用户要求直接砍掉，不再保留
-- 旧 commit `2b6517fa7a` / `5fcff1e27f` 引入的模板彻底从文档移除，但 git 历史中可回溯
-- `.gitignore` 中保留的 `feat*.md` / `fix*.md` 规则变为「曾使用过」的死代码；按用户「不要 feat 或 fix 工作笔记」的范围外，未触动 `.gitignore`
-- §7「分支生命周期记录」原样保留三个条目（account_rotation / defer-rogue / expedite-threshold 占位）
-- §6「进行中分支速查」保留一行表，去掉「工作文档」列
-
-### AGENTS.md 风格对齐原项目（第三次重写）
-
-按用户强调：「请强调原项目风格和书写习惯，这点很重要」。
-对齐目标为 `LOG.md`（仓库作者 levellmy 既有的条目风格）与上游 `docs/zh-cn/develop/*.md`（vuepress 站点语料），要点：
-
-| 维度 | 调整前 | 调整后 |
+鎸夌敤鎴峰己璋冿細銆岃寮鸿皟鍘熼」鐩鏍煎拰涔﹀啓涔犳儻锛岃繖鐐瑰緢閲嶈銆嶃€?瀵归綈鐩爣涓?`LOG.md`锛堜粨搴撲綔鑰?levellmy 鏃㈡湁鐨勬潯鐩鏍硷級涓庝笂娓?`docs/zh-cn/develop/*.md`锛坴uepress 绔欑偣璇枡锛夛紝瑕佺偣锛?
+| 缁村害 | 璋冩暣鍓?| 璋冩暣鍚?|
 |------|--------|--------|
-| 段落 vs 表格 | 大量 prose 段落描述 | 优先 markdown 表格，行内 `**key**：value` 仅作脚注 |
-| 章节深度 | 3 级（§1.1.1） | 2 级（§1.1），减少嵌套 |
-| 文件引用 | 完整路径散落段中 | `path:line` 集中放在表格「文件 / 操作」列 |
-| emoji / vuepress 容器 | 偶有 `> [!note]` 试探 | 全部移除，无 emoji、无 `::: tip` |
-| 关键术语 | 中英混杂，无明确保留规则 | 明确「branch / feat / fix / FF / PR / 子模块 / cmake / dotnet」等保留英文 |
-| 章节大段 | 整段「启动新 feat 流程」用 prose 串接 | 改为步骤表（`\| # \| 步骤 \| 产物 \|`），与 LOG.md 表格列一致 |
-| 章节小结 | 末尾散文总结 | 删除，直接以表格收束 |
+| 娈佃惤 vs 琛ㄦ牸 | 澶ч噺 prose 娈佃惤鎻忚堪 | 浼樺厛 markdown 琛ㄦ牸锛岃鍐?`**key**锛歷alue` 浠呬綔鑴氭敞 |
+| 绔犺妭娣卞害 | 3 绾э紙搂1.1.1锛?| 2 绾э紙搂1.1锛夛紝鍑忓皯宓屽 |
+| 鏂囦欢寮曠敤 | 瀹屾暣璺緞鏁ｈ惤娈典腑 | `path:line` 闆嗕腑鏀惧湪琛ㄦ牸銆屾枃浠?/ 鎿嶄綔銆嶅垪 |
+| emoji / vuepress 瀹瑰櫒 | 鍋舵湁 `> [!note]` 璇曟帰 | 鍏ㄩ儴绉婚櫎锛屾棤 emoji銆佹棤 `::: tip` |
+| 鍏抽敭鏈 | 涓嫳娣锋潅锛屾棤鏄庣‘淇濈暀瑙勫垯 | 鏄庣‘銆宐ranch / feat / fix / FF / PR / 瀛愭ā鍧?/ cmake / dotnet銆嶇瓑淇濈暀鑻辨枃 |
+| 绔犺妭澶ф | 鏁存銆屽惎鍔ㄦ柊 feat 娴佺▼銆嶇敤 prose 涓叉帴 | 鏀逛负姝ラ琛紙`\| # \| 姝ラ \| 浜х墿 \|`锛夛紝涓?LOG.md 琛ㄦ牸鍒椾竴鑷?|
+| 绔犺妭灏忕粨 | 鏈熬鏁ｆ枃鎬荤粨 | 鍒犻櫎锛岀洿鎺ヤ互琛ㄦ牸鏀舵潫 |
 
-| # | 文件 | 操作 | 说明 |
+| # | 鏂囦欢 | 鎿嶄綔 | 璇存槑 |
 |---|------|------|------|
-| 1 | `AGENTS.md:1-242` | 三次重写 | 8 章节 + 20 二级小节，18 张表格；行数 212 → 224（+12 行，但 prose 行数从 ~70 降至 ~30，表格行数从 ~70 增至 ~140）；表格密度（`\|` 起始行）从 71 增至 128 |
-| 2 | `LOG.md` | 修改 | 本节追加「AGENTS.md 风格对齐原项目」记录 |
+| 1 | `AGENTS.md:1-242` | 涓夋閲嶅啓 | 8 绔犺妭 + 20 浜岀骇灏忚妭锛?8 寮犺〃鏍硷紱琛屾暟 212 鈫?224锛?12 琛岋紝浣?prose 琛屾暟浠?~70 闄嶈嚦 ~30锛岃〃鏍艰鏁颁粠 ~70 澧炶嚦 ~140锛夛紱琛ㄦ牸瀵嗗害锛坄\|` 璧峰琛岋級浠?71 澧炶嚦 128 |
+| 2 | `LOG.md` | 淇敼 | 鏈妭杩藉姞銆孉GENTS.md 椋庢牸瀵归綈鍘熼」鐩€嶈褰?|
 
-**章节连续性自检**：
-
-- §1 项目概述（§1.1 一句话 / §1.2 技术栈 / §1.3 平台与许可）
-- §2 仓库拓扑与分支模型（§2.1 远程 / §2.2 本地分支 / §2.3 已完结 feat 处理）
-- §3 工作流与文档规范（§3.1 跟踪文档策略 / §3.2 启动新 feat 标准流程 / §3.3 fix 分支命名与合并目标 / §3.4 本地化）
-- §4 构建、部署与发布（§4.1 构建命令 / §4.2 子模块 / §4.3 打包发布 / §4.4 辅助脚本）
-- §5 代码风格与质量
-- §6 进行中分支速查
-- §7 分支生命周期记录（§7.1 account_rotation / §7.2 defer-rogue / §7.3 expedite-threshold 占位）
-- §8 关键参考链接（§8.1 上游文档 / §8.2 本仓集成示例 / §8.3 上游关联项目）
-
-**兼容性核查**：
-
-- 章节编号与上一版完全一致（8 章节，仅 §1.1 / §1.3 标题文案从「定位 / 平台与许可证」微调为「一句话 / 平台与许可」），无引用失效
-- 二级小节数从 21 减至 20（合并 §5 三个 prose 段落为单一表格）
-- 所有「文件路径 + 行号」描述已迁移至表格列，prose 中不再出现
-- §3.2「启动新 feat」由 7 步 prose 改为 7 行步骤表，与 LOG.md 表格列一致
-- §4.1「构建命令」由 prose bullet 改为单表，与 LOG.md 操作列一致
-
-**未提交原因**：用户未明确要求 commit。
-
+**绔犺妭杩炵画鎬ц嚜妫€**锛?
+- 搂1 椤圭洰姒傝堪锛埪?.1 涓€鍙ヨ瘽 / 搂1.2 鎶€鏈爤 / 搂1.3 骞冲彴涓庤鍙級
+- 搂2 浠撳簱鎷撴墤涓庡垎鏀ā鍨嬶紙搂2.1 杩滅▼ / 搂2.2 鏈湴鍒嗘敮 / 搂2.3 宸插畬缁?feat 澶勭悊锛?- 搂3 宸ヤ綔娴佷笌鏂囨。瑙勮寖锛埪?.1 璺熻釜鏂囨。绛栫暐 / 搂3.2 鍚姩鏂?feat 鏍囧噯娴佺▼ / 搂3.3 fix 鍒嗘敮鍛藉悕涓庡悎骞剁洰鏍?/ 搂3.4 鏈湴鍖栵級
+- 搂4 鏋勫缓銆侀儴缃蹭笌鍙戝竷锛埪?.1 鏋勫缓鍛戒护 / 搂4.2 瀛愭ā鍧?/ 搂4.3 鎵撳寘鍙戝竷 / 搂4.4 杈呭姪鑴氭湰锛?- 搂5 浠ｇ爜椋庢牸涓庤川閲?- 搂6 杩涜涓垎鏀€熸煡
+- 搂7 鍒嗘敮鐢熷懡鍛ㄦ湡璁板綍锛埪?.1 account_rotation / 搂7.2 defer-rogue / 搂7.3 expedite-threshold 鍗犱綅锛?- 搂8 鍏抽敭鍙傝€冮摼鎺ワ紙搂8.1 涓婃父鏂囨。 / 搂8.2 鏈粨闆嗘垚绀轰緥 / 搂8.3 涓婃父鍏宠仈椤圭洰锛?
+**鍏煎鎬ф牳鏌?*锛?
+- 绔犺妭缂栧彿涓庝笂涓€鐗堝畬鍏ㄤ竴鑷达紙8 绔犺妭锛屼粎 搂1.1 / 搂1.3 鏍囬鏂囨浠庛€屽畾浣?/ 骞冲彴涓庤鍙瘉銆嶅井璋冧负銆屼竴鍙ヨ瘽 / 骞冲彴涓庤鍙€嶏級锛屾棤寮曠敤澶辨晥
+- 浜岀骇灏忚妭鏁颁粠 21 鍑忚嚦 20锛堝悎骞?搂5 涓変釜 prose 娈佃惤涓哄崟涓€琛ㄦ牸锛?- 鎵€鏈夈€屾枃浠惰矾寰?+ 琛屽彿銆嶆弿杩板凡杩佺Щ鑷宠〃鏍煎垪锛宲rose 涓笉鍐嶅嚭鐜?- 搂3.2銆屽惎鍔ㄦ柊 feat銆嶇敱 7 姝?prose 鏀逛负 7 琛屾楠よ〃锛屼笌 LOG.md 琛ㄦ牸鍒椾竴鑷?- 搂4.1銆屾瀯寤哄懡浠ゃ€嶇敱 prose bullet 鏀逛负鍗曡〃锛屼笌 LOG.md 鎿嶄綔鍒椾竴鑷?
+**鏈彁浜ゅ師鍥?*锛氱敤鎴锋湭鏄庣‘瑕佹眰 commit銆?
 ## 2026-07-23
 
-### 删除无用分支
+### 鍒犻櫎鏃犵敤鍒嗘敮
 
-| # | 操作 | 说明 |
+| # | 鎿嶄綔 | 璇存槑 |
 |---|------|------|
-| 1 | 删除分支 `feat/expedite-threshold` | 本地已删除，远端保留（HEAD `5fcff1e27f`，未合入）|
-| 2 | 删除分支 `feat/idea` | 本地已删除，远端保留（HEAD `dc2212d54b`，无独立 commit）|
-| 3 | 删除分支 `fix/account_rotation/5` | 本地已删除，远端保留（HEAD `83a5dc36c1`）|
-| 4 | 更新 AGENTS.md §6 / §7 | `feat/expedite-threshold` 移入生命周期记录；新增 `feat/idea` 记录；`fix/account_rotation/5` 记入 §7.1 子修复分支 |
+| 1 | 鍒犻櫎鍒嗘敮 `feat/expedite-threshold` | 鏈湴宸插垹闄わ紝杩滅淇濈暀锛圚EAD `5fcff1e27f`锛屾湭鍚堝叆锛墊
+| 2 | 鍒犻櫎鍒嗘敮 `feat/idea` | 鏈湴宸插垹闄わ紝杩滅淇濈暀锛圚EAD `dc2212d54b`锛屾棤鐙珛 commit锛墊
+| 3 | 鍒犻櫎鍒嗘敮 `fix/account_rotation/5` | 鏈湴宸插垹闄わ紝杩滅淇濈暀锛圚EAD `83a5dc36c1`锛墊
+| 4 | 鏇存柊 AGENTS.md 搂6 / 搂7 | `feat/expedite-threshold` 绉诲叆鐢熷懡鍛ㄦ湡璁板綍锛涙柊澧?`feat/idea` 璁板綍锛沗fix/account_rotation/5` 璁板叆 搂7.1 瀛愪慨澶嶅垎鏀?|
 
-### feat/expedite-threshold 启动
+### feat/expedite-threshold 鍚姩
 
-| # | 文件路径 | 操作 | 说明 |
+| # | 鏂囦欢璺緞 | 鎿嶄綔 | 璇存槑 |
 |---|----------|------|------|
-| 1 | `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.h` | 新增 setter `set_expedite_min_level` | 加急门槛接口 |
-| 2 | `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.h` | 新增成员 `m_expedite_min_level` / `m_last_confirmed_min_level` | 门槛值与最近确认星级 |
-| 3 | `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.cpp` | 新增 `set_expedite_min_level` 实现 | setter |
-| 4 | `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.cpp` | `_run()` 移除旧的 `try_use_expedited` 块 | 改由 `recruit_one()` 内逐槽判定 |
-| 5 | `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.cpp` | `recruit_calc_task()` 写入 `m_last_confirmed_min_level` | 加急决策依据 |
-| 6 | `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.cpp` | `recruit_one()` 加急分支 | 4★+ 时 `recruit_now()` 替代 `confirm()` |
-| 7 | `src/MaaCore/Task/Interface/RecruitTask.cpp` | 解析 `expedite_min_level` 参数 | 新参数透传 |
-| 8 | `src/MaaWpfGui/Configuration/Single/MaaTask/RecruitTask.cs` | +`ExpediteMinLevel` 属性 | 配置模型 |
-| 9 | `src/MaaWpfGui/Models/AsstTasks/AsstRecruitTask.cs` | +`ExpediteMinLevel` 属性 + 序列化 | DTO |
+| 1 | `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.h` | 鏂板 setter `set_expedite_min_level` | 鍔犳€ラ棬妲涙帴鍙?|
+| 2 | `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.h` | 鏂板鎴愬憳 `m_expedite_min_level` / `m_last_confirmed_min_level` | 闂ㄦ鍊间笌鏈€杩戠‘璁ゆ槦绾?|
+| 3 | `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.cpp` | 鏂板 `set_expedite_min_level` 瀹炵幇 | setter |
+| 4 | `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.cpp` | `_run()` 绉婚櫎鏃х殑 `try_use_expedited` 鍧?| 鏀圭敱 `recruit_one()` 鍐呴€愭Ы鍒ゅ畾 |
+| 5 | `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.cpp` | `recruit_calc_task()` 鍐欏叆 `m_last_confirmed_min_level` | 鍔犳€ュ喅绛栦緷鎹?|
+| 6 | `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.cpp` | `recruit_one()` 鍔犳€ュ垎鏀?| 4鈽? 鏃?`recruit_now()` 鏇夸唬 `confirm()` |
+| 7 | `src/MaaCore/Task/Interface/RecruitTask.cpp` | 瑙ｆ瀽 `expedite_min_level` 鍙傛暟 | 鏂板弬鏁伴€忎紶 |
+| 8 | `src/MaaWpfGui/Configuration/Single/MaaTask/RecruitTask.cs` | +`ExpediteMinLevel` 灞炴€?| 閰嶇疆妯″瀷 |
+| 9 | `src/MaaWpfGui/Models/AsstTasks/AsstRecruitTask.cs` | +`ExpediteMinLevel` 灞炴€?+ 搴忓垪鍖?| DTO |
 | 10 | `src/MaaWpfGui/ViewModels/UserControl/TaskQueue/RecruitSettingsUserControlModel.cs` | +`ExpediteMinLevelList` / `UseExpeditedMinLevel` / `UseExpeditedMinLevelVisible` | ViewModel |
-| 11 | `src/MaaWpfGui/Views/UserControl/TaskQueue/RecruitSettingsUserControl.xaml` | +门槛下拉框 | UI |
-| 12 | `src/MaaWpfGui/Res/Localizations/{zh-cn,en-us,ja-jp,ko-kr,zh-tw}.xaml` | +`ExpediteMinLevel*` 6 个 key | 五语本地化 |
+| 11 | `src/MaaWpfGui/Views/UserControl/TaskQueue/RecruitSettingsUserControl.xaml` | +闂ㄦ涓嬫媺妗?| UI |
+| 12 | `src/MaaWpfGui/Res/Localizations/{zh-cn,en-us,ja-jp,ko-kr,zh-tw}.xaml` | +`ExpediteMinLevel*` 6 涓?key | 浜旇鏈湴鍖?|
 
-### feat/expedite-threshold 合并入 branch
+### feat/expedite-threshold 鍚堝苟鍏?branch
 
-在 `feat/expedite-threshold` 上补齐未暂存的 UI/本地化适配细节后，FF 合并到 `branch`，本地删除 feat 分支。
-
-| # | 文件/对象 | 操作 | 说明 |
+鍦?`feat/expedite-threshold` 涓婅ˉ榻愭湭鏆傚瓨鐨?UI/鏈湴鍖栭€傞厤缁嗚妭鍚庯紝FF 鍚堝苟鍒?`branch`锛屾湰鍦板垹闄?feat 鍒嗘敮銆?
+| # | 鏂囦欢/瀵硅薄 | 鎿嶄綔 | 璇存槑 |
 |---|----------|------|------|
-| 1 | `branch` | FF 合并 | `feat/expedite-threshold` 3 个新 commit（`7df4e94e3f`（feat 初始）+ `9c02b9e41a`（暂存前置变更）+ `cbec3d1fb0`（完善五语本地化与 ViewModel 适配）），HEAD `dc2212d54b` → `cbec3d1fb0` |
-| 2 | `feat/expedite-threshold` | `git branch -d` | 已合入 branch，本地删除 |
-| 3 | `AGENTS.md` | 修改 | §6 清空（无进行中分支）；§7.3 更新为已合入状态；§7 开头补充 2026-07-23 删除日期 |
-| 4 | `LOG.md` | 修改 | 本节 |
+| 1 | `branch` | FF 鍚堝苟 | `feat/expedite-threshold` 3 涓柊 commit锛坄7df4e94e3f`锛坒eat 鍒濆锛? `9c02b9e41a`锛堟殏瀛樺墠缃彉鏇达級+ `cbec3d1fb0`锛堝畬鍠勪簲璇湰鍦板寲涓?ViewModel 閫傞厤锛夛級锛孒EAD `dc2212d54b` 鈫?`cbec3d1fb0` |
+| 2 | `feat/expedite-threshold` | `git branch -d` | 宸插悎鍏?branch锛屾湰鍦板垹闄?|
+| 3 | `AGENTS.md` | 淇敼 | 搂6 娓呯┖锛堟棤杩涜涓垎鏀級锛浡?.3 鏇存柊涓哄凡鍚堝叆鐘舵€侊紱搂7 寮€澶磋ˉ鍏?2026-07-23 鍒犻櫎鏃ユ湡 |
+| 4 | `LOG.md` | 淇敼 | 鏈妭 |
 
-### fix/expedite-threshold 启动
+### fix/expedite-threshold 鍚姩
 
-`feat/expedite-threshold`（`7df4e94e3f`）重构时遗失了 `3529ab0f05` 原版在 `recruit_one()` 入口与加急成功后两处 `m_last_confirmed_min_level = 0;` 重置，导致下一槽位读到上一槽位陈旧星级仍满足 `m_last_confirmed_min_level >= m_expedite_min_level` 而误加急。`fix/expedite-threshold` 从 `branch` 拉出，目标修复 `branch` 自身。
-
-| # | 文件/对象 | 操作 | 说明 |
+`feat/expedite-threshold`锛坄7df4e94e3f`锛夐噸鏋勬椂閬楀け浜?`3529ab0f05` 鍘熺増鍦?`recruit_one()` 鍏ュ彛涓庡姞鎬ユ垚鍔熷悗涓ゅ `m_last_confirmed_min_level = 0;` 閲嶇疆锛屽鑷翠笅涓€妲戒綅璇诲埌涓婁竴妲戒綅闄堟棫鏄熺骇浠嶆弧瓒?`m_last_confirmed_min_level >= m_expedite_min_level` 鑰岃鍔犳€ャ€俙fix/expedite-threshold` 浠?`branch` 鎷夊嚭锛岀洰鏍囦慨澶?`branch` 鑷韩銆?
+| # | 鏂囦欢/瀵硅薄 | 鎿嶄綔 | 璇存槑 |
 |---|----------|------|------|
-| 1 | `fix/expedite-threshold` | 新建分支 | 从 `branch` 拉出，HEAD 同 `9d8d021610` |
-| 2 | `src/MaaCore/Task/Interface/RecruitTask.cpp:55-57` | 临时诊断日志 | `[fix/expedite-threshold/diag] Recruit params: expedite=..., expedite_min_level=...`，用于定位 WPF→JSON→C++ 链路是否正确透传 |
+| 1 | `fix/expedite-threshold` | 鏂板缓鍒嗘敮 | 浠?`branch` 鎷夊嚭锛孒EAD 鍚?`9d8d021610` |
+| 2 | `src/MaaCore/Task/Interface/RecruitTask.cpp:55-57` | 涓存椂璇婃柇鏃ュ織 | `[fix/expedite-threshold/diag] Recruit params: expedite=..., expedite_min_level=...`锛岀敤浜庡畾浣?WPF鈫扟SON鈫扖++ 閾捐矾鏄惁姝ｇ‘閫忎紶 |
 
-### fix/expedite-threshold 实施完成
+### fix/expedite-threshold 瀹炴柦瀹屾垚
 
-诊断阶段确认 `install/debug/maa.log` 中 `expedite_min_level=4` 已正确从 WPF 序列化层传入 C++，真凶锁定为 C++ 决策逻辑缺重置，无需 WPF 链路修复。还原诊断日志后实施 2 个 commit（先不合并入 `branch`）。
-
-| # | 文件 | 操作 | 说明 |
+璇婃柇闃舵纭 `install/debug/maa.log` 涓?`expedite_min_level=4` 宸叉纭粠 WPF 搴忓垪鍖栧眰浼犲叆 C++锛岀湡鍑堕攣瀹氫负 C++ 鍐崇瓥閫昏緫缂洪噸缃紝鏃犻渶 WPF 閾捐矾淇銆傝繕鍘熻瘖鏂棩蹇楀悗瀹炴柦 2 涓?commit锛堝厛涓嶅悎骞跺叆 `branch`锛夈€?
+| # | 鏂囦欢 | 鎿嶄綔 | 璇存槑 |
 |---|------|------|------|
-| 1 | `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.cpp:312-314` | 修改 | `recruit_one()` 入口处补回 `m_last_confirmed_min_level = 0;`，杜绝上一槽位陈旧值污染本槽位加急决策 |
-| 2 | `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.cpp:358-359` | 修改 | 加急成功（`recruit_now()` 成功）后补回 `m_last_confirmed_min_level = 0;`，防止下一槽位误判 |
-| 3 | `src/MaaCore/Task/Interface/RecruitTask.cpp:55-57` | 回滚 | 诊断日志 `git checkout --` 还原，不入库 |
-| 4 | `docs/zh-cn/protocol/integration.md:266-270` | 修改 | `::: field name="expedite_min_level"` 字段块，`0 = 不限`，`4/5/6 = 仅对应星级及以上加急` |
-| 5 | `docs/zh-tw/protocol/integration.md:266-270` | 修改 | 五语同步：繁中 |
-| 6 | `docs/en-us/protocol/integration.md:266-270` | 修改 | 五语同步：英文 |
-| 7 | `docs/ja-jp/protocol/integration.md:266-270` | 修改 | 五语同步：日文 |
-| 8 | `docs/ko-kr/protocol/integration.md:255-259` | 修改 | 五语同步：韩文 |
-| 9 | `AGENTS.md §6` | 修改 | 登记 `fix/expedite-threshold` 为进行中分支 |
-| 10 | `LOG.md` | 修改 | 本节 |
+| 1 | `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.cpp:312-314` | 淇敼 | `recruit_one()` 鍏ュ彛澶勮ˉ鍥?`m_last_confirmed_min_level = 0;`锛屾潨缁濅笂涓€妲戒綅闄堟棫鍊兼薄鏌撴湰妲戒綅鍔犳€ュ喅绛?|
+| 2 | `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.cpp:358-359` | 淇敼 | 鍔犳€ユ垚鍔燂紙`recruit_now()` 鎴愬姛锛夊悗琛ュ洖 `m_last_confirmed_min_level = 0;`锛岄槻姝笅涓€妲戒綅璇垽 |
+| 3 | `src/MaaCore/Task/Interface/RecruitTask.cpp:55-57` | 鍥炴粴 | 璇婃柇鏃ュ織 `git checkout --` 杩樺師锛屼笉鍏ュ簱 |
+| 4 | `docs/zh-cn/protocol/integration.md:266-270` | 淇敼 | `::: field name="expedite_min_level"` 瀛楁鍧楋紝`0 = 涓嶉檺`锛宍4/5/6 = 浠呭搴旀槦绾у強浠ヤ笂鍔犳€ |
+| 5 | `docs/zh-tw/protocol/integration.md:266-270` | 淇敼 | 浜旇鍚屾锛氱箒涓?|
+| 6 | `docs/en-us/protocol/integration.md:266-270` | 淇敼 | 浜旇鍚屾锛氳嫳鏂?|
+| 7 | `docs/ja-jp/protocol/integration.md:266-270` | 淇敼 | 浜旇鍚屾锛氭棩鏂?|
+| 8 | `docs/ko-kr/protocol/integration.md:255-259` | 淇敼 | 浜旇鍚屾锛氶煩鏂?|
+| 9 | `AGENTS.md 搂6` | 淇敼 | 鐧昏 `fix/expedite-threshold` 涓鸿繘琛屼腑鍒嗘敮 |
+| 10 | `LOG.md` | 淇敼 | 鏈妭 |
 
-**Commit 链**：
-
-| SHA | 标题 |
+**Commit 閾?*锛?
+| SHA | 鏍囬 |
 |-----|------|
-| `d73f61adc1` | `fix(expedite-threshold): 补回 m_last_confirmed_min_level 重置` |
-| `20cd79d4ca` | `docs: 补 expedite_min_level 字段说明` |
+| `d73f61adc1` | `fix(expedite-threshold): 琛ュ洖 m_last_confirmed_min_level 閲嶇疆` |
+| `20cd79d4ca` | `docs: 琛?expedite_min_level 瀛楁璇存槑` |
 
-**编译/部署结果**：
-
-| 阶段 | 命令 | 结果 |
+**缂栬瘧/閮ㄧ讲缁撴灉**锛?
+| 闃舵 | 鍛戒护 | 缁撴灉 |
 |------|------|------|
-| 构建 | `cmake --build build --target MaaCore` | OK（仅 RelWithDebInfo 默认 config；MaaCore.dll 重新生成） |
-| 安装 | `cmake --install build` | OK（MaaCore.dll 部署至 `install/`；`MAA.Updater.exe` 缺失与本 fix 无关，单目标构建未触及其编译） |
+| 鏋勫缓 | `cmake --build build --target MaaCore` | OK锛堜粎 RelWithDebInfo 榛樿 config锛汳aaCore.dll 閲嶆柊鐢熸垚锛?|
+| 瀹夎 | `cmake --install build` | OK锛圡aaCore.dll 閮ㄧ讲鑷?`install/`锛沗MAA.Updater.exe` 缂哄け涓庢湰 fix 鏃犲叧锛屽崟鐩爣鏋勫缓鏈Е鍙婂叾缂栬瘧锛?|
 
-**兼容性核查**：
-
-- 旧 API 用户不传 `expedite_min_level` → C++ 端默认 0 = 不限 → 全加急，行为不变
-- 旧 GUI 用户配置文件中无该字段 → JSON 反序列化默认 0 + CheckBox 未勾选 → 全加急，行为不变
-- 重置仅在 `recruit_one` 入口与加急成功后触发，对未加急路径无副作用；`recruit_calc_task` 的 `m_last_confirmed_min_level = final_combination.min_level;` 写入时机不变（line 562）
-- docs 五语字段块对齐 `expedite_times` 段落的样式（`<br>` 续行、`默认 0` 收束）
-
-**待手动验证（需模拟器环境）**：
-
-| # | 场景 | 期望 |
+**鍏煎鎬ф牳鏌?*锛?
+- 鏃?API 鐢ㄦ埛涓嶄紶 `expedite_min_level` 鈫?C++ 绔粯璁?0 = 涓嶉檺 鈫?鍏ㄥ姞鎬ワ紝琛屼负涓嶅彉
+- 鏃?GUI 鐢ㄦ埛閰嶇疆鏂囦欢涓棤璇ュ瓧娈?鈫?JSON 鍙嶅簭鍒楀寲榛樿 0 + CheckBox 鏈嬀閫?鈫?鍏ㄥ姞鎬ワ紝琛屼负涓嶅彉
+- 閲嶇疆浠呭湪 `recruit_one` 鍏ュ彛涓庡姞鎬ユ垚鍔熷悗瑙﹀彂锛屽鏈姞鎬ヨ矾寰勬棤鍓綔鐢紱`recruit_calc_task` 鐨?`m_last_confirmed_min_level = final_combination.min_level;` 鍐欏叆鏃舵満涓嶅彉锛坙ine 562锛?- docs 浜旇瀛楁鍧楀榻?`expedite_times` 娈佃惤鐨勬牱寮忥紙`<br>` 缁銆乣榛樿 0` 鏀舵潫锛?
+**寰呮墜鍔ㄩ獙璇侊紙闇€妯℃嫙鍣ㄧ幆澧冿級**锛?
+| # | 鍦烘櫙 | 鏈熸湜 |
 |---|------|------|
-| 1 | 门槛 4，准备 4★ + 3★ 槽位 | 4★ 立即完成，3★ 走 9h 倒计时 |
-| 2 | 门槛 5，准备 5★ + 3★ 槽位 | 5★ 立即完成，3★ 走 9h 倒计时 |
-| 3 | 门槛 6，准备 6★ + 5★ 槽位 | 6★ 立即完成，5★ 走 9h 倒计时 |
-| 4 | 门槛 0（不限），任一组合 | 全部加急，行为等同旧版 |
-| 5 | 关掉「使用加急许可」 | 所有槽位走自然倒计时 |
+| 1 | 闂ㄦ 4锛屽噯澶?4鈽?+ 3鈽?妲戒綅 | 4鈽?绔嬪嵆瀹屾垚锛?鈽?璧?9h 鍊掕鏃?|
+| 2 | 闂ㄦ 5锛屽噯澶?5鈽?+ 3鈽?妲戒綅 | 5鈽?绔嬪嵆瀹屾垚锛?鈽?璧?9h 鍊掕鏃?|
+| 3 | 闂ㄦ 6锛屽噯澶?6鈽?+ 5鈽?妲戒綅 | 6鈽?绔嬪嵆瀹屾垚锛?鈽?璧?9h 鍊掕鏃?|
+| 4 | 闂ㄦ 0锛堜笉闄愶級锛屼换涓€缁勫悎 | 鍏ㄩ儴鍔犳€ワ紝琛屼负绛夊悓鏃х増 |
+| 5 | 鍏虫帀銆屼娇鐢ㄥ姞鎬ヨ鍙€?| 鎵€鏈夋Ы浣嶈蛋鑷劧鍊掕鏃?|
 
-**合入策略**：暂不合并；由用户后续决定 FF（commit 链线性）或 `--no-ff`（保留 fix 拓扑）。`fix/expedite-threshold` 修复 `branch` 自身，按 `§3.3` 合并目标 = `branch`。
-
+**鍚堝叆绛栫暐**锛氭殏涓嶅悎骞讹紱鐢辩敤鎴峰悗缁喅瀹?FF锛坈ommit 閾剧嚎鎬э級鎴?`--no-ff`锛堜繚鐣?fix 鎷撴墤锛夈€俙fix/expedite-threshold` 淇 `branch` 鑷韩锛屾寜 `搂3.3` 鍚堝苟鐩爣 = `branch`銆?
 ## 2026-07-24
 
-### fix/account-official-recognize 启动
+### fix/account-official-recognize 鍚姩
 
-「开始唤醒」任务在 **官服（Official）+ 账号轮换** 场景下卡死。`install/debug/asst.log` 实测：MAA 成功识别 `StartToWakeUp.png`（score 0.926）与 `AccountManager.png`（score 0.904），但 `LoginOther` 之后 `AccountManagerOfficial` 与 `AccountManagerBili` 30 次 retry 全失败，`AccountSwitchTask::navigate_to_start_page()` 走不到任一合法返回路径，最终 `Login failed, entering game-restart loop`。
-
-根因（`resource/tasks/tasks.json:805-807`）：
+銆屽紑濮嬪敜閱掋€嶄换鍔″湪 **瀹樻湇锛圤fficial锛? 璐﹀彿杞崲** 鍦烘櫙涓嬪崱姝汇€俙install/debug/asst.log` 瀹炴祴锛歁AA 鎴愬姛璇嗗埆 `StartToWakeUp.png`锛坰core 0.926锛変笌 `AccountManager.png`锛坰core 0.904锛夛紝浣?`LoginOther` 涔嬪悗 `AccountManagerOfficial` 涓?`AccountManagerBili` 30 娆?retry 鍏ㄥけ璐ワ紝`AccountSwitchTask::navigate_to_start_page()` 璧颁笉鍒颁换涓€鍚堟硶杩斿洖璺緞锛屾渶缁?`Login failed, entering game-restart loop`銆?
+鏍瑰洜锛坄resource/tasks/tasks.json:805-807`锛夛細
 
 ```json
 "AccountManagerOfficial": {
-    "roi": [570, 165, 140, 80]    ← 只有 roi，无 template/algorithm/text
+    "roi": [570, 165, 140, 80]    鈫?鍙湁 roi锛屾棤 template/algorithm/text
 }
 ```
 
-对比 `AccountManagerBili`（第 808-813 行）已有 `algorithm: "OcrDetect"` + `text: ["登录记录"]`，官服定义残缺。修复方案 A+C：补全官服 OCR 识别 + `AccountSwitchTask::navigate_to_start_page()` 加诊断日志。仅在本分支 `fix/account-official-recognize` 修复，不推上游。
-
-| # | 文件/对象 | 操作 | 说明 |
+瀵规瘮 `AccountManagerBili`锛堢 808-813 琛岋級宸叉湁 `algorithm: "OcrDetect"` + `text: ["鐧诲綍璁板綍"]`锛屽畼鏈嶅畾涔夋畫缂恒€備慨澶嶆柟妗?A+C锛氳ˉ鍏ㄥ畼鏈?OCR 璇嗗埆 + `AccountSwitchTask::navigate_to_start_page()` 鍔犺瘖鏂棩蹇椼€備粎鍦ㄦ湰鍒嗘敮 `fix/account-official-recognize` 淇锛屼笉鎺ㄤ笂娓搞€?
+| # | 鏂囦欢/瀵硅薄 | 鎿嶄綔 | 璇存槑 |
 |---|----------|------|------|
-| 1 | `fix/account-official-recognize` | 新建分支 | 从 `branch` 拉出 |
-| 2 | `resource/tasks/tasks.json:805-807` | 待修改 | `AccountManagerOfficial` 补 OcrDetect 识别「登录记录」 |
-| 3 | `src/MaaCore/Task/Miscellaneous/AccountSwitchTask.cpp:65-84` | 待修改 | `navigate_to_start_page()` 加诊断日志 |
+| 1 | `fix/account-official-recognize` | 鏂板缓鍒嗘敮 | 浠?`branch` 鎷夊嚭 |
+| 2 | `resource/tasks/tasks.json:805-807` | 寰呬慨鏀?| `AccountManagerOfficial` 琛?OcrDetect 璇嗗埆銆岀櫥褰曡褰曘€?|
+| 3 | `src/MaaCore/Task/Miscellaneous/AccountSwitchTask.cpp:65-84` | 寰呬慨鏀?| `navigate_to_start_page()` 鍔犺瘖鏂棩蹇?|
 
-### fix/account-official-recognize 实施完成
+### fix/account-official-recognize 瀹炴柦瀹屾垚
 
-| # | 文件 | 操作 | 说明 |
+| # | 鏂囦欢 | 鎿嶄綔 | 璇存槑 |
 |---|------|------|------|
-| 1 | `resource/tasks/tasks.json:805-810` | 修改 | `AccountManagerOfficial` 由 `{"roi":[570,165,140,80]}` 补全为 `{"Doc":"官方服账号切换界面识别，与 B 服统一 OCR「登录记录」","algorithm":"OcrDetect","text":["登录记录"],"roi":[237,50,771,242]}`（与 B 服 `AccountManagerBili` 对齐） |
-| 2 | `src/MaaCore/Task/Miscellaneous/AccountSwitchTask.cpp:71` | 修改 | `navigate_to_start_page()` 在 `get_last_task_name()` 之后追加 `Log.info(__FUNCTION__, "last matched task:", last_name);`，便于后续识别失败时定位 |
-| 3 | `src/MaaCore/Task/Miscellaneous/AccountSwitchTask.cpp:71-77` | 修改 | 4 个 `else if` 合并为单 `if (... || ... \|\| ... \|\| ...)`，减少分支嵌套 |
-| 4 | `install/MaaCore.dll` | 部署 | Release 编译产物，时间戳 2026/7/24 12:45:38，字节特征串 `last matched task:` 命中（offset 3384944 / size 4188160） |
-| 5 | `install/resource/tasks/tasks.json` | 部署 | 同步源端 SHA256（`39972BD09F9EDEA0E7B7D71F8E084071126521E333F9DEDD3296115BC6F5C027`），177232 字节，字节特征串 `官方服账号切换` 命中（offset 25825） |
-| 6 | `LOG.md` | 修改 | 本节 |
+| 1 | `resource/tasks/tasks.json:805-810` | 淇敼 | `AccountManagerOfficial` 鐢?`{"roi":[570,165,140,80]}` 琛ュ叏涓?`{"Doc":"瀹樻柟鏈嶈处鍙峰垏鎹㈢晫闈㈣瘑鍒紝涓?B 鏈嶇粺涓€ OCR銆岀櫥褰曡褰曘€?,"algorithm":"OcrDetect","text":["鐧诲綍璁板綍"],"roi":[237,50,771,242]}`锛堜笌 B 鏈?`AccountManagerBili` 瀵归綈锛?|
+| 2 | `src/MaaCore/Task/Miscellaneous/AccountSwitchTask.cpp:71` | 淇敼 | `navigate_to_start_page()` 鍦?`get_last_task_name()` 涔嬪悗杩藉姞 `Log.info(__FUNCTION__, "last matched task:", last_name);`锛屼究浜庡悗缁瘑鍒け璐ユ椂瀹氫綅 |
+| 3 | `src/MaaCore/Task/Miscellaneous/AccountSwitchTask.cpp:71-77` | 淇敼 | 4 涓?`else if` 鍚堝苟涓哄崟 `if (... || ... \|\| ... \|\| ...)`锛屽噺灏戝垎鏀祵濂?|
+| 4 | `install/MaaCore.dll` | 閮ㄧ讲 | Release 缂栬瘧浜х墿锛屾椂闂存埑 2026/7/24 12:45:38锛屽瓧鑺傜壒寰佷覆 `last matched task:` 鍛戒腑锛坥ffset 3384944 / size 4188160锛?|
+| 5 | `install/resource/tasks/tasks.json` | 閮ㄧ讲 | 鍚屾婧愮 SHA256锛坄39972BD09F9EDEA0E7B7D71F8E084071126521E333F9DEDD3296115BC6F5C027`锛夛紝177232 瀛楄妭锛屽瓧鑺傜壒寰佷覆 `瀹樻柟鏈嶈处鍙峰垏鎹 鍛戒腑锛坥ffset 25825锛?|
+| 6 | `LOG.md` | 淇敼 | 鏈妭 |
 
-**编译结果**: `cmake --build build --target MaaCore -j 4 --config Release` 成功，仅遗留标准 `LNK4098` 默认库警告（与上游一致）。`cmake --install build --config Release` 成功（`MaaUpdater` 报错为 AGENTS.md §4.1 已知 VS 2026 SDK 路径 bug，不影响 C++ 端部署）。
+**缂栬瘧缁撴灉**: `cmake --build build --target MaaCore -j 4 --config Release` 鎴愬姛锛屼粎閬楃暀鏍囧噯 `LNK4098` 榛樿搴撹鍛婏紙涓庝笂娓镐竴鑷达級銆俙cmake --install build --config Release` 鎴愬姛锛坄MaaUpdater` 鎶ラ敊涓?AGENTS.md 搂4.1 宸茬煡 VS 2026 SDK 璺緞 bug锛屼笉褰卞搷 C++ 绔儴缃诧級銆?
+**閮ㄧ讲浜х墿楠岃瘉**:
+- `install/MaaCore.dll` 2026/7/24 12:45:38锛?188160 瀛楄妭锛?- `install/resource/tasks/tasks.json` 2026/7/24 12:45:11锛?77232 瀛楄妭锛?- 婧愮 `resource/tasks/tasks.json` 鈫?瀹夎绔?SHA256 瀹屽叏涓€鑷?
+**棰勬湡鏁堟灉**:
+1. 瀹樻湇璐﹀彿鍒囨崲鏃讹紝`LoginOther` 鈫?璇嗗埆 `鐧诲綍璁板綍` OCR 鈫?鍛戒腑 `AccountManagerOfficial` 鈫?杩斿洖 `true` 鈫?杩涘叆 `AccountSwitchTask::select_account()` 閫夋嫨鐩爣璐﹀彿
+2. 鍗充究 OCR 浠嶆湭鍛戒腑锛宍Log.info("last matched task:", last_name)` 杈撳嚭瀹為檯鏈€鍚庡尮閰嶈妭鐐癸紝渚夸簬鎺掗敊
+3. 鍗曡处鍙峰満鏅紙`AccountName` 涓虹┖鏃?`m_account_switch_task_ptr` 浠嶈 disable锛夎涓轰笉鍙?
+**寰呮墜鍔ㄩ獙璇侊紙闇€妯℃嫙鍣ㄧ幆澧冿級**:
+1. 鍗曡处鍙?+ StartGame=true 璺戝畬鏁存棩甯?鈫?StartUp 瀹屾垚杩涘叆棣栭〉
+2. 鍙岃处鍙疯疆鎹紙192鈫?89锛夆啋 楠岃瘉 `AccountManagerOfficial` 鍛戒腑锛屾帶鍒跺彴/鏃ュ織鏄剧ず `last matched task: AccountManagerOfficial`
+3. B 鏈嶅洖褰掓祴璇?鈫?涓嶇牬鍧?B 鏈嶅師鏈?`鐧诲綍璁板綍` OCR 琛屼负
+4. 鍒囧彿涓€斿紓甯?鈫?鐪?`last matched task:` 杈撳嚭鏄惁浠嶆湁璇婃柇淇℃伅
 
-**部署产物验证**:
-- `install/MaaCore.dll` 2026/7/24 12:45:38（4188160 字节）
-- `install/resource/tasks/tasks.json` 2026/7/24 12:45:11（177232 字节）
-- 源端 `resource/tasks/tasks.json` ↔ 安装端 SHA256 完全一致
-
-**预期效果**:
-1. 官服账号切换时，`LoginOther` → 识别 `登录记录` OCR → 命中 `AccountManagerOfficial` → 返回 `true` → 进入 `AccountSwitchTask::select_account()` 选择目标账号
-2. 即便 OCR 仍未命中，`Log.info("last matched task:", last_name)` 输出实际最后匹配节点，便于排错
-3. 单账号场景（`AccountName` 为空时 `m_account_switch_task_ptr` 仍被 disable）行为不变
-
-**待手动验证（需模拟器环境）**:
-1. 单账号 + StartGame=true 跑完整日常 → StartUp 完成进入首页
-2. 双账号轮换（192→189）→ 验证 `AccountManagerOfficial` 命中，控制台/日志显示 `last matched task: AccountManagerOfficial`
-3. B 服回归测试 → 不破坏 B 服原有 `登录记录` OCR 行为
-4. 切号中途异常 → 看 `last matched task:` 输出是否仍有诊断信息
-
-**未推送上游**: 仅本仓库 `branch` 修复，不向 upstream 提 PR。
-
+**鏈帹閫佷笂娓?*: 浠呮湰浠撳簱 `branch` 淇锛屼笉鍚?upstream 鎻?PR銆?
 ## 2026-07-25
 
-### fix/account_rotation/6 启动
+### fix/account_rotation/6 鍚姩
 
-会客室「填充线索空位」(`use_clue` → `proc_clue_vacancy`) 在官服/B 服均存在 6 个根因（参 7 月 26 日会话分析），上游 Issue #16166 已 closed as "not planned"。本 fix 在 `branch` 上独立修复，不推 upstream。
-
-| # | 文件/对象 | 操作 | 说明 |
+浼氬瀹ゃ€屽～鍏呯嚎绱㈢┖浣嶃€?`use_clue` 鈫?`proc_clue_vacancy`) 鍦ㄥ畼鏈?B 鏈嶅潎瀛樺湪 6 涓牴鍥狅紙鍙?7 鏈?26 鏃ヤ細璇濆垎鏋愶級锛屼笂娓?Issue #16166 宸?closed as "not planned"銆傛湰 fix 鍦?`branch` 涓婄嫭绔嬩慨澶嶏紝涓嶆帹 upstream銆?
+| # | 鏂囦欢/瀵硅薄 | 鎿嶄綔 | 璇存槑 |
 |---|----------|------|------|
-| 1 | `fix/reception-clue-vacancy` | 新建分支 | 从 `branch` 拉出 |
-| 2 | `LOG.md` | 修改 | 本节 |
+| 1 | `fix/reception-clue-vacancy` | 鏂板缓鍒嗘敮 | 浠?`branch` 鎷夊嚭 |
+| 2 | `LOG.md` | 淇敼 | 鏈妭 |
 
-### fix/reception-clue-vacancy 实施完成
+### fix/reception-clue-vacancy 瀹炴柦瀹屾垚
 
-修复 6 个根因中 4 个直接可改的代码层面问题（修复 ① 涉及共享 helper，作用域广，留待后续 PR；修复 ③ 仅是 `next` 链收紧）：
-
-| # | 文件 | 操作 | 说明 |
+淇 6 涓牴鍥犱腑 4 涓洿鎺ュ彲鏀圭殑浠ｇ爜灞傞潰闂锛堜慨澶?鈶?娑夊強鍏变韩 helper锛屼綔鐢ㄥ煙骞匡紝鐣欏緟鍚庣画 PR锛涗慨澶?鈶?浠呮槸 `next` 閾炬敹绱э級锛?
+| # | 鏂囦欢 | 鎿嶄綔 | 璇存槑 |
 |---|------|------|------|
-| 1 | `src/MaaCore/Task/Infrast/InfrastReceptionTask.cpp:231-296` | 修改 | **修复②** `proc_clue_vacancy()` 快捷置入路径重写：原 `return true` 无条件触发，导致 4 类失败（OCR 失败 / 数字解析失败 / `available != vacancy_cnt` / `confirm_task` 缺失）都会跳过 legacy 循环。改造控制流：(a) `vacancy_cnt == 0` 视为完成返回 true；(b) `click_performed` 仅在 `available == vacancy_cnt` 时置 true；(c) 任何失败路径降级到 legacy 循环并打印 fallback 日志 |
-| 2 | `src/MaaCore/Task/Infrast/InfrastReceptionTask.cpp:298-303` | 修改 | **修复⑤** Legacy 循环体顶部追加 `image = ctrler()->get_image();`，修复 `continue` 前未刷新导致死循环 |
-| 3 | `src/MaaCore/Task/Infrast/InfrastReceptionTask.cpp:333-340` | 修改 | **修复⑥** 放置线索后检测 `InfrastReceptionIcon`（与 `remove_clue` 同源）并点击关闭右侧线索列表面板，避免下一轮迭代在弹窗上误操作 |
-| 4 | `src/MaaCore/Task/Infrast/InfrastReceptionTask.cpp:171` | 修改 | **修复④** `remove_clue()` 的 `clue_suffix` 由 `{ "1", ..., "7" }` 改为 `{ "No1", ..., "No7" }`，与 `proc_clue_vacancy` / `use_clue` 对齐，使 `InfrastClueVacancyImageAnalyzer` 真正匹配 `ClueVacancyNo*.png`（已放置线索模板）而非 `ClueVacancy*.png`（空位模板） |
-| 5 | `resource/tasks/tasks.json:3258-3263` | 修改 | **修复③** `UnlockClues.next` 移除 `InfrastBottomLeftTab`，避免硬编码 `[0,719,1,1]` 在 720p 下命中底部 Tab 切换按钮，跳转至错误视图。`UnlockCluesIsFake` 二次校验仍保留 |
-| 6 | `install/MaaCore.dll` | 部署 | Release 编译产物，时间戳 2026/7/27 11:01:04，4190208 字节，字节特征串 `quick-insert path done` / `quick-insert skipped: OCR analyze failed` / `quick-insert skipped: confirm task missing` 全部命中 |
-| 7 | `install/resource/tasks/tasks.json` | 部署 | 同步源端 SHA256（`B4AB11A86C2CABE08DCFDD9B1EE209A90763AF6B834EB54DF7D77383129FA342`），字节特征串 `next`:[\"UnlockCluesIsFake\"]` 命中 |
-| 8 | `LOG.md` | 修改 | 本节 |
+| 1 | `src/MaaCore/Task/Infrast/InfrastReceptionTask.cpp:231-296` | 淇敼 | **淇鈶?* `proc_clue_vacancy()` 蹇嵎缃叆璺緞閲嶅啓锛氬師 `return true` 鏃犳潯浠惰Е鍙戯紝瀵艰嚧 4 绫诲け璐ワ紙OCR 澶辫触 / 鏁板瓧瑙ｆ瀽澶辫触 / `available != vacancy_cnt` / `confirm_task` 缂哄け锛夐兘浼氳烦杩?legacy 寰幆銆傛敼閫犳帶鍒舵祦锛?a) `vacancy_cnt == 0` 瑙嗕负瀹屾垚杩斿洖 true锛?b) `click_performed` 浠呭湪 `available == vacancy_cnt` 鏃剁疆 true锛?c) 浠讳綍澶辫触璺緞闄嶇骇鍒?legacy 寰幆骞舵墦鍗?fallback 鏃ュ織 |
+| 2 | `src/MaaCore/Task/Infrast/InfrastReceptionTask.cpp:298-303` | 淇敼 | **淇鈶?* Legacy 寰幆浣撻《閮ㄨ拷鍔?`image = ctrler()->get_image();`锛屼慨澶?`continue` 鍓嶆湭鍒锋柊瀵艰嚧姝诲惊鐜?|
+| 3 | `src/MaaCore/Task/Infrast/InfrastReceptionTask.cpp:333-340` | 淇敼 | **淇鈶?* 鏀剧疆绾跨储鍚庢娴?`InfrastReceptionIcon`锛堜笌 `remove_clue` 鍚屾簮锛夊苟鐐瑰嚮鍏抽棴鍙充晶绾跨储鍒楄〃闈㈡澘锛岄伩鍏嶄笅涓€杞凯浠ｅ湪寮圭獥涓婅鎿嶄綔 |
+| 4 | `src/MaaCore/Task/Infrast/InfrastReceptionTask.cpp:171` | 淇敼 | **淇鈶?* `remove_clue()` 鐨?`clue_suffix` 鐢?`{ "1", ..., "7" }` 鏀逛负 `{ "No1", ..., "No7" }`锛屼笌 `proc_clue_vacancy` / `use_clue` 瀵归綈锛屼娇 `InfrastClueVacancyImageAnalyzer` 鐪熸鍖归厤 `ClueVacancyNo*.png`锛堝凡鏀剧疆绾跨储妯℃澘锛夎€岄潪 `ClueVacancy*.png`锛堢┖浣嶆ā鏉匡級 |
+| 5 | `resource/tasks/tasks.json:3258-3263` | 淇敼 | **淇鈶?* `UnlockClues.next` 绉婚櫎 `InfrastBottomLeftTab`锛岄伩鍏嶇‖缂栫爜 `[0,719,1,1]` 鍦?720p 涓嬪懡涓簳閮?Tab 鍒囨崲鎸夐挳锛岃烦杞嚦閿欒瑙嗗浘銆俙UnlockCluesIsFake` 浜屾鏍￠獙浠嶄繚鐣?|
+| 6 | `install/MaaCore.dll` | 閮ㄧ讲 | Release 缂栬瘧浜х墿锛屾椂闂存埑 2026/7/27 11:01:04锛?190208 瀛楄妭锛屽瓧鑺傜壒寰佷覆 `quick-insert path done` / `quick-insert skipped: OCR analyze failed` / `quick-insert skipped: confirm task missing` 鍏ㄩ儴鍛戒腑 |
+| 7 | `install/resource/tasks/tasks.json` | 閮ㄧ讲 | 鍚屾婧愮 SHA256锛坄B4AB11A86C2CABE08DCFDD9B1EE209A90763AF6B834EB54DF7D77383129FA342`锛夛紝瀛楄妭鐗瑰緛涓?`next`:[\"UnlockCluesIsFake\"]` 鍛戒腑 |
+| 8 | `LOG.md` | 淇敼 | 鏈妭 |
 
-**编译结果**: `cmake --build build --target MaaCore -j 4 --config Release` 成功，仅遗留标准 `LNK4098` 默认库警告。`cmake --install build --config Release` 在 `MaaUpdater` 阶段失败（AGENTS.md §4.1 已知 VS 2026 SDK 路径 bug，与本 fix 无关）；MaaCore 部分部署成功，tasks.json 通过手工 `Copy-Item` 同步到 `install/`。
+**缂栬瘧缁撴灉**: `cmake --build build --target MaaCore -j 4 --config Release` 鎴愬姛锛屼粎閬楃暀鏍囧噯 `LNK4098` 榛樿搴撹鍛娿€俙cmake --install build --config Release` 鍦?`MaaUpdater` 闃舵澶辫触锛圓GENTS.md 搂4.1 宸茬煡 VS 2026 SDK 璺緞 bug锛屼笌鏈?fix 鏃犲叧锛夛紱MaaCore 閮ㄥ垎閮ㄧ讲鎴愬姛锛宼asks.json 閫氳繃鎵嬪伐 `Copy-Item` 鍚屾鍒?`install/`銆?
+**鏈疄鏂戒慨澶?*:
+- **淇鈶?* `InfrastBottomLeftTab` `JustReturn` + 1px ROI 鈥?鍏变韩 helper锛屼綔鐢ㄥ煙娑夊強鍏ㄩ儴鍩虹璁炬柦 task锛岄潪鏈?fix 鑼冨洿锛岀暀寰呭悗缁?PR 鍗曠嫭澶勭悊
+- **淇鈶?* 鐨勮ˉ鍏咃細`UnlockClues` 鍙栨秷 `InfrastBottomLeftTab` 鍚庯紝寮圭獥鍏抽棴鍚庣殑瀵艰埅渚濊禆 `postDelay: 5000` 鍚庤皟鐢ㄦ柟锛坄use_clue`锛夌殑 `proc_clue_vacancy` 鑷甫鐨勫浘鍍忓垎鏋愬厹搴曪紙閫氳繃 `InfrastClueQuickInsert` 妯℃澘鍖归厤鎴?`InfrastClueVacancy` 妯℃澘璇嗗埆锛夛紝鍏峰涓€瀹氬閿?
+**棰勬湡鏁堟灉**:
+1. **瀹樻湇鐢ㄦ埛**锛歚InfrastClueQuickInsert` 鎸夐挳瀛樺湪浣?OCR 澶辫触鏃讹紝鏃х増绔嬪嵆 `return true` 璺宠繃锛涙柊鐗堥檷绾у埌 legacy 寰幆閫愪釜鏀剧疆绾跨储
+2. **B 鏈嶇敤鎴?*锛堟棤蹇嵎缃叆鎸夐挳锛夛細鏃х増 `remove_clue` 鍥犳ā鏉块敊閰嶇┖鎿嶄綔锛岄仐鐣欏凡鏀剧疆绾跨储锛涙柊鐗?`remove_clue` 姝ｇ‘鍖归厤 `ClueVacancyNo*.png`锛岃兘鑵惧嚭绌轰綅璁╁悗缁?`use_clue` 閲嶆柊瑁呭～
+3. **鏁板瓧涓嶄竴鑷村満鏅?*锛氭棫鐗堣烦杩囨斁缃紱鏂扮増 legacy 寰幆灏濊瘯閫愪釜鏀剧疆锛堥拡瀵?7 绫荤嚎绱㈤亶鍘嗭級
+4. **鎵€鏈夊鎴风**锛歭egacy 寰幆涓嶅啀鍥?`image` 缂撳瓨闄堟棫姝诲惊鐜紱鏀剧疆鍚庡叧闂潰鏉匡紝涓嬩竴杞粠骞插噣瑙嗗浘寮€濮?
+**寰呮墜鍔ㄩ獙璇侊紙闇€妯℃嫙鍣ㄧ幆澧冿級**:
+1. 瀹樻湇浼氬瀹?7 涓┖浣嶅満鏅?鈫?瑙傚療鏃ュ織鏄惁璧板揩鎹风疆鍏ヨ矾寰勫苟瀹屾垚
+2. 瀹樻湇浼氬瀹?1 涓┖浣?+ 6 涓凡鏀剧疆绾跨储 鈫?`remove_clue` 鏄惁姝ｇ‘璇嗗埆 6 涓凡鏀剧疆绾跨储骞剁Щ闄?3. B 鏈嶄細瀹㈠娣峰悎绌轰綅/宸叉斁缃嚎绱㈠満鏅?鈫?楠岃瘉 `remove_clue` 涓嶅啀绌烘搷浣?4. OCR 鏁板瓧璇讳笉鍒板満鏅紙灞忓箷鏈夐伄鎸★級 鈫?楠岃瘉闄嶇骇鍒?legacy 寰幆姝ｅ父瀹屾垚
+5. 浠绘剰鍦烘櫙璺戝畬浼氬瀹?shift 鈫?鎺у埗鍙版棩蹇楃‘璁ゆ棤 `quick-insert skipped:` 寮傚父 fallback锛堥櫎闈炵湡鐨勯渶瑕?fallback锛?
+**鏈帹閫佷笂娓?*: 浠呮湰浠撳簱 `branch` 淇锛屼笉鍚?upstream 鎻?PR銆?
+### fix/reception-clue-vacancy 鍚堝叆 staging
 
-**未实施修复**:
-- **修复①** `InfrastBottomLeftTab` `JustReturn` + 1px ROI — 共享 helper，作用域涉及全部基础设施 task，非本 fix 范围，留待后续 PR 单独处理
-- **修复③** 的补充：`UnlockClues` 取消 `InfrastBottomLeftTab` 后，弹窗关闭后的导航依赖 `postDelay: 5000` 后调用方（`use_clue`）的 `proc_clue_vacancy` 自带的图像分析兜底（通过 `InfrastClueQuickInsert` 模板匹配或 `InfrastClueVacancy` 模板识别），具备一定容错
-
-**预期效果**:
-1. **官服用户**：`InfrastClueQuickInsert` 按钮存在但 OCR 失败时，旧版立即 `return true` 跳过；新版降级到 legacy 循环逐个放置线索
-2. **B 服用户**（无快捷置入按钮）：旧版 `remove_clue` 因模板错配空操作，遗留已放置线索；新版 `remove_clue` 正确匹配 `ClueVacancyNo*.png`，能腾出空位让后续 `use_clue` 重新装填
-3. **数字不一致场景**：旧版跳过放置；新版 legacy 循环尝试逐个放置（针对 7 类线索遍历）
-4. **所有客户端**：legacy 循环不再因 `image` 缓存陈旧死循环；放置后关闭面板，下一轮从干净视图开始
-
-**待手动验证（需模拟器环境）**:
-1. 官服会客室 7 个空位场景 → 观察日志是否走快捷置入路径并完成
-2. 官服会客室 1 个空位 + 6 个已放置线索 → `remove_clue` 是否正确识别 6 个已放置线索并移除
-3. B 服会客室混合空位/已放置线索场景 → 验证 `remove_clue` 不再空操作
-4. OCR 数字读不到场景（屏幕有遮挡） → 验证降级到 legacy 循环正常完成
-5. 任意场景跑完会客室 shift → 控制台日志确认无 `quick-insert skipped:` 异常 fallback（除非真的需要 fallback）
-
-**未推送上游**: 仅本仓库 `branch` 修复，不向 upstream 提 PR。
-
-### fix/reception-clue-vacancy 合入 staging
-
-按 AGENTS.md §3.3 修复 branch 自身的 fix → 合并到 `staging` 流程，以 `--no-ff` 合并，commit `ad725916b4`（fix 代码）+ 本 merge commit。
-
-| # | 文件/对象 | 操作 | 说明 |
+鎸?AGENTS.md 搂3.3 淇 branch 鑷韩鐨?fix 鈫?鍚堝苟鍒?`staging` 娴佺▼锛屼互 `--no-ff` 鍚堝苟锛宑ommit `ad725916b4`锛坒ix 浠ｇ爜锛? 鏈?merge commit銆?
+| # | 鏂囦欢/瀵硅薄 | 鎿嶄綔 | 璇存槑 |
 |---|----------|------|------|
-| 1 | `staging` | `--no-ff` 合并 | `fix/reception-clue-vacancy` 1 commit（`ad725916b4` 代码 + LOG.md），HEAD 即将更新 |
-| 2 | `LOG.md` | 修改 | 本节 |
-| 3 | `fix/reception-clue-vacancy` 本地分支 | 保留 | 按 §2.3 流程需先晋升 `branch` 后才能 `git branch -d`；因 §2.4「不允许随便同步至 branch」约束未动 `branch`，暂保留 |
+| 1 | `staging` | `--no-ff` 鍚堝苟 | `fix/reception-clue-vacancy` 1 commit锛坄ad725916b4` 浠ｇ爜 + LOG.md锛夛紝HEAD 鍗冲皢鏇存柊 |
+| 2 | `LOG.md` | 淇敼 | 鏈妭 |
+| 3 | `fix/reception-clue-vacancy` 鏈湴鍒嗘敮 | 淇濈暀 | 鎸?搂2.3 娴佺▼闇€鍏堟檵鍗?`branch` 鍚庢墠鑳?`git branch -d`锛涘洜 搂2.4銆屼笉鍏佽闅忎究鍚屾鑷?branch銆嶇害鏉熸湭鍔?`branch`锛屾殏淇濈暀 |
 
-**冲突解决**: LOG.md 1 处 conflict marker，按以下策略解决：
-- 保留 staging 端 `fix/account_rotation/6` / `fix/account-switch-template-missing` / `fix/account-switch-retry 合入 staging` / `fix/account_rotation/6 合入 staging` / `fix/account-switch-template-missing 合入 staging` / `chore/account-cycle-status-sync` 启动 / `fix/recruit-now-text-aliases` 启动 + 实施完成 / `fix/post-battle-sanity-display` 启动 + 实施完成 + 合入 staging 共 8 节历史内容
-- 在末尾 append fix 分支独有的 `fix/reception-clue-vacancy` 启动 + 实施完成 + 合入 staging 三节
-- 删除 `=======` / `>>>>>>> fix/reception-clue-vacancy` marker，保留双方章节
+**鍐茬獊瑙ｅ喅**: LOG.md 1 澶?conflict marker锛屾寜浠ヤ笅绛栫暐瑙ｅ喅锛?- 淇濈暀 staging 绔?`fix/account_rotation/6` / `fix/account-switch-template-missing` / `fix/account-switch-retry 鍚堝叆 staging` / `fix/account_rotation/6 鍚堝叆 staging` / `fix/account-switch-template-missing 鍚堝叆 staging` / `chore/account-cycle-status-sync` 鍚姩 / `fix/recruit-now-text-aliases` 鍚姩 + 瀹炴柦瀹屾垚 / `fix/post-battle-sanity-display` 鍚姩 + 瀹炴柦瀹屾垚 + 鍚堝叆 staging 鍏?8 鑺傚巻鍙插唴瀹?- 鍦ㄦ湯灏?append fix 鍒嗘敮鐙湁鐨?`fix/reception-clue-vacancy` 鍚姩 + 瀹炴柦瀹屾垚 + 鍚堝叆 staging 涓夎妭
+- 鍒犻櫎 `=======` / `>>>>>>> fix/reception-clue-vacancy` marker锛屼繚鐣欏弻鏂圭珷鑺?## 2026-07-28
+
+## 2026-07-28
+
+### feat/downstream-changes 鍚姩
+
+涓烘敮鎸併€屾敼浠讳綍鏂囦欢鍓嶅厛鏌ヤ笅娓告敼鍔ㄦ枃浠舵竻鍗曘€嶆祦绋嬶紝鏂板涓€涓嚜鍔ㄤ粠 LOG.md 琛ㄦ牸鎻愬彇鎵€鏈夎鏀硅繃鏂囦欢銆佹寜鐩綍鍒嗙粍鐢熸垚 markdown 鏂囨。鐨勫伐鍏?+ 棣栨浜х墿銆?
+鑴氭湰鍙瑙ｆ瀽 LOG.md 鐨?4 鍒椼€宍#` `鏂囦欢/瀵硅薄` `鎿嶄綔` `璇存槑`銆嶈〃鏍硷紝鎻愬彇鍒?2 鍙嶅紩鍙峰寘瑁圭殑璺緞锛屽幓琛屽彿鍚庣紑銆佽繃婊?`install*/`/鍒嗘敮鍚?`LOG.md`/`AGENTS.md` 绛夐潪婧愮爜鏉＄洰锛屾寜椤跺眰鐩綍鍒嗙粍銆佺粺璁℃瘡涓枃浠惰鏀硅繃鍑犳锛堝悓鏂囦欢澶氭鏀瑰姩鏍囨敞涓恒€岄珮鏁忔劅銆嶏級锛岃緭鍑哄埌 `docs/downstream-changes.md`銆?
+**鍚堝叆鐩爣**: `branch`锛堜笉鍦?staging 鏀掓壒锛岀洿鎺ヤ粠 branch 鎷夊嚭锛屼粎鏀瑰伐鍏蜂笌鏂囨。锛屾棤 C++ 浠ｇ爜鏀瑰姩锛屼笉闇€鍗曟祴锛夈€?
+| # | 鏂囦欢/瀵硅薄 | 鎿嶄綔 | 璇存槑 |
+|---|----------|------|------|
+| 1 | `feat/downstream-changes` | 鏂板缓鍒嗘敮 | 浠?`branch` 鎷夊嚭锛坄git switch -c feat/downstream-changes branch`锛?|
+| 2 | `LOG.md` | 淇敼 | 鏈妭锛堝惎鍔ㄨ褰曪級 |
+
+### feat/downstream-changes 瀹炴柦瀹屾垚
+
+| # | 鏂囦欢 | 鎿嶄綔 | 璇存槑 |
+|---|------|------|------|
+| 1 | `tools/gen-downstream-changes.py` | 鏂板缓 | 瑙ｆ瀽 LOG.md 4 鍒楄〃鏍硷紙`# / 鏂囦欢(瀵硅薄) / 鎿嶄綔 / 璇存槑`锛夛紝鎻愬彇鍒?2 鍙嶅紩鍙疯矾寰勶細鍘昏鍙峰悗缂€锛坄path:123-456` 鈫?`path`锛夈€乥race-aware 閫楀彿鍒囧垎锛堜繚鐣?`{zh-cn,en-us}` 鍐呴€楀彿锛夈€乻hell brace 灞曞紑锛坄{a,b,c}.xaml` 鈫?澶氫釜鏂囦欢锛夈€佽繃婊?`install*/`/`build/`/`debug/`/`config/`/`cache/`/`data/`/`reports/` 绛夐潪婧愮爜浜х墿锛涙寜椤跺眰鐩綍鍒嗙粍锛岃鏀?鈮?3 娆℃爣 `[HOT]`锛屽惁鍒?`[TGT]`锛涜緭鍑?markdown 琛ㄦ牸銆傛敮鎸?`--log` / `--out` / `--dry-run` 鍙傛暟 |
+| 2 | `docs/downstream-changes.md` | 鏂板缓 | 棣栨杩愯浜х墿锛?6 涓敮涓€婧愭枃浠讹紝瑕嗙洊 220 琛?LOG.md 琛ㄦ牸銆備粨搴撴牴锛坄.gitignore`/`VERSION`锛? `.github/` + `docs/` + `resource/`锛坄tasks.json` [HOT]锛? `src/` 26 鏂囦欢锛坄TaskQueueViewModel.cs` [HOT] 23 娆★級+ `tools/` 5 鏂囦欢 |
+| 3 | `AGENTS.md 搂3.2` | 淇敼 | 鍚姩鏂?feat 娴佺▼鍔犳楠?1.5銆屾煡 `docs/downstream-changes.md`銆嶄笌姝ラ 8銆屽悎鍏ュ悗閲嶈窇鑴氭湰鍒锋柊娓呭崟銆? 鏈熬鏂板璇存槑娈碉紙鑴氭湰鏁版嵁鏉ユ簮 / 缁存姢鏂瑰紡锛?|
+| 4 | `LOG.md` | 淇敼 | 鏈妭锛堝疄鏂藉畬鎴愯褰曪級 |
+
+**杩愯楠岃瘉**锛歚py tools/gen-downstream-changes.py --dry-run` 杈撳嚭 36 鏂囦欢娓呭崟锛堝惈 12 涓?`[HOT]` 楂樻晱鎰燂級锛沗py tools/gen-downstream-changes.py` 鐢熸垚 `docs/downstream-changes.md` 332 琛屻€?
+**鍏抽敭璁捐**锛?- 鍏煎 LOG.md 瀹為檯瀛樺湪鐨勫绉嶈〃鏍兼€浉锛歚path:123` 鍗曡鍙?/ `path:123-456` 琛屽彿鑼冨洿 / `path:68-83, 173, 186` 鍗曟枃浠跺浣嶇疆锛堢敤 brace-aware 閫楀彿鍒囧垎锛? `{zh-cn,en-us,ja-jp,ko-kr,zh-tw}.xaml` shell brace expansion 灞曞紑涓?5 涓嫭绔嬭拷韪枃浠?- 鎿嶄綔鍒楃敤 `.+?` 鑰岄潪 `\S+`锛屽吋瀹?`cherry-pick from xxx`銆乣+ExpediteMinLevel* 6 涓?key`銆乣git rm` 绛夎嚜鐢辨枃鏈?- 鏍圭骇 dotfile锛坄.gitignore`锛変笌瑁告枃浠讹紙`VERSION`锛夊綊鍒般€屼粨搴撴牴銆嶅垎缁勶紝涓嶅姞 `/` 鍚庣紑
+- emoji 鏀?ASCII 鏍囪锛坄[OK]`/`[TGT]`/`[HOT]`锛夛紝閬垮厤 PowerShell GBK 鎺у埗鍙扮紪鐮侀棶棰橈紙GBK 鎶?`UnicodeEncodeError` on `馃敶`锛?
+**棰勬湡鏁堟灉**锛?1. 寮€鏂?feat 鏃剁涓€姝ユ煡 `docs/downstream-changes.md`锛岀湅鍒扮洰鏍囨枃浠舵槸 `[HOT]` 澶氭敼鍔ㄧ殑锛堝 `TaskQueueViewModel.cs` 23 娆°€乣AutoRecruitTask.cpp` 10 娆★級锛屾敼鍓嶅厛璇诲搴?LOG.md 娈佃惤纭鏄惁鍐茬獊
+2. 鍚堝叆 feat 鍚庤窇涓€娆¤剼鏈埛鏂版竻鍗曪紝鏈€鏂版敼鍔ㄨ嚜鍔ㄥ綊绫?3. 鏃犺繍琛屼緷璧栵細绾?Python 3 stdlib锛屾棤闇€ numpy/Cairo 绛夛紱涓庝笂娓歌剼鏈?`tools/TaskSorter/` 鍚屾瀯锛坄py` 鍚姩锛?
+**鍚庣画**锛氬緟鎵嬪姩楠岃瘉椤圭洰浠呬负銆屾枃妗ｅ彲璇绘€с€嶁€斺€旇嫢 `[OK]`/`[TGT]`/`[HOT]` ASCII 鏍囪瑙夊緱涓嶅鐩磋锛屼笅涓?feat 鍙敼鐢ㄧ函鏂囧瓧锛坄OK`/`MOD`/`HOT`锛夈€傛湰娆′繚鎸佺畝娲佷笉寮曞叆 emoji銆?
