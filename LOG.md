@@ -918,32 +918,7 @@ dotnet build src/MaaWpfGui/MaaWpfGui.csproj -c Release -p:Platform=x64
 
 ### fix/reception-clue-vacancy 瀹炴柦瀹屾垚
 
-淇 6 涓牴鍥犱腑 4 涓洿鎺ュ彲鏀圭殑浠ｇ爜灞傞潰闂锛堜慨澶?鈶?娑夊強鍏变韩 helper锛屼綔鐢ㄥ煙骞匡紝鐣欏緟鍚庣画 PR锛涗慨澶?鈶?浠呮槸 `next` 閾炬敹绱э級锛?
-| # | 鏂囦欢 | 鎿嶄綔 | 璇存槑 |
-|---|------|------|------|
-| 1 | `src/MaaCore/Task/Infrast/InfrastReceptionTask.cpp:231-296` | 淇敼 | **淇鈶?* `proc_clue_vacancy()` 蹇嵎缃叆璺緞閲嶅啓锛氬師 `return true` 鏃犳潯浠惰Е鍙戯紝瀵艰嚧 4 绫诲け璐ワ紙OCR 澶辫触 / 鏁板瓧瑙ｆ瀽澶辫触 / `available != vacancy_cnt` / `confirm_task` 缂哄け锛夐兘浼氳烦杩?legacy 寰幆銆傛敼閫犳帶鍒舵祦锛?a) `vacancy_cnt == 0` 瑙嗕负瀹屾垚杩斿洖 true锛?b) `click_performed` 浠呭湪 `available == vacancy_cnt` 鏃剁疆 true锛?c) 浠讳綍澶辫触璺緞闄嶇骇鍒?legacy 寰幆骞舵墦鍗?fallback 鏃ュ織 |
-| 2 | `src/MaaCore/Task/Infrast/InfrastReceptionTask.cpp:298-303` | 淇敼 | **淇鈶?* Legacy 寰幆浣撻《閮ㄨ拷鍔?`image = ctrler()->get_image();`锛屼慨澶?`continue` 鍓嶆湭鍒锋柊瀵艰嚧姝诲惊鐜?|
-| 3 | `src/MaaCore/Task/Infrast/InfrastReceptionTask.cpp:333-340` | 淇敼 | **淇鈶?* 鏀剧疆绾跨储鍚庢娴?`InfrastReceptionIcon`锛堜笌 `remove_clue` 鍚屾簮锛夊苟鐐瑰嚮鍏抽棴鍙充晶绾跨储鍒楄〃闈㈡澘锛岄伩鍏嶄笅涓€杞凯浠ｅ湪寮圭獥涓婅鎿嶄綔 |
-| 4 | `src/MaaCore/Task/Infrast/InfrastReceptionTask.cpp:171` | 淇敼 | **淇鈶?* `remove_clue()` 鐨?`clue_suffix` 鐢?`{ "1", ..., "7" }` 鏀逛负 `{ "No1", ..., "No7" }`锛屼笌 `proc_clue_vacancy` / `use_clue` 瀵归綈锛屼娇 `InfrastClueVacancyImageAnalyzer` 鐪熸鍖归厤 `ClueVacancyNo*.png`锛堝凡鏀剧疆绾跨储妯℃澘锛夎€岄潪 `ClueVacancy*.png`锛堢┖浣嶆ā鏉匡級 |
-| 5 | `resource/tasks/tasks.json:3258-3263` | 淇敼 | **淇鈶?* `UnlockClues.next` 绉婚櫎 `InfrastBottomLeftTab`锛岄伩鍏嶇‖缂栫爜 `[0,719,1,1]` 鍦?720p 涓嬪懡涓簳閮?Tab 鍒囨崲鎸夐挳锛岃烦杞嚦閿欒瑙嗗浘銆俙UnlockCluesIsFake` 浜屾鏍￠獙浠嶄繚鐣?|
-| 6 | `install/MaaCore.dll` | 閮ㄧ讲 | Release 缂栬瘧浜х墿锛屾椂闂存埑 2026/7/27 11:01:04锛?190208 瀛楄妭锛屽瓧鑺傜壒寰佷覆 `quick-insert path done` / `quick-insert skipped: OCR analyze failed` / `quick-insert skipped: confirm task missing` 鍏ㄩ儴鍛戒腑 |
-| 7 | `install/resource/tasks/tasks.json` | 閮ㄧ讲 | 鍚屾婧愮 SHA256锛坄B4AB11A86C2CABE08DCFDD9B1EE209A90763AF6B834EB54DF7D77383129FA342`锛夛紝瀛楄妭鐗瑰緛涓?`next`:[\"UnlockCluesIsFake\"]` 鍛戒腑 |
-| 8 | `LOG.md` | 淇敼 | 鏈妭 |
 
-**缂栬瘧缁撴灉**: `cmake --build build --target MaaCore -j 4 --config Release` 鎴愬姛锛屼粎閬楃暀鏍囧噯 `LNK4098` 榛樿搴撹鍛娿€俙cmake --install build --config Release` 鍦?`MaaUpdater` 闃舵澶辫触锛圓GENTS.md 搂4.1 宸茬煡 VS 2026 SDK 璺緞 bug锛屼笌鏈?fix 鏃犲叧锛夛紱MaaCore 閮ㄥ垎閮ㄧ讲鎴愬姛锛宼asks.json 閫氳繃鎵嬪伐 `Copy-Item` 鍚屾鍒?`install/`銆?
-**鏈疄鏂戒慨澶?*:
-- **淇鈶?* `InfrastBottomLeftTab` `JustReturn` + 1px ROI 鈥?鍏变韩 helper锛屼綔鐢ㄥ煙娑夊強鍏ㄩ儴鍩虹璁炬柦 task锛岄潪鏈?fix 鑼冨洿锛岀暀寰呭悗缁?PR 鍗曠嫭澶勭悊
-- **淇鈶?* 鐨勮ˉ鍏咃細`UnlockClues` 鍙栨秷 `InfrastBottomLeftTab` 鍚庯紝寮圭獥鍏抽棴鍚庣殑瀵艰埅渚濊禆 `postDelay: 5000` 鍚庤皟鐢ㄦ柟锛坄use_clue`锛夌殑 `proc_clue_vacancy` 鑷甫鐨勫浘鍍忓垎鏋愬厹搴曪紙閫氳繃 `InfrastClueQuickInsert` 妯℃澘鍖归厤鎴?`InfrastClueVacancy` 妯℃澘璇嗗埆锛夛紝鍏峰涓€瀹氬閿?
-**棰勬湡鏁堟灉**:
-1. **瀹樻湇鐢ㄦ埛**锛歚InfrastClueQuickInsert` 鎸夐挳瀛樺湪浣?OCR 澶辫触鏃讹紝鏃х増绔嬪嵆 `return true` 璺宠繃锛涙柊鐗堥檷绾у埌 legacy 寰幆閫愪釜鏀剧疆绾跨储
-2. **B 鏈嶇敤鎴?*锛堟棤蹇嵎缃叆鎸夐挳锛夛細鏃х増 `remove_clue` 鍥犳ā鏉块敊閰嶇┖鎿嶄綔锛岄仐鐣欏凡鏀剧疆绾跨储锛涙柊鐗?`remove_clue` 姝ｇ‘鍖归厤 `ClueVacancyNo*.png`锛岃兘鑵惧嚭绌轰綅璁╁悗缁?`use_clue` 閲嶆柊瑁呭～
-3. **鏁板瓧涓嶄竴鑷村満鏅?*锛氭棫鐗堣烦杩囨斁缃紱鏂扮増 legacy 寰幆灏濊瘯閫愪釜鏀剧疆锛堥拡瀵?7 绫荤嚎绱㈤亶鍘嗭級
-4. **鎵€鏈夊鎴风**锛歭egacy 寰幆涓嶅啀鍥?`image` 缂撳瓨闄堟棫姝诲惊鐜紱鏀剧疆鍚庡叧闂潰鏉匡紝涓嬩竴杞粠骞插噣瑙嗗浘寮€濮?
-**寰呮墜鍔ㄩ獙璇侊紙闇€妯℃嫙鍣ㄧ幆澧冿級**:
-1. 瀹樻湇浼氬瀹?7 涓┖浣嶅満鏅?鈫?瑙傚療鏃ュ織鏄惁璧板揩鎹风疆鍏ヨ矾寰勫苟瀹屾垚
-2. 瀹樻湇浼氬瀹?1 涓┖浣?+ 6 涓凡鏀剧疆绾跨储 鈫?`remove_clue` 鏄惁姝ｇ‘璇嗗埆 6 涓凡鏀剧疆绾跨储骞剁Щ闄?3. B 鏈嶄細瀹㈠娣峰悎绌轰綅/宸叉斁缃嚎绱㈠満鏅?鈫?楠岃瘉 `remove_clue` 涓嶅啀绌烘搷浣?4. OCR 鏁板瓧璇讳笉鍒板満鏅紙灞忓箷鏈夐伄鎸★級 鈫?楠岃瘉闄嶇骇鍒?legacy 寰幆姝ｅ父瀹屾垚
-5. 浠绘剰鍦烘櫙璺戝畬浼氬瀹?shift 鈫?鎺у埗鍙版棩蹇楃‘璁ゆ棤 `quick-insert skipped:` 寮傚父 fallback锛堥櫎闈炵湡鐨勯渶瑕?fallback锛?
-**鏈帹閫佷笂娓?*: 浠呮湰浠撳簱 `branch` 淇锛屼笉鍚?upstream 鎻?PR銆?
 ### fix/reception-clue-vacancy 鍚堝叆 staging
 
 鎸?AGENTS.md 搂3.3 淇 branch 鑷韩鐨?fix 鈫?鍚堝苟鍒?`staging` 娴佺▼锛屼互 `--no-ff` 鍚堝苟锛宑ommit `ad725916b4`锛坒ix 浠ｇ爜锛? 鏈?merge commit銆?
@@ -983,3 +958,48 @@ dotnet build src/MaaWpfGui/MaaWpfGui.csproj -c Release -p:Platform=x64
 **棰勬湡鏁堟灉**锛?1. 寮€鏂?feat 鏃剁涓€姝ユ煡 `docs/downstream-changes.md`锛岀湅鍒扮洰鏍囨枃浠舵槸 `[HOT]` 澶氭敼鍔ㄧ殑锛堝 `TaskQueueViewModel.cs` 23 娆°€乣AutoRecruitTask.cpp` 10 娆★級锛屾敼鍓嶅厛璇诲搴?LOG.md 娈佃惤纭鏄惁鍐茬獊
 2. 鍚堝叆 feat 鍚庤窇涓€娆¤剼鏈埛鏂版竻鍗曪紝鏈€鏂版敼鍔ㄨ嚜鍔ㄥ綊绫?3. 鏃犺繍琛屼緷璧栵細绾?Python 3 stdlib锛屾棤闇€ numpy/Cairo 绛夛紱涓庝笂娓歌剼鏈?`tools/TaskSorter/` 鍚屾瀯锛坄py` 鍚姩锛?
 **鍚庣画**锛氬緟鎵嬪姩楠岃瘉椤圭洰浠呬负銆屾枃妗ｅ彲璇绘€с€嶁€斺€旇嫢 `[OK]`/`[TGT]`/`[HOT]` ASCII 鏍囪瑙夊緱涓嶅鐩磋锛屼笅涓?feat 鍙敼鐢ㄧ函鏂囧瓧锛坄OK`/`MOD`/`HOT`锛夈€傛湰娆′繚鎸佺畝娲佷笉寮曞叆 emoji銆?
+## 2026-07-29
+
+### feat/diagnostic-export 启动
+
+在 IssueReport 页面新增「导出诊断包」功能，支持按日期范围选择性导出日志 + `diagnostic.json` 系统信息 + 可选配置文件/缓存/自定义资源。
+
+| # | 文件/对象 | 操作 | 说明 |
+|---|----------|------|------|
+| 1 | `feat/diagnostic-export` | 新建分支 | 从 `branch` 拉出 |
+| 2 | `LOG.md` | 修改 | 本节（启动记录） |
+
+### feat/diagnostic-export 实施完成
+
+| # | 文件 | 操作 | 说明 |
+|---|------|------|------|
+| 1 | `src/MaaWpfGui/Models/DiagnosticInfo.cs` | 新建 | 系统信息数据模型 + `Collect()` 静态收集方法：OS/.NET 版本/架构、GPU、管理员、Wine、MAA 版本（UI/Core/Resource） |
+| 2 | `src/MaaWpfGui/ViewModels/UserControl/Settings/IssueReportUserControlModel.cs:42-70` | 修改 | 新增诊断导出属性：`DiagnosticDateRange`(默认 7 天)、`IncludeConfig`/`IncludeCache`/`IncludeCustomResource` 三个 CheckBox、`DateRangeOption` record 与 `DateRangeOptions` 懒加载列表 |
+| 3 | `src/MaaWpfGui/ViewModels/UserControl/Settings/IssueReportUserControlModel.cs:292-399` | 修改 | 新增 `ExportDiagnosticPackage()` 方法：收集系统信息 → diagnostic.json → 逐日志文件按日期范围过滤行 → 可选目录复制 → zip 打包 → growl + 打开 reports 目录 |
+| 4 | `src/MaaWpfGui/ViewModels/UserControl/Settings/IssueReportUserControlModel.cs:401-443` | 修改 | 新增 `CopyFilteredLog()` 辅助方法：正则 `^\[\d{4}-\d{2}-\d{2}` 逐行解析日志时间戳，仅保留日期范围内行；非时间戳行（异常栈）自动保留 |
+| 5 | `src/MaaWpfGui/Views/UserControl/Settings/IssueReportUserControl.xaml:97-165` | 修改 | IssueReport 页面新增诊断导出区域：日期范围 ComboBox + 3 个 CheckBox + 导出按钮 |
+| 6 | `src/MaaWpfGui/Res/Localizations/zh-cn.xaml:1457-1473` | 修改 | +13 个中文 localization key（`ExportDiagnosticPackage*` / `DiagnosticDateRange` / `DiagnosticInclude*` / `DiagnosticLast*`） |
+| 7 | `src/MaaWpfGui/Res/Localizations/en-us.xaml:1456-1472` | 修改 | +13 个英文 localization key |
+| 8 | `src/MaaWpfGui/Res/Localizations/zh-tw.xaml:1457-1473` | 修改 | +13 个繁中 localization key |
+| 9 | `src/MaaWpfGui/Res/Localizations/ja-jp.xaml:1457-1473` | 修改 | +13 个日文 localization key |
+| 10 | `src/MaaWpfGui/Res/Localizations/ko-kr.xaml:1458-1474` | 修改 | +13 个韩文 localization key |
+| 11 | `LOG.md` | 修改 | 本节（实施完成记录） |
+
+**编译/部署结果**: `dotnet build -c Release` 0 error, 50 warning（全为 StyleCop 规则与 `#nullable` 上下文内 `string?` 注释，与 AGENTS.md §5 一致，不阻断）；C++ 端未改动，无需 cmake。
+
+**关键设计**:
+- 日志过滤使用 `StreamReader.ReadLine()` 逐行流式读取，避免 64MB+ 大日志（asst.log）加载到内存
+- 非时间戳行（C++ 异常栈回溯、Serilog 多行异常）自动保留，附在最后一条有时间戳的日志后
+- `DiagnosticInfo.Collect()` 通过 `RuntimeInformation` / `WineRuntimeInformation` / `GpuOption.GetCurrent()` 收集系统信息，不引入新外部依赖
+- `DateRangeOptions` 使用懒加载（`Lazy<T>` 模式），避免 `LocalizationHelper` 在静态初始化时未就绪
+- 重用已有 `CopyDirectoryIfExists()` 私有方法复制可选目录
+- 日志始终包含 crash.log 和 dumps/ 目录（即使超出日期范围，因通常很小且对排错关键）
+
+### feat/diagnostic-export 合入 staging
+
+按 AGENTS.md §2.4 流程合并到 `staging`，以 `--no-ff` 合并。
+
+| # | 文件/对象 | 操作 | 说明 |
+|---|----------|------|------|
+| 1 | `staging` | `--no-ff` 合并 | `feat/diagnostic-export` 1 commit 合入 |
+| 2 | `LOG.md` | 修改 | 本节（合入记录 + 冲突解决） |
