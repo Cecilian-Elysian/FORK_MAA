@@ -190,6 +190,7 @@ feat/<name>, fix/<name> ────────────┘
 | 脚本 | 用途 |
 |------|------|
 | `local-install.bat` | 本地构建并部署到 `install/` |
+| `local-install-staging.bat` | 本地构建并部署到 `install-staging/` |
 | `release-zip.{bat,ps1}` | 一键打包 zip |
 | `add_maa_to_nahimic_whitelist.ps1` | MAA.exe 加入 Nahimic DLL 注入白名单 |
 | `disable_nahimic.ps1` | 停用 NahimicService 开机自启 |
@@ -197,6 +198,23 @@ feat/<name>, fix/<name> ────────────┘
 | `maadeps-download.py` | 依赖库下载 |
 | `ClangFormatter/` | clang-format 集成 |
 | `OverseasClients/`、`Roguelike*/`、`SmokeTesting/`、`SyncTemplate/`、`TaskSorter/` | 功能性辅助工具 |
+
+
+### 4.5 部署目录职责
+
+| 目录 | 角色 | 来源分支 | 构建脚本 |
+|------|------|----------|----------|
+| `install/` | **生产版** | `branch` (稳定下游基线) | `tools/local-install.bat` |
+| `install-staging/` | **测试版** | `staging` (待验证整合区) | `tools/local-install-staging.bat` |
+
+**硬约束**:
+
+- staging 上的改动（含 `feat/*` / `fix/*` 在晋升 `branch` 之前）**必须**输出到 `install-staging/`，**绝不**写到 `install/`
+- `install/` 是 `branch` 的产物；本地调试 staging 改动务必先 `git switch staging`，再用 `tools/local-install-staging.bat`
+- 误把 staging 代码写进 `install/` 时立即 `git switch branch` → 跑 `tools/local-install.bat` 从 `branch` 重建恢复
+- 日常测试启动 `install-staging/MAA.exe`；发布与正式运行用 `install/MAA.exe`
+- 不允许在 `staging` 上执行 `dotnet publish -o install` 或 `cmake --install build --prefix install`（这两个命令属于 branch 构建步骤）
+- `dotnet publish` / `cmake --install` 的 `-o` / `--prefix` 必须与当前 git 分支匹配
 
 
 ## 5. 代码风格与质量
