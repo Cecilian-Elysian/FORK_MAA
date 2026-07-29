@@ -94,5 +94,66 @@
                 </StackPanel>
             </StackPanel>
         </Grid>
+        <Border
+            Margin="10,10,10,5"
+            BorderBrush="{DynamicResource BorderBrush}"
+            BorderThickness="0,1,0,0" />
+        <StackPanel
+            MaxWidth="450"
+            Margin="10,5,10,10"
+            HorizontalAlignment="Center">
+            <controls:TextBlock
+                Margin="0,0,0,8"
+                HorizontalAlignment="Center"
+                FontSize="14"
+                FontWeight="SemiBold"
+                Text="{DynamicResource ExportDiagnosticPackage}" />
+            <Grid Margin="0,0,0,6" HorizontalAlignment="Stretch">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <controls:TextBlock
+                    Grid.Column="0"
+                    Margin="0,0,8,0"
+                    VerticalAlignment="Center"
+                    Text="{DynamicResource DiagnosticDateRange}" />
+                <ComboBox
+                    Grid.Column="1"
+                    Width="120"
+                    HorizontalAlignment="Left"
+                    ItemsSource="{Binding DateRangeOptions}"
+                    SelectedValue="{Binding DiagnosticDateRange}"
+                    DisplayMemberPath="Display"
+                    SelectedValuePath="Value" />
+            </Grid>
+            <CheckBox
+                Margin="0,2"
+                Content="{DynamicResource DiagnosticIncludeGuiLog}"
+                IsChecked="True"
+                IsEnabled="False" />
+            <CheckBox
+                Margin="0,2"
+                Content="{DynamicResource DiagnosticIncludeCoreLog}"
+                IsChecked="True"
+                IsEnabled="False" />
+            <CheckBox
+                Margin="0,2"
+                Content="{DynamicResource DiagnosticIncludeConfig}"
+                IsChecked="{Binding IncludeConfig}" />
+            <CheckBox
+                Margin="0,2"
+                Content="{DynamicResource DiagnosticIncludeCache}"
+                IsChecked="{Binding IncludeCache}" />
+            <CheckBox
+                Margin="0,2"
+                Content="{DynamicResource DiagnosticIncludeCustomResource}"
+                IsChecked="{Binding IncludeCustomResource}" />
+            <Button
+                Margin="0,6,0,0"
+                HorizontalAlignment="Center"
+                Command="{s:Action ExportDiagnosticPackage}"
+                Content="{DynamicResource ExportDiagnosticPackageButton}" />
+        </StackPanel>
     </StackPanel>
 </UserControl>

@@ -18,12 +18,16 @@ using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Windows;
 using HandyControl.Controls;
 using HandyControl.Data;
 using JetBrains.Annotations;
 using MaaWpfGui.Constants;
 using MaaWpfGui.Helper;
+using MaaWpfGui.Main;
+using MaaWpfGui.Models;
 using Serilog;
 using Stylet;
 
@@ -40,6 +44,60 @@ public class IssueReportUserControlModel : PropertyChangedBase
     }
 
     public static IssueReportUserControlModel Instance { get; }
+
+    // ===== Diagnostic Export Properties =====
+
+    private int _diagnosticDateRange = 7;
+
+    public int DiagnosticDateRange
+    {
+        get => _diagnosticDateRange;
+        set => SetAndNotify(ref _diagnosticDateRange, value);
+    }
+
+    private List<DateRangeOption>? _dateRangeOptions;
+
+    public List<DateRangeOption> DateRangeOptions => _dateRangeOptions ??= InitDateRangeOptions();
+
+    private static List<DateRangeOption> InitDateRangeOptions()
+    {
+        return
+        [
+            new(1, LocalizationHelper.GetString("DiagnosticLast1Day")),
+            new(3, LocalizationHelper.GetStringFormat("DiagnosticLastNDays", 3)),
+            new(7, LocalizationHelper.GetStringFormat("DiagnosticLastNDays", 7)),
+            new(14, LocalizationHelper.GetStringFormat("DiagnosticLastNDays", 14)),
+            new(30, LocalizationHelper.GetStringFormat("DiagnosticLastNDays", 30)),
+        ];
+    }
+
+    public record DateRangeOption(int Value, string Display);
+
+    private bool _includeConfig = true;
+
+    public bool IncludeConfig
+    {
+        get => _includeConfig;
+        set => SetAndNotify(ref _includeConfig, value);
+    }
+
+    private bool _includeCache;
+
+    public bool IncludeCache
+    {
+        get => _includeCache;
+        set => SetAndNotify(ref _includeCache, value);
+    }
+
+    private bool _includeCustomResource;
+
+    public bool IncludeCustomResource
+    {
+        get => _includeCustomResource;
+        set => SetAndNotify(ref _includeCustomResource, value);
+    }
+
+    // ===== End Diagnostic Export Properties =====
 
     public void OpenDebugFolder()
     {
@@ -344,6 +402,136 @@ public class IssueReportUserControlModel : PropertyChangedBase
             {
                 // 也忽略权限问题
             }
+        }
+    }
+
+    /// <summary>
+    /// 导出诊断包 — 按日期范围选择性导出日志 + diagnostic.json 系统信息 + 可选项
+    /// </summary>
+    public void ExportDiagnosticPackage()
+    {
+        try
+        {
+            var toDate = DateTime.Now.Date;
+            var fromDate = toDate.AddDays(-_diagnosticDateRange);
+
+            string reportName = $"diagnostic_{DateTimeOffset.Now:MM-dd_HH-mm-ss}";
+            string tempPath = Path.Combine(PathsHelper.ReportsDir, $"maa-diagnostic-{Guid.NewGuid()}");
+            Directory.CreateDirectory(tempPath);
+
+            if (!Directory.Exists(PathsHelper.ReportsDir))
+            {
+                Directory.CreateDirectory(PathsHelper.ReportsDir);
+            }
+
+            // 收集系统信息并写入 diagnostic.json
+            var diagInfo = DiagnosticInfo.Collect(fromDate, toDate);
+            string diagJson = JsonSerializer.Serialize(diagInfo, new JsonSerializerOptions { WriteIndented = true });
+            File.WriteAllText(Path.Combine(tempPath, "diagnostic.json"), diagJson);
+
+            // 复制 debug/ 中按日期过滤的日志
+            string debugOut = Path.Combine(tempPath, "debug");
+            Directory.CreateDirectory(debugOut);
+
+            CopyFilteredLog(Bootstrapper.UiLogFile, debugOut, fromDate, toDate);
+            CopyFilteredLog(Bootstrapper.UiLogBakFile, debugOut, fromDate, toDate);
+            CopyFilteredLog(Bootstrapper.CoreLogFile, debugOut, fromDate, toDate);
+            CopyFilteredLog(Bootstrapper.CoreLogBakFile, debugOut, fromDate, toDate);
+
+            // crash.log 和 dumps/ 始终包含
+            string crashLog = Path.Combine(PathsHelper.DebugDir, "crash.log");
+            if (File.Exists(crashLog))
+            {
+                File.Copy(crashLog, Path.Combine(debugOut, "crash.log"), true);
+            }
+
+            string dumpsSrc = Path.Combine(PathsHelper.DebugDir, "dumps");
+            if (Directory.Exists(dumpsSrc))
+            {
+                CopyDirectoryIfExists(dumpsSrc, Path.Combine(debugOut, "dumps"));
+            }
+
+            // 可选目录
+            if (_includeConfig)
+            {
+                CopyDirectoryIfExists(PathsHelper.ConfigDir, Path.Combine(tempPath, "config"));
+            }
+
+            if (_includeCache)
+            {
+                CopyDirectoryIfExists(PathsHelper.CacheDir, Path.Combine(tempPath, "cache"));
+            }
+
+            if (_includeCustomResource)
+            {
+                CopyDirectoryIfExists(PathsHelper.ResourceDir, Path.Combine(tempPath, "resource"),
+                    f => Path.GetFileName(f).Contains("_custom.", StringComparison.OrdinalIgnoreCase));
+            }
+
+            // 打包 zip
+            string zipPath = Path.Combine(PathsHelper.ReportsDir, $"{reportName}.zip");
+            ZipFile.CreateFromDirectory(tempPath, zipPath, CompressionLevel.SmallestSize, includeBaseDirectory: false);
+
+            // 清理临时目录
+            Directory.Delete(tempPath, recursive: true);
+
+            ShowGrowl($"{LocalizationHelper.GetString("ExportDiagnosticPackageSuccessful")}\n{zipPath}");
+            OpenReportsFolder();
+        }
+        catch (Exception ex)
+        {
+            ShowGrowl($"{LocalizationHelper.GetString("ExportDiagnosticPackageException")}\n{ex.Message}");
+            Log.Error(ex, "Failed to export diagnostic package");
+        }
+    }
+
+    /// <summary>
+    /// 读取日志文件，按日期范围过滤后写入输出目录（保留原文件名）。
+    /// </summary>
+    private static void CopyFilteredLog(string sourcePath, string destDir, DateTime fromDate, DateTime toDate)
+    {
+        if (!File.Exists(sourcePath))
+        {
+            return;
+        }
+
+        string fileName = Path.GetFileName(sourcePath);
+        string destPath = Path.Combine(destDir, fileName);
+
+        var dateRegex = new Regex(@"^\[(\d{4})-(\d{2})-(\d{2})");
+        int keptLines = 0;
+
+        using (var reader = new StreamReader(sourcePath))
+        using (var writer = new StreamWriter(destPath))
+        {
+            string? line;
+            while ((line = reader.ReadLine()) != null)
+            {
+                var match = dateRegex.Match(line);
+                if (match.Success)
+                {
+                    int y = int.Parse(match.Groups[1].Value);
+                    int m = int.Parse(match.Groups[2].Value);
+                    int d = int.Parse(match.Groups[3].Value);
+                    var lineDate = new DateTime(y, m, d);
+                    if (lineDate >= fromDate && lineDate <= toDate)
+                    {
+                        writer.WriteLine(line);
+                        keptLines++;
+                    }
+                }
+                else
+                {
+                    // 无时间戳的行（如异常栈回溯）附在前一条日志后，保留
+                    writer.WriteLine(line);
+                }
+            }
+        }
+
+        // 如果过滤后无内容，删除空文件
+        if (keptLines == 0)
+        {
+            try { File.Delete(destPath); } catch { }
         }
     }
 

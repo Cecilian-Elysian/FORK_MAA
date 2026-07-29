@@ -1046,3 +1046,40 @@ dotnet build src/MaaWpfGui/MaaWpfGui.csproj -c Release -p:Platform=x64
 
 **未推送上游**: 仅本仓库 `branch` 修复，不向 upstream 提 PR。
 
+## 2026-07-29
+
+### feat/diagnostic-export 启动
+
+在 IssueReport 页面新增「导出诊断包」功能，支持按日期范围选择性导出日志 + `diagnostic.json` 系统信息 + 可选配置文件/缓存/自定义资源。
+
+| # | 文件/对象 | 操作 | 说明 |
+|---|----------|------|------|
+| 1 | `feat/diagnostic-export` | 新建分支 | 从 `branch` 拉出 |
+| 2 | `LOG.md` | 修改 | 本节（启动记录） |
+
+### feat/diagnostic-export 实施完成
+
+| # | 文件 | 操作 | 说明 |
+|---|------|------|------|
+| 1 | `src/MaaWpfGui/Models/DiagnosticInfo.cs` | 新建 | 系统信息数据模型 + `Collect()` 静态收集方法：OS/.NET 版本/架构、GPU、管理员、Wine、MAA 版本（UI/Core/Resource） |
+| 2 | `src/MaaWpfGui/ViewModels/UserControl/Settings/IssueReportUserControlModel.cs:42-70` | 修改 | 新增诊断导出属性：`DiagnosticDateRange`(默认 7 天)、`IncludeConfig`/`IncludeCache`/`IncludeCustomResource` 三个 CheckBox、`DateRangeOption` record 与 `DateRangeOptions` 懒加载列表 |
+| 3 | `src/MaaWpfGui/ViewModels/UserControl/Settings/IssueReportUserControlModel.cs:292-399` | 修改 | 新增 `ExportDiagnosticPackage()` 方法：收集系统信息 → diagnostic.json → 逐日志文件按日期范围过滤行 → 可选目录复制 → zip 打包 → growl + 打开 reports 目录 |
+| 4 | `src/MaaWpfGui/ViewModels/UserControl/Settings/IssueReportUserControlModel.cs:401-443` | 修改 | 新增 `CopyFilteredLog()` 辅助方法：正则 `^\[\d{4}-\d{2}-\d{2}` 逐行解析日志时间戳，仅保留日期范围内行；非时间戳行（异常栈）自动保留 |
+| 5 | `src/MaaWpfGui/Views/UserControl/Settings/IssueReportUserControl.xaml:97-165` | 修改 | IssueReport 页面新增诊断导出区域：日期范围 ComboBox + 3 个 CheckBox + 导出按钮 |
+| 6 | `src/MaaWpfGui/Res/Localizations/zh-cn.xaml:1457-1473` | 修改 | +13 个中文 localization key（`ExportDiagnosticPackage*` / `DiagnosticDateRange` / `DiagnosticInclude*` / `DiagnosticLast*`） |
+| 7 | `src/MaaWpfGui/Res/Localizations/en-us.xaml:1456-1472` | 修改 | +13 个英文 localization key |
+| 8 | `src/MaaWpfGui/Res/Localizations/zh-tw.xaml:1457-1473` | 修改 | +13 个繁中 localization key |
+| 9 | `src/MaaWpfGui/Res/Localizations/ja-jp.xaml:1457-1473` | 修改 | +13 个日文 localization key |
+| 10 | `src/MaaWpfGui/Res/Localizations/ko-kr.xaml:1458-1474` | 修改 | +13 个韩文 localization key |
+| 11 | `LOG.md` | 修改 | 本节（实施完成记录） |
+
+**编译/部署结果**: `dotnet build -c Release` 0 error, 50 warning（全为 StyleCop 规则与 `#nullable` 上下文内 `string?` 注释，与 AGENTS.md §5 一致，不阻断）；C++ 端未改动，无需 cmake。
+
+**关键设计**:
+- 日志过滤使用 `StreamReader.ReadLine()` 逐行流式读取，避免 64MB+ 大日志（asst.log）加载到内存
+- 非时间戳行（C++ 异常栈回溯、Serilog 多行异常）自动保留，附在最后一条有时间戳的日志后
+- `DiagnosticInfo.Collect()` 通过 `RuntimeInformation` / `WineRuntimeInformation` / `GpuOption.GetCurrent()` 收集系统信息，不引入新外部依赖
+- `DateRangeOptions` 使用懒加载（`Lazy<T>` 模式），避免 `LocalizationHelper` 在静态初始化时未就绪
+- 重用已有 `CopyDirectoryIfExists()` 私有方法复制可选目录
+- 日志始终包含 crash.log 和 dumps/ 目录（即使超出日期范围，因通常很小且对排错关键）
+

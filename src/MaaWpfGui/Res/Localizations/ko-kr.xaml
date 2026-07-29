@@ -1455,6 +1455,20 @@ DEBUG 디렉토리에 저장된 이미지는 수량 제한이 있으며 초과 �
     <system:String x:Key="ClearImageCacheSuccessful">이미지 캐시 비우기 성공</system:String>
     <system:String x:Key="ClearImageCacheAlreadyEmpty">이미지 캐시가 이미 비어 있음</system:String>
     <system:String x:Key="ClearImageCacheException">이미지 캐시 비우기 중 오류가 발생했습니다:</system:String>
+    <!--  DiagnosticExport  -->
+    <system:String x:Key="ExportDiagnosticPackage">진단 내보내기</system:String>
+    <system:String x:Key="ExportDiagnosticPackageButton">진단 패키지 내보내기</system:String>
+    <system:String x:Key="ExportDiagnosticPackageSuccessful">진단 패키지 내보내기 성공</system:String>
+    <system:String x:Key="ExportDiagnosticPackageException">진단 패키지 내보내기 중 오류가 발생했습니다:</system:String>
+    <system:String x:Key="DiagnosticDateRange">로그 기간</system:String>
+    <system:String x:Key="DiagnosticIncludeGuiLog">GUI 로그 (gui.log)</system:String>
+    <system:String x:Key="DiagnosticIncludeCoreLog">코어 로그 (asst.log)</system:String>
+    <system:String x:Key="DiagnosticIncludeConfig">설정 포함</system:String>
+    <system:String x:Key="DiagnosticIncludeCache">캐시 포함</system:String>
+    <system:String x:Key="DiagnosticIncludeCustomResource">사용자 지정 리소스 포함</system:String>
+    <system:String x:Key="DiagnosticLast1Day">최근 1일</system:String>
+    <system:String x:Key="DiagnosticLastNDays">최근 {0}일</system:String>
+    <!--  !DiagnosticExport  -->
     <!--  !Issues  -->
     <!--  AutoRecruitSettings  -->
     <system:String x:Key="AutoRefresh">★3 태그 자동 새로고침</system:String>
