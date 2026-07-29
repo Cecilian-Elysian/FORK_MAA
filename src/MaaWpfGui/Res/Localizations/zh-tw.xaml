@@ -1460,6 +1460,7 @@ DEBUG 目錄下儲存的圖片有數量限制，超出後會自動清理舊圖�
     <system:String x:Key="ExportDiagnosticPackageButton">導出診斷包</system:String>
     <system:String x:Key="ExportDiagnosticPackageSuccessful">診斷包導出成功</system:String>
     <system:String x:Key="ExportDiagnosticPackageException">導出診斷包時出現錯誤：</system:String>
+    <system:String x:Key="ExportDiagnosticPackageSelectLocation">選擇診斷包儲存位置</system:String>
     <system:String x:Key="DiagnosticDateRange">日誌時間範圍</system:String>
     <system:String x:Key="DiagnosticIncludeGuiLog">GUI 日誌 (gui.log)</system:String>
     <system:String x:Key="DiagnosticIncludeCoreLog">核心日誌 (asst.log)</system:String>

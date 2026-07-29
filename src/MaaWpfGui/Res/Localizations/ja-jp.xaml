@@ -1460,6 +1460,7 @@ DEBUGディレクトリに保存される画像には数量制限があり、超
     <system:String x:Key="ExportDiagnosticPackageButton">診断パッケージをエクスポート</system:String>
     <system:String x:Key="ExportDiagnosticPackageSuccessful">診断パッケージのエクスポートに成功しました</system:String>
     <system:String x:Key="ExportDiagnosticPackageException">診断パッケージのエクスポート中にエラーが発生しました：</system:String>
+    <system:String x:Key="ExportDiagnosticPackageSelectLocation">診断パッケージの保存場所を選択</system:String>
     <system:String x:Key="DiagnosticDateRange">ログの期間</system:String>
     <system:String x:Key="DiagnosticIncludeGuiLog">GUI ログ (gui.log)</system:String>
     <system:String x:Key="DiagnosticIncludeCoreLog">コアログ (asst.log)</system:String>
