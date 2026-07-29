@@ -1459,6 +1459,7 @@ Cache files (such as maps, operator avatars, etc.) need to be regenerated after 
     <system:String x:Key="ExportDiagnosticPackageButton">Export Diagnostic Package</system:String>
     <system:String x:Key="ExportDiagnosticPackageSuccessful">Diagnostic package exported successfully</system:String>
     <system:String x:Key="ExportDiagnosticPackageException">An error occurred while exporting the diagnostic package:</system:String>
+    <system:String x:Key="ExportDiagnosticPackageSelectLocation">Select diagnostic package save location</system:String>
     <system:String x:Key="DiagnosticDateRange">Log date range</system:String>
     <system:String x:Key="DiagnosticIncludeGuiLog">GUI log (gui.log)</system:String>
     <system:String x:Key="DiagnosticIncludeCoreLog">Core log (asst.log)</system:String>

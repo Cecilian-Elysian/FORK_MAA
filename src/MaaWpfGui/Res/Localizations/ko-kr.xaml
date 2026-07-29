@@ -1461,6 +1461,7 @@ DEBUG 디렉토리에 저장된 이미지는 수량 제한이 있으며 초과 �
     <system:String x:Key="ExportDiagnosticPackageButton">진단 패키지 내보내기</system:String>
     <system:String x:Key="ExportDiagnosticPackageSuccessful">진단 패키지 내보내기 성공</system:String>
     <system:String x:Key="ExportDiagnosticPackageException">진단 패키지 내보내기 중 오류가 발생했습니다:</system:String>
+    <system:String x:Key="ExportDiagnosticPackageSelectLocation">진단 패키지 저장 위치 선택</system:String>
     <system:String x:Key="DiagnosticDateRange">로그 기간</system:String>
     <system:String x:Key="DiagnosticIncludeGuiLog">GUI 로그 (gui.log)</system:String>
     <system:String x:Key="DiagnosticIncludeCoreLog">코어 로그 (asst.log)</system:String>

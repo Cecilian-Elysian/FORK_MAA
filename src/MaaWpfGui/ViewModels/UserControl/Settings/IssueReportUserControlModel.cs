@@ -28,6 +28,7 @@ using MaaWpfGui.Constants;
 using MaaWpfGui.Helper;
 using MaaWpfGui.Main;
 using MaaWpfGui.Models;
+using Microsoft.Win32;
 using Serilog;
 using Stylet;
 
@@ -416,13 +417,30 @@ public class IssueReportUserControlModel : PropertyChangedBase
             var fromDate = toDate.AddDays(-_diagnosticDateRange);
 
             string reportName = $"diagnostic_{DateTimeOffset.Now:MM-dd_HH-mm-ss}";
-            string tempPath = Path.Combine(PathsHelper.ReportsDir, $"maa-diagnostic-{Guid.NewGuid()}");
-            Directory.CreateDirectory(tempPath);
 
             if (!Directory.Exists(PathsHelper.ReportsDir))
             {
                 Directory.CreateDirectory(PathsHelper.ReportsDir);
             }
+
+            // 弹出保存对话框让用户选择保存路径；取消则放弃导出
+            var saveDialog = new SaveFileDialog
+            {
+                Title = LocalizationHelper.GetString("ExportDiagnosticPackageSelectLocation"),
+                Filter = "ZIP files (*.zip)|*.zip",
+                FileName = $"{reportName}.zip",
+                InitialDirectory = PathsHelper.ReportsDir,
+                OverwritePrompt = true,
+                AddExtension = true,
+                DefaultExt = ".zip",
+            };
+            if (saveDialog.ShowDialog() != true)
+            {
+                return;
+            }
+
+            string tempPath = Path.Combine(PathsHelper.ReportsDir, $"maa-diagnostic-{Guid.NewGuid()}");
+            Directory.CreateDirectory(tempPath);
 
             // 收集系统信息并写入 diagnostic.json
             var diagInfo = DiagnosticInfo.Collect(fromDate, toDate);
@@ -469,7 +487,7 @@ public class IssueReportUserControlModel : PropertyChangedBase
             }
 
             // 打包 zip
-            string zipPath = Path.Combine(PathsHelper.ReportsDir, $"{reportName}.zip");
+            string zipPath = saveDialog.FileName;
             ZipFile.CreateFromDirectory(tempPath, zipPath, CompressionLevel.SmallestSize, includeBaseDirectory: false);
 
             // 清理临时目录

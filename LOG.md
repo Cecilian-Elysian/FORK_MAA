@@ -1003,3 +1003,43 @@ dotnet build src/MaaWpfGui/MaaWpfGui.csproj -c Release -p:Platform=x64
 |---|----------|------|------|
 | 1 | `staging` | `--no-ff` 合并 | `feat/diagnostic-export` 1 commit 合入 |
 | 2 | `LOG.md` | 修改 | 本节（合入记录 + 冲突解决） |
+
+## 2026-07-29
+
+### fix/diagnostic-export-path 启动
+
+按用户反馈，诊断包导出目前固定输出到 `reports/diagnostic_*.zip`，无法指定保存位置。加 `SaveFileDialog` 让用户在导出前选路径 + 文件名，取消则放弃导出。从 `staging` 拉出（按 §3.3，修 feat/diagnostic-export 自身的 fix，挂 staging）。
+
+| # | 文件/对象 | 操作 | 说明 |
+|---|----------|------|------|
+| 1 | `fix/diagnostic-export-path` | 新建分支 | 从 `staging` 拉出 |
+| 2 | `LOG.md` | 修改 | 本节（启动记录） |
+
+### fix/diagnostic-export-path 实施完成
+
+| # | 文件 | 操作 | 说明 |
+|---|------|------|------|
+| 1 | `src/MaaWpfGui/ViewModels/UserControl/Settings/IssueReportUserControlModel.cs:14-34` | 修改 | 新增 `using Microsoft.Win32;`（按字母顺序排在 `MaaWpfGui.Models` 之后、`Serilog` 之前，避免 SA1208/SA1210） |
+| 2 | `src/MaaWpfGui/ViewModels/UserControl/Settings/IssueReportUserControlModel.cs:414-431` | 修改 | `ExportDiagnosticPackage()` 顶部加 SaveFileDialog：Title 用本地化键 `ExportDiagnosticPackageSelectLocation`、Filter=`ZIP files (*.zip)\|*.zip`、默认文件名=`{reportName}.zip`、初始目录=`PathsHelper.ReportsDir`、开启 OverwritePrompt + AddExtension + DefaultExt |
+| 3 | `src/MaaWpfGui/ViewModels/UserControl/Settings/IssueReportUserControlModel.cs:418` | 修改 | 把 `tempPath` 创建移到 SaveDialog 之后（取消导出时不创建无用临时目录） |
+| 4 | `src/MaaWpfGui/ViewModels/UserControl/Settings/IssueReportUserControlModel.cs:434` | 修改 | `if (saveDialog.ShowDialog() != true) return;` — 取消安全退出，不弹 growl |
+| 5 | `src/MaaWpfGui/ViewModels/UserControl/Settings/IssueReportUserControlModel.cs:497` | 修改 | `zipPath = saveDialog.FileName` 替代硬编码 `Path.Combine(ReportsDir, ...)` |
+| 6 | `src/MaaWpfGui/Res/Localizations/zh-cn.xaml:1462` | 修改 | +1 key `ExportDiagnosticPackageSelectLocation` = "选择诊断包保存位置" |
+| 7 | `src/MaaWpfGui/Res/Localizations/en-us.xaml:1461` | 修改 | +1 key = "Select diagnostic package save location" |
+| 8 | `src/MaaWpfGui/Res/Localizations/zh-tw.xaml:1462` | 修改 | +1 key = "選擇診斷包儲存位置" |
+| 9 | `src/MaaWpfGui/Res/Localizations/ja-jp.xaml:1462` | 修改 | +1 key = "診断パッケージの保存場所を選択" |
+| 10 | `src/MaaWpfGui/Res/Localizations/ko-kr.xaml:1463` | 修改 | +1 key = "진단 패키지 저장 위치 선택" |
+| 11 | `LOG.md` | 修改 | 本节（实施完成记录） |
+
+**编译/部署结果**: `dotnet build -c Release` 0 error, 58 warning（前次 50 + 8 重复 StyleCop 报告，无新增 SA1208/SA1210/SA15xx 源自本次改动）；C++ 端未改动，无需 cmake。
+
+**关键设计**:
+- SaveFileDialog 的 `Filter` 故意不本地化（`"ZIP files (*.zip)|*.zip"`），避免 `LocalizationHelper.GetString()` 增加 xaml key 数；Windows 文件对话框标准文本
+- `tempPath` 创建移到 SaveDialog 之后，避免用户在取消时白创建空目录
+- 取消导出静默 `return` — 不弹任何 growl（避免误以为是失败）
+- `InitialDirectory = PathsHelper.ReportsDir` 保留向后兼容默认值；用户在对话框里切换到任意目录（包括桌面）即可
+- `OpenReportsFolder()` 仍打开 `reports/` — 用户已选目标路径，保留打开默认目录不碍事；可后续按反馈去掉
+
+**后续**:
+- 待手动验证：在 IssueReport 页面点「导出诊断包」 → 弹出「选择诊断包保存位置」对话框 → 默认文件名 `diagnostic_MM-dd_HH-mm-ss.zip` → 选桌面保存 → 文件成功落桌面并 growl 提示
+- 取消对话框不弹 growl，临时目录（若已创建）会被 `try/finally` 风格未覆盖；目前 `tempPath` 在取消路径根本不创建，安全
