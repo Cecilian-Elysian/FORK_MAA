@@ -1454,21 +1454,16 @@ Cache files (such as maps, operator avatars, etc.) need to be regenerated after 
     <system:String x:Key="ClearImageCacheSuccessful">Image cache cleared successfully</system:String>
     <system:String x:Key="ClearImageCacheAlreadyEmpty">Image cache is already empty</system:String>
     <system:String x:Key="ClearImageCacheException">An error occurred while clearing the image cache:</system:String>
-    <!--  DiagnosticExport  -->
-    <system:String x:Key="ExportDiagnosticPackage">Diagnostic Export</system:String>
-    <system:String x:Key="ExportDiagnosticPackageButton">Export Diagnostic Package</system:String>
-    <system:String x:Key="ExportDiagnosticPackageSuccessful">Diagnostic package exported successfully</system:String>
-    <system:String x:Key="ExportDiagnosticPackageException">An error occurred while exporting the diagnostic package:</system:String>
-    <system:String x:Key="ExportDiagnosticPackageSelectLocation">Select diagnostic package save location</system:String>
+    <!--  DiagnosticReport  -->
+    <system:String x:Key="GenerateDiagnosticReport">Generate Diagnostic Report</system:String>
+    <system:String x:Key="GenerateDiagnosticReportSelectLocation">Select diagnostic report save location</system:String>
     <system:String x:Key="DiagnosticDateRange">Log date range</system:String>
-    <system:String x:Key="DiagnosticIncludeGuiLog">GUI log (gui.log)</system:String>
-    <system:String x:Key="DiagnosticIncludeCoreLog">Core log (asst.log)</system:String>
     <system:String x:Key="DiagnosticIncludeConfig">Include config</system:String>
     <system:String x:Key="DiagnosticIncludeCache">Include cache</system:String>
     <system:String x:Key="DiagnosticIncludeCustomResource">Include custom resource</system:String>
     <system:String x:Key="DiagnosticLast1Day">Last 1 day</system:String>
     <system:String x:Key="DiagnosticLastNDays">Last {0} days</system:String>
-    <!--  !DiagnosticExport  -->
+    <!--  !DiagnosticReport  -->
     <!--  !Issues  -->
     <!--  AutoRecruitSettings  -->
     <system:String x:Key="AutoRefresh">Auto refresh 3★ Tags</system:String>
