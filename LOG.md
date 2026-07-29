@@ -1043,3 +1043,58 @@ dotnet build src/MaaWpfGui/MaaWpfGui.csproj -c Release -p:Platform=x64
 **后续**:
 - 待手动验证：在 IssueReport 页面点「导出诊断包」 → 弹出「选择诊断包保存位置」对话框 → 默认文件名 `diagnostic_MM-dd_HH-mm-ss.zip` → 选桌面保存 → 文件成功落桌面并 growl 提示
 - 取消对话框不弹 growl，临时目录（若已创建）会被 `try/finally` 风格未覆盖；目前 `tempPath` 在取消路径根本不创建，安全
+
+### feat/diagnostic-export 与 fix/diagnostic-export-path 撤销 / 合并
+
+| # | 文件/对象 | 操作 | 说明 |
+|---|----------|------|------|
+| 1 | `feat/diagnostic-export` 合入 staging 的 commit | 后续合并 | 保留历史，但功能被合并 |
+| 2 | `fix/diagnostic-export-path` 合入 staging 的 commit | 后续合并 | 保留历史，但功能被合并 |
+
+### fix/diagnostic-export-merge 启动
+
+`feat/diagnostic-export` + `fix/diagnostic-export-path` 已合入 staging 但发现两个问题：
+1. UI 突兀 — 「导出诊断包」独立区域用 Border 分隔 + 居中按钮 + ComboBox/CheckBox 风格，与上方「生成日志压缩包/打开日志文件夹/清空图片缓存」一排的简洁风格不统一
+2. 功能重叠 — 两个按钮都导日志，用户分不清用哪个
+
+按用户决策，把「导出诊断包」能力全部吸收到现有「生成日志压缩包」按钮里（重命名为「生成诊断报告」），UI 整合到上方 StackPanel 内，删除独立的"导出诊断包"区域。从 `staging` 拉出。
+
+| # | 文件/对象 | 操作 | 说明 |
+|---|----------|------|------|
+| 1 | `fix/diagnostic-export-merge` | 新建分支 | 从 `staging` 拉出 |
+| 2 | `AGENTS.md §4.5` | 修改 | 部署目录职责约束（独立 commit `1008219408`） |
+| 3 | `LOG.md` | 修改 | 本节（启动记录） |
+
+### fix/diagnostic-export-merge 实施完成
+
+| # | 文件 | 操作 | 说明 |
+|---|------|------|------|
+| 1 | `src/MaaWpfGui/ViewModels/UserControl/Settings/IssueReportUserControlModel.cs:14-33` | 修改 | 删除 `using System.Text.RegularExpressions;`（不再需要行级日志过滤） |
+| 2 | `src/MaaWpfGui/ViewModels/UserControl/Settings/IssueReportUserControlModel.cs:48` | 修改 | 注释 `// ===== Diagnostic Export Properties =====` → `// ===== Diagnostic Report Properties (used by GenerateSupportPayload) =====` |
+| 3 | `src/MaaWpfGui/ViewModels/UserControl/Settings/IssueReportUserControlModel.cs:93` | 修改 | `_includeCustomResource` 默认值 `false` → `true`（保留原 GenerateSupportPayload 行为：始终包含自定义资源） |
+| 4 | `src/MaaWpfGui/ViewModels/UserControl/Settings/IssueReportUserControlModel.cs:217-352` | 修改 | `GenerateSupportPayload()` 重写：顶部加 SaveFileDialog 选保存位置（默认目录 `PathsHelper.ReportsDir`，默认文件名 `report_{MM-dd_HH-mm-ss}.zip`），生成 `diagnostic.json` 系统信息，原 config/resource/cache 复制改为按 `_includeConfig`/`_includeCache`/`_includeCustomResource` 条件复制，原 hardcoded 3 天 `threeDaysAgo` 改为 `_diagnosticDateRange`，完整 zip 输出路径改为 `saveDialog.FileName`，分卷输出目录改为 `userChosenDir/{name}_parts/` 紧贴用户选定位置 |
+| 5 | `src/MaaWpfGui/ViewModels/UserControl/Settings/IssueReportUserControlModel.cs:265` | 修改 | part01 增加 `Directory.EnumerateFiles(tempPath, "*", SearchOption.TopDirectoryOnly)` 包含 `diagnostic.json` 在分卷中 |
+| 6 | `src/MaaWpfGui/ViewModels/UserControl/Settings/IssueReportUserControlModel.cs` | 删除 | `ExportDiagnosticPackage()` 方法（约 100 行） |
+| 7 | `src/MaaWpfGui/ViewModels/UserControl/Settings/IssueReportUserControlModel.cs` | 删除 | `CopyFilteredLog()` 行级日志过滤方法（约 50 行） |
+| 8 | `src/MaaWpfGui/Views/UserControl/Settings/IssueReportUserControl.xaml:72-118` | 修改 | 右侧 StackPanel 内插入新 UI：日期范围 Grid（ComboBox + TextBlock）+ 3 CheckBox（配置文件/缓存/自定义资源），按钮文案 `GenerateSupportPayload` → `GenerateDiagnosticReport` |
+| 9 | `src/MaaWpfGui/Views/UserControl/Settings/IssueReportUserControl.xaml:97-159` | 删除 | 独立"导出诊断包" StackPanel + Border（约 60 行） |
+| 10 | `src/MaaWpfGui/Res/Localizations/{zh-cn,en-us,zh-tw,ja-jp,ko-kr}.xaml` | 修改 | 删除 7 个失效 key：`ExportDiagnosticPackage` / `ExportDiagnosticPackageButton` / `ExportDiagnosticPackageSuccessful` / `ExportDiagnosticPackageException` / `ExportDiagnosticPackageSelectLocation` / `DiagnosticIncludeGuiLog` / `DiagnosticIncludeCoreLog` |
+| 11 | `src/MaaWpfGui/Res/Localizations/{zh-cn,en-us,zh-tw,ja-jp,ko-kr}.xaml` | 修改 | 新增 2 个 key：`GenerateDiagnosticReport`（按钮文案）/ `GenerateDiagnosticReportSelectLocation`（保存对话框标题） |
+| 12 | `src/MaaWpfGui/Res/Localizations/{zh-cn,en-us,zh-tw,ja-jp,ko-kr}.xaml` | 修改 | 节注释 `<!-- DiagnosticExport -->` → `<!-- DiagnosticReport -->` |
+| 13 | `src/MaaWpfGui/Models/DiagnosticInfo.cs` | 保留 | 仍被合并后的 `GenerateSupportPayload()` 调用（生成 `diagnostic.json`） |
+| 14 | `LOG.md` | 修改 | 本节（实施完成记录） |
+
+**编译/部署结果**: `dotnet build -c Release` 0 error, 48 warning（均为 StyleCop 规则 + `#nullable` 注释，与 AGENTS.md §5 一致不阻断；新增 2 处 SA1512「注释后空行」与已有模式相同）；C++ 端未改动，无需 cmake。
+
+**关键设计**:
+- **合并而非新增**：原 `GenerateSupportPayload()` 已有 `CopyDirectoryIfExists` + 20MB 分卷 + 多 zip 拼接的能力，新功能只需在顶部加 `SaveFileDialog` + `diagnostic.json` + 把 hardcoded 3 天换为 `_diagnosticDateRange` + 把 always-on 的 config/cache/custom 改为条件复制。`CopyFilteredLog` 的行级过滤删除（被文件级 `LastWriteTime` 过滤替代，由 part02+ 阶段实现）
+- **保留向后兼容**：`_includeCustomResource` 默认 `true`（保留原行为），`_includeConfig` 默认 `true`（保留），`_includeCache` 默认 `false`（新增能力，默认关避免大 zip）
+- **输出路径对齐**：分卷目录 `userChosenDir/{name}_parts/` 与用户选定的 zip 同目录，避免「zip 在桌面，parts 在 install/」混乱
+- **按钮文案「生成诊断报告」**：兼顾「报告」语义（log）+「诊断」语义（system info），一眼看清用途
+- **GUI/核心日志始终包含**：`DiagnosticIncludeGuiLog`/`DiagnosticIncludeCoreLog` 这两个 key 删除（原 UI 显示成 disabled CheckBox 是冗余的——它本就是 always-on）。`gui.log`/`asst.log` 仍由 `CopyDirectoryIfExists(PathsHelper.DebugDir, ...)` 全量复制
+- **AGENTS.md §4.5** 同步上线，避免后续 staging 改动误写 `install/`
+
+**后续**:
+- 待手动验证：IssueReport 页面「生成诊断报告」按钮 → 弹保存对话框 → 选桌面 → 文件落桌面并打开 reports 文件夹
+- 切换日期范围（1/3/7/14/30 天）观察 `diagnostic.json` 中 `fromDate`/`toDate` 与分卷内 debug 子文件是否同步变化
+- 取消勾选「包含缓存」观察 zip 大小变化

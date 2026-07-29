@@ -19,7 +19,6 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using System.Windows;
 using HandyControl.Controls;
 using HandyControl.Data;
@@ -46,7 +45,7 @@ public class IssueReportUserControlModel : PropertyChangedBase
 
     public static IssueReportUserControlModel Instance { get; }
 
-    // ===== Diagnostic Export Properties =====
+    // ===== Diagnostic Report Properties (used by GenerateSupportPayload) =====
 
     private int _diagnosticDateRange = 7;
 
@@ -90,7 +89,7 @@ public class IssueReportUserControlModel : PropertyChangedBase
         set => SetAndNotify(ref _includeCache, value);
     }
 
-    private bool _includeCustomResource;
+    private bool _includeCustomResource = true;
 
     public bool IncludeCustomResource
     {
@@ -216,38 +215,81 @@ public class IssueReportUserControlModel : PropertyChangedBase
     }
 
     /// <summary>
-    /// 生成日志压缩包
+    /// 生成诊断报告 — 合并原「生成日志压缩包」+「导出诊断包」：SaveFileDialog 选位置 + 日志按日期范围过滤 + diagnostic.json 系统信息 + 可选配置/缓存/自定义资源
     /// </summary>
     public void GenerateSupportPayload()
     {
         try
         {
             const int PartSize = 20 * 1024 * 1024; // 20 MB
-            string reportNameBase = $"report_{DateTimeOffset.Now:MM-dd_HH-mm-ss}";
-            string tempPath = Path.Combine(PathsHelper.ReportsDir, $"maa-report-{Guid.NewGuid()}");
-            Directory.CreateDirectory(tempPath);
 
             if (!Directory.Exists(PathsHelper.ReportsDir))
             {
                 Directory.CreateDirectory(PathsHelper.ReportsDir);
             }
 
-            // 复制文件
-            CopyDirectoryIfExists(PathsHelper.DebugDir, Path.Combine(tempPath, "debug"),
-                f => { return !Path.GetFileName(f).StartsWith("report", StringComparison.OrdinalIgnoreCase); });
-            CopyDirectoryIfExists(PathsHelper.ResourceDir, Path.Combine(tempPath, "resource"),
-                f => { return Path.GetFileName(f).Contains("_custom.", StringComparison.OrdinalIgnoreCase); });
-            CopyDirectoryIfExists(PathsHelper.ConfigDir, Path.Combine(tempPath, "config"));
-            CopyDirectoryIfExists(PathsHelper.CacheDir, Path.Combine(tempPath, "cache"));
+            string reportNameBase = $"report_{DateTimeOffset.Now:MM-dd_HH-mm-ss}";
+            string tempPath = Path.Combine(PathsHelper.ReportsDir, $"maa-report-{Guid.NewGuid()}");
+            Directory.CreateDirectory(tempPath);
 
-            string partsFolder = Path.Combine(PathsHelper.ReportsDir, $"{reportNameBase}_parts");
+            // 弹保存对话框选保存位置
+            var saveDialog = new SaveFileDialog
+            {
+                Title = LocalizationHelper.GetString("GenerateDiagnosticReportSelectLocation"),
+                Filter = "ZIP files (*.zip)|*.zip",
+                FileName = $"{reportNameBase}.zip",
+                InitialDirectory = PathsHelper.ReportsDir,
+                OverwritePrompt = true,
+                AddExtension = true,
+                DefaultExt = ".zip",
+            };
+            if (saveDialog.ShowDialog() != true)
+            {
+                Directory.Delete(tempPath, recursive: true);
+                return;
+            }
+
+            string userChosenDir = Path.GetDirectoryName(saveDialog.FileName) ?? PathsHelper.ReportsDir;
+
+            // 收集系统信息并写入 diagnostic.json
+            var toDate = DateTime.Now.Date;
+            var fromDate = toDate.AddDays(-_diagnosticDateRange);
+            var diagInfo = DiagnosticInfo.Collect(fromDate, toDate);
+            string diagJson = JsonSerializer.Serialize(diagInfo, new JsonSerializerOptions { WriteIndented = true });
+            File.WriteAllText(Path.Combine(tempPath, "diagnostic.json"), diagJson);
+
+            // 复制 debug/（rotated logs 由 LastWriteTime 在后续 part02+ 阶段过滤）
+            CopyDirectoryIfExists(PathsHelper.DebugDir, Path.Combine(tempPath, "debug"),
+                f => !Path.GetFileName(f).StartsWith("report", StringComparison.OrdinalIgnoreCase));
+
+            // 可选目录
+            if (_includeCustomResource)
+            {
+                CopyDirectoryIfExists(PathsHelper.ResourceDir, Path.Combine(tempPath, "resource"),
+                    f => Path.GetFileName(f).Contains("_custom.", StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (_includeConfig)
+            {
+                CopyDirectoryIfExists(PathsHelper.ConfigDir, Path.Combine(tempPath, "config"));
+            }
+
+            if (_includeCache)
+            {
+                CopyDirectoryIfExists(PathsHelper.CacheDir, Path.Combine(tempPath, "cache"));
+            }
+
+            // 分卷输出目录紧贴用户选定的 zip 路径所在目录
+            string partsFolder = Path.Combine(userChosenDir, $"{reportNameBase}_parts");
             if (!Directory.Exists(partsFolder))
             {
                 Directory.CreateDirectory(partsFolder);
             }
 
-            // ====== part01：config + resource + cache + debug 根目录文件 ======
+            // ====== part01：tempPath 根文件 + config + resource + cache + debug 根目录文件 ======
             List<string> part01Files = [];
+
+            part01Files.AddRange(Directory.EnumerateFiles(tempPath, "*", SearchOption.TopDirectoryOnly));
 
             string[] categories = ["config", "resource", "cache"];
             foreach (string category in categories)
@@ -262,7 +304,6 @@ public class IssueReportUserControlModel : PropertyChangedBase
             string debugPath = Path.Combine(tempPath, "debug");
             if (Directory.Exists(debugPath))
             {
-                // 只取 debug 根目录文件
                 var debugRootFiles = Directory.EnumerateFiles(debugPath, "*", SearchOption.TopDirectoryOnly).ToList();
                 part01Files.AddRange(debugRootFiles);
             }
@@ -283,11 +324,11 @@ public class IssueReportUserControlModel : PropertyChangedBase
                 }
             }
 
-            // ====== part02：debug 子目录文件按 PartSize 分卷 ======
-            var threeDaysAgo = DateTime.Now.AddDays(-3);
+            // ====== part02+：debug 子目录文件按日期范围 + PartSize 分卷 ======
+            var cutoffTime = DateTime.Now.AddDays(-_diagnosticDateRange);
             var debugSubFiles = Directory.EnumerateFiles(debugPath, "*", SearchOption.AllDirectories)
                 .Where(f => Path.GetDirectoryName(f) != debugPath)
-                .Where(f => new FileInfo(f).LastWriteTime >= threeDaysAgo)
+                .Where(f => new FileInfo(f).LastWriteTime >= cutoffTime)
                 .ToList();
 
             int partNumber = 2;
@@ -330,8 +371,8 @@ public class IssueReportUserControlModel : PropertyChangedBase
                 partNumber++;
             }
 
-            // ====== 生成完整压缩包 ======
-            string fullZipPath = Path.Combine(PathsHelper.ReportsDir, $"{reportNameBase}.zip");
+            // ====== 生成完整压缩包（用户选定路径） ======
+            string fullZipPath = saveDialog.FileName;
             ZipFile.CreateFromDirectory(tempPath, fullZipPath, CompressionLevel.SmallestSize, includeBaseDirectory: false);
 
             // 清理临时目录
@@ -403,153 +444,6 @@ public class IssueReportUserControlModel : PropertyChangedBase
             {
                 // 也忽略权限问题
             }
-        }
-    }
-
-    /// <summary>
-    /// 导出诊断包 — 按日期范围选择性导出日志 + diagnostic.json 系统信息 + 可选项
-    /// </summary>
-    public void ExportDiagnosticPackage()
-    {
-        try
-        {
-            var toDate = DateTime.Now.Date;
-            var fromDate = toDate.AddDays(-_diagnosticDateRange);
-
-            string reportName = $"diagnostic_{DateTimeOffset.Now:MM-dd_HH-mm-ss}";
-
-            if (!Directory.Exists(PathsHelper.ReportsDir))
-            {
-                Directory.CreateDirectory(PathsHelper.ReportsDir);
-            }
-
-            // 弹出保存对话框让用户选择保存路径；取消则放弃导出
-            var saveDialog = new SaveFileDialog
-            {
-                Title = LocalizationHelper.GetString("ExportDiagnosticPackageSelectLocation"),
-                Filter = "ZIP files (*.zip)|*.zip",
-                FileName = $"{reportName}.zip",
-                InitialDirectory = PathsHelper.ReportsDir,
-                OverwritePrompt = true,
-                AddExtension = true,
-                DefaultExt = ".zip",
-            };
-            if (saveDialog.ShowDialog() != true)
-            {
-                return;
-            }
-
-            string tempPath = Path.Combine(PathsHelper.ReportsDir, $"maa-diagnostic-{Guid.NewGuid()}");
-            Directory.CreateDirectory(tempPath);
-
-            // 收集系统信息并写入 diagnostic.json
-            var diagInfo = DiagnosticInfo.Collect(fromDate, toDate);
-            string diagJson = JsonSerializer.Serialize(diagInfo, new JsonSerializerOptions { WriteIndented = true });
-            File.WriteAllText(Path.Combine(tempPath, "diagnostic.json"), diagJson);
-
-            // 复制 debug/ 中按日期过滤的日志
-            string debugOut = Path.Combine(tempPath, "debug");
-            Directory.CreateDirectory(debugOut);
-
-            CopyFilteredLog(Bootstrapper.UiLogFile, debugOut, fromDate, toDate);
-            CopyFilteredLog(Bootstrapper.UiLogBakFile, debugOut, fromDate, toDate);
-            CopyFilteredLog(Bootstrapper.CoreLogFile, debugOut, fromDate, toDate);
-            CopyFilteredLog(Bootstrapper.CoreLogBakFile, debugOut, fromDate, toDate);
-
-            // crash.log 和 dumps/ 始终包含
-            string crashLog = Path.Combine(PathsHelper.DebugDir, "crash.log");
-            if (File.Exists(crashLog))
-            {
-                File.Copy(crashLog, Path.Combine(debugOut, "crash.log"), true);
-            }
-
-            string dumpsSrc = Path.Combine(PathsHelper.DebugDir, "dumps");
-            if (Directory.Exists(dumpsSrc))
-            {
-                CopyDirectoryIfExists(dumpsSrc, Path.Combine(debugOut, "dumps"));
-            }
-
-            // 可选目录
-            if (_includeConfig)
-            {
-                CopyDirectoryIfExists(PathsHelper.ConfigDir, Path.Combine(tempPath, "config"));
-            }
-
-            if (_includeCache)
-            {
-                CopyDirectoryIfExists(PathsHelper.CacheDir, Path.Combine(tempPath, "cache"));
-            }
-
-            if (_includeCustomResource)
-            {
-                CopyDirectoryIfExists(PathsHelper.ResourceDir, Path.Combine(tempPath, "resource"),
-                    f => Path.GetFileName(f).Contains("_custom.", StringComparison.OrdinalIgnoreCase));
-            }
-
-            // 打包 zip
-            string zipPath = saveDialog.FileName;
-            ZipFile.CreateFromDirectory(tempPath, zipPath, CompressionLevel.SmallestSize, includeBaseDirectory: false);
-
-            // 清理临时目录
-            Directory.Delete(tempPath, recursive: true);
-
-            ShowGrowl($"{LocalizationHelper.GetString("ExportDiagnosticPackageSuccessful")}\n{zipPath}");
-            OpenReportsFolder();
-        }
-        catch (Exception ex)
-        {
-            ShowGrowl($"{LocalizationHelper.GetString("ExportDiagnosticPackageException")}\n{ex.Message}");
-            Log.Error(ex, "Failed to export diagnostic package");
-        }
-    }
-
-    /// <summary>
-    /// 读取日志文件，按日期范围过滤后写入输出目录（保留原文件名）。
-    /// </summary>
-    private static void CopyFilteredLog(string sourcePath, string destDir, DateTime fromDate, DateTime toDate)
-    {
-        if (!File.Exists(sourcePath))
-        {
-            return;
-        }
-
-        string fileName = Path.GetFileName(sourcePath);
-        string destPath = Path.Combine(destDir, fileName);
-
-        var dateRegex = new Regex(@"^\[(\d{4})-(\d{2})-(\d{2})");
-        int keptLines = 0;
-
-        using (var reader = new StreamReader(sourcePath))
-        using (var writer = new StreamWriter(destPath))
-        {
-            string? line;
-            while ((line = reader.ReadLine()) != null)
-            {
-                var match = dateRegex.Match(line);
-                if (match.Success)
-                {
-                    int y = int.Parse(match.Groups[1].Value);
-                    int m = int.Parse(match.Groups[2].Value);
-                    int d = int.Parse(match.Groups[3].Value);
-                    var lineDate = new DateTime(y, m, d);
-                    if (lineDate >= fromDate && lineDate <= toDate)
-                    {
-                        writer.WriteLine(line);
-                        keptLines++;
-                    }
-                }
-                else
-                {
-                    // 无时间戳的行（如异常栈回溯）附在前一条日志后，保留
-                    writer.WriteLine(line);
-                }
-            }
-        }
-
-        // 如果过滤后无内容，删除空文件
-        if (keptLines == 0)
-        {
-            try { File.Delete(destPath); } catch { }
         }
     }
 

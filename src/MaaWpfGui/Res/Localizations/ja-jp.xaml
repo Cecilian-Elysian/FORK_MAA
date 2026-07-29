@@ -1455,21 +1455,16 @@ DEBUGディレクトリに保存される画像には数量制限があり、超
     <system:String x:Key="ClearImageCacheSuccessful">画像キャッシュをクリアしました</system:String>
     <system:String x:Key="ClearImageCacheAlreadyEmpty">画像キャッシュは既に空です</system:String>
     <system:String x:Key="ClearImageCacheException">画像キャッシュのクリア中にエラーが発生しました：</system:String>
-    <!--  DiagnosticExport  -->
-    <system:String x:Key="ExportDiagnosticPackage">診断情報のエクスポート</system:String>
-    <system:String x:Key="ExportDiagnosticPackageButton">診断パッケージをエクスポート</system:String>
-    <system:String x:Key="ExportDiagnosticPackageSuccessful">診断パッケージのエクスポートに成功しました</system:String>
-    <system:String x:Key="ExportDiagnosticPackageException">診断パッケージのエクスポート中にエラーが発生しました：</system:String>
-    <system:String x:Key="ExportDiagnosticPackageSelectLocation">診断パッケージの保存場所を選択</system:String>
+    <!--  DiagnosticReport  -->
+    <system:String x:Key="GenerateDiagnosticReport">診断レポートを生成</system:String>
+    <system:String x:Key="GenerateDiagnosticReportSelectLocation">診断レポートの保存場所を選択</system:String>
     <system:String x:Key="DiagnosticDateRange">ログの期間</system:String>
-    <system:String x:Key="DiagnosticIncludeGuiLog">GUI ログ (gui.log)</system:String>
-    <system:String x:Key="DiagnosticIncludeCoreLog">コアログ (asst.log)</system:String>
     <system:String x:Key="DiagnosticIncludeConfig">設定ファイルを含む</system:String>
     <system:String x:Key="DiagnosticIncludeCache">キャッシュを含む</system:String>
     <system:String x:Key="DiagnosticIncludeCustomResource">カスタムリソースを含む</system:String>
     <system:String x:Key="DiagnosticLast1Day">最近 1 日</system:String>
     <system:String x:Key="DiagnosticLastNDays">最近 {0} 日</system:String>
-    <!--  !DiagnosticExport  -->
+    <!--  !DiagnosticReport  -->
     <!--  !Issues  -->
     <!--  自動募集設定  -->
     <system:String x:Key="AutoRefresh">星3タグを自動的に更新する</system:String>

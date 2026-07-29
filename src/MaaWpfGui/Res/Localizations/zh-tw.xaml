@@ -1455,21 +1455,16 @@ DEBUG 目錄下儲存的圖片有數量限制，超出後會自動清理舊圖�
     <system:String x:Key="ClearImageCacheSuccessful">圖片快取已清空</system:String>
     <system:String x:Key="ClearImageCacheAlreadyEmpty">圖片快取為空</system:String>
     <system:String x:Key="ClearImageCacheException">清空圖片快取時發生錯誤：</system:String>
-    <!--  DiagnosticExport  -->
-    <system:String x:Key="ExportDiagnosticPackage">導出診斷包</system:String>
-    <system:String x:Key="ExportDiagnosticPackageButton">導出診斷包</system:String>
-    <system:String x:Key="ExportDiagnosticPackageSuccessful">診斷包導出成功</system:String>
-    <system:String x:Key="ExportDiagnosticPackageException">導出診斷包時出現錯誤：</system:String>
-    <system:String x:Key="ExportDiagnosticPackageSelectLocation">選擇診斷包儲存位置</system:String>
+    <!--  DiagnosticReport  -->
+    <system:String x:Key="GenerateDiagnosticReport">產生診斷報告</system:String>
+    <system:String x:Key="GenerateDiagnosticReportSelectLocation">選擇診斷報告儲存位置</system:String>
     <system:String x:Key="DiagnosticDateRange">日誌時間範圍</system:String>
-    <system:String x:Key="DiagnosticIncludeGuiLog">GUI 日誌 (gui.log)</system:String>
-    <system:String x:Key="DiagnosticIncludeCoreLog">核心日誌 (asst.log)</system:String>
     <system:String x:Key="DiagnosticIncludeConfig">包含配置文件</system:String>
     <system:String x:Key="DiagnosticIncludeCache">包含緩存</system:String>
     <system:String x:Key="DiagnosticIncludeCustomResource">包含自定義資源</system:String>
     <system:String x:Key="DiagnosticLast1Day">最近 1 天</system:String>
     <system:String x:Key="DiagnosticLastNDays">最近 {0} 天</system:String>
-    <!--  !DiagnosticExport  -->
+    <!--  !DiagnosticReport  -->
     <!--  !Issues  -->
     <!--  AutoRecruitSettings  -->
     <system:String x:Key="AutoRefresh">自動刷新 3★ Tags</system:String>
