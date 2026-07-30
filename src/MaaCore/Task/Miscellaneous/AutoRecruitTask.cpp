@@ -1,9 +1,13 @@
 #include "AutoRecruitTask.h"
 
 #include "Config/GeneralConfig.h"
+#include "Config/Miscellaneous/RecruitAccuracyTracker.h"
 #include "Config/Miscellaneous/RecruitConfig.h"
+#include "Config/Miscellaneous/RecruitExperience.h"
 #include "Config/TaskData.h"
 #include "Controller/Controller.h"
+#include "Task/Miscellaneous/RecruitResultTask.h"
+#include "Task/Miscellaneous/RecruitScreenshotMonitor.h"
 #include "Task/ProcessTask.h"
 #include "Task/ReportDataTask.h"
 #include "Utils/Logger.hpp"
@@ -218,6 +222,13 @@ asst::AutoRecruitTask& asst::AutoRecruitTask::set_server(std::string server) noe
 
 bool asst::AutoRecruitTask::_run()
 {
+    // downstream: feat/recruit-result-display — 本轮汇总 (A1)
+    m_round_summary = std::make_unique<RecruitRoundSummaryTask>(*this);
+    auto summary_guard = std::shared_ptr<void>(nullptr, [this](void*) {
+        if (m_round_summary) m_round_summary->emit_summary();
+    });
+    (void)summary_guard;
+
     if (is_calc_only_task()) {
         // 小工具中的公招计算，不需要点击确认按钮
         return recruit_calc_task().success;
@@ -861,6 +872,7 @@ bool asst::AutoRecruitTask::refresh()
 bool asst::AutoRecruitTask::hire_all(const cv::Mat& image)
 {
     LogTraceFunction;
+    std::vector<int> slots_to_identify;
     // mark slots with *Hire* button clean (regardless of whether hiring will success)
     {
         MultiMatcher hire_searcher(image);
@@ -869,10 +881,17 @@ bool asst::AutoRecruitTask::hire_all(const cv::Mat& image)
         for (const MatchRect& r : hire_searcher.get_result()) {
             Log.info("Mark", slot_index_from_rect(r.rect), "clean");
             m_dirty_slots.erase(slot_index_from_rect(r.rect));
+            // downstream: feat/recruit-result-display — 收集有「雇用」按钮的 slot
+            slots_to_identify.push_back(static_cast<int>(slot_index_from_rect(r.rect)));
         }
         if (hire_searcher.get_result().empty()) {
             return true;
         }
+    }
+    // downstream: feat/recruit-result-display — 在「雇用」按钮被点击前识别每个 slot 的干员
+    // 雇用按钮被点击后弹窗就消失了，必须在 ProcessTask "RecruitFinish" 之前截屏识别。
+    for (int idx : slots_to_identify) {
+        identify_recruit_result(image, idx, {}, 0, m_use_expedited, false, 9);
     }
     // hire all
     return ProcessTask { *this, { "RecruitFinish" } }.run();
@@ -882,6 +901,76 @@ bool asst::AutoRecruitTask::hire_all(const cv::Mat& image)
 bool asst::AutoRecruitTask::hire_all()
 {
     return hire_all(ctrler()->get_image());
+}
+
+// downstream: feat/recruit-result-display — 识别单个 slot 的招募完成展示页
+void asst::AutoRecruitTask::identify_recruit_result(const cv::Mat& image, int slot_index,
+                                                     const std::vector<std::string>& tags,
+                                                     int level, bool expedited, bool is_refresh,
+                                                     int recruit_hour)
+{
+    LogTraceFunction;
+    (void)level;
+
+    // C3 黑屏/全白检测：连续异常 ≥ 3 帧时跳过
+    auto& monitor = RecruitScreenshotMonitor::get_instance();
+    auto anomaly = monitor.check(image);
+    if (anomaly != RecruitScreenshotMonitor::Anomaly::None) {
+        if (monitor.is_anomaly_persistent(3)) {
+            json::value cb = basic_info();
+            cb["what"] = "RecruitScreenshotAnomaly";
+            cb["details"]["slot_index"] = slot_index;
+            cb["details"]["anomaly_type"] = [&] {
+                switch (anomaly) {
+                case RecruitScreenshotMonitor::Anomaly::Black: return "black";
+                case RecruitScreenshotMonitor::Anomaly::White: return "white";
+                case RecruitScreenshotMonitor::Anomaly::Frozen: return "frozen";
+                default: return "unknown";
+                }
+            }();
+            callback(AsstMsg::SubTaskExtraInfo, cb);
+            Log.warn(__FUNCTION__, "截图异常持续，跳过 slot", slot_index);
+            return;
+        }
+    }
+
+    RecruitResultTask result_task(*this);
+    RecruitResultTask::Context ctx;
+    ctx.slot_index = slot_index;
+    ctx.slot_total = 4;
+    ctx.expedited = expedited;
+    ctx.is_refresh = is_refresh;
+    ctx.recruit_hour = recruit_hour;
+    ctx.tags = tags;
+    ctx.account_name = ""; // Phase 6 由 feat/account_rotation 填充
+    ctx.locale = "zh-cn";   // Phase 5 由 WPF 侧注入
+    ctx.channel = "Official";
+
+    auto info_opt = result_task.analyze(image, ctx);
+    if (info_opt) {
+        result_task.emit_callback(*info_opt, ctx);
+
+        // 准确率跟踪 (D1)
+        RecruitAccuracyTracker::get_instance().record(static_cast<int>(info_opt->ocr_status));
+
+        // 经验库反哺 (L3) — 仅 confidence = "high" 时反哺
+        if (info_opt->level > 0 && !info_opt->operator_name.empty()) {
+            RecruitExperience::get_instance().record(
+                tags, info_opt->level, info_opt->operator_name, info_opt->operator_id);
+        }
+
+        // A1 本轮汇总
+        if (m_round_summary) {
+            RecruitRoundSummaryTask::SlotRecord slot;
+            slot.slot_index = slot_index;
+            slot.tags = tags;
+            slot.level = info_opt->level;
+            slot.oper_name = info_opt->operator_name;
+            slot.expedited = expedited;
+            slot.is_refresh = is_refresh;
+            m_round_summary->add_slot(slot);
+        }
+    }
 }
 
 /// search for *RecruitNow* buttons before recruit and mark them as dirty
