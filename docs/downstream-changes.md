@@ -18,7 +18,7 @@
 py tools/gen-downstream-changes.py
 ```
 
-共扫描 346 个表格行，聚合出 51 个唯一源文件路径。
+共扫描 352 个表格行，聚合出 51 个唯一源文件路径。
 
 ## 仓库根（2 个文件）
 
@@ -49,7 +49,7 @@ py tools/gen-downstream-changes.py
 
 ## `docs/`（6 个文件）
 
-### [HOT] `docs/downstream-changes.md` (x7)
+### [HOT] `docs/downstream-changes.md` (x8)
 
 | 操作 | 说明 |
 |------|------|
@@ -60,6 +60,7 @@ py tools/gen-downstream-changes.py
 | 查阅 | 确认 `[HOT] AutoRecruitTask.cpp (x15)`、`[HOT] AutoRecruitTask.h (x4)`、`[HOT] resource/tasks/tasks.json (x6)` |
 | `py tools/gen-downstream-changes.py` | 自动刷新清单（45 个文件，扫描自 326 LOG.md 表格行） |
 | 查阅 | 确认 `AccountSwitchTask.h/.cpp` / `TaskQueueViewModel.cs` / `StartUpSettingsUserControlModel.cs` 已被多次改动 |
+| `py tools/gen-downstream-changes.py` | 自动刷新清单（50 → 51 文件） |
 
 ### [TGT] `docs/en-us/protocol/integration.md` (x2)
 
@@ -462,11 +463,12 @@ py tools/gen-downstream-changes.py
 | git rm | 缁堢鐢ㄦ埛渚濊禆瀹夎鑴氭湰锛屼笉鍐嶉渶瑕? |
 | 杩樺師 | 浠?`install/` 鍓湰鎷峰洖 `tools/`锛屾仮澶?`Copy-Item` 婧愶紱骞跺叆 git |
 
-### [TGT] `tools/gen-downstream-changes.py` 
+### [TGT] `tools/gen-downstream-changes.py` (x2)
 
 | 操作 | 说明 |
 |------|------|
 | 鏂板缓 | 瑙ｆ瀽 LOG.md 4 鍒楄〃鏍硷紙`# / 鏂囦欢(瀵硅薄) / 鎿嶄綔 / 璇存槑`锛夛紝鎻愬彇鍒?2 鍙嶅紩鍙疯矾寰勶細鍘昏鍙峰悗缂€锛坄path:123-456` 鈫?`path`锛夈€乥race-aware 閫楀彿鍒囧垎锛堜繚鐣?`{zh-cn,en-us}` 鍐呴€楀彿锛夈€乻hell brace 灞曞紑锛坄{a,b,c}.xaml` 鈫?澶氫釜鏂囦欢锛夈€佽繃婊?`install*/`/`build/`/`debug/`/`config/`/`cache/`/`data/`/`reports/` 绛夐潪婧愮爜浜х墿锛涙寜椤跺眰鐩綍鍒嗙粍锛岃鏀?鈮?3 娆℃爣 `[HOT]`锛屽惁鍒?`[TGT]`锛涜緭鍑?markdown 琛ㄦ牸銆傛敮鎸?`--log` / `--out` / `--dry-run` 鍙傛暟 |
+| 修改 | 加 `_read_log_text` 兼容 LOG.md 历史 UTF-16 LE BOM 编码（脚本此前 hardcode `encoding="utf-8"` 在 LOG.md 为 UTF-16 LE 时抛 UnicodeDecodeError） |
 
 ### [TGT] `tools/local-install-staging.bat` (x2)
 
