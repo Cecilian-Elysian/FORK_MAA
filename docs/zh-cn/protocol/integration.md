@@ -263,6 +263,11 @@ B服：`张三`，可输入 `张三`、`张`、`三`
 ::: field name="expedite_times" type="number" optional  
 加急次数，仅在 `expedite` 为 true 时有效。默认无限使用（直到 `times` 达到上限）。  
 :::  
+::: field name="auto_upgrade_3star_with_4star" type="boolean" optional default="true"  
+3星Tag组合里若能开4★干员（如「费用回复+先锋干员」出桃金娘），自动按4★路径处理。  
+<br>
+启用后：采用 `recruitment_time` 中 `"4"` 对应的计时（默认 3:50）、按 `extra_tags_mode` 选 Tag；若升级后最低星级达到 `expedite_min_level` 阈值则自动加急。  
+:::  
 ::: field name="skip_robot" type="boolean" optional default="true"  
 已废弃，仅用于兼容旧参数。  
 <br>
