@@ -1046,3 +1046,13 @@ dotnet build src/MaaWpfGui/MaaWpfGui.csproj -c Release -p:Platform=x64
 
 **未推送上游**: 仅本仓库 `branch` 修复，不向 upstream 提 PR。
 
+## 2026-07-30
+
+### feat/auto-recruit-3star-to-4star 启动
+
+3 星 Tag 组合里若能开 4★ 干员（如「费用回复 + 先锋干员」出桃金娘/讯使/凛冬/贾维），自动升级为 4★ 处理路径（3:50 计时 + 联动 `ExpediteMinLevel` 加急）。当前 `final_combination.min_level==3 && max_level>=4` 时仍按 3★ 走，9:00 倒计时且不加急，浪费 4★ 机会。新增 UI 选项 `AutoUpgrade3StarWith4StarToLevel4`（默认 `true`），与现有 `UseLevel3PreferTags` / `RefreshLevel3` / `ChooseLevel3` / `ExpediteMinLevel` 全兼容，沿用 4★ 路径的 `SelectExtraTagsMode` 选 tag。
+| # | 文件/对象 | 操作 | 说明 |
+|---|----------|------|------|
+| 1 | `feat/auto-recruit-3star-to-4star` | 新建分支 | 从 `branch` 拉出，本地工作分支（HEAD `d1770eb310`） |
+| 2 | `LOG.md` | 修改 | 本节 |
+
