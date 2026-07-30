@@ -1166,4 +1166,36 @@ dotnet build src/MaaWpfGui/MaaWpfGui.csproj -c Release -p:Platform=x64
 | 2 | `feat/auto-recruit-3star-to-4star` | `git branch -d`（暂缓） | 待 staging 实测通过、晋升 branch 后再处理；保留本地指针便于回溯 |
 | 3 | `AGENTS.md §6` | 修改 | 加进行中分支条目 |
 | 4 | `LOG.md` | 修改 | 本节 |
-| 5 | `docs/downstream-changes.md` | `py tools/gen-downstream-changes.py` | 自动刷新清单 |
+| 5 | `docs/downstream-changes.md` | `py tools/gen-downstream-changes.py` | 自动刷新清单（36 → 45 文件，[HOT] 阈值更新） |
+
+### feat/auto-recruit-3star-to-4star 部署到 install-staging
+
+按 AGENTS.md §4.5，本节期间在 `staging` 分支，使用 `tools/local-install-staging.bat` 部署到 `install-staging/`。
+| # | 文件 | 操作 | 说明 |
+|---|------|------|------|
+| 1 | `install-staging/MaaCore.dll` | 部署 | 2026/7/30 12:41, 4193792 字节（RelWithDebInfo 自 `build/bin/RelWithDebInfo/MaaCore.dll`），含 4★ 潜力检测改动 |
+| 2 | `install-staging/MAA.exe` | 部署 | 2026/7/30 12:44, 339456 字节 |
+| 3 | `install-staging/MAA.dll` | 部署 | 2026/7/30 12:44, 3742208 字节（含 `AutoUpgrade3StarWith4Star` 字段 + 5 语新 string key） |
+| 4 | `LOG.md` | 修改 | 本节 |
+
+**部署过程**:
+1. `cmake --preset windows-publish-x64` （首次配置）
+2. `cmake --build build --target MaaCore -j 4` （单目标编译，绕开 WPF MSBuild 评估的 VS 2026 SDK 路径 bug）
+3. `tools/local-install-staging.bat` 触发 `cmake --install build --config RelWithDebInfo --prefix install-staging` + `dotnet restore` + `dotnet publish`
+4. dotnet publish 阶段命中 AGENTS.md §4.1 已知 bug（VS 2026 SDK 路径 `E:\visual stduio community 2026\VIUAL\MSBuild\Sdks\Microsoft.NET.Sdk\Sdk` 拼写错误），绕用 `C:\Program Files\dotnet\dotnet.exe` 独立 SDK 手动 publish
+5. `cmake --install build --config RelWithDebInfo --prefix install-staging` 二次执行确保 resource 同步
+6. `install-staging/MaaCore.dll` 与 `MAA.dll` 时间戳更新至 2026/7/30，含本次 feat 全部改动
+
+**编译验证**:
+- C++: `cmake --build build --target MaaCore -j 4` PASS, 0 error, 仅 LNK4098 警告（与上游一致）
+- WPF: `dotnet publish -c Release -r win-x64 -o install-staging` PASS, 0 error, 含若干 StyleCop SA1402/SA1512/SA1518 警告（历史欠债，与本次 feat 无关）
+- pre-commit hooks: clang-format / markdownlint / prettier (Config Files + Documentation) / ruff-format / oxipng 全部 Passed
+
+**待手动验证（需模拟器环境）**:
+1. 准备 4★ slot（如「费用回复+先锋干员」）→ 验证走 4★ 路径，计时 3:50
+2. 准备 5★ slot（含「资深干员」）→ 验证 special_tag 路径不受影响
+3. 准备纯 3★ slot → 验证原 3★ 路径不受影响
+4. `AutoUpgrade3StarWith4Star=false` → 验证所有场景回归
+5. `UseLevel3PreferTags=true` + 含 4★ slot → 验证 `Level3PreferTags` 对 3★ 仍生效，4★ 路径用 `SelectExtraTagsMode`
+6. 加急门槛联动：`ExpediteMode=4` + 升级 slot → 验证 `recruit_now()` 触发立即招
+7. 冲突解决回归：本次 merge 时与 staging 的 `expedite_min_level` 字段说明、`fix/expedite-threshold recruit_now 顺序修复`（加急分支位置在 confirm 之后）冲突已解，需验证升级后加急路径仍正常
