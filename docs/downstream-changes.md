@@ -18,7 +18,7 @@
 py tools/gen-downstream-changes.py
 ```
 
-共扫描 220 个表格行，聚合出 36 个唯一源文件路径。
+共扫描 312 个表格行，聚合出 45 个唯一源文件路径。
 
 ## 仓库根（2 个文件）
 
@@ -26,18 +26,18 @@ py tools/gen-downstream-changes.py
 
 | 操作 | 说明 |
 |------|------|
-| 删除 | 移除 `LOG.md`、`AGENTS.md` 忽略规则 |
-| 修改 | 注释改为 `# Feature/fix working documents (local only, never committed)` |
-| 修改 | (a) 追加 `/installer-build.log`（2.6 MB 临时日志不入仓）；(b) 修正第 510 行规则 `DependencySetup_依赖库安装.bat` 误伤 `tools/`，改为 `install/DependencySetup_*.bat`（只屏蔽 install/ 副本） |
-| 修改 | 末尾追加 `/installer/`（产物不入仓），与 `install/` 一致不污染 git |
-| 修改 | 追加运行时缓存忽略规则；追加 `.crush/` / `.claude/` / `.cursor/` 规则；追加 `LOG.md` / `AGENTS.md` 忽略 |
+| 鍒犻櫎 | 绉婚櫎 `LOG.md`銆乣AGENTS.md` 蹇界暐瑙勫垯 |
+| 淇敼 | 娉ㄩ噴鏀逛负 `# Feature/fix working documents (local only, never committed)` |
+| 淇敼 | (a) 杩藉姞 `/installer-build.log`锛?.6 MB 涓存椂鏃ュ織涓嶅叆浠擄級锛?b) 淇绗?510 琛岃鍒?`DependencySetup_渚濊禆搴撳畨瑁?bat` 璇激 `tools/`锛屾敼涓?`install/DependencySetup_*.bat`锛堝彧灞忚斀 install/ 鍓湰锛? |
+| 淇敼 | 鏈熬杩藉姞 `/installer/`锛堜骇鐗╀笉鍏ヤ粨锛夛紝涓?`install/` 涓€鑷翠笉姹℃煋 git |
+| 淇敼 | 杩藉姞杩愯鏃剁紦瀛樺拷鐣ヨ鍒欙紱杩藉姞 `.crush/` / `.claude/` / `.cursor/` 瑙勫垯锛涜拷鍔?`LOG.md` / `AGENTS.md` 蹇界暐 |
 
 ### [TGT] `VERSION` (x2)
 
 | 操作 | 说明 |
 |------|------|
-| git rm | 仅 release 脚本读取，不再需要 |
-| 新建 | 内容 `v6.14.0-fork.20260714`，作为 `MAA_HASH_VERSION` 和 zip 文件名单一来源 |
+| git rm | 浠?release 鑴氭湰璇诲彇锛屼笉鍐嶉渶瑕? |
+| 鏂板缓 | 鍐呭 `v6.14.0-fork.20260714`锛屼綔涓?`MAA_HASH_VERSION` 鍜?zip 鏂囦欢鍚嶅崟涓€鏉ユ簮 |
 
 ## `.github/`（1 个文件）
 
@@ -45,15 +45,52 @@ py tools/gen-downstream-changes.py
 
 | 操作 | 说明 |
 |------|------|
-| git rm | fork 的 GitHub CI，本地运行不需要 |
+| git rm | fork 鐨?GitHub CI锛屾湰鍦拌繍琛屼笉闇€瑕? |
 
-## `docs/`（1 个文件）
+## `docs/`（6 个文件）
 
-### [TGT] `docs/zh-cn/protocol/integration.md` 
+### [TGT] `docs/downstream-changes.md` (x2)
 
 | 操作 | 说明 |
 |------|------|
-| 修改 | +1 字段说明 `expedite_min_level`,含 0/4/5/6 语义 |
+| 鏂板缓 | 棣栨杩愯浜х墿锛?6 涓敮涓€婧愭枃浠讹紝瑕嗙洊 220 琛?LOG.md 琛ㄦ牸銆備粨搴撴牴锛坄.gitignore`/`VERSION`锛? `.github/` + `docs/` + `resource/`锛坄tasks.json` [HOT]锛? `src/` 26 鏂囦欢锛坄TaskQueueViewModel.cs` [HOT] 23 娆★級+ `tools/` 5 鏂囦欢 |
+| `py tools/gen-downstream-changes.py` | 自动刷新清单 |
+
+### [TGT] `docs/en-us/protocol/integration.md` (x2)
+
+| 操作 | 说明 |
+|------|------|
+| 淇敼 | 浜旇鍚屾锛氳嫳鏂? |
+| 同上（英文） | 同上 |
+
+### [TGT] `docs/ja-jp/protocol/integration.md` (x2)
+
+| 操作 | 说明 |
+|------|------|
+| 淇敼 | 浜旇鍚屾锛氭棩鏂? |
+| 同上（日文） | 同上 |
+
+### [TGT] `docs/ko-kr/protocol/integration.md` (x2)
+
+| 操作 | 说明 |
+|------|------|
+| 淇敼 | 浜旇鍚屾锛氶煩鏂? |
+| 同上（韩文） | 同上 |
+
+### [HOT] `docs/zh-cn/protocol/integration.md` (x3)
+
+| 操作 | 说明 |
+|------|------|
+| 淇敼 | +1 瀛楁璇存槑 `expedite_min_level`,鍚?0/4/5/6 璇箟 |
+| 淇敼 | `::: field name="expedite_min_level"` 瀛楁鍧楋紝`0 = 涓嶉檺`锛宍4/5/6 = 浠呭搴旀槦绾у強浠ヤ笂鍔犳€ |
+| 新增 `auto_upgrade_3star_with_4star` 字段说明段 | 协议文档 |
+
+### [TGT] `docs/zh-tw/protocol/integration.md` (x2)
+
+| 操作 | 说明 |
+|------|------|
+| 淇敼 | 浜旇鍚屾锛氱箒涓? |
+| 同上（繁体） | 同上 |
 
 ## `resource/`（1 个文件）
 
@@ -61,272 +98,357 @@ py tools/gen-downstream-changes.py
 
 | 操作 | 说明 |
 |------|------|
-| 修改 | `LoginOther.next` 追加 `"AccountManagerPageConfirm"`; 新增 `AccountManagerPageConfirm` task（`baseTask: AccountManagerListAccount`, `action: DoNothing`） |
-| 修改 | `AccountManagerOfficial` 与 `AccountManagerBili` 的 `text` 从 `["登录记录"]` → `["登录记录", "上次登录"]`；Doc 同步更新 |
-| 修改 | `SwitchAccount@StartToWakeUp.next` 追加 `SwitchAccount@StartToWakeUpOCR` 兜底；新增 `SwitchAccount@StartToWakeUpOCR` OCR 任务 |
-| cherry-pick from `784d9005f6` | `AccountManagerOfficial` 由 `{"roi":[570,165,140,80]}` 补全为 `{"Doc":"...","algorithm":"OcrDetect","text":["登录记录"],"roi":[237,50,771,242]}`（与 `AccountManagerBili` 对齐） |
-| 待修改 | `AccountManagerOfficial` 补 OcrDetect 识别「登录记录」 |
-| 修改 | `AccountManagerOfficial` 由 `{"roi":[570,165,140,80]}` 补全为 `{"Doc":"官方服账号切换界面识别，与 B 服统一 OCR「登录记录」","algorithm":"OcrDetect","text":["登录记录"],"roi":[237,50,771,242]}`（与 B 服 `AccountManagerBili` 对齐） |
+| 淇敼 | `LoginOther.next` 杩藉姞 `"AccountManagerPageConfirm"`; 鏂板 `AccountManagerPageConfirm` task锛坄baseTask: AccountManagerListAccount`, `action: DoNothing`锛? |
+| 淇敼 | `AccountManagerOfficial` 涓?`AccountManagerBili` 鐨?`text` 浠?`["鐧诲綍璁板綍"]` 鈫?`["鐧诲綍璁板綍", "涓婃鐧诲綍"]`锛汥oc 鍚屾鏇存柊 |
+| 淇敼 | `SwitchAccount@StartToWakeUp.next` 杩藉姞 `SwitchAccount@StartToWakeUpOCR` 鍏滃簳锛涙柊澧?`SwitchAccount@StartToWakeUpOCR` OCR 浠诲姟 |
+| cherry-pick from `784d9005f6` | `AccountManagerOfficial` 鐢?`{"roi":[570,165,140,80]}` 琛ュ叏涓?`{"Doc":"...","algorithm":"OcrDetect","text":["鐧诲綍璁板綍"],"roi":[237,50,771,242]}`锛堜笌 `AccountManagerBili` 瀵归綈锛? |
+| 寰呬慨鏀? | `AccountManagerOfficial` 琛?OcrDetect 璇嗗埆銆岀櫥褰曡褰曘€? |
+| 淇敼 | `AccountManagerOfficial` 鐢?`{"roi":[570,165,140,80]}` 琛ュ叏涓?`{"Doc":"瀹樻柟鏈嶈处鍙峰垏鎹㈢晫闈㈣瘑鍒紝涓?B 鏈嶇粺涓€ OCR銆岀櫥褰曡褰曘€?,"algorithm":"OcrDetect","text":["鐧诲綍璁板綍"],"roi":[237,50,771,242]}`锛堜笌 B 鏈?`AccountManagerBili` 瀵归綈锛? |
 
-## `src/`（26 个文件）
+## `src/`（29 个文件）
 
 ### [TGT] `src/MaaCore/Assistant.cpp` 
 
 | 操作 | 说明 |
 |------|------|
-| 修改 | `AllTasksCompleted` 后立即设 `m_thread_idle=true`，修复第二轮 `AsstStart` 因竞态返回 false 的 bug |
+| 淇敼 | `AllTasksCompleted` 鍚庣珛鍗宠 `m_thread_idle=true`锛屼慨澶嶇浜岃疆 `AsstStart` 鍥犵珵鎬佽繑鍥?false 鐨?bug |
 
-### [TGT] `src/MaaCore/Task/Interface/RecruitTask.cpp` (x2)
+### [HOT] `src/MaaCore/Task/Interface/RecruitTask.cpp` (x5)
 
 | 操作 | 说明 |
 |------|------|
-| 修改 | +1 参数解析 `expedite_min_level`(默认 0);链式调用透传给 AutoRecruitTask |
-| 解析 `expedite_min_level` 参数 | 新参数透传 |
+| 淇敼 | +1 鍙傛暟瑙ｆ瀽 `expedite_min_level`(榛樿 0);閾惧紡璋冪敤閫忎紶缁?AutoRecruitTask |
+| 瑙ｆ瀽 `expedite_min_level` 鍙傛暟 | 鏂板弬鏁伴€忎紶 |
+| 涓存椂璇婃柇鏃ュ織 | `[fix/expedite-threshold/diag] Recruit params: expedite=..., expedite_min_level=...`锛岀敤浜庡畾浣?WPF鈫扟SON鈫扖++ 閾捐矾鏄惁姝ｇ‘閫忎紶 |
+| 鍥炴粴 | 璇婃柇鏃ュ織 `git checkout --` 杩樺師锛屼笉鍏ュ簱 |
+| 解析 `auto_upgrade_3star_with_4star` 参数（默认 `true`）+ 链式调用 `.set_auto_upgrade_3star_with_4star(...)` | 接口层透传 |
 
 ### [HOT] `src/MaaCore/Task/Interface/StartUpTask.cpp` (x3)
 
 | 操作 | 说明 |
 |------|------|
-| 改回原序 | `start_game → account_switch → start_up`；restart 循环也改回原序 |
-| 修改 | `StartUpTask::run` 重排：`start_game → start_up → account_switch → start_up`；5x restart_game 循环内同样改为先登录再切号 |
-| 修改 | `.set_task_delay(Config.get_options().task_delay * 2)` → `.set_task_delay(Config.get_options().task_delay)`，删 `* 2` |
+| 鏀瑰洖鍘熷簭 | `start_game 鈫?account_switch 鈫?start_up`锛況estart 寰幆涔熸敼鍥炲師搴? |
+| 淇敼 | `StartUpTask::run` 閲嶆帓锛歚start_game 鈫?start_up 鈫?account_switch 鈫?start_up`锛?x restart_game 寰幆鍐呭悓鏍锋敼涓哄厛鐧诲綍鍐嶅垏鍙? |
+| 淇敼 | `.set_task_delay(Config.get_options().task_delay * 2)` 鈫?`.set_task_delay(Config.get_options().task_delay)`锛屽垹 `* 2` |
 
-### [HOT] `src/MaaCore/Task/Miscellaneous/AccountSwitchTask.cpp` (x6)
-
-| 操作 | 说明 |
-|------|------|
-| 回退 | `set_retry_times(5)` → `set_retry_times(30)` + 注释更新 |
-| 修改 | `last_name` 白名单追加 `"AccountManagerPageConfirm"` |
-| cherry-pick from `784d9005f6` | `navigate_to_start_page()` 加 `Log.info(... last matched task ...)` 诊断日志；4 个 `else if` 合并为单 `if (... \\|\\| ... \\|\\| ... \\|\\| ...)` |
-| 待修改 | `navigate_to_start_page()` 加诊断日志 |
-| 修改 | `navigate_to_start_page()` 在 `get_last_task_name()` 之后追加 `Log.info(__FUNCTION__, "last matched task:", last_name);`，便于后续识别失败时定位 |
-| 修改 | 4 个 `else if` 合并为单 `if (... \|\| ... \\|\\| ... \\|\\| ...)`，减少分支嵌套 |
-
-### [HOT] `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.cpp` (x10)
+### [HOT] `src/MaaCore/Task/Miscellaneous/AccountSwitchTask.cpp` (x7)
 
 | 操作 | 说明 |
 |------|------|
-| 删除 | 移除 `confirm()` 之前的加急块 |
-| 插入 | 在 `confirm()` 成功后、`return` 前插入新加急块, 含「立即完成需在主页」注释 |
-| 修改 | +1 setter 实现 `set_expedite_min_level` |
-| 修改 | `_run` 主循环移除 `try_use_expedited` 局部变量,加急判定改为**每次进入前重新求值** `m_use_expedited && m_last_confirmed_min_level >= m_expedite_min_level`;加急成功后立即重置 `m_last_confirmed_min_level = 0` 防止陈旧状态被复用;加急失败时显式退出以避免阈值=0 时死循环 |
-| 修改 | `recruit_one` 开头重置 `m_last_confirmed_min_level = 0`,仅当 `recruit_calc_task` 走到 success / nothing_to_select 路径时才会被重新赋值 |
-| 修改 | `recruit_calc_task` 在 `nothing_to_select` 与 `success` 两条返回路径前赋值 `m_last_confirmed_min_level = final_combination.min_level` |
-| 新增 `set_expedite_min_level` 实现 | setter |
-| `_run()` 移除旧的 `try_use_expedited` 块 | 改由 `recruit_one()` 内逐槽判定 |
-| `recruit_calc_task()` 写入 `m_last_confirmed_min_level` | 加急决策依据 |
-| `recruit_one()` 加急分支 | 4★+ 时 `recruit_now()` 替代 `confirm()` |
+| 鍥為€€ | `set_retry_times(5)` 鈫?`set_retry_times(30)` + 娉ㄩ噴鏇存柊 |
+| 淇敼 | `last_name` 鐧藉悕鍗曡拷鍔?`"AccountManagerPageConfirm"` |
+| cherry-pick from `784d9005f6` | `navigate_to_start_page()` 鍔?`Log.info(... last matched task ...)` 璇婃柇鏃ュ織锛? 涓?`else if` 鍚堝苟涓哄崟 `if (... \\|\\| ... \\|\\| ... \\|\\| ...)` |
+| 寰呬慨鏀? | `navigate_to_start_page()` 鍔犺瘖鏂棩蹇? |
+| 淇敼 | `navigate_to_start_page()` 鍦?`get_last_task_name()` 涔嬪悗杩藉姞 `Log.info(__FUNCTION__, "last matched task:", last_name);`锛屼究浜庡悗缁瘑鍒け璐ユ椂瀹氫綅 |
+| 淇敼 | 4 涓?`else if` 鍚堝苟涓哄崟 `if (... \|\| ... \\|\\| ... \\|\\| ...)`锛屽噺灏戝垎鏀祵濂? |
+| pre-commit clang-format 合并 if 链多行 | 风格对齐（历史欠债，关联 fix/account-official-recognize） |
 
-### [HOT] `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.h` (x3)
+### [HOT] `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.cpp` (x15)
 
 | 操作 | 说明 |
 |------|------|
-| 修改 | +1 setter 声明 `set_expedite_min_level`;+2 成员 `m_expedite_min_level`(默认 0)、`m_last_confirmed_min_level`(默认 0) |
-| 新增 setter `set_expedite_min_level` | 加急门槛接口 |
-| 新增成员 `m_expedite_min_level` / `m_last_confirmed_min_level` | 门槛值与最近确认星级 |
+| 鍒犻櫎 | 绉婚櫎 `confirm()` 涔嬪墠鐨勫姞鎬ュ潡 |
+| 鎻掑叆 | 鍦?`confirm()` 鎴愬姛鍚庛€乣return` 鍓嶆彃鍏ユ柊鍔犳€ュ潡, 鍚€岀珛鍗冲畬鎴愰渶鍦ㄤ富椤点€嶆敞閲? |
+| 淇敼 | +1 setter 瀹炵幇 `set_expedite_min_level` |
+| 淇敼 | `_run` 涓诲惊鐜Щ闄?`try_use_expedited` 灞€閮ㄥ彉閲?鍔犳€ュ垽瀹氭敼涓?*姣忔杩涘叆鍓嶉噸鏂版眰鍊?* `m_use_expedited && m_last_confirmed_min_level >= m_expedite_min_level`;鍔犳€ユ垚鍔熷悗绔嬪嵆閲嶇疆 `m_last_confirmed_min_level = 0` 闃叉闄堟棫鐘舵€佽澶嶇敤;鍔犳€ュけ璐ユ椂鏄惧紡閫€鍑轰互閬垮厤闃堝€?0 鏃舵寰幆 |
+| 淇敼 | `recruit_one` 寮€澶撮噸缃?`m_last_confirmed_min_level = 0`,浠呭綋 `recruit_calc_task` 璧板埌 success / nothing_to_select 璺緞鏃舵墠浼氳閲嶆柊璧嬪€? |
+| 淇敼 | `recruit_calc_task` 鍦?`nothing_to_select` 涓?`success` 涓ゆ潯杩斿洖璺緞鍓嶈祴鍊?`m_last_confirmed_min_level = final_combination.min_level` |
+| 鏂板 `set_expedite_min_level` 瀹炵幇 | setter |
+| `_run()` 绉婚櫎鏃х殑 `try_use_expedited` 鍧? | 鏀圭敱 `recruit_one()` 鍐呴€愭Ы鍒ゅ畾 |
+| `recruit_calc_task()` 鍐欏叆 `m_last_confirmed_min_level` | 鍔犳€ュ喅绛栦緷鎹? |
+| `recruit_one()` 鍔犳€ュ垎鏀? | 4鈽? 鏃?`recruit_now()` 鏇夸唬 `confirm()` |
+| 淇敼 | `recruit_one()` 鍏ュ彛澶勮ˉ鍥?`m_last_confirmed_min_level = 0;`锛屾潨缁濅笂涓€妲戒綅闄堟棫鍊兼薄鏌撴湰妲戒綅鍔犳€ュ喅绛? |
+| 淇敼 | 鍔犳€ユ垚鍔燂紙`recruit_now()` 鎴愬姛锛夊悗琛ュ洖 `m_last_confirmed_min_level = 0;`锛岄槻姝笅涓€妲戒綅璇垽 |
+| 新增 setter 实现 | 链式调用 |
+| 新增「4★ 潜力检测」循环 | `min_level==3 && max_level>=4` 时把 min_level/avg_level 重算到 ≥4★ 子集；与 519-535 行「3★ 视角修正」对称 |
+| pre-commit clang-format 自动重排加急 Log.info 多行 | 风格对齐 |
+
+### [HOT] `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.h` (x4)
+
+| 操作 | 说明 |
+|------|------|
+| 淇敼 | +1 setter 澹版槑 `set_expedite_min_level`;+2 鎴愬憳 `m_expedite_min_level`(榛樿 0)銆乣m_last_confirmed_min_level`(榛樿 0) |
+| 鏂板 setter `set_expedite_min_level` | 鍔犳€ラ棬妲涙帴鍙? |
+| 鏂板鎴愬憳 `m_expedite_min_level` / `m_last_confirmed_min_level` | 闂ㄦ鍊间笌鏈€杩戠‘璁ゆ槦绾? |
+| 新增 setter `set_auto_upgrade_3star_with_4star` + 成员 `m_auto_upgrade_3star_with_4star = true` | 升级开关默认开启 |
 
 ### [TGT] `src/MaaUtils` 
 
 | 操作 | 说明 |
 |------|------|
-| 子模块初始化 | 引用上游 `MaaXYZ/MaaUtils`（HEAD `0c2556cfc`），提交至 feat/fix 索引 |
+| 瀛愭ā鍧楀垵濮嬪寲 | 寮曠敤涓婃父 `MaaXYZ/MaaUtils`锛圚EAD `0c2556cfc`锛夛紝鎻愪氦鑷?feat/fix 绱㈠紩 |
 
-### [TGT] `src/MaaWpfGui/Configuration/Single/MaaTask/RecruitTask.cs` (x2)
+### [HOT] `src/MaaWpfGui/Configuration/Single/MaaTask/RecruitTask.cs` (x3)
 
 | 操作 | 说明 |
 |------|------|
-| 修改 | +1 字段 `ExpediteMinLevel`(默认 0) |
-| +`ExpediteMinLevel` 属性 | 配置模型 |
+| 淇敼 | +1 瀛楁 `ExpediteMinLevel`(榛樿 0) |
+| +`ExpediteMinLevel` 灞炴€? | 閰嶇疆妯″瀷 |
+| 新增 `AutoUpgrade3StarWith4Star` 字段（默认 `true`） | 配置模型 |
 
 ### [TGT] `src/MaaWpfGui/Configuration/Single/MaaTask/StartUpTask.cs` (x2)
 
 | 操作 | 说明 |
 |------|------|
-| 修改 | 新增 `LateStageRogueAndReclamation : bool = false`,默认关闭以保持向后兼容 |
-| 修改 | 添加 `AccountCycleEnabled` (bool, 默认 true) 和 `AccountNames` (List\<string\>, 默认 ["", ""]) |
+| 淇敼 | 鏂板 `LateStageRogueAndReclamation : bool = false`,榛樿鍏抽棴浠ヤ繚鎸佸悜鍚庡吋瀹? |
+| 淇敼 | 娣诲姞 `AccountCycleEnabled` (bool, 榛樿 true) 鍜?`AccountNames` (List\<string\>, 榛樿 ["", ""]) |
 
 ### [TGT] `src/MaaWpfGui/MaaWpfGui.csproj` (x2)
 
 | 操作 | 说明 |
 |------|------|
-| 修改 | `SelfContained` 改为 `false`，禁用 NetBeauty2 打包（不兼容 .NET 10.0.300） |
-| 修改 | 版本号从 0.0.1 改为 6.14.0 |
+| 淇敼 | `SelfContained` 鏀逛负 `false`锛岀鐢?NetBeauty2 鎵撳寘锛堜笉鍏煎 .NET 10.0.300锛? |
+| 淇敼 | 鐗堟湰鍙蜂粠 0.0.1 鏀逛负 6.14.0 |
 
 ### [TGT] `src/MaaWpfGui/Main/AsstProxy.cs` (x2)
 
 | 操作 | 说明 |
 |------|------|
-| 修改 | `AllTasksCompleted` 回调中补上轮换推进逻辑：正常完成时调用 `MarkAccountCompleted` + `GetCurrentCycleAccount` + `LinkStart`，并 `break` 跳过标准完成日志，防止新一轮启动后仍打出"所有任务完成" |
-| 修改 | `AllTasksCompleted` 回调调 `AdvanceAccountCycle` 替代 `SetStopped` |
+| 淇敼 | `AllTasksCompleted` 鍥炶皟涓ˉ涓婅疆鎹㈡帹杩涢€昏緫锛氭甯稿畬鎴愭椂璋冪敤 `MarkAccountCompleted` + `GetCurrentCycleAccount` + `LinkStart`锛屽苟 `break` 璺宠繃鏍囧噯瀹屾垚鏃ュ織锛岄槻姝㈡柊涓€杞惎鍔ㄥ悗浠嶆墦鍑?鎵€鏈変换鍔″畬鎴? |
+| 淇敼 | `AllTasksCompleted` 鍥炶皟璋?`AdvanceAccountCycle` 鏇夸唬 `SetStopped` |
 
 ### [TGT] `src/MaaWpfGui/Models/AccountCycleItem.cs` 
 
 | 操作 | 说明 |
 |------|------|
-| 新建 | 轮换账号数据模型（DisplayName / AccountName / IsSelected / IsCompleted / Index） |
+| 鏂板缓 | 杞崲璐﹀彿鏁版嵁妯″瀷锛圖isplayName / AccountName / IsSelected / IsCompleted / Index锛? |
 
 ### [TGT] `src/MaaWpfGui/Models/AccountCycleStep.cs` 
 
 | 操作 | 说明 |
 |------|------|
-| 新建 | `record AccountCycleStep(string AccountName, int Phase)`,步骤扁平列表的载体 |
+| 鏂板缓 | `record AccountCycleStep(string AccountName, int Phase)`,姝ラ鎵佸钩鍒楄〃鐨勮浇浣? |
 
-### [TGT] `src/MaaWpfGui/Models/AsstTasks/AsstRecruitTask.cs` (x2)
-
-| 操作 | 说明 |
-|------|------|
-| 修改 | +1 字段 `ExpediteMinLevel`;`Serialize` 始终写入 `expedite_min_level` 到 params |
-| +`ExpediteMinLevel` 属性 + 序列化 | DTO |
-
-### [HOT] `src/MaaWpfGui/Res/Localizations/en-us.xaml` (x3)
+### [HOT] `src/MaaWpfGui/Models/AsstTasks/AsstRecruitTask.cs` (x3)
 
 | 操作 | 说明 |
 |------|------|
-| 修改 | 同上(英文) |
-| 修改 | 同上（英文） |
-| +`ExpediteMinLevel*` 6 个 key | 五语本地化 |
+| 淇敼 | +1 瀛楁 `ExpediteMinLevel`;`Serialize` 濮嬬粓鍐欏叆 `expedite_min_level` 鍒?params |
+| +`ExpediteMinLevel` 灞炴€?+ 搴忓垪鍖? | DTO |
+| 新增 DTO 字段 + `Serialize()` 写入 `auto_upgrade_3star_with_4star` | JSON 序列化 |
 
-### [HOT] `src/MaaWpfGui/Res/Localizations/ja-jp.xaml` (x3)
-
-| 操作 | 说明 |
-|------|------|
-| 修改 | 同上(日文) |
-| 修改 | 同上（日文） |
-| +`ExpediteMinLevel*` 6 个 key | 五语本地化 |
-
-### [HOT] `src/MaaWpfGui/Res/Localizations/ko-kr.xaml` (x3)
+### [TGT] `src/MaaWpfGui/Models/DiagnosticInfo.cs` (x2)
 
 | 操作 | 说明 |
 |------|------|
-| 修改 | 同上(韩文) |
-| 修改 | 同上（韩文） |
-| +`ExpediteMinLevel*` 6 个 key | 五语本地化 |
+| 新建 | 系统信息数据模型 + `Collect()` 静态收集方法：OS/.NET 版本/架构、GPU、管理员、Wine、MAA 版本（UI/Core/Resource） |
+| 保留 | 仍被合并后的 `GenerateSupportPayload()` 调用（生成 `diagnostic.json`） |
 
-### [HOT] `src/MaaWpfGui/Res/Localizations/zh-cn.xaml` (x4)
-
-| 操作 | 说明 |
-|------|------|
-| 修改 | +5 string key:`ExpediteMinLevelLabel` / `ExpediteMinLevelTip` / `ExpediteMinLevel_4Plus` / `ExpediteMinLevel_5Plus` / `ExpediteMinLevel_6Plus` |
-| 修改 | +2 string key:`LateStageRogueAndReclamation` / `LateStageRogueAndReclamationTip` |
-| 修改 | 添加 7 个 AccountCycle 本地化 key |
-| +`ExpediteMinLevel*` 6 个 key | 五语本地化 |
-
-### [HOT] `src/MaaWpfGui/Res/Localizations/zh-tw.xaml` (x3)
+### [HOT] `src/MaaWpfGui/Res/Localizations/en-us.xaml` (x9)
 
 | 操作 | 说明 |
 |------|------|
-| 修改 | 同上(繁体) |
-| 修改 | 同上（繁体中文） |
-| +`ExpediteMinLevel*` 6 个 key | 五语本地化 |
+| 淇敼 | 鍚屼笂(鑻辨枃) |
+| 淇敼 | 鍚屼笂锛堣嫳鏂囷級 |
+| +`ExpediteMinLevel*` 6 涓?key | 浜旇鏈湴鍖? |
+| 修改 | +13 个英文 localization key |
+| 修改 | +1 key = "Select diagnostic package save location" |
+| 修改 | 删除 7 个失效 key：`ExportDiagnosticPackage` / `ExportDiagnosticPackageButton` / `ExportDiagnosticPackageSuccessful` / `ExportDiagnosticPackageException` / `ExportDiagnosticPackageSelectLocation` / `DiagnosticIncludeGuiLog` / `DiagnosticIncludeCoreLog` |
+| 修改 | 新增 2 个 key：`GenerateDiagnosticReport`（按钮文案）/ `GenerateDiagnosticReportSelectLocation`（保存对话框标题） |
+| 修改 | 节注释 `<!-- DiagnosticExport -->` → `<!-- DiagnosticReport -->` |
+| 同上（英文） | English |
+
+### [HOT] `src/MaaWpfGui/Res/Localizations/ja-jp.xaml` (x9)
+
+| 操作 | 说明 |
+|------|------|
+| 淇敼 | 鍚屼笂(鏃ユ枃) |
+| 淇敼 | 鍚屼笂锛堟棩鏂囷級 |
+| +`ExpediteMinLevel*` 6 涓?key | 浜旇鏈湴鍖? |
+| 修改 | +13 个日文 localization key |
+| 修改 | +1 key = "診断パッケージの保存場所を選択" |
+| 修改 | 删除 7 个失效 key：`ExportDiagnosticPackage` / `ExportDiagnosticPackageButton` / `ExportDiagnosticPackageSuccessful` / `ExportDiagnosticPackageException` / `ExportDiagnosticPackageSelectLocation` / `DiagnosticIncludeGuiLog` / `DiagnosticIncludeCoreLog` |
+| 修改 | 新增 2 个 key：`GenerateDiagnosticReport`（按钮文案）/ `GenerateDiagnosticReportSelectLocation`（保存对话框标题） |
+| 修改 | 节注释 `<!-- DiagnosticExport -->` → `<!-- DiagnosticReport -->` |
+| 同上（日文） | 日本語 |
+
+### [HOT] `src/MaaWpfGui/Res/Localizations/ko-kr.xaml` (x9)
+
+| 操作 | 说明 |
+|------|------|
+| 淇敼 | 鍚屼笂(闊╂枃) |
+| 淇敼 | 鍚屼笂锛堥煩鏂囷級 |
+| +`ExpediteMinLevel*` 6 涓?key | 浜旇鏈湴鍖? |
+| 修改 | +13 个韩文 localization key |
+| 修改 | +1 key = "진단 패키지 저장 위치 선택" |
+| 修改 | 删除 7 个失效 key：`ExportDiagnosticPackage` / `ExportDiagnosticPackageButton` / `ExportDiagnosticPackageSuccessful` / `ExportDiagnosticPackageException` / `ExportDiagnosticPackageSelectLocation` / `DiagnosticIncludeGuiLog` / `DiagnosticIncludeCoreLog` |
+| 修改 | 新增 2 个 key：`GenerateDiagnosticReport`（按钮文案）/ `GenerateDiagnosticReportSelectLocation`（保存对话框标题） |
+| 修改 | 节注释 `<!-- DiagnosticExport -->` → `<!-- DiagnosticReport -->` |
+| 同上（韩文） | 한국어 |
+
+### [HOT] `src/MaaWpfGui/Res/Localizations/zh-cn.xaml` (x10)
+
+| 操作 | 说明 |
+|------|------|
+| 淇敼 | +5 string key:`ExpediteMinLevelLabel` / `ExpediteMinLevelTip` / `ExpediteMinLevel_4Plus` / `ExpediteMinLevel_5Plus` / `ExpediteMinLevel_6Plus` |
+| 淇敼 | +2 string key:`LateStageRogueAndReclamation` / `LateStageRogueAndReclamationTip` |
+| 淇敼 | 娣诲姞 7 涓?AccountCycle 鏈湴鍖?key |
+| +`ExpediteMinLevel*` 6 涓?key | 浜旇鏈湴鍖? |
+| 修改 | +13 个中文 localization key（`ExportDiagnosticPackage*` / `DiagnosticDateRange` / `DiagnosticInclude*` / `DiagnosticLast*`） |
+| 修改 | +1 key `ExportDiagnosticPackageSelectLocation` = "选择诊断包保存位置" |
+| 修改 | 删除 7 个失效 key：`ExportDiagnosticPackage` / `ExportDiagnosticPackageButton` / `ExportDiagnosticPackageSuccessful` / `ExportDiagnosticPackageException` / `ExportDiagnosticPackageSelectLocation` / `DiagnosticIncludeGuiLog` / `DiagnosticIncludeCoreLog` |
+| 修改 | 新增 2 个 key：`GenerateDiagnosticReport`（按钮文案）/ `GenerateDiagnosticReportSelectLocation`（保存对话框标题） |
+| 修改 | 节注释 `<!-- DiagnosticExport -->` → `<!-- DiagnosticReport -->` |
+| 新增 `AutoUpgrade3StarWith4Star` / `AutoUpgrade3StarWith4StarTip` 字符串 | 简体中文 |
+
+### [HOT] `src/MaaWpfGui/Res/Localizations/zh-tw.xaml` (x9)
+
+| 操作 | 说明 |
+|------|------|
+| 淇敼 | 鍚屼笂(绻佷綋) |
+| 淇敼 | 鍚屼笂锛堢箒浣撲腑鏂囷級 |
+| +`ExpediteMinLevel*` 6 涓?key | 浜旇鏈湴鍖? |
+| 修改 | +13 个繁中 localization key |
+| 修改 | +1 key = "選擇診斷包儲存位置" |
+| 修改 | 删除 7 个失效 key：`ExportDiagnosticPackage` / `ExportDiagnosticPackageButton` / `ExportDiagnosticPackageSuccessful` / `ExportDiagnosticPackageException` / `ExportDiagnosticPackageSelectLocation` / `DiagnosticIncludeGuiLog` / `DiagnosticIncludeCoreLog` |
+| 修改 | 新增 2 个 key：`GenerateDiagnosticReport`（按钮文案）/ `GenerateDiagnosticReportSelectLocation`（保存对话框标题） |
+| 修改 | 节注释 `<!-- DiagnosticExport -->` → `<!-- DiagnosticReport -->` |
+| 同上（繁体） | 繁体中文 |
 
 ### [TGT] `src/MaaWpfGui/ViewModels/UI/RootViewModel.cs` (x2)
 
 | 操作 | 说明 |
 |------|------|
-| 修改 | 版本比较时 `uiVersion` 也 `TrimStart('v', 'V')`，修复 UI 和 Core 版本号一致仍弹警告的 bug |
-| 修改 | 版本比较忽略 `v` 前缀 |
+| 淇敼 | 鐗堟湰姣旇緝鏃?`uiVersion` 涔?`TrimStart('v', 'V')`锛屼慨澶?UI 鍜?Core 鐗堟湰鍙蜂竴鑷翠粛寮硅鍛婄殑 bug |
+| 淇敼 | 鐗堟湰姣旇緝蹇界暐 `v` 鍓嶇紑 |
 
 ### [HOT] `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs` (x23)
 
 | 操作 | 说明 |
 |------|------|
-| 修改 | `LinkStart` 改为 `RebuildCycleSteps` + 取 `CurrentStep` 决定首个账号 |
-| 修改 | `LinkStartWithTasks` foreach 新增 Phase 过滤(`IsInCurrentPhase` 由 `lateStageOn` 闸门,LateStage 关闭时 no-op) |
-| 修改 | `AdvanceAccountCycle` 全量重写:扁平步骤推进 + `needStartupSwitch` 显式切号 + 空步骤递归跳过 + `MarkAccountCompleted` 按 LateStage 状态差异化触发 |
-| 修改 | 新增静态助手 `IsInCurrentPhase(TaskType, int phase)` |
-| 修改 | 同一处版本比较，补上 `uiVersion.TrimStart` |
-| 修改 | `SetStopped` 中 `IsCycling` 短路分支增加"是否被强制停止"判断：`runStopScript && _runningState.GetStopping()` 时落空 `IsCycling` 走完整重置流程,清 `Stopping` 标志;正常轮换推进路径保持不变(直接 return)。修复点停止按钮后 UI 永远卡在"正在停止"且按钮不可用的问题。 |
-| 修改 | `AdvanceAccountCycle` 两个失败分支(`count == 0` 无任务被附加、`AsstStart()` 失败)改为调用 `SetStopped(runStopScript: false)`,统一重置 `Stopping/Idle/IsCycling`。修复"切换第二个账号任务出错"后状态卡住、按钮变灰、标题不恢复的问题。 |
-| 修改 | `LinkStart` 补上 `AccountSwitchEnabled = true`；`TryStartNextCycleAccount` 处理 `cfg` 为 null 的边界情况；包裹 try-catch 防止 `async void` 静默吞异常；通过 `Execute.OnUIThreadAsync` 确保 UI 线程执行 |
-| 修改 | 新增 `AdvanceAccountCycle()` 方法替代 `SetStopped` 做轮换推进；`SetStopped` 剥离轮换逻辑，只处理停止 |
-| 修改 | `SetStopped` 新增轮换逻辑：完成任务后调用 `MarkAccountCompleted` 标记当前账号完成，若还有未完成账号则自动触发 `LinkStart` 继续下一账号 |
-| 修改 | LinkStart 加入轮换判定，SetStopped 后调用 TryStartNextCycleAccount 自动推进 |
-| 修改 | `AdvanceAccountCycle` 文档注释追加 fix/defer-rogue/1 段落 |
-| 修改 | **A1**: 把 `prevStep = GetPreviousStep()` 移到 `nextStep == null` 早退分支**之前**;早退分支里先调用 `MarkPreviousStepCompleted(prevStep)` 再 `return` |
-| 修改 | **A1**: 普通推进路径移除原 inline 块,改为调用 `MarkPreviousStepCompleted(prevStep)` |
-| 修改 | **A1**: 新增私有方法 `MarkPreviousStepCompleted(AccountCycleStep?)`,语义与原 inline 块一致(`leftPhase2 \\|\\| lateStageOff`) |
-| 修改 | **A8**: `LinkStart` 顶部加 `if (startUpConfig.IsCycling) { Release; return; }` guard,防止 Stop 后再次点击 / 定时器 / 快捷键在 cycle 中重置进度 |
-| 修改 | **#6**: `SetStopped` 将 cycling 检查移到 idle 检查之前,当 `IsCycling=true && Idle=true`（LinkStartWithTasks 早退路径）时清理 cycling 状态,让正常停止接管,防止轮换永久卡住 |
-| 修改 | **#5**: `AdvanceAccountCycle` 入口加 `_logger.Information` 日志记录 stepIdx/prev/next 信息 |
-| 修改 | **#5**: AdvanceAccountCycle 循环后追加 `_logger.Information` 记录 phase/switch/count/ret |
-| 修改 | **#5**: AdvanceAccountCycle 中 Append task 时记录 `[CycleAdv] Append task #Idx` 日志 |
-| 修改 | **#5**: LinkStartWithTasks 中 Append task 时记录 `[LinkStart] Append task #Idx` 日志 |
-| 修改 | **#2/#3**: AdvanceAccountCycle 的 Phase 任务循环由 foreach + `IndexOf` 改为 **for 循环** (`int index = i`),消除重复项/顺序变更时的索引错误;同时保持原有 Phase 过滤/StartUp 跳过/`SetTaskIds` 逻辑不变 |
-| 修改 | **#4**: AdvanceAccountCycle 初始日志追加 `idx={CurrentStepIndex}/{CurrentStepCount}` 显示步骤位置 |
+| 淇敼 | `LinkStart` 鏀逛负 `RebuildCycleSteps` + 鍙?`CurrentStep` 鍐冲畾棣栦釜璐﹀彿 |
+| 淇敼 | `LinkStartWithTasks` foreach 鏂板 Phase 杩囨护(`IsInCurrentPhase` 鐢?`lateStageOn` 闂搁棬,LateStage 鍏抽棴鏃?no-op) |
+| 淇敼 | `AdvanceAccountCycle` 鍏ㄩ噺閲嶅啓:鎵佸钩姝ラ鎺ㄨ繘 + `needStartupSwitch` 鏄惧紡鍒囧彿 + 绌烘楠ら€掑綊璺宠繃 + `MarkAccountCompleted` 鎸?LateStage 鐘舵€佸樊寮傚寲瑙﹀彂 |
+| 淇敼 | 鏂板闈欐€佸姪鎵?`IsInCurrentPhase(TaskType, int phase)` |
+| 淇敼 | 鍚屼竴澶勭増鏈瘮杈冿紝琛ヤ笂 `uiVersion.TrimStart` |
+| 淇敼 | `SetStopped` 涓?`IsCycling` 鐭矾鍒嗘敮澧炲姞"鏄惁琚己鍒跺仠姝?鍒ゆ柇锛歚runStopScript && _runningState.GetStopping()` 鏃惰惤绌?`IsCycling` 璧板畬鏁撮噸缃祦绋?娓?`Stopping` 鏍囧織;姝ｅ父杞崲鎺ㄨ繘璺緞淇濇寔涓嶅彉(鐩存帴 return)銆備慨澶嶇偣鍋滄鎸夐挳鍚?UI 姘歌繙鍗″湪"姝ｅ湪鍋滄"涓旀寜閽笉鍙敤鐨勯棶棰樸€? |
+| 淇敼 | `AdvanceAccountCycle` 涓や釜澶辫触鍒嗘敮(`count == 0` 鏃犱换鍔¤闄勫姞銆乣AsstStart()` 澶辫触)鏀逛负璋冪敤 `SetStopped(runStopScript: false)`,缁熶竴閲嶇疆 `Stopping/Idle/IsCycling`銆備慨澶?鍒囨崲绗簩涓处鍙蜂换鍔″嚭閿?鍚庣姸鎬佸崱浣忋€佹寜閽彉鐏般€佹爣棰樹笉鎭㈠鐨勯棶棰樸€? |
+| 淇敼 | `LinkStart` 琛ヤ笂 `AccountSwitchEnabled = true`锛沗TryStartNextCycleAccount` 澶勭悊 `cfg` 涓?null 鐨勮竟鐣屾儏鍐碉紱鍖呰９ try-catch 闃叉 `async void` 闈欓粯鍚炲紓甯革紱閫氳繃 `Execute.OnUIThreadAsync` 纭繚 UI 绾跨▼鎵ц |
+| 淇敼 | 鏂板 `AdvanceAccountCycle()` 鏂规硶鏇夸唬 `SetStopped` 鍋氳疆鎹㈡帹杩涳紱`SetStopped` 鍓ョ杞崲閫昏緫锛屽彧澶勭悊鍋滄 |
+| 淇敼 | `SetStopped` 鏂板杞崲閫昏緫锛氬畬鎴愪换鍔″悗璋冪敤 `MarkAccountCompleted` 鏍囪褰撳墠璐﹀彿瀹屾垚锛岃嫢杩樻湁鏈畬鎴愯处鍙峰垯鑷姩瑙﹀彂 `LinkStart` 缁х画涓嬩竴璐﹀彿 |
+| 淇敼 | LinkStart 鍔犲叆杞崲鍒ゅ畾锛孲etStopped 鍚庤皟鐢?TryStartNextCycleAccount 鑷姩鎺ㄨ繘 |
+| 淇敼 | `AdvanceAccountCycle` 鏂囨。娉ㄩ噴杩藉姞 fix/defer-rogue/1 娈佃惤 |
+| 淇敼 | **A1**: 鎶?`prevStep = GetPreviousStep()` 绉诲埌 `nextStep == null` 鏃╅€€鍒嗘敮**涔嬪墠**;鏃╅€€鍒嗘敮閲屽厛璋冪敤 `MarkPreviousStepCompleted(prevStep)` 鍐?`return` |
+| 淇敼 | **A1**: 鏅€氭帹杩涜矾寰勭Щ闄ゅ師 inline 鍧?鏀逛负璋冪敤 `MarkPreviousStepCompleted(prevStep)` |
+| 淇敼 | **A1**: 鏂板绉佹湁鏂规硶 `MarkPreviousStepCompleted(AccountCycleStep?)`,璇箟涓庡師 inline 鍧椾竴鑷?`leftPhase2 \\|\\| lateStageOff`) |
+| 淇敼 | **A8**: `LinkStart` 椤堕儴鍔?`if (startUpConfig.IsCycling) { Release; return; }` guard,闃叉 Stop 鍚庡啀娆＄偣鍑?/ 瀹氭椂鍣?/ 蹇嵎閿湪 cycle 涓噸缃繘搴? |
+| 淇敼 | **#6**: `SetStopped` 灏?cycling 妫€鏌ョЩ鍒?idle 妫€鏌ヤ箣鍓?褰?`IsCycling=true && Idle=true`锛圠inkStartWithTasks 鏃╅€€璺緞锛夋椂娓呯悊 cycling 鐘舵€?璁╂甯稿仠姝㈡帴绠?闃叉杞崲姘镐箙鍗′綇 |
+| 淇敼 | **#5**: `AdvanceAccountCycle` 鍏ュ彛鍔?`_logger.Information` 鏃ュ織璁板綍 stepIdx/prev/next 淇℃伅 |
+| 淇敼 | **#5**: AdvanceAccountCycle 寰幆鍚庤拷鍔?`_logger.Information` 璁板綍 phase/switch/count/ret |
+| 淇敼 | **#5**: AdvanceAccountCycle 涓?Append task 鏃惰褰?`[CycleAdv] Append task #Idx` 鏃ュ織 |
+| 淇敼 | **#5**: LinkStartWithTasks 涓?Append task 鏃惰褰?`[LinkStart] Append task #Idx` 鏃ュ織 |
+| 淇敼 | **#2/#3**: AdvanceAccountCycle 鐨?Phase 浠诲姟寰幆鐢?foreach + `IndexOf` 鏀逛负 **for 寰幆** (`int index = i`),娑堥櫎閲嶅椤?椤哄簭鍙樻洿鏃剁殑绱㈠紩閿欒;鍚屾椂淇濇寔鍘熸湁 Phase 杩囨护/StartUp 璺宠繃/`SetTaskIds` 閫昏緫涓嶅彉 |
+| 淇敼 | **#4**: AdvanceAccountCycle 鍒濆鏃ュ織杩藉姞 `idx={CurrentStepIndex}/{CurrentStepCount}` 鏄剧ず姝ラ浣嶇疆 |
 
-### [TGT] `src/MaaWpfGui/ViewModels/UserControl/TaskQueue/RecruitSettingsUserControlModel.cs` (x2)
+### [HOT] `src/MaaWpfGui/ViewModels/UserControl/Settings/IssueReportUserControlModel.cs` (x15)
 
 | 操作 | 说明 |
 |------|------|
-| 修改 | +3 VM 成员:`ExpediteMinLevelEnabled`(布尔,setter 控制 0/4 切换)、`ExpediteMinLevel`(int,setter 白名单 0/4/5/6)、`ExpediteMinLevelOptions`(4/5/6 三档 ComboBox 选项);Serialize 阶段写入 `ExpediteMinLevel` |
+| 修改 | 新增诊断导出属性：`DiagnosticDateRange`(默认 7 天)、`IncludeConfig`/`IncludeCache`/`IncludeCustomResource` 三个 CheckBox、`DateRangeOption` record 与 `DateRangeOptions` 懒加载列表 |
+| 修改 | 新增 `ExportDiagnosticPackage()` 方法：收集系统信息 → diagnostic.json → 逐日志文件按日期范围过滤行 → 可选目录复制 → zip 打包 → growl + 打开 reports 目录 |
+| 修改 | 新增 `CopyFilteredLog()` 辅助方法：正则 `^\[\d{4}-\d{2}-\d{2}` 逐行解析日志时间戳，仅保留日期范围内行；非时间戳行（异常栈）自动保留 |
+| 修改 | 新增 `using Microsoft.Win32;`（按字母顺序排在 `MaaWpfGui.Models` 之后、`Serilog` 之前，避免 SA1208/SA1210） |
+| 修改 | `ExportDiagnosticPackage()` 顶部加 SaveFileDialog：Title 用本地化键 `ExportDiagnosticPackageSelectLocation`、Filter=`ZIP files (*.zip)\\|*.zip`、默认文件名=`{reportName}.zip`、初始目录=`PathsHelper.ReportsDir`、开启 OverwritePrompt + AddExtension + DefaultExt |
+| 修改 | 把 `tempPath` 创建移到 SaveDialog 之后（取消导出时不创建无用临时目录） |
+| 修改 | `if (saveDialog.ShowDialog() != true) return;` — 取消安全退出，不弹 growl |
+| 修改 | `zipPath = saveDialog.FileName` 替代硬编码 `Path.Combine(ReportsDir, ...)` |
+| 修改 | 删除 `using System.Text.RegularExpressions;`（不再需要行级日志过滤） |
+| 修改 | 注释 `// ===== Diagnostic Export Properties =====` → `// ===== Diagnostic Report Properties (used by GenerateSupportPayload) =====` |
+| 修改 | `_includeCustomResource` 默认值 `false` → `true`（保留原 GenerateSupportPayload 行为：始终包含自定义资源） |
+| 修改 | `GenerateSupportPayload()` 重写：顶部加 SaveFileDialog 选保存位置（默认目录 `PathsHelper.ReportsDir`，默认文件名 `report_{MM-dd_HH-mm-ss}.zip`），生成 `diagnostic.json` 系统信息，原 config/resource/cache 复制改为按 `_includeConfig`/`_includeCache`/`_includeCustomResource` 条件复制，原 hardcoded 3 天 `threeDaysAgo` 改为 `_diagnosticDateRange`，完整 zip 输出路径改为 `saveDialog.FileName`，分卷输出目录改为 `userChosenDir/{name}_parts/` 紧贴用户选定位置 |
+| 修改 | part01 增加 `Directory.EnumerateFiles(tempPath, "*", SearchOption.TopDirectoryOnly)` 包含 `diagnostic.json` 在分卷中 |
+| 删除 | `ExportDiagnosticPackage()` 方法（约 100 行） |
+| 删除 | `CopyFilteredLog()` 行级日志过滤方法（约 50 行） |
+
+### [HOT] `src/MaaWpfGui/ViewModels/UserControl/TaskQueue/RecruitSettingsUserControlModel.cs` (x3)
+
+| 操作 | 说明 |
+|------|------|
+| 淇敼 | +3 VM 鎴愬憳:`ExpediteMinLevelEnabled`(甯冨皵,setter 鎺у埗 0/4 鍒囨崲)銆乣ExpediteMinLevel`(int,setter 鐧藉悕鍗?0/4/5/6)銆乣ExpediteMinLevelOptions`(4/5/6 涓夋。 ComboBox 閫夐」);Serialize 闃舵鍐欏叆 `ExpediteMinLevel` |
 | +`ExpediteMinLevelList` / `UseExpeditedMinLevel` / `UseExpeditedMinLevelVisible` | ViewModel |
+| 新增 VM 属性 `AutoUpgrade3StarWith4Star` + `SerializeTask()` 写入 | 双向绑定 |
 
 ### [HOT] `src/MaaWpfGui/ViewModels/UserControl/TaskQueue/StartUpSettingsUserControlModel.cs` (x5)
 
 | 操作 | 说明 |
 |------|------|
-| 修改 | (a) `LateStageRogueAndReclamation` VM 属性(照搬 `AccountSwitchEnabled`);(b) 新增 `#region Late Stage` 含 `_cycleSteps` / `_currentStepIndex` / `RebuildCycleSteps` / `AdvanceStepIndex` / `CurrentStep` / `GetPreviousStep` / `CurrentPhase`;(c) `ResetCycle` 同步清空步骤列表 |
-| 修改 | `GetCurrentCycleAccount` 简化：去掉 `_currentCycleIndex` 状态跟踪，改为直接取第一个符合条件的账号；去掉 `ResetCycleIndex` 方法 |
-| 修改 | `SyncAccountNamesToItems` 保留已有项 `IsSelected` 状态，用户可自由勾选参与轮换的账号 |
-| 修改 | 添加轮换 CRUD、GetCurrentCycleAccount、MarkAccountCompleted、SyncAccountNamesToItems 等方法 |
-| 修改 | **#5**: 新增 `CurrentStepIndex` 公开属性支持日志 |
+| 淇敼 | (a) `LateStageRogueAndReclamation` VM 灞炴€?鐓ф惉 `AccountSwitchEnabled`);(b) 鏂板 `#region Late Stage` 鍚?`_cycleSteps` / `_currentStepIndex` / `RebuildCycleSteps` / `AdvanceStepIndex` / `CurrentStep` / `GetPreviousStep` / `CurrentPhase`;(c) `ResetCycle` 鍚屾娓呯┖姝ラ鍒楄〃 |
+| 淇敼 | `GetCurrentCycleAccount` 绠€鍖栵細鍘绘帀 `_currentCycleIndex` 鐘舵€佽窡韪紝鏀逛负鐩存帴鍙栫涓€涓鍚堟潯浠剁殑璐﹀彿锛涘幓鎺?`ResetCycleIndex` 鏂规硶 |
+| 淇敼 | `SyncAccountNamesToItems` 淇濈暀宸叉湁椤?`IsSelected` 鐘舵€侊紝鐢ㄦ埛鍙嚜鐢卞嬀閫夊弬涓庤疆鎹㈢殑璐﹀彿 |
+| 淇敼 | 娣诲姞杞崲 CRUD銆丟etCurrentCycleAccount銆丮arkAccountCompleted銆丼yncAccountNamesToItems 绛夋柟娉? |
+| 淇敼 | **#5**: 鏂板 `CurrentStepIndex` 鍏紑灞炴€ф敮鎸佹棩蹇? |
 
 ### [TGT] `src/MaaWpfGui/ViewModels/UserControl/TaskQueue/UserDataUpdateSettingsUserControlModel.cs` 
 
 | 操作 | 说明 |
 |------|------|
-| 修改 | **#1**: cycle 中 (`GetAccountSwitchEnabled()`) 跳过 `IsTriggerDue` 检查,保证每个账号的 OperBox/Depot 子任务都被追加 |
+| 淇敼 | **#1**: cycle 涓?(`GetAccountSwitchEnabled()`) 璺宠繃 `IsTriggerDue` 妫€鏌?淇濊瘉姣忎釜璐﹀彿鐨?OperBox/Depot 瀛愪换鍔￠兘琚拷鍔? |
 
-### [TGT] `src/MaaWpfGui/Views/UserControl/TaskQueue/RecruitSettingsUserControl.xaml` (x2)
+### [HOT] `src/MaaWpfGui/Views/UserControl/Settings/IssueReportUserControl.xaml` (x3)
 
 | 操作 | 说明 |
 |------|------|
-| 修改 | 高级设置区末尾追加 CheckBox + ComboBox;整行 Visibility 绑定到 `UseExpeditedWithNull == true` |
-| +门槛下拉框 | UI |
+| 修改 | IssueReport 页面新增诊断导出区域：日期范围 ComboBox + 3 个 CheckBox + 导出按钮 |
+| 修改 | 右侧 StackPanel 内插入新 UI：日期范围 Grid（ComboBox + TextBlock）+ 3 CheckBox（配置文件/缓存/自定义资源），按钮文案 `GenerateSupportPayload` → `GenerateDiagnosticReport` |
+| 删除 | 独立"导出诊断包" StackPanel + Border（约 60 行） |
+
+### [HOT] `src/MaaWpfGui/Views/UserControl/TaskQueue/RecruitSettingsUserControl.xaml` (x3)
+
+| 操作 | 说明 |
+|------|------|
+| 淇敼 | 楂樼骇璁剧疆鍖烘湯灏捐拷鍔?CheckBox + ComboBox;鏁磋 Visibility 缁戝畾鍒?`UseExpeditedWithNull == true` |
+| +闂ㄦ涓嬫媺妗? | UI |
+| 新增 `StackPanel` 包裹 `CheckBox` + `TooltipBlock`，位于「3星 Tag 时的 Tag 倾向」区域下方 | UI 控件 |
 
 ### [HOT] `src/MaaWpfGui/Views/UserControl/TaskQueue/StartUpTaskUserControl.xaml` (x4)
 
 | 操作 | 说明 |
 |------|------|
-| 修改 | AccountCycle 子面板末尾新增 CheckBox + TooltipBlock(长 Wrap + MaxWidth CalcBinding 防挤压) |
-| 修改 | 添加/删除按钮图标统一字号和居中 |
-| 修改 | 添加轮换 CheckBox、账号列表 ItemsControl、编辑模式 ComboBox、IsCompleted 蓝色高亮 |
-| 修改 | **A7**: `LateStageRogueAndReclamation` CheckBox 加 `IsEnabled="{c:Binding '!IsCycling'}"`,Cycle 运行中灰显 |
+| 淇敼 | AccountCycle 瀛愰潰鏉挎湯灏炬柊澧?CheckBox + TooltipBlock(闀?Wrap + MaxWidth CalcBinding 闃叉尋鍘? |
+| 淇敼 | 娣诲姞/鍒犻櫎鎸夐挳鍥炬爣缁熶竴瀛楀彿鍜屽眳涓? |
+| 淇敼 | 娣诲姞杞崲 CheckBox銆佽处鍙峰垪琛?ItemsControl銆佺紪杈戞ā寮?ComboBox銆両sCompleted 钃濊壊楂樹寒 |
+| 淇敼 | **A7**: `LateStageRogueAndReclamation` CheckBox 鍔?`IsEnabled="{c:Binding '!IsCycling'}"`,Cycle 杩愯涓伆鏄? |
 
-## `tools/`（5 个文件）
+## `tools/`（6 个文件）
 
-### [TGT] `tools/DependencySetup_依赖库安装.bat` (x2)
+### [TGT] `tools/DependencySetup_渚濊禆搴撳畨瑁?bat` (x2)
 
 | 操作 | 说明 |
 |------|------|
-| git rm | 终端用户依赖安装脚本，不再需要 |
-| 还原 | 从 `install/` 副本拷回 `tools/`，恢复 `Copy-Item` 源；并入 git |
+| git rm | 缁堢鐢ㄦ埛渚濊禆瀹夎鑴氭湰锛屼笉鍐嶉渶瑕? |
+| 杩樺師 | 浠?`install/` 鍓湰鎷峰洖 `tools/`锛屾仮澶?`Copy-Item` 婧愶紱骞跺叆 git |
+
+### [TGT] `tools/gen-downstream-changes.py` 
+
+| 操作 | 说明 |
+|------|------|
+| 鏂板缓 | 瑙ｆ瀽 LOG.md 4 鍒楄〃鏍硷紙`# / 鏂囦欢(瀵硅薄) / 鎿嶄綔 / 璇存槑`锛夛紝鎻愬彇鍒?2 鍙嶅紩鍙疯矾寰勶細鍘昏鍙峰悗缂€锛坄path:123-456` 鈫?`path`锛夈€乥race-aware 閫楀彿鍒囧垎锛堜繚鐣?`{zh-cn,en-us}` 鍐呴€楀彿锛夈€乻hell brace 灞曞紑锛坄{a,b,c}.xaml` 鈫?澶氫釜鏂囦欢锛夈€佽繃婊?`install*/`/`build/`/`debug/`/`config/`/`cache/`/`data/`/`reports/` 绛夐潪婧愮爜浜х墿锛涙寜椤跺眰鐩綍鍒嗙粍锛岃鏀?鈮?3 娆℃爣 `[HOT]`锛屽惁鍒?`[TGT]`锛涜緭鍑?markdown 琛ㄦ牸銆傛敮鎸?`--log` / `--out` / `--dry-run` 鍙傛暟 |
 
 ### [TGT] `tools/local-install-staging.bat` (x2)
 
 | 操作 | 说明 |
 |------|------|
-| 新建 | 基于 `local-install.bat`，6 处 `install` 路径改为 `install-staging`（cmake `--prefix`、dotnet `-o`、nbeauty 补丁、清理 `*.h`/`msvc-debug`、robocopy `resource`） |
-| 修改 | 同上 |
+| 鏂板缓 | 鍩轰簬 `local-install.bat`锛? 澶?`install` 璺緞鏀逛负 `install-staging`锛坈make `--prefix`銆乨otnet `-o`銆乶beauty 琛ヤ竵銆佹竻鐞?`*.h`/`msvc-debug`銆乺obocopy `resource`锛? |
+| 淇敼 | 鍚屼笂 |
 
 ### [TGT] `tools/local-install.bat` 
 
 | 操作 | 说明 |
 |------|------|
-| 修改 | `global.json` 注入从 `{"version":"10.0.203","rollForward":"disable"}` 改为 `{"version":"10.0.100","rollForward":"latestFeature"}` |
+| 淇敼 | `global.json` 娉ㄥ叆浠?`{"version":"10.0.203","rollForward":"disable"}` 鏀逛负 `{"version":"10.0.100","rollForward":"latestFeature"}` |
 
 ### [TGT] `tools/release-zip.bat` (x2)
 
 | 操作 | 说明 |
 |------|------|
-| git rm | 发布打包脚本，不再需要 |
-| 新建 | bat 外壳，调 ps1 后 `pause`；失败时 `errorlevel` 透传 |
+| git rm | 鍙戝竷鎵撳寘鑴氭湰锛屼笉鍐嶉渶瑕? |
+| 鏂板缓 | bat 澶栧３锛岃皟 ps1 鍚?`pause`锛涘け璐ユ椂 `errorlevel` 閫忎紶 |
 
 ### [HOT] `tools/release-zip.ps1` (x3)
 
 | 操作 | 说明 |
 |------|------|
-| git rm | 发布打包脚本，不再需要 |
-| 修改 | 步骤 2 改单目标 cmake build；步骤 6 改 global.json 为 `10.0.100 + latestFeature`；步骤 8 staging `/XD` 加 `.git`；脚本注释说明改动原因 |
-| 新建 | 核心 PowerShell 脚本（~180 行），`-Version` / `-SkipBuild` / `-KeepInstallerDir` 三个开关 |
+| git rm | 鍙戝竷鎵撳寘鑴氭湰锛屼笉鍐嶉渶瑕? |
+| 淇敼 | 姝ラ 2 鏀瑰崟鐩爣 cmake build锛涙楠?6 鏀?global.json 涓?`10.0.100 + latestFeature`锛涙楠?8 staging `/XD` 鍔?`.git`锛涜剼鏈敞閲婅鏄庢敼鍔ㄥ師鍥? |
+| 鏂板缓 | 鏍稿績 PowerShell 鑴氭湰锛垀180 琛岋級锛宍-Version` / `-SkipBuild` / `-KeepInstallerDir` 涓変釜寮€鍏? |
 
