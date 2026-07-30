@@ -1274,12 +1274,16 @@ dotnet build src/MaaWpfGui/MaaWpfGui.csproj -c Release -p:Platform=x64
 
 | # | 文件/对象 | 操作 | 说明 |
 |---|----------|------|------|
-| 1 | `staging` | `--no-ff` 合并 | 接收 `feat/recruit-result-display` 7 commit（Phase 1-7 + 编译修复 + 实施完成节） |
+| 1 | `staging` | `--no-ff` 合并 | 接收 `feat/recruit-result-display` 9 commit（`3b1e13fcf9` 启动 + `d408fde841` Phase 2 + `882d9b64bf` Phase 3 + `9d8a43e9d7` Phase 4 + `94d1b16579` Phase 5 + `579bec6879` Phase 6 + `f293a811f7` Phase 7 + `88b7a86028` 编译修复 + `22ac54fb69` 实施完成节 + `be7f702cff` AGENTS + `0361b2af45` Toast 修复 + 合并 `b8c3c8bc26`），46 files changed, 2628 insertions(+) |
 | 2 | `feat/recruit-result-display` | `git branch -d`（暂缓） | 等 staging 实测通过、晋升 branch 后再处理；保留本地指针便于回溯 |
 | 3 | `AGENTS.md §6` | 修改 | 加进行中分支条目 + 约束变更说明 |
 | 4 | `AGENTS.md §2.4 / §3.2` | 修改 | 拓扑图 + feat 拉取源改为 staging + branch 晋升改为手动 |
-| 5 | `AGENTS.md §7` | 修改 | 加生命周期节 |
-| 6 | `LOG.md` | 修改 | 本节 |
-| 7 | `docs/downstream-changes.md` | `py tools/gen-downstream-changes.py` | 自动刷新清单（47 个文件，[HOT] 阈值更新） |
+| 5 | `LOG.md` | 修改 | 本节 |
+| 6 | `docs/downstream-changes.md` | `py tools/gen-downstream-changes.py` | 自动刷新清单（45 个文件，扫描自 326 LOG.md 表格行） |
+
+**部署验证（合并后）**：
+- `install-staging/MaaCore.dll`: 4241408 字节（含 6 新 analyzer/service cpp）
+- `install-staging/MAA.dll`: 3766272 字节（含 18 新 string key × 5 语 = 90 条）
+- `install-staging/MAA.exe`: 339456 字节
 
 **约束变更同步说明**：本次 feat 是项目级约束变更后的首个 staging-拉出 feat。变更项：(a) feat/fix 拉取源从 `branch` 改为 `staging`（AGENTS §2.4）；(b) `branch` 晋升从自动攒批改为用户手动触发（用户触发 `git merge staging --no-ff`）；(c) `master` 同步节奏不变。
