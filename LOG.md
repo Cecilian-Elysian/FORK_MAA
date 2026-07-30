@@ -1200,6 +1200,67 @@ dotnet build src/MaaWpfGui/MaaWpfGui.csproj -c Release -p:Platform=x64
 6. 加急门槛联动：`ExpediteMode=4` + 升级 slot → 验证 `recruit_now()` 触发立即招
 7. 冲突解决回归：本次 merge 时与 staging 的 `expedite_min_level` 字段说明、`fix/expedite-threshold recruit_now 顺序修复`（加急分支位置在 confirm 之后）冲突已解，需验证升级后加急路径仍正常
 
+### feat/recruit-history-tab 启动
+
+v6.1 P0 待办：工具箱"公招历史" Tab UI。v6 阶段 Service 层（RecruitHistoryService + HistoryCrypto + ScreenshotCleanupService）已就绪，但 WPF UI 缺位——用户数据已落盘但看不到。本期补上。
+
+**实现要点**：
+- ToolboxView.xaml 新增 TabItem `<TabItem Header="{DynamicResource ToolboxTabRecruitHistory}">`（5 语 key 已在 v6 加）
+- DataGrid 9 列：Time / Account / Slot / Tags / ★ / OCR / Operator / Raw / Action（含 📷 打开截图 + ✎ 编辑实际干员）
+- 过滤栏：OCR Status ComboBox + Search TextBox
+- 操作按钮：Export JSON / Import JSON / Clear Old Screenshots
+- ToolboxViewModel.cs 加 `RecruitHistoryEntries` ObservableCollection + 6 个命令
+- Bootstrapper.cs `OnStart` 调 `LoadRecruitHistory()` 启动时加载
+- AsstProxy.cs `RecruitSlotCompleted` case 末尾 `RecordSlotAsync(entry)` + `RefreshRecruitHistoryView()` Dispatcher 异步通知
+- 新增 `ListToStringConverter` 给 Tags 列用
+- Reuse `TextDialogView` 实现 EditRecruitOperator（避免新建 Dialog）
+
+**复用现有**：Service 层 0 改动（RecruitHistoryService.Save/Load/Export/Import/UpdateEntry 已在 v6 Phase 6 实现）；仅 VM 暴露 + XAML 绑定。
+
+| # | 文件/对象 | 操作 | 说明 |
+|---|----------|------|------|
+| 1 | `feat/recruit-history-tab` | 新建分支 | 从 `staging` 拉出，HEAD `e616ad4849` |
+| 2 | `docs/downstream-changes.md` | 查阅 | 确认 `RecruitHistoryService.cs` 已被 v6 改动过 |
+| 3 | `LOG.md` | 修改 | 本节 |
+
+### feat/recruit-history-tab 实施完成
+
+| # | 文件 | 操作 | 说明 |
+|---|------|------|------|
+| 1 | `src/MaaWpfGui/Main/AsstProxy.cs:2160-2178` | 修改 | `RecruitSlotCompleted` case 末尾写入 `RecruitHistoryEntry` + Dispatcher 通知 `RefreshRecruitHistoryView` |
+| 2 | `src/MaaWpfGui/Services/RecruitHistoryService.cs:140-153` | 新增方法 | `RecordSlotAsync` 用 `Task.Run` 异步执行 Save，避免阻塞 callback 线程 |
+| 3 | `src/MaaWpfGui/ViewModels/UI/ToolboxViewModel.cs:2520-2680` | 新增 60+ 行 | `RecruitHistoryEntries` ObservableCollection + `RecruitHistorySearchText` / `RecruitHistoryFilterOcrStatus` 过滤器 + `OpenRecruitScreenshot` / `EditRecruitOperator` / `ExportRecruitHistory` / `ImportRecruitHistory` / `ClearOldRecruitScreenshots` 五个命令 + `LoadRecruitHistory()` 启动入口 |
+| 4 | `src/MaaWpfGui/Views/UI/ToolboxView.xaml:589-680` | 新增 TabItem | 过滤栏 + Total TextBlock + DataGrid 9 列 + 3 操作按钮 |
+| 5 | `src/MaaWpfGui/Helper/ListToStringConverter.cs` | 新增 | IValueConverter 把 IEnumerable 转字符串（DataGrid Tags 列用） |
+| 6 | `src/MaaWpfGui/Main/Bootstrapper.cs:640-650` | 修改 | `OnStart` 调 `Instances.ToolboxViewModel.LoadRecruitHistory()` 启动时加载 |
+
+**编译验证**：
+- `dotnet build -c Release -p:Platform=x64 --no-restore` PASS, 0 error, 146 warning（SA1518/SA1633 风格警告 + 历史欠债）
+- `dotnet publish -c Release -p:Platform=x64 -r win-x64 -o install-staging` PASS
+
+**部署**：
+- `install-staging/MAA.dll`: 3801088 字节（+34976 字节 vs v6 收尾 3766272 → UI 体积增 0.9%）
+
+**实测待办**（需 MAA 启动 + 跑公招）：
+1. 启动 MAA → 工具箱 → "公招历史" Tab 显示空列表（首次）
+2. 启动公招 → 跑完一轮 → Tab 列表多 4 条记录 + 截图脱敏
+3. 📷 按钮点击 → 用默认图片查看器打开脱敏截图
+4. ✎ 按钮点击 → 弹窗输入新干员名 → 保存
+5. "清理 7 天前截图" → 任务队列日志显示清除数量
+6. AES 加密验证：关闭 MAA → 文本编辑器打开 `config/recruit_history.json` 应为密文
+
+### feat/recruit-history-tab 合入 staging
+
+按 v6 约定新分支从 staging 拉出 + `--no-ff` 合并到 staging。
+
+| # | 文件/对象 | 操作 | 说明 |
+|---|----------|------|------|
+| 1 | `staging` | `--no-ff` 合并 | 接收 `feat/recruit-history-tab` 6 个新 commit |
+| 2 | `feat/recruit-history-tab` | `git branch -d`（暂缓） | 等 staging 实测通过、晋升 branch 后再处理 |
+| 3 | `AGENTS.md §6` | 修改 | 加进行中分支条目 |
+| 4 | `LOG.md` | 修改 | 本节 |
+| 5 | `docs/downstream-changes.md` | `py tools/gen-downstream-changes.py` | 自动刷新清单 |
+
 ### feat/recruit-result-display 启动
 
 加急公招成功后用户无法知道实际招募到哪个干员。`recruit_now()` → `RecruitNowConfirm` → `hire_all()` 后代码无 callback 报告实际结果；现有 `RecruitResult` callback 只展示基于 tag 推算的可能干员，非实际招募结果。`docs/{5语}/protocol/callback-schema.md` 已定义 `RecruitSlotCompleted` 协议字段但代码从未实现。

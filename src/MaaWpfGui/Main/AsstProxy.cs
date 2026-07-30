@@ -2157,6 +2157,27 @@ public class AsstProxy
                         toast.AppendContentText(new string('★', 6)).ShowRecruit();
                         AchievementTrackerHelper.Instance.AddProgress(AchievementIds.RecruitNoSixStarStreak);
                     }
+
+                    // feat/recruit-history-tab: 写入 L2 历史（DTO 复用 RecruitHistoryEntry）
+                    var entry = new Services.RecruitHistoryEntry
+                    {
+                        Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                        SlotIndex = slotIdx,
+                        SlotTotal = slotTotal,
+                        Tags = tags.ToObject<System.Collections.Generic.List<string>>() ?? new System.Collections.Generic.List<string>(),
+                        Level = level,
+                        Operator = opName,
+                        OperatorId = subTaskDetails!["operator_id"]?.ToString() ?? string.Empty,
+                        OcrStatus = ocrStatus,
+                        OcrRawText = rawText,
+                        ScreenshotPath = screenshotPath,
+                        Expedited = expedited,
+                        AccountName = subTaskDetails!["account_name"]?.ToString() ?? string.Empty,
+                    };
+                    Services.RecruitHistoryService.Instance.RecordSlotAsync(entry);
+                    // 通知 ToolboxViewModel 刷新（含 Dispatcher 切换）
+                    System.Windows.Application.Current?.Dispatcher.InvokeAsync(() =>
+                        Instances.ToolboxViewModel?.RefreshRecruitHistoryView());
                     break;
                 }
 
