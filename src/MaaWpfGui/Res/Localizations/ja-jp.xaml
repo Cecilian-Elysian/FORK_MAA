@@ -1351,6 +1351,8 @@ C:\\leidian\\LDPlayer9
     <system:String x:Key="SelectExtraOnlyRareTags">可能な限りタグを選択し、かつ高い星のタグのみを選択する</system:String>
     <system:String x:Key="AutoRecruitHighPriority">優先タグ</system:String>
     <system:String x:Key="AutoRecruitHighPriorityTooltip">できるだけ多くのタグの傾向を選択します</system:String>
+    <system:String x:Key="AutoUpgrade3StarWith4Star">3★組合せを4★に昇格</system:String>
+    <system:String x:Key="AutoUpgrade3StarWith4StarTip">3★タグ組合せが4★オペレーターを排出可能な場合(例:先鋒タイプ+コスト回復でアンジェ)、自動的に4★組合せとして処理:3:50タイマー + 緊急招集閾値連動 + 多選Tag戦略を引き続き使用</system:String>
     <system:String x:Key="NotEnoughStaff">利用可能な{key=Operator}が不足しています</system:String>
     <system:String x:Key="StageInfoError">ステージ認識エラー</system:String>
     <system:String x:Key="UseFormation">使用編成</system:String>

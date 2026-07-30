@@ -68,6 +68,13 @@ public class AsstRecruitTask : AsstBaseTask
     public int ExpediteMinLevel { get; set; }
 
     /// <summary>
+    /// Gets or sets a value indicating whether 3星Tag组合里能开4★干员时自动升级为4★处理路径,可选,默认 true。
+    /// 启用后,3星组合若有4★潜力(如「费用回复+先锋干员」出桃金娘),按4★路径处理:
+    /// 3:50计时 + 联动 ExpediteMinLevel 加急 + 沿用 SelectExtraTags 选 tag。
+    /// </summary>
+    public bool AutoUpgrade3StarWith4Star { get; set; } = true;
+
+    /// <summary>
     /// Gets or sets 使用加急许可
     /// </summary>
     public int ExpeditedTimes { get; set; }
@@ -160,6 +167,7 @@ public class AsstRecruitTask : AsstBaseTask
             ["set_time"] = SetRecruitTime,
             ["expedite"] = UseExpedited,
             ["expedite_min_level"] = ExpediteMinLevel,
+            ["auto_upgrade_3star_with_4star"] = AutoUpgrade3StarWith4Star,
             ["preserve_tags"] = JArray.FromObject(preserveTags),
             ["extra_tags_mode"] = SelectExtraTags,
             ["first_tags"] = JArray.FromObject(firstTags),

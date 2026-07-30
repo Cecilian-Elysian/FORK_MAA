@@ -264,11 +264,16 @@ Whether to use Expedited Plans.
 Number of expedites, only effective when `expedite` is true. By default unlimited (until `times` limit is reached).  
 :::  
 ::: field name="expedite_min_level" type="number" optional default="0"  
-Only use expedited plan when the confirmed min operator level ≥ threshold.  
+Use Expedited Plans only when the minimum rarity of the confirmed recruitment combo is ≥ the value.  
 <br>
-0 = unlimited (legacy compat), 4 / 5 / 6 = only expedite that tier or higher. Default 0  
+0 = unlimited (backward compatible), 4 / 5 / 6 = expedite only for that rarity and above. Default 0  
 :::  
-::: field name="skip_robot" type="boolean" optional default="true"  
+::: field name="auto_upgrade_3star_with_4star" type="boolean" optional default="true"  
+When a 3★ tag combo can yield a 4★ operator (e.g. Vanguard + DP-Recovery → Myrtle), automatically treat it as a 4★ combo.  
+<br>
+When enabled: use the `"4"` entry of `recruitment_time` as the timer (default 3:50), pick Tags via `extra_tags_mode`, and auto-expedite if the upgraded minimum rarity meets `expedite_min_level`.  
+:::  
+::: field name="skip_robot" type="boolean" optional default="true"
 Deprecated and kept only for backward compatibility.  
 <br>
 When `preserve_tags` is absent and this value is `true`, MAA skips on `支援机械` only; `元素` is no longer treated as the legacy 1★ tag.  

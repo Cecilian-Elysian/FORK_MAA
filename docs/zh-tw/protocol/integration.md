@@ -268,6 +268,11 @@ B 服：`張三`，可輸入 `張三`、`張`、`三`
 <br>
 0 = 不限（相容舊行為），4 / 5 / 6 = 僅對應星級及以上加急。預設 0  
 :::  
+::: field name="auto_upgrade_3star_with_4star" type="boolean" optional default="true"  
+3星Tag組合裡若能開4★幹員（如「費用回覆+先鋒幹員」出桃金孃），自動按4★路徑處理。  
+<br>
+啟用後：採用 `recruitment_time` 中 `"4"` 對應的計時（預設 3:50）、按 `extra_tags_mode` 選 Tag；若升級後最低星級達到 `expedite_min_level` 門檻則自動加急。  
+:::  
 ::: field name="skip_robot" type="boolean" optional default="true"  
 已棄用，僅用於相容舊參數。  
 <br>

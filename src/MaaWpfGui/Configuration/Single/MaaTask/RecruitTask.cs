@@ -41,6 +41,13 @@ public class RecruitTask : BaseTask, IJsonOnDeserialized
     public int ExpediteMinLevel { get; set; } = 0;
 
     /// <summary>
+    /// Gets or sets a value indicating whether 3星Tag组合里能开4★干员时自动升级为4★处理。
+    /// 启用后,3星组合若有4★潜力(如「费用回复+先锋干员」出桃金娘),按4★路径处理:
+    /// 3:50计时 + 联动 ExpediteMinLevel 加急 + 沿用 SelectExtraTagsMode 选 tag。
+    /// </summary>
+    public bool AutoUpgrade3StarWith4Star { get; set; } = true;
+
+    /// <summary>
     /// Gets or sets 加急招募模式（合并总开关与星级门槛）由 ViewModel 维护：
     /// 0 = 不使用加急；1 = 所有星级均加急；4 / 5 / 6 = 仅对应星级及以上使用加急
     /// </summary>

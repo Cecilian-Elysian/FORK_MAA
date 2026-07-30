@@ -1350,6 +1350,8 @@ Right-click to clear inactive jobs</system:String>
     <system:String x:Key="SelectExtraOnlyRareTags">Pick as many high-star Tags as possible</system:String>
     <system:String x:Key="AutoRecruitHighPriority">Preference for 3★ Tags</system:String>
     <system:String x:Key="AutoRecruitHighPriorityTooltip">Will select as many Tag preferences as possible</system:String>
+    <system:String x:Key="AutoUpgrade3StarWith4Star">Auto-upgrade 3★ combos with 4★</system:String>
+    <system:String x:Key="AutoUpgrade3StarWith4StarTip">When a 3★ tag combo can yield a 4★ operator (e.g. Vanguard + DP-Recovery → Myrtle), automatically treat it as a 4★ combo: 3:50 timer + honor Expedite threshold + reuse the Extra Tags strategy</system:String>
     <system:String x:Key="NotEnoughStaff">Insufficient {key=Operator}s</system:String>
     <system:String x:Key="StageInfoError">Stage recognition error</system:String>
     <system:String x:Key="UseFormation">Use formation</system:String>
