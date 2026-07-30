@@ -1,0 +1,6 @@
+{
+    "_comment": "立绘 pHash 库 — 由 tools/build_phash.py 从游戏内立绘截图自动生成。格式: {\"<oper_id>\": \"<16 hex>\"}",
+    "_generator": "tools/build_phash.py",
+    "_version": "1",
+    "_placeholder": true
+}
