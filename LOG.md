@@ -1199,3 +1199,33 @@ dotnet build src/MaaWpfGui/MaaWpfGui.csproj -c Release -p:Platform=x64
 5. `UseLevel3PreferTags=true` + 含 4★ slot → 验证 `Level3PreferTags` 对 3★ 仍生效，4★ 路径用 `SelectExtraTagsMode`
 6. 加急门槛联动：`ExpediteMode=4` + 升级 slot → 验证 `recruit_now()` 触发立即招
 7. 冲突解决回归：本次 merge 时与 staging 的 `expedite_min_level` 字段说明、`fix/expedite-threshold recruit_now 顺序修复`（加急分支位置在 confirm 之后）冲突已解，需验证升级后加急路径仍正常
+
+### feat/recruit-result-display 启动
+
+加急公招成功后用户无法知道实际招募到哪个干员。`recruit_now()` → `RecruitNowConfirm` → `hire_all()` 后代码无 callback 报告实际结果；现有 `RecruitResult` callback 只展示基于 tag 推算的可能干员，非实际招募结果。`docs/{5语}/protocol/callback-schema.md` 已定义 `RecruitSlotCompleted` 协议字段但代码从未实现。
+
+**目标**: 加急或正常 9h 招募完成后，识别游戏内"招募完成展示页"（★ + 干员名 + 立绘），向 WPF 任务队列日志追加两行格式记录（[加急/常规 9h] 招募完成 + 实际干员名 + tags），6★ 时弹 Toast。
+
+**优化项（21 项，与 v6 方案对齐）**:
+- L0 多通道识别（OCR + Levenshtein + 多帧 + 立绘 pHash + ★ 模板）
+- L1 事中兜底（推算列表 + 截图导出 + 完整 JSON）
+- L2 工具箱"公招历史" Tab
+- L3 经验库反哺（本地 JSON + D5 加密 + B1 置信度 count≥3）
+- A1 本轮汇总 + A2 合并行 + A3 Toast 聚合 + A4 桌面 Widget（仅 Windows）
+- B3 失败模式聚类 + B4 成就系统联动（复用 `RecruitNoSixStarStreak`）
+- C1 截图脱敏 + C2 自动清理 + C3 黑屏/全白检测 + C4 五语名牌兼容 + C5 OCR 引擎回退
+- D1 识别准确率统计 + D2 识别耗时打点 + D4 协议文档五语补完 + D5 历史数据加密
+- **取消 B2** 跨账号切换 UI（统一经验库）
+
+**约束变更（项目级）**:
+- 新分支统一从 `staging` 拉出（原约定从 `branch` 拉出，本次起统一改为 staging）
+- feat `--no-ff` 合并目标固定为 `staging`
+- `branch` 晋升改为用户手动触发（不自动攒批晋升），待 AGENTS.md §2.4 / §3.2 同步更新
+
+**[HOT] 警告**: `AutoRecruitTask.cpp` 已被下游改动 15 次（含 `feat/expedite-threshold` + `fix/expedite-threshold` 重置补回 + `fix/expedite-threshold recruit_now 顺序修复` + `feat/auto-recruit-3star-to-4star` 4★ 潜力检测），本次改动需在 commit message 注明 `downstream: 该文件曾被 feat/expedite-threshold / feat/auto-recruit-3star-to-4star 改动，本次改动原因：hire_all() 后插入 RecruitComplete 任务以识别实际招募结果`。
+
+| # | 文件/对象 | 操作 | 说明 |
+|---|----------|------|------|
+| 1 | `feat/recruit-result-display` | 新建分支 | 从 `staging` 拉出，本地工作分支（HEAD `be4f716967`），约束变更后首个 staging-拉出 feat |
+| 2 | `docs/downstream-changes.md` | 查阅 | 确认 `[HOT] AutoRecruitTask.cpp (x15)`、`[HOT] AutoRecruitTask.h (x4)`、`[HOT] resource/tasks/tasks.json (x6)` |
+| 3 | `LOG.md` | 修改 | 本节 |
