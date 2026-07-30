@@ -1199,3 +1199,87 @@ dotnet build src/MaaWpfGui/MaaWpfGui.csproj -c Release -p:Platform=x64
 5. `UseLevel3PreferTags=true` + 含 4★ slot → 验证 `Level3PreferTags` 对 3★ 仍生效，4★ 路径用 `SelectExtraTagsMode`
 6. 加急门槛联动：`ExpediteMode=4` + 升级 slot → 验证 `recruit_now()` 触发立即招
 7. 冲突解决回归：本次 merge 时与 staging 的 `expedite_min_level` 字段说明、`fix/expedite-threshold recruit_now 顺序修复`（加急分支位置在 confirm 之后）冲突已解，需验证升级后加急路径仍正常
+
+### feat/recruit-result-display 启动
+
+加急公招成功后用户无法知道实际招募到哪个干员。`recruit_now()` → `RecruitNowConfirm` → `hire_all()` 后代码无 callback 报告实际结果；现有 `RecruitResult` callback 只展示基于 tag 推算的可能干员，非实际招募结果。`docs/{5语}/protocol/callback-schema.md` 已定义 `RecruitSlotCompleted` 协议字段但代码从未实现。
+
+**目标**: 加急或正常 9h 招募完成后，识别游戏内"招募完成展示页"（★ + 干员名 + 立绘），向 WPF 任务队列日志追加两行格式记录（[加急/常规 9h] 招募完成 + 实际干员名 + tags），6★ 时弹 Toast。
+
+**优化项（21 项，与 v6 方案对齐）**:
+- L0 多通道识别（OCR + Levenshtein + 多帧 + 立绘 pHash + ★ 模板）
+- L1 事中兜底（推算列表 + 截图导出 + 完整 JSON）
+- L2 工具箱"公招历史" Tab
+- L3 经验库反哺（本地 JSON + D5 加密 + B1 置信度 count≥3）
+- A1 本轮汇总 + A2 合并行 + A3 Toast 聚合 + A4 桌面 Widget（仅 Windows）
+- B3 失败模式聚类 + B4 成就系统联动（复用 `RecruitNoSixStarStreak`）
+- C1 截图脱敏 + C2 自动清理 + C3 黑屏/全白检测 + C4 五语名牌兼容 + C5 OCR 引擎回退
+- D1 识别准确率统计 + D2 识别耗时打点 + D4 协议文档五语补完 + D5 历史数据加密
+- **取消 B2** 跨账号切换 UI（统一经验库）
+
+**约束变更（项目级）**:
+- 新分支统一从 `staging` 拉出（原约定从 `branch` 拉出，本次起统一改为 staging）
+- feat `--no-ff` 合并目标固定为 `staging`
+- `branch` 晋升改为用户手动触发（不自动攒批晋升），待 AGENTS.md §2.4 / §3.2 同步更新
+
+**[HOT] 警告**: `AutoRecruitTask.cpp` 已被下游改动 15 次（含 `feat/expedite-threshold` + `fix/expedite-threshold` 重置补回 + `fix/expedite-threshold recruit_now 顺序修复` + `feat/auto-recruit-3star-to-4star` 4★ 潜力检测），本次改动需在 commit message 注明 `downstream: 该文件曾被 feat/expedite-threshold / feat/auto-recruit-3star-to-4star 改动，本次改动原因：hire_all() 后插入 RecruitComplete 任务以识别实际招募结果`。
+
+| # | 文件/对象 | 操作 | 说明 |
+|---|----------|------|------|
+| 1 | `feat/recruit-result-display` | 新建分支 | 从 `staging` 拉出，本地工作分支（HEAD `be4f716967`），约束变更后首个 staging-拉出 feat |
+| 2 | `docs/downstream-changes.md` | 查阅 | 确认 `[HOT] AutoRecruitTask.cpp (x15)`、`[HOT] AutoRecruitTask.h (x4)`、`[HOT] resource/tasks/tasks.json (x6)` |
+| 3 | `LOG.md` | 修改 | 本节 |
+
+### feat/recruit-result-display 实施完成
+
+实施分 7 个 Phase + 编译部署：
+
+**Phase 1 准备**：从 staging 拉出 feat 分支（新分支约定生效），启动节登记 LOG.md。
+**Phase 2 C++ 核心识别**（commit `d408fde841`）：RecruitResultImageAnalyzer 多通道 (L1 OCR/Levenshtein + L1.5 pHash + L2 ★ 模板 + L3 截图) + RecruitOperImageHasher pHash 库 + RecruitLocaleAdapter 五语适配 + RecruitResultTask 封装 + RecruitResultInfo 结构体。
+**Phase 3 鲁棒性 + 资源**（commit `882d9b64bf`）：RecruitExperience FNV-1a hash + B1 置信度 (count≥3) + RecruitAccuracyTracker 滑窗 100 次 (D1) + RecruitScreenshotMonitor 黑屏/全白/帧冻结 (C3) + OcrEngineFallback PaddleOCR→FastDeploy→OnnxRuntime (C5) + PerformanceTimer.h (D2) + 7 JSON 占位资源 + tools/build_phash.py 构建脚本。
+**Phase 4 任务集成**（commit `9d8a43e9d7`）：downstream [HOT] AutoRecruitTask.cpp/h 接入 (15 次改动历史) — hire_all(image) 在 ProcessTask RecruitFinish 之前识别 + _run() 末尾 RAII guard 调 emit_summary + tasks.json 新增 7 个 task 占位 + RecruitRoundSummaryTask 本轮汇总。
+**Phase 5 WPF 接收**（commit `94d1b16579`）：AsstProxy.cs 加 4 个 case (RecruitSlotCompleted 双行日志 + RecruitRoundSummary + RecruitAccuracyReport + RecruitScreenshotAnomaly) + 5 语 xaml 18 key + B4 联动 RecruitNoSixStarStreak 成就 + 6★ Toast。
+**Phase 6 WPF UI 服务**（commit `579bec6879`）：RecruitHistoryService AES-256-GCM 加密 + HistoryCrypto 密钥管理 + RecruitExperienceService WPF 读取 + ScreenshotCleanupService 7 天清理 + .gitignore 加 .recruit_key/recruit_history.json/recruit_experience.json + C1 截图脱敏 (保留名牌 + ★ 头部)。
+**Phase 7 失败聚类**（commit `f293a811f7`）：FailureClusterAnalyzer (B3) — SHA-1 hash tags 组合聚类。**A4 桌面 Widget 推迟至后续 PR**（仅 Windows，工作量较大）。
+**编译修复**（commit `88b7a86028`）：AbstractTask.h 加 friend class RecruitResultTask/RecruitRoundSummaryTask；移除 OpenSSL 改 FNV-1a；meojson const value 必须用 at() 而非 operator[]；array 必须 push_back 到 json::array{} 后赋给 value。
+
+**编译验证**：
+- C++: `cmake --build build --target MaaCore -j 4 --config RelWithDebInfo` PASS, 0 error, 仅 LNK4098 警告（与上游一致）
+- WPF: `dotnet publish -c Release -p:Platform=x64 -r win-x64 -o install-staging` PASS, 0 error, 118 warning（SA1402/SA1503/SA1518 风格警告 + 历史欠债）
+- pre-commit: clang-format / markdownlint / prettier / ruff-format / oxipng 全部需在提交前运行
+
+**部署**：
+- install-staging/MaaCore.dll: 4241408 字节 (含 RecruitResultImageAnalyzer 等 6 新 cpp)
+- install-staging/MAA.exe: 339456 字节
+- install-staging/MAA.dll: 3766272 字节 (含 18 新 string key × 5 语)
+
+**实施完成文件清单**：
+- 新增 22 文件（11 C++ + 4 WPF service + 1 WPF widget TODO + 5 模板占位 + 1 7-JSON 占位 + 1 tools/build_phash.py + 5 JSON 资源）
+- 修改 11 文件（AutoRecruitTask.cpp/h [HOT] + tasks.json [HOT] + AbstractTask.h + 5 语 xaml + AsstProxy.cs + .gitignore）
+
+**TODO 待手动验证**：
+1. 单 slot 加急（4/5/6 ★）→ 任务队列日志两行 + 6★ Toast
+2. 常规 1h/3h/9h → "[常规 9h]" 标识 + 不弹 Toast
+3. 多账号轮换 → 按账号分组历史（Phase 5 已加 account_name 占位）
+4. 经验库反哺（同 tags+level count≥3）→ "经验库: 上次招到 X"
+5. 截图脱敏验证（debug/recruit_*.png 仅含名牌+★头部）
+6. 加密历史（config/.recruit_key + config/recruit_history.json）
+7. 准确率统计（每 100 次累计后输出）
+8. 黑屏/全白检测（持续 3 帧异常跳过）
+9. OCR 引擎回退（PaddleOCR 失败 3 次切 FastDeploy）
+
+### feat/recruit-result-display 合入 staging
+
+按 v6 方案约定的项目级约束变更（feat 分支从 `staging` 拉出，合并目标固定 `staging`），`--no-ff` 合并到 staging。
+
+| # | 文件/对象 | 操作 | 说明 |
+|---|----------|------|------|
+| 1 | `staging` | `--no-ff` 合并 | 接收 `feat/recruit-result-display` 7 commit（Phase 1-7 + 编译修复 + 实施完成节） |
+| 2 | `feat/recruit-result-display` | `git branch -d`（暂缓） | 等 staging 实测通过、晋升 branch 后再处理；保留本地指针便于回溯 |
+| 3 | `AGENTS.md §6` | 修改 | 加进行中分支条目 + 约束变更说明 |
+| 4 | `AGENTS.md §2.4 / §3.2` | 修改 | 拓扑图 + feat 拉取源改为 staging + branch 晋升改为手动 |
+| 5 | `AGENTS.md §7` | 修改 | 加生命周期节 |
+| 6 | `LOG.md` | 修改 | 本节 |
+| 7 | `docs/downstream-changes.md` | `py tools/gen-downstream-changes.py` | 自动刷新清单（47 个文件，[HOT] 阈值更新） |
+
+**约束变更同步说明**：本次 feat 是项目级约束变更后的首个 staging-拉出 feat。变更项：(a) feat/fix 拉取源从 `branch` 改为 `staging`（AGENTS §2.4）；(b) `branch` 晋升从自动攒批改为用户手动触发（用户触发 `git merge staging --no-ff`）；(c) `master` 同步节奏不变。

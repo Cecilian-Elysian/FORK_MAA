@@ -2097,6 +2097,117 @@ public class AsstProxy
                     break;
                 }
 
+            case "RecruitSlotCompleted":
+                {
+                    // feat/recruit-result-display — 实际招募完成 (L1/L1.5/L2/L3 + 6★ Toast 聚合)
+                    var ocrStatus = subTaskDetails!["ocr_status"]?.ToString() ?? "L3";
+                    int level = (int)(subTaskDetails!["level"] ?? 0);
+                    var opName = subTaskDetails!["operator"]?.ToString() ?? string.Empty;
+                    var rawText = subTaskDetails!["ocr_raw_text"]?.ToString() ?? string.Empty;
+                    int ocrDist = (int)(subTaskDetails!["ocr_match_distance"] ?? -1);
+                    int phashDist = (int)(subTaskDetails!["phash_distance"] ?? -1);
+                    int slotIdx = (int)(subTaskDetails!["slot_index"] ?? 0) + 1;
+                    int slotTotal = (int)(subTaskDetails!["slot_total"] ?? 4);
+                    bool expedited = (bool)(subTaskDetails!["expedited"] ?? false);
+                    var screenshotPath = subTaskDetails!["screenshot_path"]?.ToString() ?? string.Empty;
+                    var expHit = subTaskDetails!["experience_hit"]?.ToString() ?? string.Empty;
+                    var tags = (subTaskDetails!["tags"] as JArray) ?? new JArray();
+                    string tagsStr = tags.Aggregate(string.Empty, (current, t) => current + ((string)t! + "+")).TrimEnd('+');
+
+                    string suffix = LocalizationHelper.GetString(expedited ? "RecruitLogHeaderExpedited" : "RecruitLogHeaderNormal")
+                        .Replace("{0}", slotIdx.ToString())
+                        .Replace("{1}", slotTotal.ToString());
+                    Instances.TaskQueueViewModel.AddLog(suffix, UiLogColor.Info);
+
+                    string operatorLine;
+                    switch (ocrStatus)
+                    {
+                        case "L1":
+                            operatorLine = string.Format(LocalizationHelper.GetString("RecruitLogOperatorLine"),
+                                level, opName, ocrDist);
+                            break;
+                        case "L1.5":
+                            operatorLine = LocalizationHelper.GetString("RecruitLogHashHit")
+                                .Replace("{0}", level.ToString())
+                                .Replace("{1}", opName)
+                                .Replace("{2}", phashDist.ToString());
+                            break;
+                        case "L2":
+                            operatorLine = level + "★ " + LocalizationHelper.GetString("RecruitUnknownOperator") + " (raw=\"" + rawText + "\", dist=" + ocrDist + ")";
+                            break;
+                        default: // L3
+                            operatorLine = LocalizationHelper.GetString("RecruitLogLevelUnknown").Replace("{0}", screenshotPath)
+                                + " (raw=\"" + rawText + "\", hash=" + phashDist + ")";
+                            break;
+                    }
+                    Instances.TaskQueueViewModel.AddLog(operatorLine + " (tags: " + tagsStr + ")",
+                        level >= 5 ? UiLogColor.RareOperator : UiLogColor.Info);
+
+                    if (!string.IsNullOrEmpty(expHit))
+                    {
+                        Instances.TaskQueueViewModel.AddLog(
+                            LocalizationHelper.GetString("RecruitExperienceHit").Replace("{0}", expHit),
+                            UiLogColor.Info);
+                    }
+
+                    // 6★ + 识别成功 → Toast (L1/L1.5/L2 触发；L3 level=0 不触发)
+                    if (level == 6)
+                    {
+                        using var toast = new ToastNotification(LocalizationHelper.GetStringFormat("RecruitmentOfStar", 6));
+                        toast.AppendContentText(new string('★', 6)).ShowRecruit();
+                        AchievementTrackerHelper.Instance.AddProgress(AchievementIds.RecruitNoSixStarStreak);
+                    }
+                    break;
+                }
+
+            case "RecruitRoundSummary":
+                {
+                    // feat/recruit-result-display — 本轮汇总 (A1)
+                    int six = ((JArray?)subTaskDetails!["six_stars"])?.Count ?? 0;
+                    int five = ((JArray?)subTaskDetails!["five_stars"])?.Count ?? 0;
+                    int four = ((JArray?)subTaskDetails!["four_stars"])?.Count ?? 0;
+                    int three = ((JArray?)subTaskDetails!["three_stars"])?.Count ?? 0;
+                    int expeditedCount = (int)(subTaskDetails!["expedited_count"] ?? 0);
+
+                    string summary = string.Format(LocalizationHelper.GetString("RecruitRoundSummary"),
+                        six, five, four, expeditedCount);
+                    Instances.TaskQueueViewModel.AddLog(summary, UiLogColor.Info);
+                    break;
+                }
+
+            case "RecruitAccuracyReport":
+                {
+                    // feat/recruit-result-display — 准确率统计 (D1)
+                    int windowSize = (int)(subTaskDetails!["window_size"] ?? 100);
+                    int l1 = (int)(subTaskDetails!["l1"] ?? 0);
+                    int l1_5 = (int)(subTaskDetails!["l1_5"] ?? 0);
+                    int l2 = (int)(subTaskDetails!["l2"] ?? 0);
+                    int l3 = (int)(subTaskDetails!["l3"] ?? 0);
+                    int total = (int)(subTaskDetails!["total"] ?? 0);
+                    double accuracy = total == 0 ? 0 : (l1 + l1_5) * 100.0 / total;
+
+                    string report = string.Format(LocalizationHelper.GetString("RecruitAccuracyReport"),
+                        windowSize,
+                        accuracy.ToString("F1"),
+                        l1_5 * 100.0 / Math.Max(1, total),
+                        l2 * 100.0 / Math.Max(1, total),
+                        l3 * 100.0 / Math.Max(1, total));
+                    Instances.TaskQueueViewModel.AddLog(report, UiLogColor.Info);
+                    break;
+                }
+
+            case "RecruitScreenshotAnomaly":
+                {
+                    // feat/recruit-result-display — 截图异常 (C3)
+                    var anomalyType = subTaskDetails!["anomaly_type"]?.ToString() ?? "unknown";
+                    int slotIdx = (int)(subTaskDetails!["slot_index"] ?? 0);
+                    Instances.TaskQueueViewModel.AddLog(
+                        LocalizationHelper.GetString("RecruitScreenshotAnomaly").Replace("{0}", anomalyType)
+                        + " (slot " + (slotIdx + 1) + ")",
+                        UiLogColor.Error);
+                    break;
+                }
+
             case "NotEnoughStaff":
                 Instances.TaskQueueViewModel.AddLog(LocalizationHelper.GetString("NotEnoughStaff"), UiLogColor.Error);
                 break;

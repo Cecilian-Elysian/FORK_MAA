@@ -1259,6 +1259,24 @@ C:\\leidian\\LDPlayer9
     <system:String x:Key="TheEx">EX 스테이지가 없어 중단되었습니다</system:String>
     <system:String x:Key="MissingOperators">다음 {key=Operator}들이 누락되었습니다:</system:String>
     <system:String x:Key="RecruitSupportOperator">지원유닛 추가: {0}</system:String>
+    <system:String x:Key="RecruitUnknownOperator">오퍼레이터 (이름 미인식)</system:String>
+    <system:String x:Key="RecruitLogHeaderExpedited">[즉시모집] 모집 완료 (slot {0}/{1})</system:String>
+    <system:String x:Key="RecruitLogHeaderNormal">[일반 9h] 모집 완료 (slot {0}/{1})</system:String>
+    <system:String x:Key="RecruitLogOperatorLine">{0}★ {1} (OCR 적중, dist={2})</system:String>
+    <system:String x:Key="RecruitLogHashHit">{0}★ {1} (해시 적중, dist={2})</system:String>
+    <system:String x:Key="RecruitLogLevelUnknown">★ 수 미상 (스크린샷: {0})</system:String>
+    <system:String x:Key="RecruitExperienceHit">경험고: 이전 모집 {0}</system:String>
+    <system:String x:Key="RecruitExperienceLowConfidence">경험고 힌트 (신뢰도 낮음)</system:String>
+    <system:String x:Key="RecruitScreenshotAnomaly">스크린샷 이상: {0} (건너뜀)</system:String>
+    <system:String x:Key="RecruitOcrEngineFallback">OCR 엔진 폴백: {0} → {1}</system:String>
+    <system:String x:Key="ToolboxTabRecruitHistory">모집 기록</system:String>
+    <system:String x:Key="RecruitRoundSummary">라운드 요약: 6★ {0} / 5★ {1} / 4★ {2}, 즉시모집 {3} 회</system:String>
+    <system:String x:Key="RecruitAccuracyReport">최근 {0}회 정확도: {1}% (L1+={1}% / L2={3}% / L3={4}%)</system:String>
+    <system:String x:Key="RecruitScreenshotSanitized">스크린샷 마스킹됨</system:String>
+    <system:String x:Key="RecruitEditActualOperator">실제 모집 편집</system:String>
+    <system:String x:Key="RecruitExportHistory">기록 내보내기</system:String>
+    <system:String x:Key="RecruitImportHistory">기록 가져오기</system:String>
+    <system:String x:Key="RecruitClearOldScreenshots">7일 이상된 스크린샷 정리</system:String>
     <system:String x:Key="StageQueue">스테이지 대기열:</system:String>
     <system:String x:Key="UnableToAgent">프록시 명령을 사용할 수 없습니다</system:String>
     <system:String x:Key="MissionStart">작전 개시</system:String>

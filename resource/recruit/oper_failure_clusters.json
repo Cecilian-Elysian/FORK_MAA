@@ -1,0 +1,5 @@
+{
+    "_comment": "失败模式聚类统计 (B3) — 自动累积: { tags_hash: { count, last_failed, common_ocr_raw } }",
+    "_version": "1",
+    "_placeholder": true
+}
