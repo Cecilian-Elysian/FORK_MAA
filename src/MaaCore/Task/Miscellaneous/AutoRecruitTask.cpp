@@ -150,6 +150,12 @@ asst::AutoRecruitTask& asst::AutoRecruitTask::set_expedite_min_level(int level) 
     return *this;
 }
 
+asst::AutoRecruitTask& asst::AutoRecruitTask::set_auto_upgrade_3star_with_4star(bool enable) noexcept
+{
+    m_auto_upgrade_3star_with_4star = enable;
+    return *this;
+}
+
 asst::AutoRecruitTask& asst::AutoRecruitTask::set_select_extra_tags(ExtraTagsMode select_extra_tags_mode) noexcept
 {
     m_select_extra_tags_mode = select_extra_tags_mode;
@@ -524,6 +530,24 @@ asst::AutoRecruitTask::calc_task_result_type asst::AutoRecruitTask::recruit_calc
                                        std::plus<double> {},
                                        std::mem_fn(&Recruitment::level)) /
                                    static_cast<double>(std::distance(sec, rc.opers.end()));
+                }
+            }
+        }
+
+        // 3★ 组合里若能开 4★ 干员（如「费用回复 + 先锋干员」出桃金娘），升级为 4★ 处理路径
+        for (RecruitCombs& rc : result_vec) {
+            if (m_auto_upgrade_3star_with_4star && rc.min_level == 3 && rc.max_level >= 4) {
+                auto first_4 =
+                    std::ranges::find_if(rc.opers, [](const Recruitment& op) { return op.level >= 4; });
+                if (first_4 != rc.opers.end()) {
+                    rc.min_level = first_4->level;
+                    rc.avg_level = std::transform_reduce(
+                                       first_4,
+                                       rc.opers.end(),
+                                       0.,
+                                       std::plus<double> {},
+                                       std::mem_fn(&Recruitment::level)) /
+                                   static_cast<double>(std::distance(first_4, rc.opers.end()));
                 }
             }
         }
