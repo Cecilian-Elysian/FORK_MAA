@@ -18,7 +18,7 @@
 py tools/gen-downstream-changes.py
 ```
 
-共扫描 339 个表格行，聚合出 50 个唯一源文件路径。
+共扫描 346 个表格行，聚合出 51 个唯一源文件路径。
 
 ## 仓库根（2 个文件）
 
@@ -49,7 +49,7 @@ py tools/gen-downstream-changes.py
 
 ## `docs/`（6 个文件）
 
-### [HOT] `docs/downstream-changes.md` (x6)
+### [HOT] `docs/downstream-changes.md` (x7)
 
 | 操作 | 说明 |
 |------|------|
@@ -59,6 +59,7 @@ py tools/gen-downstream-changes.py
 | `py tools/gen-downstream-changes.py` | 自动刷新清单 |
 | 查阅 | 确认 `[HOT] AutoRecruitTask.cpp (x15)`、`[HOT] AutoRecruitTask.h (x4)`、`[HOT] resource/tasks/tasks.json (x6)` |
 | `py tools/gen-downstream-changes.py` | 自动刷新清单（45 个文件，扫描自 326 LOG.md 表格行） |
+| 查阅 | 确认 `AccountSwitchTask.h/.cpp` / `TaskQueueViewModel.cs` / `StartUpSettingsUserControlModel.cs` 已被多次改动 |
 
 ### [TGT] `docs/en-us/protocol/integration.md` (x2)
 
@@ -109,7 +110,7 @@ py tools/gen-downstream-changes.py
 | 寰呬慨鏀? | `AccountManagerOfficial` 琛?OcrDetect 璇嗗埆銆岀櫥褰曡褰曘€? |
 | 淇敼 | `AccountManagerOfficial` 鐢?`{"roi":[570,165,140,80]}` 琛ュ叏涓?`{"Doc":"瀹樻柟鏈嶈处鍙峰垏鎹㈢晫闈㈣瘑鍒紝涓?B 鏈嶇粺涓€ OCR銆岀櫥褰曡褰曘€?,"algorithm":"OcrDetect","text":["鐧诲綍璁板綍"],"roi":[237,50,771,242]}`锛堜笌 B 鏈?`AccountManagerBili` 瀵归綈锛? |
 
-## `src/`（34 个文件）
+## `src/`（35 个文件）
 
 ### [TGT] `src/MaaCore/Assistant.cpp` 
 
@@ -146,6 +147,12 @@ py tools/gen-downstream-changes.py
 | 淇敼 | `navigate_to_start_page()` 鍦?`get_last_task_name()` 涔嬪悗杩藉姞 `Log.info(__FUNCTION__, "last matched task:", last_name);`锛屼究浜庡悗缁瘑鍒け璐ユ椂瀹氫綅 |
 | 淇敼 | 4 涓?`else if` 鍚堝苟涓哄崟 `if (... \|\| ... \\|\\| ... \\|\\| ...)`锛屽噺灏戝垎鏀祵濂? |
 | pre-commit clang-format 合并 if 链多行 | 风格对齐（历史欠债，关联 fix/account-official-recognize） |
+
+### [TGT] `src/MaaCore/Task/Miscellaneous/AccountSwitchTask.h` 
+
+| 操作 | 说明 |
+|------|------|
+| 修改 | `set_account` 改为 Trim 首尾空白（` \\t\\r\\n`），承接上游 JSON / WPF 未清理的脏数据 |
 
 ### [HOT] `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.cpp` (x15)
 
@@ -335,7 +342,7 @@ py tools/gen-downstream-changes.py
 | 淇敼 | 鐗堟湰姣旇緝鏃?`uiVersion` 涔?`TrimStart('v', 'V')`锛屼慨澶?UI 鍜?Core 鐗堟湰鍙蜂竴鑷翠粛寮硅鍛婄殑 bug |
 | 淇敼 | 鐗堟湰姣旇緝蹇界暐 `v` 鍓嶇紑 |
 
-### [HOT] `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs` (x23)
+### [HOT] `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs` (x24)
 
 | 操作 | 说明 |
 |------|------|
@@ -362,6 +369,7 @@ py tools/gen-downstream-changes.py
 | 淇敼 | **#5**: LinkStartWithTasks 涓?Append task 鏃惰褰?`[LinkStart] Append task #Idx` 鏃ュ織 |
 | 淇敼 | **#2/#3**: AdvanceAccountCycle 鐨?Phase 浠诲姟寰幆鐢?foreach + `IndexOf` 鏀逛负 **for 寰幆** (`int index = i`),娑堥櫎閲嶅椤?椤哄簭鍙樻洿鏃剁殑绱㈠紩閿欒;鍚屾椂淇濇寔鍘熸湁 Phase 杩囨护/StartUp 璺宠繃/`SetTaskIds` 閫昏緫涓嶅彉 |
 | 淇敼 | **#4**: AdvanceAccountCycle 鍒濆鏃ュ織杩藉姞 `idx={CurrentStepIndex}/{CurrentStepCount}` 鏄剧ず姝ラ浣嶇疆 |
+| 修改 | `LinkStartWithTasks` 第一步 + `AdvanceAccountCycle` 步骤：cfg.AccountName / CurrentCycleAccountName Trim，切换日志 Trim，跨账号判定 `prevStep.AccountName?.Trim() != nextStep.AccountName?.Trim()` |
 
 ### [TGT] `src/MaaWpfGui/ViewModels/UI/ToolboxViewModel.cs` 
 
@@ -397,7 +405,7 @@ py tools/gen-downstream-changes.py
 | +`ExpediteMinLevelList` / `UseExpeditedMinLevel` / `UseExpeditedMinLevelVisible` | ViewModel |
 | 新增 VM 属性 `AutoUpgrade3StarWith4Star` + `SerializeTask()` 写入 | 双向绑定 |
 
-### [HOT] `src/MaaWpfGui/ViewModels/UserControl/TaskQueue/StartUpSettingsUserControlModel.cs` (x5)
+### [HOT] `src/MaaWpfGui/ViewModels/UserControl/TaskQueue/StartUpSettingsUserControlModel.cs` (x6)
 
 | 操作 | 说明 |
 |------|------|
@@ -406,6 +414,7 @@ py tools/gen-downstream-changes.py
 | 淇敼 | `SyncAccountNamesToItems` 淇濈暀宸叉湁椤?`IsSelected` 鐘舵€侊紝鐢ㄦ埛鍙嚜鐢卞嬀閫夊弬涓庤疆鎹㈢殑璐﹀彿 |
 | 淇敼 | 娣诲姞杞崲 CRUD銆丟etCurrentCycleAccount銆丮arkAccountCompleted銆丼yncAccountNamesToItems 绛夋柟娉? |
 | 淇敼 | **#5**: 鏂板 `CurrentStepIndex` 鍏紑灞炴€ф敮鎸佹棩蹇? |
+| 修改 | `SyncAccountNamesToItems` 入口对 `config.AccountNames[]` / `config.AccountName` 做 Trim，首条受影响打 INFO 日志；下移原「单账号复制到轮换列表第一项」逻辑 |
 
 ### [TGT] `src/MaaWpfGui/ViewModels/UserControl/TaskQueue/UserDataUpdateSettingsUserControlModel.cs` 
 
