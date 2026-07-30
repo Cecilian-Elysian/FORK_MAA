@@ -2153,7 +2153,8 @@ public class AsstProxy
                     // 6★ + 识别成功 → Toast (L1/L1.5/L2 触发；L3 level=0 不触发)
                     if (level == 6)
                     {
-                        Toast.ShowRecruit(new string('★', 6));
+                        using var toast = new ToastNotification(LocalizationHelper.GetStringFormat("RecruitmentOfStar", 6));
+                        toast.AppendContentText(new string('★', 6)).ShowRecruit();
                         AchievementTrackerHelper.Instance.AddProgress(AchievementIds.RecruitNoSixStarStreak);
                     }
                     break;

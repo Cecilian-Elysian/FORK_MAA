@@ -18,7 +18,7 @@
 py tools/gen-downstream-changes.py
 ```
 
-共扫描 312 个表格行，聚合出 45 个唯一源文件路径。
+共扫描 326 个表格行，聚合出 45 个唯一源文件路径。
 
 ## 仓库根（2 个文件）
 
@@ -49,12 +49,14 @@ py tools/gen-downstream-changes.py
 
 ## `docs/`（6 个文件）
 
-### [TGT] `docs/downstream-changes.md` (x2)
+### [HOT] `docs/downstream-changes.md` (x4)
 
 | 操作 | 说明 |
 |------|------|
 | 鏂板缓 | 棣栨杩愯浜х墿锛?6 涓敮涓€婧愭枃浠讹紝瑕嗙洊 220 琛?LOG.md 琛ㄦ牸銆備粨搴撴牴锛坄.gitignore`/`VERSION`锛? `.github/` + `docs/` + `resource/`锛坄tasks.json` [HOT]锛? `src/` 26 鏂囦欢锛坄TaskQueueViewModel.cs` [HOT] 23 娆★級+ `tools/` 5 鏂囦欢 |
-| `py tools/gen-downstream-changes.py` | 自动刷新清单 |
+| `py tools/gen-downstream-changes.py` | 自动刷新清单（36 → 45 文件，[HOT] 阈值更新） |
+| 查阅 | 确认 `[HOT] AutoRecruitTask.cpp (x15)`、`[HOT] AutoRecruitTask.h (x4)`、`[HOT] resource/tasks/tasks.json (x6)` |
+| `py tools/gen-downstream-changes.py` | 自动刷新清单（47 个文件，[HOT] 阈值更新） |
 
 ### [TGT] `docs/en-us/protocol/integration.md` (x2)
 
