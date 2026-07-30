@@ -354,8 +354,12 @@ asst::AutoRecruitTask::recruit_result asst::AutoRecruitTask::recruit_one(const R
 
     // 若该槽位组合星级满足加急门槛，优先使用加急许可立即招募
     if (m_use_expedited && m_last_confirmed_min_level >= m_expedite_min_level) {
-        Log.info("Recruit slot level", m_last_confirmed_min_level, ">= expedite threshold",
-                 m_expedite_min_level, ", using expedited plan.");
+        Log.info(
+            "Recruit slot level",
+            m_last_confirmed_min_level,
+            ">= expedite threshold",
+            m_expedite_min_level,
+            ", using expedited plan.");
         if (recruit_now()) {
             hire_all();
             return recruit_result::confirmed;
@@ -537,8 +541,7 @@ asst::AutoRecruitTask::calc_task_result_type asst::AutoRecruitTask::recruit_calc
         // 3★ 组合里若能开 4★ 干员（如「费用回复 + 先锋干员」出桃金娘），升级为 4★ 处理路径
         for (RecruitCombs& rc : result_vec) {
             if (m_auto_upgrade_3star_with_4star && rc.min_level == 3 && rc.max_level >= 4) {
-                auto first_4 =
-                    std::ranges::find_if(rc.opers, [](const Recruitment& op) { return op.level >= 4; });
+                auto first_4 = std::ranges::find_if(rc.opers, [](const Recruitment& op) { return op.level >= 4; });
                 if (first_4 != rc.opers.end()) {
                     rc.min_level = first_4->level;
                     rc.avg_level = std::transform_reduce(
