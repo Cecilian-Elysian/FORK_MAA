@@ -259,6 +259,32 @@ bool RecruitResultImageAnalyzer::fallback_screenshot()
 {
     m_result.ocr_status = RecruitResultInfo::OcrStatus::L3;
 
+    // C1 截图脱敏：只保留名牌 + ★ 头部，丢弃立绘（避免肖像权 + 减小体积）
+    cv::Mat sanitized;
+    try {
+        cv::Rect name_roi(200, 380, 880, 120);
+        cv::Rect star_roi(400, 80, 480, 80);
+        // 裁剪到 ROI 范围内
+        name_roi &= cv::Rect(0, 0, m_image.cols, m_image.rows);
+        star_roi &= cv::Rect(0, 0, m_image.cols, m_image.rows);
+
+        const int H = name_roi.height + star_roi.height + 20;
+        const int W = std::max(name_roi.width, star_roi.width);
+        sanitized = cv::Mat(H, W, m_image.type(), cv::Scalar(0, 0, 0));
+
+        if (star_roi.area() > 0) {
+            m_image(star_roi).copyTo(sanitized(cv::Rect(0, 0, star_roi.width, star_roi.height)));
+        }
+        if (name_roi.area() > 0) {
+            m_image(name_roi).copyTo(
+                sanitized(cv::Rect(0, star_roi.height + 20, name_roi.width, name_roi.height)));
+        }
+    }
+    catch (const cv::Exception&) {
+        // 脱敏失败时回退到原图
+        sanitized = m_image;
+    }
+
     // save_draw 路径：<install>/debug/recruit_<slot>_<ts>.png
     const auto debug_dir = utils::path("debug");
     std::error_code ec;
@@ -269,11 +295,11 @@ bool RecruitResultImageAnalyzer::fallback_screenshot()
     auto filename = std::string("recruit_") + std::to_string(ts) + ".png";
     auto full_path = debug_dir / filename;
 
-    cv::imwrite(full_path.string(), m_image);
+    cv::imwrite(full_path.string(), sanitized);
     m_result.screenshot_path = full_path.string();
     m_result.screenshot_sha256 = sha256_hex(full_path);
 
-    Log.warn(__FUNCTION__, "L3 全失败，截图已保存:", m_result.screenshot_path);
+    Log.warn(__FUNCTION__, "L3 全失败，截图已保存(脱敏):", m_result.screenshot_path);
     return false;
 }
 } // namespace asst

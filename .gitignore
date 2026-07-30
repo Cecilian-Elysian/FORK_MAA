@@ -507,6 +507,10 @@ config/gui.error.json
 config/gui.json.bak
 config/gui.json.old
 config/gui.new.json.bak
+# feat/recruit-result-display — recruit history key + history file (D5 + L2)
+config/.recruit_key
+config/recruit_history.json
+config/recruit_experience.json
 # DependencySetup_*.bat is generated into install/ by the build, don't track it
 # (the source lives in tools/ which IS tracked)
 install/DependencySetup_*.bat
