@@ -34,7 +34,8 @@ RecruitScreenshotMonitor::Anomaly RecruitScreenshotMonitor::check(const cv::Mat&
     else if (mean_brightness > 245.0) {
         detected = Anomaly::White;
     }
-    else if (!m_last_frame.empty() && m_last_frame.size() == gray.size()) {
+    else if (!m_last_frame.empty() && m_last_frame.size() == gray.size()
+             && m_last_frame.type() == gray.type()) {
         // 帧差异
         cv::Mat diff;
         cv::absdiff(gray, m_last_frame, diff);
@@ -52,7 +53,7 @@ RecruitScreenshotMonitor::Anomaly RecruitScreenshotMonitor::check(const cv::Mat&
         m_consecutive_anomaly.store(0);
     }
 
-    image.copyTo(m_last_frame);
+    gray.copyTo(m_last_frame);
     return detected;
 }
 
