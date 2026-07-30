@@ -1351,6 +1351,8 @@ C:\\leidian\\LDPlayer9\n
     <system:String x:Key="SelectExtraOnlyRareTags">盡可能多選且只選高星 Tags</system:String>
     <system:String x:Key="AutoRecruitHighPriority">3★ Tags 時的 Tags 傾向</system:String>
     <system:String x:Key="AutoRecruitHighPriorityTooltip">會盡可能多選傾向的 Tags</system:String>
+    <system:String x:Key="AutoUpgrade3StarWith4Star">3星組合自動升級4星</system:String>
+    <system:String x:Key="AutoUpgrade3StarWith4StarTip">3星Tag組合裡若能開4★幹員(如「費用回覆+先鋒幹員」出桃金孃),自動按4★路徑處理:3:50計時 + 聯動加急門檻 + 沿用多選Tag策略選tag</system:String>
     <system:String x:Key="StageInfoError">關卡辨識錯誤</system:String>
     <system:String x:Key="UseFormation">使用編隊</system:String>
     <system:String x:Key="Current">目前</system:String>
