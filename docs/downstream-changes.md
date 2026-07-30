@@ -18,7 +18,7 @@
 py tools/gen-downstream-changes.py
 ```
 
-共扫描 326 个表格行，聚合出 45 个唯一源文件路径。
+共扫描 339 个表格行，聚合出 50 个唯一源文件路径。
 
 ## 仓库根（2 个文件）
 
@@ -49,14 +49,16 @@ py tools/gen-downstream-changes.py
 
 ## `docs/`（6 个文件）
 
-### [HOT] `docs/downstream-changes.md` (x4)
+### [HOT] `docs/downstream-changes.md` (x6)
 
 | 操作 | 说明 |
 |------|------|
 | 鏂板缓 | 棣栨杩愯浜х墿锛?6 涓敮涓€婧愭枃浠讹紝瑕嗙洊 220 琛?LOG.md 琛ㄦ牸銆備粨搴撴牴锛坄.gitignore`/`VERSION`锛? `.github/` + `docs/` + `resource/`锛坄tasks.json` [HOT]锛? `src/` 26 鏂囦欢锛坄TaskQueueViewModel.cs` [HOT] 23 娆★級+ `tools/` 5 鏂囦欢 |
 | `py tools/gen-downstream-changes.py` | 自动刷新清单（36 → 45 文件，[HOT] 阈值更新） |
+| 查阅 | 确认 `RecruitHistoryService.cs` 已被 v6 改动过 |
+| `py tools/gen-downstream-changes.py` | 自动刷新清单 |
 | 查阅 | 确认 `[HOT] AutoRecruitTask.cpp (x15)`、`[HOT] AutoRecruitTask.h (x4)`、`[HOT] resource/tasks/tasks.json (x6)` |
-| `py tools/gen-downstream-changes.py` | 自动刷新清单（47 个文件，[HOT] 阈值更新） |
+| `py tools/gen-downstream-changes.py` | 自动刷新清单（45 个文件，扫描自 326 LOG.md 表格行） |
 
 ### [TGT] `docs/en-us/protocol/integration.md` (x2)
 
@@ -107,7 +109,7 @@ py tools/gen-downstream-changes.py
 | 寰呬慨鏀? | `AccountManagerOfficial` 琛?OcrDetect 璇嗗埆銆岀櫥褰曡褰曘€? |
 | 淇敼 | `AccountManagerOfficial` 鐢?`{"roi":[570,165,140,80]}` 琛ュ叏涓?`{"Doc":"瀹樻柟鏈嶈处鍙峰垏鎹㈢晫闈㈣瘑鍒紝涓?B 鏈嶇粺涓€ OCR銆岀櫥褰曡褰曘€?,"algorithm":"OcrDetect","text":["鐧诲綍璁板綍"],"roi":[237,50,771,242]}`锛堜笌 B 鏈?`AccountManagerBili` 瀵归綈锛? |
 
-## `src/`（29 个文件）
+## `src/`（34 个文件）
 
 ### [TGT] `src/MaaCore/Assistant.cpp` 
 
@@ -195,6 +197,12 @@ py tools/gen-downstream-changes.py
 | 淇敼 | 鏂板 `LateStageRogueAndReclamation : bool = false`,榛樿鍏抽棴浠ヤ繚鎸佸悜鍚庡吋瀹? |
 | 淇敼 | 娣诲姞 `AccountCycleEnabled` (bool, 榛樿 true) 鍜?`AccountNames` (List\<string\>, 榛樿 ["", ""]) |
 
+### [TGT] `src/MaaWpfGui/Helper/ListToStringConverter.cs` 
+
+| 操作 | 说明 |
+|------|------|
+| 新增 | IValueConverter 把 IEnumerable 转字符串（DataGrid Tags 列用） |
+
 ### [TGT] `src/MaaWpfGui/MaaWpfGui.csproj` (x2)
 
 | 操作 | 说明 |
@@ -202,12 +210,19 @@ py tools/gen-downstream-changes.py
 | 淇敼 | `SelfContained` 鏀逛负 `false`锛岀鐢?NetBeauty2 鎵撳寘锛堜笉鍏煎 .NET 10.0.300锛? |
 | 淇敼 | 鐗堟湰鍙蜂粠 0.0.1 鏀逛负 6.14.0 |
 
-### [TGT] `src/MaaWpfGui/Main/AsstProxy.cs` (x2)
+### [HOT] `src/MaaWpfGui/Main/AsstProxy.cs` (x3)
 
 | 操作 | 说明 |
 |------|------|
 | 淇敼 | `AllTasksCompleted` 鍥炶皟涓ˉ涓婅疆鎹㈡帹杩涢€昏緫锛氭甯稿畬鎴愭椂璋冪敤 `MarkAccountCompleted` + `GetCurrentCycleAccount` + `LinkStart`锛屽苟 `break` 璺宠繃鏍囧噯瀹屾垚鏃ュ織锛岄槻姝㈡柊涓€杞惎鍔ㄥ悗浠嶆墦鍑?鎵€鏈変换鍔″畬鎴? |
 | 淇敼 | `AllTasksCompleted` 鍥炶皟璋?`AdvanceAccountCycle` 鏇夸唬 `SetStopped` |
+| 修改 | `RecruitSlotCompleted` case 末尾写入 `RecruitHistoryEntry` + Dispatcher 通知 `RefreshRecruitHistoryView` |
+
+### [TGT] `src/MaaWpfGui/Main/Bootstrapper.cs` 
+
+| 操作 | 说明 |
+|------|------|
+| 修改 | `OnStart` 调 `Instances.ToolboxViewModel.LoadRecruitHistory()` 启动时加载 |
 
 ### [TGT] `src/MaaWpfGui/Models/AccountCycleItem.cs` 
 
@@ -307,6 +322,12 @@ py tools/gen-downstream-changes.py
 | 修改 | 节注释 `<!-- DiagnosticExport -->` → `<!-- DiagnosticReport -->` |
 | 同上（繁体） | 繁体中文 |
 
+### [TGT] `src/MaaWpfGui/Services/RecruitHistoryService.cs` 
+
+| 操作 | 说明 |
+|------|------|
+| 新增方法 | `RecordSlotAsync` 用 `Task.Run` 异步执行 Save，避免阻塞 callback 线程 |
+
 ### [TGT] `src/MaaWpfGui/ViewModels/UI/RootViewModel.cs` (x2)
 
 | 操作 | 说明 |
@@ -341,6 +362,12 @@ py tools/gen-downstream-changes.py
 | 淇敼 | **#5**: LinkStartWithTasks 涓?Append task 鏃惰褰?`[LinkStart] Append task #Idx` 鏃ュ織 |
 | 淇敼 | **#2/#3**: AdvanceAccountCycle 鐨?Phase 浠诲姟寰幆鐢?foreach + `IndexOf` 鏀逛负 **for 寰幆** (`int index = i`),娑堥櫎閲嶅椤?椤哄簭鍙樻洿鏃剁殑绱㈠紩閿欒;鍚屾椂淇濇寔鍘熸湁 Phase 杩囨护/StartUp 璺宠繃/`SetTaskIds` 閫昏緫涓嶅彉 |
 | 淇敼 | **#4**: AdvanceAccountCycle 鍒濆鏃ュ織杩藉姞 `idx={CurrentStepIndex}/{CurrentStepCount}` 鏄剧ず姝ラ浣嶇疆 |
+
+### [TGT] `src/MaaWpfGui/ViewModels/UI/ToolboxViewModel.cs` 
+
+| 操作 | 说明 |
+|------|------|
+| 新增 60+ 行 | `RecruitHistoryEntries` ObservableCollection + `RecruitHistorySearchText` / `RecruitHistoryFilterOcrStatus` 过滤器 + `OpenRecruitScreenshot` / `EditRecruitOperator` / `ExportRecruitHistory` / `ImportRecruitHistory` / `ClearOldRecruitScreenshots` 五个命令 + `LoadRecruitHistory()` 启动入口 |
 
 ### [HOT] `src/MaaWpfGui/ViewModels/UserControl/Settings/IssueReportUserControlModel.cs` (x15)
 
@@ -385,6 +412,12 @@ py tools/gen-downstream-changes.py
 | 操作 | 说明 |
 |------|------|
 | 淇敼 | **#1**: cycle 涓?(`GetAccountSwitchEnabled()`) 璺宠繃 `IsTriggerDue` 妫€鏌?淇濊瘉姣忎釜璐﹀彿鐨?OperBox/Depot 瀛愪换鍔￠兘琚拷鍔? |
+
+### [TGT] `src/MaaWpfGui/Views/UI/ToolboxView.xaml` 
+
+| 操作 | 说明 |
+|------|------|
+| 新增 TabItem | 过滤栏 + Total TextBlock + DataGrid 9 列 + 3 操作按钮 |
 
 ### [HOT] `src/MaaWpfGui/Views/UserControl/Settings/IssueReportUserControl.xaml` (x3)
 
