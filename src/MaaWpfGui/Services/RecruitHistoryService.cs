@@ -13,6 +13,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading.Tasks;
 
 namespace MaaWpfGui.Services
 {
@@ -135,6 +136,19 @@ namespace MaaWpfGui.Services
                 while (_entries.Count > MaxEntries) _entries.RemoveAt(0);
             }
             Save();
+        }
+
+        /// <summary>
+        /// 异步写入（不阻塞 callback 线程）
+        /// </summary>
+        public void RecordSlotAsync(RecruitHistoryEntry entry)
+        {
+            // 在线程池上同步执行 Save（避免阻塞 callback）
+            Task.Run(() =>
+            {
+                try { RecordSlot(entry); }
+                catch (Exception ex) { /* 单条失败不致命 */ }
+            });
         }
 
         public void UpdateEntry(int index, string userOverride, string userNote)
