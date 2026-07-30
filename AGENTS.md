@@ -76,11 +76,11 @@ feat 合并到 `staging` 后：
 master (上游 dev-v2 镜像)
   │  (rebase / merge 同步节奏不变)
   ▼
-branch (稳定下游基线) ◄──── staging 晋升 (--no-ff, 攒批)
+branch (稳定下游基线) ◄──── 用户手动合并 staging
   │                                 ▲
-  │ (feat / fix 拉取源)              │ (合并目标)
+  │                                 │ (合并目标)
   ▼                                 │
-feat/<name>, fix/<name> ────────────┘
+staging ──── feat/<name>, fix/<name> ← 从 staging 拉出
 ```
 
 #### 规则
@@ -88,9 +88,9 @@ feat/<name>, fix/<name> ────────────┘
 | 项 | 说明 |
 |----|------|
 | 合并目标 | 所有 feat / fix 一律合并到 `staging`（不直奔 `branch`） |
-| 拉取源 | feat / fix 一律从 `branch` 拉出（不从 `staging` 拉，避免污染稳定基线引用） |
-| 晋升时机 | 攒一批（建议 3-5 个 feat / fix）后整体测试通过再晋升 |
-| 晋升方式 | `staging` → `branch` 通常分叉（cherry-pick 等价 SHA），用 `--no-ff` 创建合并 commit |
+| 拉取源 | feat / fix 一律从 `staging` 拉出（继承最新整合区；与原 `branch` 拉出约定对比，详见 §6 `feat/recruit-result-display` 行） |
+| 晋升时机 | `branch` 晋升由用户手动触发；不再自动攒批晋升（变更日 2026-07-30） |
+| 晋升方式 | `staging` → `branch` 由用户执行 `git merge staging --no-ff`；feat/fix → `staging` 自动 `--no-ff` |
 | 出问题回退 | 从远端保留的 `feat/<name>` / `fix/<name>` 重新拉 `fix/<name>/<n>`，仍合并到 `staging` |
 
 #### 当前待验证内容（截至 2026-07-25）
@@ -125,13 +125,13 @@ feat/<name>, fix/<name> ────────────┘
 
 | # | 步骤 | 产物 |
 |---|------|------|
-| 1 | `git switch -c feat/<name> branch` | 新分支 |
+| 1 | `git switch -c feat/<name> staging` | 新分支 |
 | 1.5 | 查阅 [`docs/downstream-changes.md`](./docs/downstream-changes.md)，确认本次改动文件不在清单「高敏感」段（多轮 feat/fix 反复动过的代码改动需特别谨慎）；如要改动清单中的文件，commit message 注明「downstream: 该文件曾被 feat/fix X 改动，本次改动原因」 | 防回归 |
 | 2 | `LOG.md` 追加「`feat/<name>` 启动」表格 | 启动记录 |
 | 3 | 实施期间 commit message 记录关键决策 | commit 历史 |
 | 4 | 实施完成 `LOG.md` 追加「`feat/<name>` 实施完成」表格（文件路径 + 行号 + commit） | 实施记录 |
-| 5 | 编译 / 部署验证 | `install/` |
-| 6 | FF 合并到 `staging`（无分叉时）；分叉时 `--no-ff` | merge commit |
+| 5 | 编译 / 部署验证 | `install-staging/` |
+| 6 | `--no-ff` 合并到 `staging`（合并目标固定为 staging） | merge commit |
 | 7 | `LOG.md` 记录合并事件，按 `§2.3` 处理 feat 分支 | 生命周期 |
 | 8 | 合并后重跑 `py tools/gen-downstream-changes.py` 刷新 [`docs/downstream-changes.md`](./docs/downstream-changes.md) | 清单维护 |
 
@@ -243,6 +243,7 @@ feat/<name>, fix/<name> ────────────┘
 | `fix/post-battle-sanity-display` | 修 `FightTask` MissionStart 日志「理智: x/y」展示语义：原 `x = SanityCurrent`（OCR 战前快照）与上一行「开始行动 1~6 次, -126 理智」消耗语义不连贯 → `x = SanityCurrent - FightReport.SanityCost`（series 实际成本战后预测）。仅 MissionStart 一处，不动 `SanityInfo` / Toast / CompleteTask / AllTasksComplete | `staging`（不阻塞晋升），关键 commit `d4b23812d3`，详见 `LOG.md` 2026-07-27 |
 | `fix/reception-clue-vacancy` | 修会客室「填充线索空位」失效：`proc_clue_vacancy()` 快捷置入路径 4 类失败（OCR / 数字 / vacancy_cnt / confirm_task 缺失）都 `return true` 跳过 legacy 循环；`remove_clue` suffix `{1..7}` 与 `use_clue`/`proc_clue_vacancy` `{No1..No7}` 不一致导致模板错配空位（`ClueVacancy*.png`）而非已放置线索（`ClueVacancyNo*.png`）；legacy 循环 `continue` 前未刷新 `image` 死循环 + 放置后未关面板；`UnlockClues.next` 含 `InfrastBottomLeftTab` 在 720p 误触底部 Tab | `staging`（修复 `branch` 自身，按 §3.3 合并目标为 staging），关键 commit `ad725916b4`，详见 `LOG.md` 2026-07-27 |
 | `feat/auto-recruit-3star-to-4star` | 自动公招 3★ 组合里有 4★ 干员潜力时升级为 4★ 处理路径（默认开启）：3:50 计时 + 联动 `ExpediteMinLevel` 加急 + 沿用 `SelectExtraTagsMode` 选 tag。新增 UI 选项 `AutoUpgrade3StarWith4StarToLevel4`（默认 `true`），与现有 `UseLevel3PreferTags` / `RefreshLevel3` / `ChooseLevel3` / `ExpediteMinLevel` 全兼容 | `staging`（与 `fix/recruit-now-text-aliases` / `fix/post-battle-sanity-display` / `fix/reception-clue-vacancy` 一起攒批验证），关键 commit `a41ce91369`（4★ 潜力检测） + `bb3e2799eb`（clang-format），详见 `LOG.md` 2026-07-30 |
+| `feat/recruit-result-display` | 自动加急公招后告诉用户实际招募到谁：hire_all() 后立刻对截屏做多通道识别 (L1 OCR/Levenshtein + L1.5 立绘 pHash + L2 ★ 模板成功 + L3 截图脱敏兜底)，发 `RecruitSlotCompleted` callback（文档早就定义但 MAA 一直未实现），WPF 任务队列日志追加 `[加急/常规 9h] 招募完成 + 实际干员名 + tags` 双行 + 6★ 弹 Toast。L0-L3 多通道 + 21 项优化项（见 v6 方案）+ 项目级约束变更（feat 拉取源从 `branch` 改为 `staging`，branch 晋升改为用户手动合并 staging），[HOT] `AutoRecruitTask.cpp` 在第 16 次改动中接入 | `staging`（不阻塞晋升），关键 commit `d408fde841`（多通道识别 + pHash + 五语 + result task） + `882d9b64bf`（experience + accuracy + screenshot monitor + ocr fallback + 7 JSON） + `9d8a43e9d7`（round summary + AutoRecruitTask 接入） + `94d1b16579`（WPF 接收 + 5 语 18 key + 6★ Toast） + `579bec6879`（history/exp/sanitize/crypto services + C1 脱敏 + .gitignore） + `f293a811f7`（B3 失败聚类） + `88b7a86028`（编译修复 + meojson 适配 + OpenSSL 替换），详见 `LOG.md` 2026-07-30 |
 
 
 ## 7. 分支生命周期记录
