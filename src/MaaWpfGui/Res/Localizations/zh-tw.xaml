@@ -1258,6 +1258,24 @@ C:\\leidian\\LDPlayer9\n
     <system:String x:Key="TheEx">無獎勵關卡，已停止</system:String>
     <system:String x:Key="MissingOperators">缺少以下{key=Operator}組的{key=Operator}：</system:String>
     <system:String x:Key="RecruitSupportOperator">編入助戰{key=Operator}：{0}</system:String>
+    <system:String x:Key="RecruitUnknownOperator">幹員（名稱未識別）</system:String>
+    <system:String x:Key="RecruitLogHeaderExpedited">[加急] 招募完成（slot {0}/{1}）</system:String>
+    <system:String x:Key="RecruitLogHeaderNormal">[常規 9h] 招募完成（slot {0}/{1}）</system:String>
+    <system:String x:Key="RecruitLogOperatorLine">{0}★ {1} (OCR 命中, dist={2})</system:String>
+    <system:String x:Key="RecruitLogHashHit">{0}★ {1} (雜湊命中, dist={2})</system:String>
+    <system:String x:Key="RecruitLogLevelUnknown">★ 數未知（截圖: {0}）</system:String>
+    <system:String x:Key="RecruitExperienceHit">經驗庫: 上次招到 {0}</system:String>
+    <system:String x:Key="RecruitExperienceLowConfidence">經驗庫提示（置信度低）</system:String>
+    <system:String x:Key="RecruitScreenshotAnomaly">截圖異常: {0}（已跳過本次識別）</system:String>
+    <system:String x:Key="RecruitOcrEngineFallback">OCR 引擎回退: {0} → {1}</system:String>
+    <system:String x:Key="ToolboxTabRecruitHistory">公招歷史</system:String>
+    <system:String x:Key="RecruitRoundSummary">本輪彙總: 6★ {0} / 5★ {1} / 4★ {2}，加急 {3} 次</system:String>
+    <system:String x:Key="RecruitAccuracyReport">近 {0} 次準確率: {1}% (L1+={1}% / L2={3}% / L3={4}%)</system:String>
+    <system:String x:Key="RecruitScreenshotSanitized">截圖已脫敏</system:String>
+    <system:String x:Key="RecruitEditActualOperator">編輯實際招募到</system:String>
+    <system:String x:Key="RecruitExportHistory">匯出歷史</system:String>
+    <system:String x:Key="RecruitImportHistory">匯入歷史</system:String>
+    <system:String x:Key="RecruitClearOldScreenshots">清理 7 天前截圖</system:String>
     <system:String x:Key="StageQueue">關卡佇列：</system:String>
     <system:String x:Key="UnableToAgent">無法使用代理指揮</system:String>
     <system:String x:Key="MissionStart">已開始行動</system:String>

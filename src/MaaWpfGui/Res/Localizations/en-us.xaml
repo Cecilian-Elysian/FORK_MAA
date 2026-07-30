@@ -1257,6 +1257,24 @@ Right-click to clear inactive jobs</system:String>
     <system:String x:Key="TheEx">No bonus stage, stopped</system:String>
     <system:String x:Key="MissingOperators">{key=Operator}s of the following {key=Operator} groups are missing:&#160;</system:String>
     <system:String x:Key="RecruitSupportOperator">Add support unit: {0}</system:String>
+    <system:String x:Key="RecruitUnknownOperator">Operator (name unknown)</system:String>
+    <system:String x:Key="RecruitLogHeaderExpedited">[Expedited] Recruit completed (slot {0}/{1})</system:String>
+    <system:String x:Key="RecruitLogHeaderNormal">[Normal 9h] Recruit completed (slot {0}/{1})</system:String>
+    <system:String x:Key="RecruitLogOperatorLine">{0}★ {1} (OCR hit, dist={2})</system:String>
+    <system:String x:Key="RecruitLogHashHit">{0}★ {1} (hash hit, dist={2})</system:String>
+    <system:String x:Key="RecruitLogLevelUnknown">★ unknown (screenshot: {0})</system:String>
+    <system:String x:Key="RecruitExperienceHit">Experience: previously got {0}</system:String>
+    <system:String x:Key="RecruitExperienceLowConfidence">Experience hint (low confidence)</system:String>
+    <system:String x:Key="RecruitScreenshotAnomaly">Screenshot anomaly: {0} (skipped)</system:String>
+    <system:String x:Key="RecruitOcrEngineFallback">OCR engine fallback: {0} → {1}</system:String>
+    <system:String x:Key="ToolboxTabRecruitHistory">Recruit History</system:String>
+    <system:String x:Key="RecruitRoundSummary">Round summary: 6★ {0} / 5★ {1} / 4★ {2}, expedited {3} times</system:String>
+    <system:String x:Key="RecruitAccuracyReport">Recent {0} accuracy: {1}% (L1+={1}% / L2={3}% / L3={4}%)</system:String>
+    <system:String x:Key="RecruitScreenshotSanitized">Screenshot sanitized</system:String>
+    <system:String x:Key="RecruitEditActualOperator">Edit actual recruit</system:String>
+    <system:String x:Key="RecruitExportHistory">Export history</system:String>
+    <system:String x:Key="RecruitImportHistory">Import history</system:String>
+    <system:String x:Key="RecruitClearOldScreenshots">Clear screenshots older than 7 days</system:String>
     <system:String x:Key="StageQueue">Stage Queue:&#160;</system:String>
     <system:String x:Key="UnableToAgent">Unable to use PRTS</system:String>
     <system:String x:Key="MissionStart">Mission started</system:String>

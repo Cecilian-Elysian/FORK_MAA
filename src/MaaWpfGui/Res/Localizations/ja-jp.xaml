@@ -1258,6 +1258,24 @@ C:\\leidian\\LDPlayer9
     <system:String x:Key="TheEx">ステージ報酬がないため停止します</system:String>
     <system:String x:Key="MissingOperators">次の{key=Operator}が{key=Operator}グループにありません：</system:String>
     <system:String x:Key="RecruitSupportOperator">サポートユニットを追加：{0}</system:String>
+    <system:String x:Key="RecruitUnknownOperator">オペレーター（名前不明）</system:String>
+    <system:String x:Key="RecruitLogHeaderExpedited">[緊急] 招募完了（slot {0}/{1}）</system:String>
+    <system:String x:Key="RecruitLogHeaderNormal">[通常 9h] 招募完了（slot {0}/{1}）</system:String>
+    <system:String x:Key="RecruitLogOperatorLine">{0}★ {1} (OCR 命中, dist={2})</system:String>
+    <system:String x:Key="RecruitLogHashHit">{0}★ {1} (ハッシュ命中, dist={2})</system:String>
+    <system:String x:Key="RecruitLogLevelUnknown">★ 数不明（スクリーンショット: {0}）</system:String>
+    <system:String x:Key="RecruitExperienceHit">経験庫: 前回は {0}</system:String>
+    <system:String x:Key="RecruitExperienceLowConfidence">経験庫ヒント（信頼度低）</system:String>
+    <system:String x:Key="RecruitScreenshotAnomaly">スクリーンショット異常: {0}（スキップ）</system:String>
+    <system:String x:Key="RecruitOcrEngineFallback">OCR エンジン フォールバック: {0} → {1}</system:String>
+    <system:String x:Key="ToolboxTabRecruitHistory">公招履歴</system:String>
+    <system:String x:Key="RecruitRoundSummary">本輪集計: 6★ {0} / 5★ {1} / 4★ {2}、緊急 {3} 回</system:String>
+    <system:String x:Key="RecruitAccuracyReport">近 {0} 回精度: {1}% (L1+={1}% / L2={3}% / L3={4}%)</system:String>
+    <system:String x:Key="RecruitScreenshotSanitized">スクリーンショット脱敏</system:String>
+    <system:String x:Key="RecruitEditActualOperator">実際の招募を編集</system:String>
+    <system:String x:Key="RecruitExportHistory">履歴をエクスポート</system:String>
+    <system:String x:Key="RecruitImportHistory">履歴をインポート</system:String>
+    <system:String x:Key="RecruitClearOldScreenshots">7日以上前のスクリーンショットをクリア</system:String>
     <system:String x:Key="StageQueue">ステージキュー:</system:String>
     <system:String x:Key="UnableToAgent">自動指揮利用不可</system:String>
     <system:String x:Key="MissionStart">行動開始しました</system:String>
