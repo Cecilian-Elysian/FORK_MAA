@@ -241,23 +241,39 @@ bool RecruitResultImageAnalyzer::try_phash()
 
 bool RecruitResultImageAnalyzer::try_star_template()
 {
-    // ★ 等级头部模板（tasks.json: RecruitStar3~6）
-    static const std::vector<std::pair<int, std::string>> star_tasks = {
-        { 3, "RecruitStar3" },
-        { 4, "RecruitStar4" },
-        { 5, "RecruitStar5" },
-        { 6, "RecruitStar6" },
-    };
+    // ★ 等级头部检测（OCR 硬编码 ROI，不依赖 task 模板，避免 resource 损坏）
+    // 头部 ROI: [400, 80, 480, 80] 包含 ★ 字符 + 数字标签
+    // 通过 OCR 识别 ★ 数量映射为 level
+    cv::Rect star_roi(400, 80, 480, 80);
+    star_roi &= cv::Rect(0, 0, m_image.cols, m_image.rows);
+    if (star_roi.empty()) return false;
 
-    for (const auto& [level, task] : star_tasks) {
-        Matcher matcher(m_image);
-        matcher.set_task_info(task);
-        if (auto hit = matcher.analyze()) {
-            m_result.level = level;
-            m_result.ocr_status = RecruitResultInfo::OcrStatus::L2;
-            Log.info(__FUNCTION__, "L2 ★ 模板命中:", level);
-            return true;
-        }
+    cv::Mat star_region = m_image(star_roi);
+    cv::Mat resized;
+    cv::resize(star_region, resized, cv::Size(), 2.0, 2.0, cv::INTER_CUBIC);
+
+    // OCR 识别 ★ 字符数量
+    OCRer star_ocrer(resized);
+    star_ocrer.set_required({ "★" }); // 期望字符
+    auto result_opt = star_ocrer.analyze();
+    if (!result_opt) return false;
+
+    int star_count = 0;
+    (void)star_count;
+
+    // 简化：用 OCR 文本长度判断（干员名牌显示 "★★" + "★★" + "★★" 等）
+    if (!result_opt->empty()) {
+        std::string text = result_opt->front().text;
+        // 字符 '★' UTF-8 编码 3 字节，6★ = 18 字节
+        int bytes = static_cast<int>(text.size());
+        star_count = bytes / 3;
+    }
+
+    if (star_count >= 3 && star_count <= 6) {
+        m_result.level = star_count;
+        m_result.ocr_status = RecruitResultInfo::OcrStatus::L2;
+        Log.info(__FUNCTION__, "L2 ★ 识别:", star_count);
+        return true;
     }
     return false;
 }
