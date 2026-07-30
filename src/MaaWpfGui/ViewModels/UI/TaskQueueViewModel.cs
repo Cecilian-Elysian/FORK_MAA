@@ -1846,9 +1846,9 @@ public class TaskQueueViewModel : Screen
                 if (cfg != null)
                 {
                     cfg.AccountSwitchEnabled = true;
-                    cfg.AccountName = firstStep.AccountName;
-                    CurrentCycleAccountName = firstStep.AccountName;
-                    AddLog($"{LocalizationHelper.GetString("AccountCycleSwitchingTo")}{firstStep.AccountName} (Phase {firstStep.Phase})", UiLogColor.Info);
+                    cfg.AccountName = firstStep.AccountName?.Trim() ?? string.Empty;
+                    CurrentCycleAccountName = firstStep.AccountName?.Trim() ?? string.Empty;
+                    AddLog($"{LocalizationHelper.GetString("AccountCycleSwitchingTo")}{(firstStep.AccountName?.Trim() ?? string.Empty)} (Phase {firstStep.Phase})", UiLogColor.Info);
                 }
                 else
                 {
@@ -2257,8 +2257,8 @@ public class TaskQueueViewModel : Screen
         }
 
         cfg.AccountSwitchEnabled = true;
-        cfg.AccountName = nextStep.AccountName;
-        CurrentCycleAccountName = nextStep.AccountName;
+        cfg.AccountName = nextStep.AccountName?.Trim() ?? string.Empty;
+        CurrentCycleAccountName = nextStep.AccountName?.Trim() ?? string.Empty;
 
         // 标记前一个步骤所属账号完成 (仅当跨账号或离开 Phase 2 时)
         MarkPreviousStepCompleted(prevStep);
@@ -2270,11 +2270,11 @@ public class TaskQueueViewModel : Screen
         ResetTaskItemStatuses();
 
         // 跨账号切换: 显式追加一个 StartUp(StartGame=false) 切号
-        bool needStartupSwitch = prevStep == null || prevStep.AccountName != nextStep.AccountName;
+        bool needStartupSwitch = prevStep == null || prevStep.AccountName?.Trim() != nextStep.AccountName?.Trim();
 
         // 轮换推进：不重连模拟器、不重启游戏，仅切号 + 跑任务
         _runningState.SetStopping(false);
-        AddLog($"{LocalizationHelper.GetString("AccountCycleSwitchingTo")}{nextStep.AccountName} (Phase {nextStep.Phase} idx={StartUpTask.CurrentStepIndex}/{StartUpTask.CurrentStepCount}{(needStartupSwitch ? " (switch)" : string.Empty)})", UiLogColor.Info);
+        AddLog($"{LocalizationHelper.GetString("AccountCycleSwitchingTo")}{(nextStep.AccountName?.Trim() ?? string.Empty)} (Phase {nextStep.Phase} idx={StartUpTask.CurrentStepIndex}/{StartUpTask.CurrentStepCount}{(needStartupSwitch ? " (switch)" : string.Empty)})", UiLogColor.Info);
 
         bool taskRet = true;
         int count = 0;
