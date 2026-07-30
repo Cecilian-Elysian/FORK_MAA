@@ -249,6 +249,40 @@ public class StartUpSettingsUserControlModel : TaskSettingsViewModel, StartUpSet
             return;
         }
 
+        // fix/trim-account-name: 迁移清理历史脏数据 (账号名尾随空格/制表符/换行)
+        // 清理后对首个受影响账号打 INFO 日志便于用户感知, 后续步骤不再感知
+        // (MaaCore set_account 也已 Trim, 此处是配置层根治, 让 UI 也立即显示干净账号名)
+        bool trimmedFirstAccount = false;
+        for (int i = 0; i < config.AccountNames.Count; i++)
+        {
+            var original = config.AccountNames[i];
+            var trimmed = original?.Trim();
+            if (trimmed != original)
+            {
+                if (!trimmedFirstAccount && !string.IsNullOrEmpty(trimmed))
+                {
+                    Instances.TaskQueueViewModel.AddLog(
+                        $"[fix/trim-account-name] AccountNames[{i}] 已去除首尾空白: \"{original}\" → \"{trimmed}\"",
+                        UiLogColor.Info);
+                    trimmedFirstAccount = true;
+                }
+                config.AccountNames[i] = trimmed ?? string.Empty;
+            }
+        }
+
+        if (!string.IsNullOrEmpty(config.AccountName))
+        {
+            var originalAcctName = config.AccountName;
+            var trimmedAcctName = originalAcctName.Trim();
+            if (trimmedAcctName != originalAcctName)
+            {
+                Instances.TaskQueueViewModel.AddLog(
+                    $"[fix/trim-account-name] AccountName 已去除首尾空白: \"{originalAcctName}\" → \"{trimmedAcctName}\"",
+                    UiLogColor.Info);
+                config.AccountName = trimmedAcctName;
+            }
+        }
+
         // 从单账号切换复制账号名到轮换列表第一项
         if (config.AccountNames.Count > 0 && string.IsNullOrEmpty(config.AccountNames[0]) && !string.IsNullOrEmpty(config.AccountName))
         {

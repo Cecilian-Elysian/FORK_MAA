@@ -182,7 +182,7 @@ def is_source_path(path: str) -> bool:
 def parse_log(log_path: Path) -> dict[str, FileEntry]:
     """Walk ``log_path`` and aggregate per-file change records."""
     entries: dict[str, FileEntry] = {}
-    for line in log_path.read_text(encoding="utf-8").splitlines():
+    for line in _read_log_text(log_path).splitlines():
         m = TABLE_ROW_RE.match(line)
         if not m:
             continue
@@ -296,10 +296,20 @@ def render_markdown(entries: dict[str, FileEntry], total_table_rows: int) -> str
     return "\n".join(lines) + "\n"
 
 
+def _read_log_text(log_path: Path) -> str:
+    """Read LOG.md tolerating UTF-16 LE BOM (project historical convention) and UTF-8 BOM."""
+    raw = log_path.read_bytes()
+    if raw.startswith(b"\xff\xfe"):
+        return raw.decode("utf-16")
+    if raw.startswith(b"\xef\xbb\xbf"):
+        return raw.decode("utf-8-sig")
+    return raw.decode("utf-8")
+
+
 def count_table_rows(log_path: Path) -> int:
     """Count how many table rows matched (for the header summary)."""
     n = 0
-    for line in log_path.read_text(encoding="utf-8").splitlines():
+    for line in _read_log_text(log_path).splitlines():
         if TABLE_ROW_RE.match(line):
             n += 1
     return n
