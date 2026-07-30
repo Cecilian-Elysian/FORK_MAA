@@ -1056,3 +1056,62 @@ dotnet build src/MaaWpfGui/MaaWpfGui.csproj -c Release -p:Platform=x64
 | 1 | `feat/auto-recruit-3star-to-4star` | 新建分支 | 从 `branch` 拉出，本地工作分支（HEAD `d1770eb310`） |
 | 2 | `LOG.md` | 修改 | 本节 |
 
+### feat/auto-recruit-3star-to-4star 实施完成
+
+| # | 文件 | 操作 | 说明 |
+|---|------|------|------|
+| 1 | `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.h:29, 184` | 新增 setter `set_auto_upgrade_3star_with_4star` + 成员 `m_auto_upgrade_3star_with_4star = true` | 升级开关默认开启 |
+| 2 | `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.cpp:153-158` | 新增 setter 实现 | 链式调用 |
+| 3 | `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.cpp:540-554` | 新增「4★ 潜力检测」循环 | `min_level==3 && max_level>=4` 时把 min_level/avg_level 重算到 ≥4★ 子集；与 519-535 行「3★ 视角修正」对称 |
+| 4 | `src/MaaCore/Task/Interface/RecruitTask.cpp:55, 88` | 解析 `auto_upgrade_3star_with_4star` 参数（默认 `true`）+ 链式调用 `.set_auto_upgrade_3star_with_4star(...)` | 接口层透传 |
+| 5 | `src/MaaWpfGui/Configuration/Single/MaaTask/RecruitTask.cs:43-49` | 新增 `AutoUpgrade3StarWith4Star` 字段（默认 `true`） | 配置模型 |
+| 6 | `src/MaaWpfGui/Models/AsstTasks/AsstRecruitTask.cs:70-76, 164` | 新增 DTO 字段 + `Serialize()` 写入 `auto_upgrade_3star_with_4star` | JSON 序列化 |
+| 7 | `src/MaaWpfGui/ViewModels/UserControl/TaskQueue/RecruitSettingsUserControlModel.cs:83-91, 333` | 新增 VM 属性 `AutoUpgrade3StarWith4Star` + `SerializeTask()` 写入 | 双向绑定 |
+| 8 | `src/MaaWpfGui/Views/UserControl/TaskQueue/RecruitSettingsUserControl.xaml:142-150` | 新增 `StackPanel` 包裹 `CheckBox` + `TooltipBlock`，位于「3星 Tag 时的 Tag 倾向」区域下方 | UI 控件 |
+| 9 | `src/MaaWpfGui/Res/Localizations/zh-cn.xaml:1353-1354` | 新增 `AutoUpgrade3StarWith4Star` / `AutoUpgrade3StarWith4StarTip` 字符串 | 简体中文 |
+| 10 | `src/MaaWpfGui/Res/Localizations/zh-tw.xaml:1354-1355` | 同上（繁体） | 繁体中文 |
+| 11 | `src/MaaWpfGui/Res/Localizations/en-us.xaml:1352-1353` | 同上（英文） | English |
+| 12 | `src/MaaWpfGui/Res/Localizations/ja-jp.xaml:1353-1354` | 同上（日文） | 日本語 |
+| 13 | `src/MaaWpfGui/Res/Localizations/ko-kr.xaml:1354-1355` | 同上（韩文） | 한국어 |
+| 14 | `docs/zh-cn/protocol/integration.md:266-269` | 新增 `auto_upgrade_3star_with_4star` 字段说明段 | 协议文档 |
+| 15 | `docs/zh-tw/protocol/integration.md:266-269` | 同上（繁体） | 同上 |
+| 16 | `docs/en-us/protocol/integration.md:266-269` | 同上（英文） | 同上 |
+| 17 | `docs/ja-jp/protocol/integration.md:266-269` | 同上（日文） | 同上 |
+| 18 | `docs/ko-kr/protocol/integration.md:255-258` | 同上（韩文） | 同上 |
+| 19 | `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.cpp:354-359` | pre-commit clang-format 自动重排加急 Log.info 多行 | 风格对齐 |
+| 20 | `src/MaaCore/Task/Miscellaneous/AccountSwitchTask.cpp:72-73` | pre-commit clang-format 合并 if 链多行 | 风格对齐（历史欠债，关联 fix/account-official-recognize） |
+| 21 | `LOG.md` | 修改 | 本节 |
+
+**编译结果**: `cmake --build build --target MaaCore -j 4` 成功，仅遗留标准 `LNK4098` 默认库警告（与上游一致）。`MaaCore.dll` 时间戳更新。
+
+**pre-commit 检查**: clang-format / markdownlint / prettier (Config Files + Documentation) / ruff-format / oxipng 全部 Passed。
+
+**部署验证**: 本节期间在 feat 分支，按 AGENTS.md §4.5 仅执行单目标编译，**不**部署到 `install/` 或 `install-staging/`。待合并到 `staging` 后再由 `tools/local-install-staging.bat` 部署到 `install-staging/` 实测。
+
+**预期效果**:
+1. slot tags = `[费用回复, 先锋干员]` 时，`m_auto_upgrade_3star_with_4star=true` 默认开启 → 触发升级 → `final_combination.min_level=4` → 走 4★ 路径：`recruitment_time["4"]` 计时（默认 540/3:50）+ `get_select_tags` 4★ 分支；若 `ExpediteMinLevel≥4` 则 `recruit_now()` 加急
+2. slot tags = `[输出, 治疗]`（无 4★ 组合）→ 不触发升级 → 走原 3★ 路径
+3. slot 含 `高级资深干员` / `资深干员` → `has_special_tag=true` 优先路径不受影响
+4. slot 含 `支援机械` → `has_skip_tag=true` 保留跳过路径不受影响
+5. 用户 `AutoUpgrade3StarWith4Star=false` → 行为完全等价于改动前（回归基线）
+6. 升级后 `UseLevel3PreferTags=true` 时，`Level3PreferTags` 字段对 3★ 路径仍生效；升级路径走 4★ 的 `SelectExtraTagsMode`，与「4★ 干员选择」体验一致
+
+**待手动验证（需模拟器环境）**:
+1. 准备 4★ slot（如「费用回复+先锋干员」）→ 验证走 4★ 路径，计时 3:50
+2. 准备 5★ slot（含「资深干员」）→ 验证 special_tag 路径不受影响
+3. 准备纯 3★ slot → 验证原 3★ 路径不受影响
+4. `AutoUpgrade3StarWith4Star=false` → 验证所有场景回归
+5. `UseLevel3PreferTags=true` + 含 4★ slot → 验证 `Level3PreferTags` 对 3★ 仍生效，4★ 路径用 `SelectExtraTagsMode`
+6. 加急门槛联动：`ExpediteMode=4` + 升级 slot → 验证 `recruit_now()` 触发立即招
+
+### feat/auto-recruit-3star-to-4star 合入 staging
+
+按 AGENTS.md §3.2 步骤 6，从 `feat/auto-recruit-3star-to-4star` `--no-ff` 合并到 `staging`（首次跨分支合并 staging 领先 branch 部分 commits，需 `--no-ff` 保留合并历史）。
+| # | 文件/对象 | 操作 | 说明 |
+|---|----------|------|------|
+| 1 | `staging` | `--no-ff` 合并 | 接收 `feat/auto-recruit-3star-to-4star` 6 个新 commit（`980603e11b` 启动 + `a41ce91369` C++ + `a7fbff0244` 接口 + `bc7898d483` WPF + `166ad9b5ae` UI/i18n + `3169ad1d64` docs + `bb3e2799eb` clang-format） |
+| 2 | `feat/auto-recruit-3star-to-4star` | `git branch -d`（暂缓） | 待 staging 实测通过、晋升 branch 后再处理；保留本地指针便于回溯 |
+| 3 | `AGENTS.md §6` | 修改 | 加进行中分支条目 |
+| 4 | `LOG.md` | 修改 | 本节 |
+| 5 | `docs/downstream-changes.md` | `py tools/gen-downstream-changes.py` | 自动刷新清单 |
+
