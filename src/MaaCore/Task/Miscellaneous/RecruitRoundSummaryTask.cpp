@@ -22,7 +22,7 @@ void RecruitRoundSummaryTask::emit_summary()
     std::vector<std::string> six_stars, five_stars, four_stars, three_stars;
     int expedited_count = 0;
     int refresh_count = 0;
-    int l1 = 0, l1_5 = 0, l2 = 0, l3 = 0;
+    (void)expedited_count; (void)refresh_count;
 
     for (const auto& s : m_slots) {
         switch (s.level) {
@@ -39,14 +39,26 @@ void RecruitRoundSummaryTask::emit_summary()
     cb["what"] = "RecruitRoundSummary";
     auto& d = cb["details"];
     d["total_slots"] = static_cast<int>(m_slots.size());
-    d["six_stars"] = json::array();
-    for (const auto& n : six_stars) d["six_stars"].push_back(n);
-    d["five_stars"] = json::array();
-    for (const auto& n : five_stars) d["five_stars"].push_back(n);
-    d["four_stars"] = json::array();
-    for (const auto& n : four_stars) d["four_stars"].push_back(n);
-    d["three_stars"] = json::array();
-    for (const auto& n : three_stars) d["three_stars"].push_back(n);
+    {
+        json::array six_arr;
+        for (const auto& n : six_stars) six_arr.push_back(n);
+        d["six_stars"] = std::move(six_arr);
+    }
+    {
+        json::array five_arr;
+        for (const auto& n : five_stars) five_arr.push_back(n);
+        d["five_stars"] = std::move(five_arr);
+    }
+    {
+        json::array four_arr;
+        for (const auto& n : four_stars) four_arr.push_back(n);
+        d["four_stars"] = std::move(four_arr);
+    }
+    {
+        json::array three_arr;
+        for (const auto& n : three_stars) three_arr.push_back(n);
+        d["three_stars"] = std::move(three_arr);
+    }
     d["expedited_count"] = expedited_count;
     d["refresh_count"] = refresh_count;
     d["duration_total_ms"] = static_cast<int>(duration_ms);

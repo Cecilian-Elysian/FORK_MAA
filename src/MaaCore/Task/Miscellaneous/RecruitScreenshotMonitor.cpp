@@ -1,5 +1,8 @@
 #include "RecruitScreenshotMonitor.h"
 
+#include <opencv2/core.hpp>
+#include <opencv2/imgproc.hpp>
+
 #include "Utils/Logger.hpp"
 
 namespace asst

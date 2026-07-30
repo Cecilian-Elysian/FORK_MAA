@@ -5,9 +5,12 @@
 #include <cmath>
 #include <filesystem>
 #include <fstream>
+#include <iomanip>
+#include <opencv2/core.hpp>
+#include <opencv2/imgcodecs.hpp>
+#include <opencv2/imgproc.hpp>
 #include <ranges>
-
-#include <openssl/sha.h>
+#include <sstream>
 
 #include "Config/Miscellaneous/RecruitConfig.h"
 #include "Config/TaskData.h"
@@ -73,30 +76,35 @@ uint64_t perceptual_hash(const cv::Mat& image)
     return hash;
 }
 
-int hamming_distance(uint64_t a, uint64_t b) { return __builtin_popcountll(a ^ b); }
+int hamming_distance(uint64_t a, uint64_t b)
+{
+    int count = 0;
+    uint64_t diff = a ^ b;
+    while (diff) {
+        count += static_cast<int>(diff & 1);
+        diff >>= 1;
+    }
+    return count;
+}
 
-// SHA-256 hex
-std::string sha256_hex(const std::filesystem::path& path)
+// FNV-1a 64-bit 文件 hash hex（避免 OpenSSL 依赖；非密码学安全但足够用作完整性校验）
+std::string file_hash_hex(const std::filesystem::path& path)
 {
     std::ifstream f(path, std::ios::binary);
     if (!f) return {};
 
-    SHA256_CTX ctx;
-    SHA256_Init(&ctx);
-
+    uint64_t hash = 0xcbf29ce484222325ULL;
     std::array<char, 4096> buf {};
     while (f.read(buf.data(), buf.size()) || f.gcount() > 0) {
-        SHA256_Update(&ctx, buf.data(), f.gcount());
+        for (std::streamsize i = 0; i < f.gcount(); ++i) {
+            hash ^= static_cast<uint64_t>(static_cast<unsigned char>(buf[i]));
+            hash *= 0x100000001b3ULL;
+        }
     }
-    SHA256_Final(reinterpret_cast<unsigned char*>(buf.data()), &ctx);
 
-    static const char* hex = "0123456789abcdef";
-    std::string out(64, '\0');
-    for (size_t i = 0; i < 32; ++i) {
-        out[2 * i] = hex[(static_cast<unsigned char>(buf[i]) >> 4) & 0xF];
-        out[2 * i + 1] = hex[static_cast<unsigned char>(buf[i]) & 0xF];
-    }
-    return out;
+    std::ostringstream oss;
+    oss << std::hex << std::setw(16) << std::setfill('0') << hash;
+    return oss.str();
 }
 } // namespace
 
@@ -135,7 +143,6 @@ bool RecruitResultImageAnalyzer::try_ocr_name()
         OCRer ocrer(m_image, roi);
         ocrer.set_task_info("RecruitResultNameOCR"); // tasks.json 占位，Phase 4 实际定义
         ocrer.set_required(opers_name);
-        ocrer.set_use_cache(false);
 
         auto result_opt = ocrer.analyze();
         if (!result_opt) continue;
@@ -297,7 +304,7 @@ bool RecruitResultImageAnalyzer::fallback_screenshot()
 
     cv::imwrite(full_path.string(), sanitized);
     m_result.screenshot_path = full_path.string();
-    m_result.screenshot_sha256 = sha256_hex(full_path);
+    m_result.screenshot_sha256 = file_hash_hex(full_path);
 
     Log.warn(__FUNCTION__, "L3 全失败，截图已保存(脱敏):", m_result.screenshot_path);
     return false;

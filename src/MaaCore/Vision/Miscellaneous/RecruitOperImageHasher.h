@@ -6,6 +6,7 @@
 #include <unordered_map>
 
 #include "Common/AsstTypes.h"
+#include "MaaUtils/NoWarningCVMat.hpp"
 
 namespace asst
 {

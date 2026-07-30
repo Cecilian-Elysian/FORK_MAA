@@ -13,6 +13,7 @@ RecruitResultTask::RecruitResultTask(AbstractTask& parent) : m_parent(parent) {}
 std::optional<RecruitResultInfo>
 RecruitResultTask::analyze(const cv::Mat& image, const Context& ctx)
 {
+    (void)ctx;
     auto t0 = std::chrono::steady_clock::now();
 
     RecruitResultImageAnalyzer analyzer(image);
@@ -64,7 +65,7 @@ void RecruitResultTask::emit_callback(const RecruitResultInfo& info, const Conte
     details["ocr_raw_text"] = info.ocr_raw_text;
     details["ocr_match_distance"] = info.ocr_match_distance;
     details["phash_distance"] = info.phash_distance;
-    details["possible_operators"] = json::array(); // L2 由 Phase 3 填充
+    details["possible_operators"] = json::array {};
     details["screenshot_path"] = info.screenshot_path;
     details["screenshot_sha256"] = info.screenshot_sha256;
 

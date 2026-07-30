@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <fstream>
 
+#include <meojson/json.hpp>
+
 #include "Utils/Logger.hpp"
 
 namespace asst
@@ -86,20 +88,26 @@ RecruitLocaleAdapter::build_required_set(Server srv, const std::filesystem::path
         return out;
     }
 
+    std::string content((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
     json::value j;
     try {
-        f >> j;
+        auto j_opt = json::parse(content);
+        if (!j_opt) {
+            Log.error(__FUNCTION__, "roster JSON 解析失败");
+            return out;
+        }
+        j = std::move(*j_opt);
     }
     catch (const std::exception& e) {
         Log.error(__FUNCTION__, "roster JSON 解析失败:", e.what());
         return out;
     }
 
-    if (!j.contains("operators") || !j["operators"].is_array()) return out;
+    if (!j.contains("operators") || !j.at("operators").is_array()) return out;
 
-    for (const auto& oper : j["operators"].as_array()) {
-        if (oper.contains("name") && oper["name"].is_string()) {
-            out.push_back(oper["name"].as_string());
+    for (const auto& oper : j.at("operators").as_array()) {
+        if (oper.contains("name") && oper.at("name").is_string()) {
+            out.push_back(oper.at("name").as_string());
         }
     }
     Log.info(__FUNCTION__, "roster 加载完成:", out.size(), "干员, server=", static_cast<int>(srv));

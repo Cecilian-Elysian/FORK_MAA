@@ -3,8 +3,10 @@
 #include <algorithm>
 #include <chrono>
 #include <fstream>
+#include <iomanip>
+#include <sstream>
 
-#include <openssl/sha.h>
+#include <meojson/json.hpp>
 
 #include "Utils/Logger.hpp"
 
@@ -31,22 +33,22 @@ RecruitExperience& RecruitExperience::get_instance()
 
 std::string RecruitExperience::compute_tags_hash(const std::vector<std::string>& tags)
 {
+    // FNV-1a 64-bit 哈希（避免 OpenSSL 依赖）
     std::vector<std::string> sorted = tags;
     std::ranges::sort(sorted);
 
     std::string joined;
     for (const auto& t : sorted) joined += t + "|";
 
-    unsigned char digest[SHA_DIGEST_LENGTH];
-    SHA1(reinterpret_cast<const unsigned char*>(joined.data()), joined.size(), digest);
-
-    static const char* hex = "0123456789abcdef";
-    std::string out(SHA_DIGEST_LENGTH * 2, '\0');
-    for (size_t i = 0; i < SHA_DIGEST_LENGTH; ++i) {
-        out[2 * i] = hex[(digest[i] >> 4) & 0xF];
-        out[2 * i + 1] = hex[digest[i] & 0xF];
+    uint64_t hash = 0xcbf29ce484222325ULL;
+    for (char c : joined) {
+        hash ^= static_cast<uint64_t>(static_cast<unsigned char>(c));
+        hash *= 0x100000001b3ULL;
     }
-    return out;
+
+    std::ostringstream oss;
+    oss << std::hex << std::setw(16) << std::setfill('0') << hash;
+    return oss.str();
 }
 
 bool RecruitExperience::load(const std::filesystem::path& json_path)
@@ -59,9 +61,20 @@ bool RecruitExperience::load(const std::filesystem::path& json_path)
         return false;
     }
 
+    std::string content((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+    if (content.empty()) {
+        Log.info(__FUNCTION__, "经验库文件为空:", json_path.string());
+        return false;
+    }
+
     json::value j;
     try {
-        f >> j;
+        auto j_opt = json::parse(content);
+        if (!j_opt) {
+            Log.warn(__FUNCTION__, "经验库 JSON 解析失败");
+            return false;
+        }
+        j = std::move(*j_opt);
     }
     catch (const std::exception& e) {
         Log.warn(__FUNCTION__, "经验库 JSON 解析失败:", e.what());
@@ -71,20 +84,20 @@ bool RecruitExperience::load(const std::filesystem::path& json_path)
     if (!j.contains("experiences") || !j["experiences"].is_array()) return false;
 
     m_data.clear();
-    for (const auto& item : j["experiences"].as_array()) {
+    for (const auto& item : j.at("experiences").as_array()) {
         Experience exp;
-        exp.tags_hash = item.value("tags_hash", std::string {});
-        if (item.contains("tags") && item["tags"].is_array()) {
-            for (const auto& t : item["tags"].as_array()) exp.tags.push_back(t.as_string());
+        exp.tags_hash = item.get("tags_hash", std::string {});
+        if (item.contains("tags") && item.at("tags").is_array()) {
+            for (const auto& t : item.at("tags").as_array()) exp.tags.push_back(t.as_string());
         }
-        exp.level = item.value("level", 0);
-        exp.oper_name = item.value("operator", std::string {});
-        exp.oper_id = item.value("operator_id", std::string {});
-        exp.count = item.value("count", 0);
-        exp.confidence = item.value("confidence", std::string {});
-        exp.last_seen = item.value("last_seen", 0LL);
-        if (item.contains("accounts") && item["accounts"].is_array()) {
-            for (const auto& a : item["accounts"].as_array()) exp.accounts.push_back(a.as_string());
+        exp.level = item.get("level", 0);
+        exp.oper_name = item.get("operator", std::string {});
+        exp.oper_id = item.get("operator_id", std::string {});
+        exp.count = item.get("count", 0);
+        exp.confidence = item.get("confidence", std::string {});
+        exp.last_seen = item.get("last_seen", 0LL);
+        if (item.contains("accounts") && item.at("accounts").is_array()) {
+            for (const auto& a : item.at("accounts").as_array()) exp.accounts.push_back(a.as_string());
         }
         m_data.push_back(std::move(exp));
     }
@@ -98,21 +111,30 @@ bool RecruitExperience::save(const std::filesystem::path& json_path)
     std::lock_guard<std::mutex> lock(m_mutex);
 
     json::value j;
-    j["experiences"] = json::array();
-    for (const auto& exp : m_data) {
-        json::value item;
-        item["tags_hash"] = exp.tags_hash;
-        item["tags"] = json::array();
-        for (const auto& t : exp.tags) item["tags"].push_back(t);
-        item["level"] = exp.level;
-        item["operator"] = exp.oper_name;
-        item["operator_id"] = exp.oper_id;
-        item["count"] = exp.count;
-        item["confidence"] = exp.confidence;
-        item["last_seen"] = exp.last_seen;
-        item["accounts"] = json::array();
-        for (const auto& a : exp.accounts) item["accounts"].push_back(a);
-        j["experiences"].push_back(item);
+    {
+        json::array exps_arr;
+        for (const auto& exp : m_data) {
+            json::value item;
+            item["tags_hash"] = exp.tags_hash;
+            {
+                json::array tags_arr;
+                for (const auto& t : exp.tags) tags_arr.push_back(t);
+                item["tags"] = std::move(tags_arr);
+            }
+            item["level"] = exp.level;
+            item["operator"] = exp.oper_name;
+            item["operator_id"] = exp.oper_id;
+            item["count"] = exp.count;
+            item["confidence"] = exp.confidence;
+            item["last_seen"] = exp.last_seen;
+            {
+                json::array accounts_arr;
+                for (const auto& a : exp.accounts) accounts_arr.push_back(a);
+                item["accounts"] = std::move(accounts_arr);
+            }
+            exps_arr.push_back(item);
+        }
+        j["experiences"] = std::move(exps_arr);
     }
 
     std::ofstream f(json_path);

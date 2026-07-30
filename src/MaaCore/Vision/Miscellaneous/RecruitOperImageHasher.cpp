@@ -1,9 +1,11 @@
 #include "RecruitOperImageHasher.h"
 
 #include <fstream>
+#include <opencv2/core.hpp>
+#include <opencv2/imgproc.hpp>
 #include <sstream>
 
-#include <openssl/sha.h>
+#include <meojson/json.hpp>
 
 #include "Config/Miscellaneous/RecruitConfig.h"
 #include "Utils/Logger.hpp"
@@ -65,9 +67,16 @@ bool RecruitOperImageHasher::load(const std::filesystem::path& json_path)
         return false;
     }
 
+    std::string content((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
     json::value j;
     try {
-        f >> j;
+        auto j_opt = json::parse(content);
+        if (!j_opt) {
+            Log.error(__FUNCTION__, "哈希库 JSON 解析失败");
+            m_loaded = false;
+            return false;
+        }
+        j = std::move(*j_opt);
     }
     catch (const std::exception& e) {
         Log.error(__FUNCTION__, "哈希库 JSON 解析失败:", e.what());
@@ -82,10 +91,8 @@ bool RecruitOperImageHasher::load(const std::filesystem::path& json_path)
     }
 
     m_hash_db.clear();
-    for (auto it = j.object_begin(); it != j.object_end(); ++it) {
-        const std::string& id = it->key();
-        const std::string hex = it->value().as_string();
-        m_hash_db.emplace(id, hash_to_uint64(hex));
+    for (const auto& [id, val] : j.as_object()) {
+        m_hash_db.emplace(id, hash_to_uint64(val.as_string()));
     }
 
     m_loaded = true;
@@ -131,7 +138,12 @@ RecruitOperImageHasher::find_nearest(uint64_t target_hash, int max_distance) con
     bool found = false;
 
     for (const auto& [id, h] : m_hash_db) {
-        int d = __builtin_popcountll(target_hash ^ h);
+        uint64_t diff = target_hash ^ h;
+        int d = 0;
+        while (diff) {
+            d += static_cast<int>(diff & 1);
+            diff >>= 1;
+        }
         if (d < best.distance) {
             best.oper_id = id;
             best.distance = d;
