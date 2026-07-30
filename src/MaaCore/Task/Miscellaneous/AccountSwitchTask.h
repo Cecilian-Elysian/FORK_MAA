@@ -11,7 +11,20 @@ public:
     using AbstractTask::AbstractTask;
     virtual ~AccountSwitchTask() noexcept override = default;
 
-    void set_account(std::string account) { m_account = std::move(account); }
+    void set_account(std::string account)
+    {
+        // fix/trim-account-name: 防御性 Trim, 承接上游 JSON / WPF 未清理的脏数据
+        // (账号名尾随空格/制表符/换行 → set_required 严格匹配永远失败 →
+        //  select_account 全空 → 5x restart_game 死循环)
+        auto first = account.find_first_not_of(" \t\r\n");
+        auto last = account.find_last_not_of(" \t\r\n");
+        if (first == std::string::npos) {
+            m_account.clear();
+        }
+        else {
+            m_account = account.substr(first, last - first + 1);
+        }
+    }
 
     void set_client_type(std::string client_type) { m_client_type = std::move(client_type); }
 
