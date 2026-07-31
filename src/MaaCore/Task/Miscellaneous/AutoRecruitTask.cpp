@@ -618,7 +618,9 @@ asst::AutoRecruitTask::calc_task_result_type asst::AutoRecruitTask::recruit_calc
         {
             json::object results_json;
             results_json["result"] = json::array();
-            results_json["level"] = final_combination.min_level;
+            // fix/auto-recruit-expedite-original-level/2: RecruitResult 日志展示升级前的原始星级
+            // 避免 3→4 升级后「4 ★ Tags」误标导致用户以为必出四星
+            results_json["level"] = (std::max)(m_original_min_level, 3);
             for (const auto& comb : result_vec) {
                 json::array opers_json;
                 for (const Recruitment& oper_info : comb.opers | std::views::reverse) { // print reversely
