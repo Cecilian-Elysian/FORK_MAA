@@ -393,7 +393,7 @@ asst::AutoRecruitTask::recruit_result asst::AutoRecruitTask::recruit_one(const R
     // confirm() 点击「开始招募」启动 9h 倒计时并返回公招主页,
     // 主页上该 slot 才会出现「立即招 / 立即完成」按钮供 recruit_now() 点击。
     // 原 feat 将 recruit_now() 放在 confirm() 之前, 详情页无此按钮, OCR 必失败。
-    if (m_use_expedited && m_last_confirmed_min_level >= m_expedite_min_level) {
+    if (m_use_expedited && m_original_min_level >= m_expedite_min_level) {
         Log.info("Recruit slot level", m_last_confirmed_min_level, ">= expedite threshold",
                  m_expedite_min_level, ", using expedited plan.");
         if (recruit_now()) {
@@ -601,6 +601,19 @@ asst::AutoRecruitTask::calc_task_result_type asst::AutoRecruitTask::recruit_calc
 
         const auto& final_combination = result_vec.front();
         m_last_confirmed_min_level = final_combination.min_level;
+
+        // fix/auto-recruit-expedite-original-level: 保存 3→4 升级前的原始最低星级，
+        // 用于加急判定。扫描 opers 中 ≥3★ 的最低干员等级，
+        // 若组合含 3★ 干员（3→4 升级前为 3★），则原始等级为 3，
+        // 避免「三星词条出四星」场景下误加急浪费许可。
+        m_original_min_level = m_last_confirmed_min_level;
+        if (m_auto_upgrade_3star_with_4star) {
+            auto min_op = std::ranges::find_if(final_combination.opers,
+                [](const Recruitment& op) { return op.level >= 3; });
+            if (min_op != final_combination.opers.end()) {
+                m_original_min_level = (std::min)(m_original_min_level, static_cast<int>(min_op->level));
+            }
+        }
 
         {
             json::object results_json;
