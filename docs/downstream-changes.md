@@ -18,7 +18,7 @@
 py tools/gen-downstream-changes.py
 ```
 
-共扫描 352 个表格行，聚合出 51 个唯一源文件路径。
+共扫描 366 个表格行，聚合出 52 个唯一源文件路径。
 
 ## 仓库根（2 个文件）
 
@@ -49,7 +49,7 @@ py tools/gen-downstream-changes.py
 
 ## `docs/`（6 个文件）
 
-### [HOT] `docs/downstream-changes.md` (x8)
+### [HOT] `docs/downstream-changes.md` (x11)
 
 | 操作 | 说明 |
 |------|------|
@@ -61,6 +61,9 @@ py tools/gen-downstream-changes.py
 | `py tools/gen-downstream-changes.py` | 自动刷新清单（45 个文件，扫描自 326 LOG.md 表格行） |
 | 查阅 | 确认 `AccountSwitchTask.h/.cpp` / `TaskQueueViewModel.cs` / `StartUpSettingsUserControlModel.cs` 已被多次改动 |
 | `py tools/gen-downstream-changes.py` | 自动刷新清单（50 → 51 文件） |
+| 查阅 | 确认 `RecruitScreenshotMonitor.{h,cpp}` 是 fork 私有（882d9b64bf 引入） |
+| `py tools/gen-downstream-changes.py` | 自动刷新清单（51 → 51 文件，352 LOG.md 表格行） |
+| `py tools/gen-downstream-changes.py` | 自动刷新清单（51 文件，352 LOG.md 表格行） |
 
 ### [TGT] `docs/en-us/protocol/integration.md` (x2)
 
@@ -111,7 +114,7 @@ py tools/gen-downstream-changes.py
 | 寰呬慨鏀? | `AccountManagerOfficial` 琛?OcrDetect 璇嗗埆銆岀櫥褰曡褰曘€? |
 | 淇敼 | `AccountManagerOfficial` 鐢?`{"roi":[570,165,140,80]}` 琛ュ叏涓?`{"Doc":"瀹樻柟鏈嶈处鍙峰垏鎹㈢晫闈㈣瘑鍒紝涓?B 鏈嶇粺涓€ OCR銆岀櫥褰曡褰曘€?,"algorithm":"OcrDetect","text":["鐧诲綍璁板綍"],"roi":[237,50,771,242]}`锛堜笌 B 鏈?`AccountManagerBili` 瀵归綈锛? |
 
-## `src/`（35 个文件）
+## `src/`（36 个文件）
 
 ### [TGT] `src/MaaCore/Assistant.cpp` 
 
@@ -183,6 +186,13 @@ py tools/gen-downstream-changes.py
 | 鏂板 setter `set_expedite_min_level` | 鍔犳€ラ棬妲涙帴鍙? |
 | 鏂板鎴愬憳 `m_expedite_min_level` / `m_last_confirmed_min_level` | 闂ㄦ鍊间笌鏈€杩戠‘璁ゆ槦绾? |
 | 新增 setter `set_auto_upgrade_3star_with_4star` + 成员 `m_auto_upgrade_3star_with_4star = true` | 升级开关默认开启 |
+
+### [TGT] `src/MaaCore/Task/Miscellaneous/RecruitScreenshotMonitor.cpp` (x2)
+
+| 操作 | 说明 |
+|------|------|
+| 修改 | absdiff 条件增加 `m_last_frame.type() == gray.type()` 防御性检查 |
+| 修改 | `image.copyTo(m_last_frame)` 改为 `gray.copyTo(m_last_frame)`，存单通道灰度图 |
 
 ### [TGT] `src/MaaUtils` 
 
