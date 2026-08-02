@@ -639,16 +639,6 @@ public class Bootstrapper : Bootstrapper<RootViewModel>
 
         base.OnStart();
 
-        // feat/recruit-history-tab: 启动时加载 L2 历史 + 经验库
-        try
-        {
-            Instances.ToolboxViewModel.LoadRecruitHistory();
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "Failed to load recruit history on startup");
-        }
-
         _hasMutex = true;
 
         const string ConfigFlag = "--config";

@@ -1777,20 +1777,6 @@
         "postDelay": 1000,
         "next": ["RecruitFlag", "RecruitNowConfirm"]
     },
-    "RecruitResultNameOCR": {
-        "Doc": "招募完成展示页干员名 OCR (feat/recruit-result-display 多通道识别 L1)",
-        "algorithm": "OcrDetect",
-        "text": [],
-        "roi": [200, 380, 880, 80],
-        "next": []
-    },
-    "RecruitResultNameOCRBackup": {
-        "Doc": "招募完成展示页干员名 OCR 备份 ROI (含名牌 + 代号)",
-        "algorithm": "OcrDetect",
-        "text": [],
-        "roi": [200, 360, 880, 120],
-        "next": []
-    },
     "ReturnToActivities": {
         "template": "Return.png",
         "templThreshold": 0.7,
