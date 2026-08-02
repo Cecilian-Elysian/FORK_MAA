@@ -3,12 +3,10 @@
 
 #include <optional>
 #include <set>
-#include <memory>
 #include <vector>
 
 #include "Common/AsstTypes.h"
 #include "Config/Miscellaneous/RecruitConfig.h"
-#include "Task/Miscellaneous/RecruitRoundSummaryTask.h"
 
 #include <ranges>
 
@@ -68,10 +66,6 @@ protected:
     bool hire_all(const cv::Mat&);
     bool hire_all();
     bool initialize_dirty_slot_info(const cv::Mat&);
-    // downstream: feat/recruit-result-display — 识别招募完成展示页 (L0/L1/L2/L3)
-    void identify_recruit_result(const cv::Mat& image, int slot_index,
-                                 const std::vector<std::string>& tags, int level,
-                                 bool expedited, bool is_refresh, int recruit_hour);
     std::vector<std::string> get_tag_names(const std::vector<RecruitConfig::TagId>& ids) const;
     std::vector<asst::RecruitConfig::TagId>
         get_select_tags(const std::vector<RecruitCombs>& combinations, std::vector<RecruitConfig::TagId> tag_ids);
@@ -208,9 +202,6 @@ protected:
     std::string m_yituliu_id;
     std::shared_ptr<ReportDataTask> m_report_penguin_task_ptr = nullptr;
     std::shared_ptr<ReportDataTask> m_report_yituliu_task_ptr = nullptr;
-
-    // downstream: feat/recruit-result-display — 本轮汇总 (A1)
-    std::unique_ptr<RecruitRoundSummaryTask> m_round_summary = nullptr;
 
     static slot_index slot_index_from_rect(const Rect& r)
     {

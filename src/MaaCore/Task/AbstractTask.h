@@ -17,8 +17,6 @@ class Mat;
 namespace asst
 {
 class AbstractTaskPlugin;
-class RecruitResultTask;       // feat/recruit-result-display — emit_callback needs protected access
-class RecruitRoundSummaryTask; // feat/recruit-result-display — emit_summary needs protected access
 using TaskPluginPtr = std::shared_ptr<AbstractTaskPlugin>;
 
 class Controller;
@@ -27,9 +25,6 @@ class TaskData;
 
 class AbstractTask : protected InstHelper
 {
-    friend class RecruitResultTask;
-    friend class RecruitRoundSummaryTask;
-
 public:
     AbstractTask(const AsstCallback& callback, Assistant* inst, std::string_view task_chain);
     AbstractTask(const AbstractTask&) = default;

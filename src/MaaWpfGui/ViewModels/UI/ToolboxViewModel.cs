@@ -17,7 +17,6 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
-using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -36,7 +35,6 @@ using MaaWpfGui.Helper;
 using MaaWpfGui.Main;
 using MaaWpfGui.Models;
 using MaaWpfGui.Models.AsstTasks;
-using MaaWpfGui.Services;
 using MaaWpfGui.States;
 using MaaWpfGui.Utilities;
 using MaaWpfGui.Utilities.ValueType;
@@ -2514,170 +2512,6 @@ public class ToolboxViewModel : Screen
         {
             AchievementTrackerHelper.Instance.Unlock(AchievementIds.SlackingOff);
         }
-    }
-
-    #endregion
-
-    #region RecruitHistory — feat/recruit-history-tab
-
-    /// <summary>
-    /// 招募历史条目集合（数据源：RecruitHistoryService，加载时一次性读取）
-    /// </summary>
-    public ObservableCollection<Services.RecruitHistoryEntry> RecruitHistoryEntries { get => field; set => SetAndNotify(ref field, value); } = new();
-
-    private string _recruitHistorySearchText = string.Empty;
-    public string RecruitHistorySearchText
-    {
-        get => _recruitHistorySearchText;
-        set
-        {
-            if (SetAndNotify(ref _recruitHistorySearchText, value))
-            {
-                RefreshRecruitHistoryView();
-            }
-        }
-    }
-
-    private string _recruitHistoryFilterOcrStatus = "All";
-    public string RecruitHistoryFilterOcrStatus
-    {
-        get => _recruitHistoryFilterOcrStatus;
-        set
-        {
-            if (SetAndNotify(ref _recruitHistoryFilterOcrStatus, value))
-            {
-                RefreshRecruitHistoryView();
-            }
-        }
-    }
-
-    public void RefreshRecruitHistoryView()
-    {
-        var entries = RecruitHistoryService.Instance.Entries.AsEnumerable();
-        if (_recruitHistoryFilterOcrStatus != "All")
-        {
-            entries = entries.Where(e => e.OcrStatus == _recruitHistoryFilterOcrStatus);
-        }
-
-        if (!string.IsNullOrWhiteSpace(_recruitHistorySearchText))
-        {
-            var q = _recruitHistorySearchText.Trim();
-            entries = entries.Where(e =>
-                (e.Operator?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false) ||
-                (e.OcrRawText?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false) ||
-                e.Tags.Any(t => t.Contains(q, StringComparison.OrdinalIgnoreCase)));
-        }
-
-        RecruitHistoryEntries = new ObservableCollection<RecruitHistoryEntry>(entries.OrderByDescending(e => e.Timestamp));
-    }
-
-    /// <summary>
-    /// 启动时由 Bootstrapper 显式调用
-    /// </summary>
-    public void LoadRecruitHistory()
-    {
-        RecruitHistoryService.Instance.Load();
-        RefreshRecruitHistoryView();
-    }
-
-    [UsedImplicitly]
-    public void OpenRecruitScreenshot(Services.RecruitHistoryEntry? entry)
-    {
-        if (entry == null || string.IsNullOrEmpty(entry.ScreenshotPath)) return;
-        if (!File.Exists(entry.ScreenshotPath)) return;
-        try
-        {
-            Process.Start(new ProcessStartInfo
-            {
-                FileName = entry.ScreenshotPath,
-                UseShellExecute = true,
-            });
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "Failed to open recruit screenshot");
-        }
-    }
-
-    [UsedImplicitly]
-    public void EditRecruitOperator(Services.RecruitHistoryEntry? entry)
-    {
-        if (entry == null) return;
-        // 复用现有 TextDialogView 弹窗（仅干员名，备注可选）
-        var index = RecruitHistoryService.Instance.Entries.ToList().FindIndex(e => e.Timestamp == entry.Timestamp);
-        if (index < 0) return;
-
-        var prompt = string.IsNullOrEmpty(entry.OcrRawText)
-            ? LocalizationHelper.GetString("RecruitEditActualOperator")
-            : LocalizationHelper.GetString("RecruitEditActualOperator") + $" (OCR=\"{entry.OcrRawText}\")";
-        var dialog = new Views.Dialogs.TextDialogView(
-            LocalizationHelper.GetString("RecruitEditActualOperator"),
-            prompt,
-            entry.Operator ?? entry.OcrRawText ?? string.Empty)
-        {
-            Owner = Application.Current?.MainWindow,
-        };
-        if (dialog.ShowDialog() == true && !string.IsNullOrWhiteSpace(dialog.InputText))
-        {
-            RecruitHistoryService.Instance.UpdateEntry(index, dialog.InputText, string.Empty);
-            RefreshRecruitHistoryView();
-        }
-    }
-
-    [UsedImplicitly]
-    public void ExportRecruitHistory()
-    {
-        var dlg = new Microsoft.Win32.SaveFileDialog
-        {
-            Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*",
-            DefaultExt = ".json",
-            FileName = $"recruit_history_{DateTime.Now:yyyyMMdd_HHmmss}.json",
-        };
-        if (dlg.ShowDialog() == true)
-        {
-            try
-            {
-                File.WriteAllText(dlg.FileName, RecruitHistoryService.Instance.ExportJson());
-                Log.Information("Recruit history exported to {Path}", dlg.FileName);
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Failed to export recruit history");
-            }
-        }
-    }
-
-    [UsedImplicitly]
-    public void ImportRecruitHistory()
-    {
-        var dlg = new Microsoft.Win32.OpenFileDialog
-        {
-            Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*",
-            DefaultExt = ".json",
-        };
-        if (dlg.ShowDialog() == true)
-        {
-            try
-            {
-                RecruitHistoryService.Instance.ImportJson(File.ReadAllText(dlg.FileName));
-                RefreshRecruitHistoryView();
-                Log.Information("Recruit history imported from {Path}", dlg.FileName);
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Failed to import recruit history");
-            }
-        }
-    }
-
-    [UsedImplicitly]
-    public void ClearOldRecruitScreenshots()
-    {
-        var removed = ScreenshotCleanupService.Instance.CleanupOldFiles();
-        Log.Information("Cleared {Count} old recruit screenshots", removed);
-        Instances.TaskQueueViewModel.AddLog(
-            string.Format(LocalizationHelper.GetString("RecruitClearOldScreenshotsResult"), removed),
-            UiLogColor.Info);
     }
 
     #endregion
