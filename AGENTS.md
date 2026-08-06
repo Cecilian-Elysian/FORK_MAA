@@ -93,14 +93,23 @@ staging ──── feat/<name>, fix/<name> ← 从 staging 拉出
 | 晋升方式 | `staging` → `branch` 由用户执行 `git merge staging --no-ff`；feat/fix → `staging` 自动 `--no-ff` |
 | 出问题回退 | 从远端保留的 `feat/<name>` / `fix/<name>` 重新拉 `fix/<name>/<n>`，仍合并到 `staging` |
 
-#### 当前待验证内容（截至 2026-08-06 仓库清理）
+#### 当前待验证内容（截至 2026-08-06 v6.16.5 合入）
 
-`staging` 已通过 `a13825c68f` 删除 `feat/recruit-result-display` 及其孤儿基础设施，并通过最新 commit `3fd8903115` 移除 `feat/auto-recruit-3star-to-4star`。当前 staging 领先 `branch` ~52 commits（fork 全部累积 + 3→4 删除）。
+`staging` 通过 commit `1abf898ef3` merge `upstream/dev-v2`（v6.16.5），已含：
+- Phase A: 移除 `feat/auto-recruit-3star-to-4star`（commit `3fd8903115`）
+- Phase B: AGENTS/CHANGELOG/csproj/.gitignore 清理（commit `dcb3cc6cb4`）
+- Phase D: 上游 v6.14.0 ~ v6.16.5 共 4467 commit 合入
+
+历史假关联：fork base `c8c8e75be5` 无父节点，通过 `git replace --graft` 接 `6147357bd0`（v6.14.0 upstream release），merge-base = `c8c8e75be5` 走 3-way 合并。
 
 晋升前需实测验证（仅适用于 `staging → branch` 晋升决策）：
-- 多账号切号（官服 + B 服）
-- 公招加急门槛（`expedite_min_level`）
-- 招募流程（无 3→4 升级的回归）
+- 多账号切号（官服 + B 服，含新增繁中服支援）
+- 公招加急门槛（`expedite_min_level` fork 字段 + 上游 `expedite`/`expedite_times` 双轨）
+- 招募流程（无 3→4 升级的回归 + 新上游 sortIndex + 库存重构）
+- 刷理智代理倍率 7~10 校验（v6.16.5 新增）
+- LUID GPU OCR + Win32IO 竞态修复（v6.16.5）
+- 资源包拖入更新资源版本（v6.16.5 新增）
+- 工具：`tools/local-install-staging.bat` 部署到 `install-staging/`，启动 `MAA.exe` 跑一遍日常
 
 
 ## 3. 工作流与文档规范
