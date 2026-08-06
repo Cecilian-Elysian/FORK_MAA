@@ -73,12 +73,42 @@
                     CornerRadius="4">
                     <Grid Width="190" Margin="0">
                         <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
                             <RowDefinition Height="*" />
                             <RowDefinition Height="40" />
                         </Grid.RowDefinitions>
+                        <!-- fix/account_rotation/6: 当前轮换账号指示 (仅轮换中可见) -->
+                        <Border
+                            Grid.Row="0"
+                            Margin="6,6,6,0"
+                            Padding="8,4"
+                            HorizontalAlignment="Stretch"
+                            Background="{DynamicResource RegionBrushOpacity25}"
+                            CornerRadius="4">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding CurrentCycleAccountName}" Value="">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding CurrentCycleAccountName}" Value="{x:Null}">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
+                                <TextBlock Foreground="{DynamicResource SecondaryTextBrush}" Text="{DynamicResource CurrentAccountLabel}" />
+                                <TextBlock
+                                    Margin="6,0,0,0"
+                                    FontWeight="Bold"
+                                    Text="{Binding CurrentCycleAccountName}" />
+                            </StackPanel>
+                        </Border>
                         <ListBox
                             x:Name="TaskList"
-                            Grid.Row="0"
+                            Grid.Row="1"
                             Width="190"
                             MinHeight="220"
                             Margin="0,10,0,0"
@@ -261,7 +291,9 @@
                                                                     <TextBlock Text="{DynamicResource TaskSettings}" />
 
                                                                     <TextBlock FontWeight="SemiBold" Text="{DynamicResource RightClick}" />
-                                                                    <TextBlock Text="{DynamicResource RunTaskOnce}" />
+                                                                    <TextBlock>
+                                                                        <Run Text="{DynamicResource RunTaskOnce}" /><Run Text="/" /><Run Text="{DynamicResource Copy}" /><Run Text="/" /><Run Text="{DynamicResource Rename}" /><Run Text="/" /><Run Text="{DynamicResource Delete}" />
+                                                                    </TextBlock>
                                                                 </StackPanel>
                                                             </ToolTip>
                                                         </RadioButton.ToolTip>
@@ -272,6 +304,21 @@
                                                                                        Target={x:Static helper:Instances.TaskQueueViewModel}}"
                                                                     CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                                                     Header="{DynamicResource RunTaskOnce}" />
+                                                                <MenuItem
+                                                                    Command="{s:Action CopyTask,
+                                                                                       Target={x:Static helper:Instances.TaskQueueViewModel}}"
+                                                                    CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                                    Header="{DynamicResource Copy}" />
+                                                                <MenuItem
+                                                                    Command="{s:Action RenameTask,
+                                                                                       Target={x:Static helper:Instances.TaskQueueViewModel}}"
+                                                                    CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                                    Header="{DynamicResource Rename}" />
+                                                                <MenuItem
+                                                                    Command="{s:Action RemoveTask,
+                                                                                       Target={x:Static helper:Instances.TaskQueueViewModel}}"
+                                                                    CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                                    Header="{DynamicResource Delete}" />
                                                             </ContextMenu>
                                                         </RadioButton.ContextMenu>
                                                     </RadioButton>
@@ -295,7 +342,7 @@
                                 </Style>
                             </ListBox.ItemContainerStyle>
                         </ListBox>
-                        <Grid Grid.Row="1">
+                        <Grid Grid.Row="2">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
@@ -311,7 +358,8 @@
                                 hc:IconElement.Geometry="{StaticResource TaskQueueAddTaskIcon}"
                                 Foreground="{DynamicResource PrimaryTextBrush}"
                                 IsEnabled="{c:Binding 'Idle or !Inited'}"
-                                Style="{StaticResource MaaButtonDefaultStyle}">
+                                Style="{StaticResource MaaButtonDefaultStyle}"
+                                ToolTip="{DynamicResource AddTaskQueueTask}">
                                 <hc:ContextMenuButton.Menu>
                                     <ContextMenu
                                         Width="200"
@@ -373,7 +421,12 @@
                                             Padding="0,3"
                                             Command="{s:Action AddTaskQueueTask}"
                                             CommandParameter="{Binding TaskTypeList[9].Value}"
-                                            Header="{Binding TaskTypeList[9].Display}"
+                                            Header="{Binding TaskTypeList[9].Display}" />
+                                        <MenuItem
+                                            Padding="0,3"
+                                            Command="{s:Action AddTaskQueueTask}"
+                                            CommandParameter="{Binding TaskTypeList[10].Value}"
+                                            Header="{Binding TaskTypeList[10].Display}"
                                             Visibility="{c:Binding ShowDebugTask}" />
                                     </ContextMenu>
                                 </hc:ContextMenuButton.Menu>
@@ -426,6 +479,7 @@
                                 Height="30"
                                 HorizontalAlignment="Stretch"
                                 VerticalAlignment="Top"
+                                hc:BorderElement.CornerRadius="0,4,4,0"
                                 Command="{s:Action InverseSelected}"
                                 Content="{Binding InverseShowText}"
                                 IsEnabled="{c:Binding 'Idle or !Inited'}"
@@ -608,6 +662,12 @@
                             Visibility="{c:Binding DataContext.TaskSettingVisibilities.UserDataUpdate,
                                                    RelativeSource={RelativeSource Mode=FindAncestor,
                                                                                   AncestorType={x:Type UserControl}}}" />
+                        <taskQueue:DepotMaintainTaskUserControl
+                            DataContext="{Binding DepotMaintainTask}"
+                            IsEnabled="{Binding DataContext.Idle, RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type UserControl}}}"
+                            Visibility="{c:Binding DataContext.TaskSettingVisibilities.DepotMaintain,
+                                                   RelativeSource={RelativeSource Mode=FindAncestor,
+                                                                                  AncestorType={x:Type UserControl}}}" />
                         <taskQueue:CustomUserControl DataContext="{Binding CustomTask}" Visibility="{c:Binding DataContext.TaskSettingVisibilities.Custom, RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type UserControl}}}" />
                         <taskQueue:PostActionUserControl DataContext="{Binding PostActionSetting}" Visibility="{c:Binding DataContext.TaskSettingVisibilities.PostAction, RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type UserControl}}}" />
                     </hc:SimpleStackPanel>
@@ -694,6 +754,7 @@
                             Margin="0,0,0,10"
                             HorizontalAlignment="Stretch"
                             VerticalAlignment="Top"
+                            d:Content="{d:SampleData ItemCount=1}"
                             Content="{Binding DownloadLogItemViewModel}"
                             Visibility="{c:Binding 'DownloadLogItemViewModel.Content.Length > 0'}">
                             <ContentControl.ContentTemplate>
@@ -756,7 +817,7 @@
                                                 <Grid Width="60">
                                                     <controls:TextBlock
                                                         Grid.Row="0"
-                                                        Margin="0,5,0,0"
+                                                        Margin="0,5,10,0"
                                                         HorizontalAlignment="Center"
                                                         Foreground="{DynamicResource TraceLogBrush}"
                                                         Text="{Binding Time}"
@@ -764,7 +825,7 @@
                                                 </Grid>
                                                 <Grid
                                                     Grid.Column="1"
-                                                    Margin="10,0,0,0"
+                                                    Margin="0,5,0,0"
                                                     HorizontalAlignment="Left"
                                                     ToolTip="{Binding ToolTip}"
                                                     ToolTipService.InitialShowDelay="200">
@@ -774,7 +835,6 @@
                                                     </Grid.ColumnDefinitions>
                                                     <controls:TextBlock
                                                         Grid.Column="0"
-                                                        Margin="0,5,0,0"
                                                         FontWeight="{Binding Weight}"
                                                         ForegroundKey="{Binding Color}"
                                                         Text="{Binding DisplayContent}"

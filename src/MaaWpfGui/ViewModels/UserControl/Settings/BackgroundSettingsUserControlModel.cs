@@ -13,8 +13,10 @@
 
 #nullable enable
 using System;
-using System.Globalization;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Input;
@@ -22,15 +24,17 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using HandyControl.Controls;
 using HandyControl.Tools;
+using JetBrains.Annotations;
 using MaaWpfGui.Configuration.Factory;
 using MaaWpfGui.Constants;
 using MaaWpfGui.Helper;
+using MaaWpfGui.Models;
 using MaaWpfGui.Utilities;
 using MaaWpfGui.Utilities.ValueType;
 using Microsoft.Win32;
 using Serilog;
 using Stylet;
-using MonetModeType = MaaWpfGui.Configuration.Global.GUI.MonetModeType;
+using MonetModeType = MaaWpfGui.Configuration.Global.Gui.MonetModeType;
 
 namespace MaaWpfGui.ViewModels.UserControl.Settings;
 
@@ -62,14 +66,11 @@ public class BackgroundSettingsUserControlModel : PropertyChangedBase
 
     public static BackgroundSettingsUserControlModel Instance { get; }
 
-    private static string _backgroundImagePath = ConfigurationHelper.GetGlobalValue(ConfigurationKeys.BackgroundImagePath, "background/background.png");
-
     public string BackgroundImagePath
     {
-        get => _backgroundImagePath;
-        set {
-            SetAndNotify(ref _backgroundImagePath, value);
-            ConfigurationHelper.SetGlobalValue(ConfigurationKeys.BackgroundImagePath, value);
+        get; set {
+            SetAndNotify(ref field, value);
+            ConfigFactory.Root.Gui.Background.ImagePath = value;
             BackgroundImage = RefreshBackgroundImage(value);
 
             // 背景图变更后，若莫奈自动取色开启，重新提取主色
@@ -77,12 +78,12 @@ public class BackgroundSettingsUserControlModel : PropertyChangedBase
 
             AchievementTrackerHelper.Instance.Unlock(AchievementIds.CustomizationMaster);
         }
-    }
+    } = ConfigFactory.Root.Gui.Background.ImagePath;
 
     public void SelectImagePath()
     {
         var dialog = new OpenFileDialog {
-            Filter = "Image|*.jpg;*.png",
+            Filter = "Image|*.jpg;*.jpeg;*.png;*.bmp;*.gif;*.webp",
         };
 
         if (dialog.ShowDialog() == true)
@@ -91,7 +92,181 @@ public class BackgroundSettingsUserControlModel : PropertyChangedBase
         }
     }
 
-    private static BitmapImage? _backgroundImage = RefreshBackgroundImage(_backgroundImagePath);
+    /// <summary>
+    /// 背景图片下拉树数据源，读取 <c>Res/Backgrounds</c>。
+    /// <c>Wallpapers</c> 只展开其子目录/图片，不作为折叠节点；<c>Internal</c> 跳过。
+    /// </summary>
+    public ObservableCollection<BackgroundImageItem> BackgroundImageItems { get; } = [];
+
+    /// <summary>
+    /// 背景图片下拉 Popup 是否打开。
+    /// </summary>
+    public bool IsBackgroundImagePopupOpen { get => field; set => SetAndNotify(ref field, value); }
+
+    private static readonly string BackgroundsRoot = Path.Combine(PathsHelper.BaseDir, "Res", "Backgrounds");
+
+    /// <summary>
+    /// 这些目录本身不显示，只把内部子项提升到上一级。
+    /// </summary>
+    private static readonly HashSet<string> FlattenDirectoryNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Wallpapers",
+    };
+
+    /// <summary>
+    /// 内部资源目录，不出现在用户可选列表中。
+    /// </summary>
+    private static readonly HashSet<string> SkippedDirectoryNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Internal",
+    };
+
+    private static readonly string[] SupportedImageExtensions = [".jpg", ".jpeg", ".png", ".bmp", ".gif", ".webp"];
+
+    /// <summary>
+    /// 加载 <c>Res/Backgrounds</c> 下的文件夹与图片，供下拉 TreeView 使用。
+    /// </summary>
+    [UsedImplicitly]
+    public void LoadBackgroundImageItems()
+    {
+        try
+        {
+            BackgroundImageItems.Clear();
+
+            if (!Directory.Exists(BackgroundsRoot))
+            {
+                Directory.CreateDirectory(BackgroundsRoot);
+                return;
+            }
+
+            AddDirectoryContent(BackgroundsRoot, BackgroundsRoot, promoteChildrenOfFlattenDirs: true);
+        }
+        catch (Exception ex)
+        {
+            BackgroundImageItems.Clear();
+            _logger.Error(ex, "Failed to load background images from {BackgroundsRoot}", BackgroundsRoot);
+        }
+    }
+
+    /// <summary>
+    /// 将目录内容加入下拉列表。
+    /// </summary>
+    /// <param name="dirPath">当前扫描目录</param>
+    /// <param name="relativeRoot">相对路径根（Backgrounds）</param>
+    /// <param name="promoteChildrenOfFlattenDirs">是否对 Wallpapers 等目录做一层展开</param>
+    private void AddDirectoryContent(string dirPath, string relativeRoot, bool promoteChildrenOfFlattenDirs)
+    {
+        foreach (var file in Directory.GetFiles(dirPath)
+                     .Where(IsSupportedImage)
+                     .OrderBy(Path.GetFileName, StringComparer.CurrentCultureIgnoreCase))
+        {
+            BackgroundImageItems.Add(CreateFileItem(file, relativeRoot));
+        }
+
+        foreach (var dir in Directory.GetDirectories(dirPath)
+                     .OrderBy(Path.GetFileName, StringComparer.CurrentCultureIgnoreCase))
+        {
+            var dirName = Path.GetFileName(dir);
+            if (SkippedDirectoryNames.Contains(dirName))
+            {
+                continue;
+            }
+
+            // Wallpapers 等容器目录：不生成折叠节点，直接提升其子目录/图片
+            if (promoteChildrenOfFlattenDirs && FlattenDirectoryNames.Contains(dirName))
+            {
+                AddDirectoryContent(dir, relativeRoot, promoteChildrenOfFlattenDirs: false);
+                continue;
+            }
+
+            var folderItem = LoadBackgroundFolderItem(dir, relativeRoot);
+            if (folderItem != null)
+            {
+                BackgroundImageItems.Add(folderItem);
+            }
+        }
+    }
+
+    private static BackgroundImageItem CreateFileItem(string filePath, string relativeRoot)
+    {
+        return new BackgroundImageItem {
+            Name = Path.GetFileName(filePath),
+            FullPath = filePath,
+            RelativePath = Path.GetRelativePath(relativeRoot, filePath),
+            IsFolder = false,
+        };
+    }
+
+    /// <summary>
+    /// 递归加载背景图片文件夹项。
+    /// </summary>
+    /// <param name="dirPath">文件夹路径</param>
+    /// <param name="relativeRoot">相对路径根</param>
+    /// <returns>文件夹项；若为空则返回 null</returns>
+    private static BackgroundImageItem? LoadBackgroundFolderItem(string dirPath, string relativeRoot)
+    {
+        var folderItem = new BackgroundImageItem {
+            Name = Path.GetFileName(dirPath),
+            IsFolder = true,
+        };
+
+        foreach (var file in Directory.GetFiles(dirPath)
+                     .Where(IsSupportedImage)
+                     .OrderBy(Path.GetFileName, StringComparer.CurrentCultureIgnoreCase))
+        {
+            folderItem.Children.Add(CreateFileItem(file, relativeRoot));
+        }
+
+        foreach (var subDir in Directory.GetDirectories(dirPath)
+                     .OrderBy(Path.GetFileName, StringComparer.CurrentCultureIgnoreCase))
+        {
+            var subFolderItem = LoadBackgroundFolderItem(subDir, relativeRoot);
+            if (subFolderItem != null)
+            {
+                folderItem.Children.Add(subFolderItem);
+            }
+        }
+
+        return folderItem.Children.Count == 0 ? null : folderItem;
+    }
+
+    private static bool IsSupportedImage(string path)
+    {
+        var ext = Path.GetExtension(path);
+        return SupportedImageExtensions.Any(supported => ext.Equals(supported, StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
+    /// 处理 TreeView 中选中的背景图片。
+    /// </summary>
+    /// <param name="imageItem">选中的图片项</param>
+    [UsedImplicitly]
+    public void OnBackgroundImageSelected(BackgroundImageItem? imageItem)
+    {
+        if (imageItem == null || imageItem.IsFolder || string.IsNullOrEmpty(imageItem.FullPath))
+        {
+            return;
+        }
+
+        BackgroundImagePath = imageItem.FullPath;
+        IsBackgroundImagePopupOpen = false;
+    }
+
+    /// <summary>
+    /// 切换背景图片下拉 Popup；打开前刷新目录列表。
+    /// </summary>
+    [UsedImplicitly]
+    public void ToggleBackgroundImagePopup()
+    {
+        if (!IsBackgroundImagePopupOpen)
+        {
+            LoadBackgroundImageItems();
+        }
+
+        IsBackgroundImagePopupOpen = !IsBackgroundImagePopupOpen;
+    }
+
+    private static BitmapImage? _backgroundImage = RefreshBackgroundImage(ConfigFactory.Root.Gui.Background.ImagePath);
 
     public BitmapImage? BackgroundImage
     {
@@ -101,16 +276,13 @@ public class BackgroundSettingsUserControlModel : PropertyChangedBase
         }
     }
 
-    private static Stretch _backgroundImageStretchMode = (Stretch)Enum.Parse(typeof(Stretch), ConfigurationHelper.GetGlobalValue(ConfigurationKeys.BackgroundImageStretchMode, Stretch.Fill.ToString()));
-
     public Stretch BackgroundImageStretchMode
     {
-        get => _backgroundImageStretchMode;
-        set {
-            SetAndNotify(ref _backgroundImageStretchMode, value);
-            ConfigurationHelper.SetGlobalValue(ConfigurationKeys.BackgroundImageStretchMode, value.ToString());
+        get; set {
+            SetAndNotify(ref field, value);
+            ConfigFactory.Root.Gui.Background.StretchMode = value;
         }
-    }
+    } = ConfigFactory.Root.Gui.Background.StretchMode;
 
     public LocalizedObservableList<Stretch> BackgroundImageStretchModeList { get; } = new(
         (Stretch.None, "BackgroundImageStretchModeNone"),
@@ -144,13 +316,10 @@ public class BackgroundSettingsUserControlModel : PropertyChangedBase
         }
     }
 
-    private int _backgroundOpacity = ConfigurationHelper.GetGlobalValue(ConfigurationKeys.BackgroundOpacity, 50);
-
     public int BackgroundOpacity
     {
-        get => _backgroundOpacity;
-        set {
-            SetAndNotify(ref _backgroundOpacity, value);
+        get; set {
+            SetAndNotify(ref field, value);
 
             // 透明度变化后，若莫奈取色开启，重新生成调色板（文字色需根据新的有效背景明度选取）
             // 滑块拖动会高频触发，使用防抖避免阻塞 UI
@@ -159,17 +328,9 @@ public class BackgroundSettingsUserControlModel : PropertyChangedBase
                 ScheduleMonetUpdate();
             }
         }
-    }
+    } = ConfigFactory.Root.Gui.Background.Opacity;
 
-    private static int _backgroundBlurEffectRadius = ConfigurationHelper.GetGlobalValue(ConfigurationKeys.BackgroundBlurEffectRadius, 5);
-
-    public int BackgroundBlurEffectRadius
-    {
-        get => _backgroundBlurEffectRadius;
-        set {
-            SetAndNotify(ref _backgroundBlurEffectRadius, value);
-        }
-    }
+    public int BackgroundBlurEffectRadius { get; set => SetAndNotify(ref field, value); } = ConfigFactory.Root.Gui.Background.BlurEffectRadius;
 
     public void PreviewSlider_MouseUp(object sender, MouseButtonEventArgs e)
     {
@@ -178,8 +339,8 @@ public class BackgroundSettingsUserControlModel : PropertyChangedBase
             return;
         }
 
-        ConfigurationHelper.SetGlobalValue(ConfigurationKeys.BackgroundOpacity, BackgroundOpacity.ToString(CultureInfo.InvariantCulture));
-        ConfigurationHelper.SetGlobalValue(ConfigurationKeys.BackgroundBlurEffectRadius, BackgroundBlurEffectRadius.ToString(CultureInfo.InvariantCulture));
+        ConfigFactory.Root.Gui.Background.Opacity = BackgroundOpacity;
+        ConfigFactory.Root.Gui.Background.BlurEffectRadius = BackgroundBlurEffectRadius;
     }
 
     #region 莫奈取色（Monet Color）
@@ -189,9 +350,9 @@ public class BackgroundSettingsUserControlModel : PropertyChangedBase
     /// </summary>
     public bool BackgroundMonetEnabled
     {
-        get => ConfigFactory.Root.GUI.BackgroundMonetEnabled;
+        get => ConfigFactory.Root.Gui.BackgroundMonetEnabled;
         set {
-            ConfigFactory.Root.GUI.BackgroundMonetEnabled = value;
+            ConfigFactory.Root.Gui.BackgroundMonetEnabled = value;
             NotifyOfPropertyChange();
             UpdateMonet();
         }
@@ -202,9 +363,9 @@ public class BackgroundSettingsUserControlModel : PropertyChangedBase
     /// </summary>
     public MonetModeType BackgroundMonetMode
     {
-        get => ConfigFactory.Root.GUI.BackgroundMonetMode;
+        get => ConfigFactory.Root.Gui.BackgroundMonetMode;
         set {
-            ConfigFactory.Root.GUI.BackgroundMonetMode = value;
+            ConfigFactory.Root.Gui.BackgroundMonetMode = value;
             NotifyOfPropertyChange();
             UpdateMonet();
         }
@@ -228,9 +389,9 @@ public class BackgroundSettingsUserControlModel : PropertyChangedBase
     /// </summary>
     public string BackgroundMonetCustomColor
     {
-        get => ConfigFactory.Root.GUI.BackgroundMonetCustomColor;
+        get => ConfigFactory.Root.Gui.BackgroundMonetCustomColor;
         set {
-            ConfigFactory.Root.GUI.BackgroundMonetCustomColor = value;
+            ConfigFactory.Root.Gui.BackgroundMonetCustomColor = value;
             NotifyOfPropertyChange();
             NotifyOfPropertyChange(nameof(CurrentMonetColor));
         }
@@ -266,7 +427,7 @@ public class BackgroundSettingsUserControlModel : PropertyChangedBase
     /// <returns>持久化缓存的颜色；无缓存或格式无效时返回 null。</returns>
     private static Color? LoadCachedMonetColor()
     {
-        var hex = ConfigFactory.Root.GUI.BackgroundMonetCachedColor;
+        var hex = ConfigFactory.Root.Gui.BackgroundMonetCachedColor;
         if (string.IsNullOrEmpty(hex))
         {
             return null;
@@ -287,7 +448,7 @@ public class BackgroundSettingsUserControlModel : PropertyChangedBase
     /// </summary>
     private static void SaveCachedMonetColor(Color color)
     {
-        ConfigFactory.Root.GUI.BackgroundMonetCachedColor = ThemeHelper.Color2HexString(color);
+        ConfigFactory.Root.Gui.BackgroundMonetCachedColor = ThemeHelper.Color2HexString(color);
     }
 
     /// <summary>

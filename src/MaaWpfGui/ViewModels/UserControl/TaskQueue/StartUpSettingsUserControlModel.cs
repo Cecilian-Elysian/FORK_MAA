@@ -25,6 +25,7 @@ using MaaWpfGui.Helper;
 using MaaWpfGui.Main;
 using MaaWpfGui.Models;
 using MaaWpfGui.Models.AsstTasks;
+using MaaWpfGui.ViewModels.Orchestration;
 using MaaWpfGui.ViewModels.UI;
 using Stylet;
 using static MaaWpfGui.Main.AsstProxy;
@@ -41,21 +42,44 @@ public class StartUpSettingsUserControlModel : TaskSettingsViewModel, StartUpSet
 
     public static StartUpSettingsUserControlModel Instance { get; }
 
+    /// <summary>
+    /// fix/account-cycle-config-source: 直达配置源, 不依赖 TaskSettingVisibilityInfo.CurrentIndex.
+    /// 替代 <see cref="GetTaskConfig{T}"/> 在焦点离开 StartUp 任务时返回默认空实例导致的潜伏 bug
+    /// (切走基建/集成战略再切回一键长草时轮换列表被清空, RebuildCycleSteps 生成 0 步骤, 静默跳过).
+    /// </summary>
+    private static StartUpTask? CycleConfig =>
+        ConfigFactory.CurrentConfig.TaskQueue.OfType<StartUpTask>().FirstOrDefault();
+
     #region Account Switch (Single)
 
     public string AccountName
     {
-        get => GetTaskConfig<StartUpTask>().AccountName;
-        set {
-            value = value.Trim();
-            SetTaskConfig<StartUpTask>(t => t.AccountName == value, t => t.AccountName = value);
+        get => CycleConfig?.AccountName ?? string.Empty;
+        set
+        {
+            if (CycleConfig == null)
+            {
+                return;
+            }
+
+            CycleConfig.AccountName = value.Trim();
+            NotifyOfPropertyChange();
         }
     }
 
     public bool AccountSwitchEnabled
     {
-        get => GetTaskConfig<StartUpTask>().AccountSwitchEnabled ?? false;
-        set => SetTaskConfig<StartUpTask>(t => t.AccountSwitchEnabled == value, t => t.AccountSwitchEnabled = value);
+        get => CycleConfig?.AccountSwitchEnabled ?? false;
+        set
+        {
+            if (CycleConfig == null)
+            {
+                return;
+            }
+
+            CycleConfig.AccountSwitchEnabled = value;
+            NotifyOfPropertyChange();
+        }
     }
 
     [UsedImplicitly]
@@ -80,8 +104,7 @@ public class StartUpSettingsUserControlModel : TaskSettingsViewModel, StartUpSet
             Instances.TaskQueueViewModel.AddLog("Current task is not StartUpTask", UiLogColor.Error);
             return;
         }
-
-        var singleTask = new StartUpTask() { AccountSwitchEnabled = true, AccountName = startUp.AccountName };
+var singleTask = new StartUpTask() { AccountSwitchEnabled = true, AccountName = startUp.AccountName };
         await Instances.TaskQueueViewModel.LinkStartWithTasks([singleTask]);
     }
 
@@ -90,15 +113,25 @@ public class StartUpSettingsUserControlModel : TaskSettingsViewModel, StartUpSet
     #region Account Cycle
 
     private readonly ObservableCollection<AccountCycleItem> _accountCycleItems = [];
-    private readonly HashSet<string> _completedAccounts = [];
-    private bool _isCycling;
+
+    /// <summary>
+    /// feat/account-cycle-refactor: 委托给 <see cref="AccountCycleOrchestrator.Instance"/> 管理
+    /// 步骤列表 / 完成集合 / IsCycling 等轮换状态. 本类仅负责 UI 项列表 (<c>_accountCycleItems</c>)
+    /// 与勾选/编辑交互.
+    /// </summary>
+    private static AccountCycleOrchestrator Orchestrator => AccountCycleOrchestrator.Instance;
 
     public bool AccountCycleEnabled
     {
-        get => GetTaskConfig<StartUpTask>().AccountCycleEnabled;
+        get => CycleConfig?.AccountCycleEnabled ?? true;
         set
         {
-            SetTaskConfig<StartUpTask>(t => t.AccountCycleEnabled == value, t => t.AccountCycleEnabled = value);
+            if (CycleConfig == null)
+            {
+                return;
+            }
+
+            CycleConfig.AccountCycleEnabled = value;
             if (!value)
             {
                 ResetCycle();
@@ -114,10 +147,17 @@ public class StartUpSettingsUserControlModel : TaskSettingsViewModel, StartUpSet
     /// </summary>
     public bool LateStageRogueAndReclamation
     {
-        get => GetTaskConfig<StartUpTask>().LateStageRogueAndReclamation;
-        set => SetTaskConfig<StartUpTask>(
-            t => t.LateStageRogueAndReclamation == value,
-            t => t.LateStageRogueAndReclamation = value);
+        get => CycleConfig?.LateStageRogueAndReclamation ?? false;
+        set
+        {
+            if (CycleConfig == null)
+            {
+                return;
+            }
+
+            CycleConfig.LateStageRogueAndReclamation = value;
+            NotifyOfPropertyChange();
+        }
     }
 
     public bool ShowEditSection
@@ -159,9 +199,88 @@ public class StartUpSettingsUserControlModel : TaskSettingsViewModel, StartUpSet
         SyncAccountNamesToItems();
     }
 
+    /// <summary>
+    /// feat/account-cycle-refactor: 委托到 Orchestrator.
+    /// </summary>
+    public bool IsCycling
+    {
+        get => Orchestrator.IsCycling;
+        set => Orchestrator.IsCycling = value;
+    }
+
+    /// <summary>feat/account-cycle-refactor: 委托到 Orchestrator.</summary>
+    public int CurrentStepCount => Orchestrator.CurrentStepCount;
+
+    /// <summary>feat/account-cycle-refactor: 委托到 Orchestrator.</summary>
+    public int CurrentStepIndex => Orchestrator.CurrentStepIndex;
+
+    /// <summary>feat/account-cycle-refactor: 委托到 Orchestrator.</summary>
+    public AccountCycleStep? CurrentStep => Orchestrator.CurrentStep;
+
+    /// <summary>feat/account-cycle-refactor: 委托到 Orchestrator.</summary>
+    public AccountCycleStep? GetPreviousStep() => Orchestrator.GetPreviousStep();
+
+    /// <summary>feat/account-cycle-refactor: 委托到 Orchestrator.</summary>
+    public int CurrentPhase => Orchestrator.CurrentPhase;
+
+    /// <summary>feat/account-cycle-refactor: 委托到 Orchestrator.</summary>
+    public void RebuildCycleSteps() => Orchestrator.RebuildCycleSteps(
+        _accountCycleItems
+            .Where(x => x.IsSelected && !string.IsNullOrEmpty(x.AccountName))
+            .OrderBy(x => x.Index)
+            .Select(x => x.AccountName),
+        LateStageRogueAndReclamation
+            && ConfigFactory.CurrentConfig.TaskQueue.Any(t =>
+                IsTaskEnable(t) &&
+                (t.TaskType == TaskType.Roguelike || t.TaskType == TaskType.Reclamation)));
+
+    /// <summary>feat/account-cycle-refactor: 委托到 Orchestrator.</summary>
+    public void AdvanceStepIndex() => Orchestrator.AdvanceStepIndex();
+
     public void SyncAccountNamesToItems()
     {
-        var config = GetTaskConfig<StartUpTask>();
+        var config = CycleConfig;
+        if (config == null)
+        {
+            // fix/account-cycle-config-source: 无 StartUp 任务时清空轮换列表 (避免 UI 残留)
+            _accountCycleItems.Clear();
+            NotifyOfPropertyChange(nameof(AccountCycleItems));
+            return;
+        }
+
+        // fix/trim-account-name: 迁移清理历史脏数据 (账号名尾随空格/制表符/换行)
+        // 清理后对首个受影响账号打 INFO 日志便于用户感知, 后续步骤不再感知
+        // (MaaCore set_account 也已 Trim, 此处是配置层根治, 让 UI 也立即显示干净账号名)
+        bool trimmedFirstAccount = false;
+        for (int i = 0; i < config.AccountNames.Count; i++)
+        {
+            var original = config.AccountNames[i];
+            var trimmed = original?.Trim();
+            if (trimmed != original)
+            {
+                if (!trimmedFirstAccount && !string.IsNullOrEmpty(trimmed))
+                {
+                    Instances.TaskQueueViewModel.AddLog(
+                        $"[fix/trim-account-name] AccountNames[{i}] 已去除首尾空白: \"{original}\" → \"{trimmed}\"",
+                        UiLogColor.Info);
+                    trimmedFirstAccount = true;
+                }
+                config.AccountNames[i] = trimmed ?? string.Empty;
+            }
+        }
+
+        if (!string.IsNullOrEmpty(config.AccountName))
+        {
+            var originalAcctName = config.AccountName;
+            var trimmedAcctName = originalAcctName.Trim();
+            if (trimmedAcctName != originalAcctName)
+            {
+                Instances.TaskQueueViewModel.AddLog(
+                    $"[fix/trim-account-name] AccountName 已去除首尾空白: \"{originalAcctName}\" → \"{trimmedAcctName}\"",
+                    UiLogColor.Info);
+                config.AccountName = trimmedAcctName;
+            }
+        }
 
         // 从单账号切换复制账号名到轮换列表第一项
         if (config.AccountNames.Count > 0 && string.IsNullOrEmpty(config.AccountNames[0]) && !string.IsNullOrEmpty(config.AccountName))
@@ -180,19 +299,34 @@ public class StartUpSettingsUserControlModel : TaskSettingsViewModel, StartUpSet
             .ToDictionary(x => x.AccountName, x => x.IsSelected);
 
         _accountCycleItems.Clear();
+
+        // fix/account-cycle-fault-tolerance (C4): 重名校验, 保留首次出现, 后续同名取消勾选并提示
+        var seenNames = new HashSet<string>(System.StringComparer.Ordinal);
+        int duplicateCount = 0;
         for (int i = 0; i < config.AccountNames.Count; i++)
         {
             var name = config.AccountNames[i];
+            bool isDuplicate = !string.IsNullOrEmpty(name) && !seenNames.Add(name);
+            if (isDuplicate)
+            {
+                duplicateCount++;
+            }
+
             var item = new AccountCycleItem
             {
                 DisplayName = LocalizationHelper.GetString("AccountCycleNewAccountDefaultName") + (i + 1),
                 AccountName = name,
-                IsSelected = existingSelections.TryGetValue(name, out var selected) ? selected : true,
-                IsCompleted = _completedAccounts.Contains(name),
+                IsSelected = !isDuplicate && (existingSelections.TryGetValue(name, out var selected) ? selected : true),
+                IsCompleted = Orchestrator.IsAccountCompleted(name),
                 Index = i,
             };
             item.PropertyChanged += OnAccountCycleItemPropertyChanged;
             _accountCycleItems.Add(item);
+        }
+
+        if (duplicateCount > 0)
+        {
+            Instances.TaskQueueViewModel.AddLog($"[Cycle] Warning: {duplicateCount} duplicate account name(s) detected, duplicates have been deselected.", UiLogColor.Warning);
         }
 
         NotifyOfPropertyChange(nameof(AccountCycleItems));
@@ -205,18 +339,23 @@ public class StartUpSettingsUserControlModel : TaskSettingsViewModel, StartUpSet
             return;
         }
 
-        var config = GetTaskConfig<StartUpTask>();
-        if (item.Index < config.AccountNames.Count)
+        var config = CycleConfig;
+        if (config != null && item.Index < config.AccountNames.Count)
         {
             config.AccountNames[item.Index] = item.AccountName;
-            SetTaskConfig<StartUpTask>(_ => false, _ => { });
+            NotifyOfPropertyChange(nameof(AccountCycleItems));
         }
     }
 
     [UsedImplicitly]
     public void AddAccountAfter(AccountCycleItem currentItem)
     {
-        var config = GetTaskConfig<StartUpTask>();
+        var config = CycleConfig;
+        if (config == null)
+        {
+            return;
+        }
+
         int insertIndex = currentItem?.Index + 1 ?? config.AccountNames.Count;
 
         config.AccountNames.Insert(insertIndex, string.Empty);
@@ -233,25 +372,28 @@ public class StartUpSettingsUserControlModel : TaskSettingsViewModel, StartUpSet
         _accountCycleItems.Insert(insertIndex, newItem);
 
         RebuildIndexes();
-        SetTaskConfig<StartUpTask>(_ => false, _ => { });
+        NotifyOfPropertyChange(nameof(AccountCycleItems));
     }
 
     [UsedImplicitly]
     public void RemoveAccount(AccountCycleItem item)
     {
-        var config = GetTaskConfig<StartUpTask>();
+        var config = CycleConfig;
+        if (config == null)
+        {
+            return;
+        }
 
         if (item.Index < config.AccountNames.Count)
         {
             config.AccountNames.RemoveAt(item.Index);
         }
 
-        _completedAccounts.Remove(item.AccountName);
         item.PropertyChanged -= OnAccountCycleItemPropertyChanged;
         _accountCycleItems.Remove(item);
 
         RebuildIndexes();
-        SetTaskConfig<StartUpTask>(_ => false, _ => { });
+        NotifyOfPropertyChange(nameof(AccountCycleItems));
     }
 
     private void RebuildIndexes()
@@ -271,6 +413,7 @@ public class StartUpSettingsUserControlModel : TaskSettingsViewModel, StartUpSet
             .FirstOrDefault()?.AccountName;
     }
 
+    /// <summary>feat/account-cycle-refactor: 委托到 Orchestrator, 同时更新 UI 项.</summary>
     public void MarkAccountCompleted(string accountName)
     {
         if (string.IsNullOrEmpty(accountName))
@@ -278,7 +421,7 @@ public class StartUpSettingsUserControlModel : TaskSettingsViewModel, StartUpSet
             return;
         }
 
-        _completedAccounts.Add(accountName);
+        Orchestrator.MarkAccountCompleted(accountName);
         var item = _accountCycleItems.FirstOrDefault(x => x.AccountName == accountName);
         if (item != null)
         {
@@ -286,115 +429,22 @@ public class StartUpSettingsUserControlModel : TaskSettingsViewModel, StartUpSet
         }
     }
 
-    public void ResetCycle()
-    {
-        _isCycling = false;
-        _cycleSteps.Clear();
-        _currentStepIndex = -1;
-        ClearCompletedAccounts();
-    }
+    /// <summary>feat/account-cycle-refactor: 委托到 Orchestrator.</summary>
+    public void ResetCycle() => Orchestrator.ResetCycle();
 
+    /// <summary>feat/account-cycle-refactor: 委托到 Orchestrator + 重置 UI 项.</summary>
     public void ClearCompletedAccounts()
     {
-        _completedAccounts.Clear();
+        Orchestrator.ClearCompletedAccounts();
         foreach (var item in _accountCycleItems)
         {
             item.IsCompleted = false;
         }
     }
 
-    public bool IsCycling
-    {
-        get => _isCycling;
-        set => SetAndNotify(ref _isCycling, value);
-    }
-
     #endregion
-
-    #region Late Stage (Phase 1 / Phase 2 cycle steps)
-
-    private readonly List<AccountCycleStep> _cycleSteps = [];
-    private int _currentStepIndex = -1;
-
-    /// <summary>
-    /// 当前步骤总数(<c>RebuildCycleSteps</c> 后有效)。
-    /// </summary>
-    public int CurrentStepCount => _cycleSteps.Count;
-
-    /// <summary>
-    /// 当前正在执行或即将执行的步骤的索引。<c>-1</c> 表示尚未开始。
-    /// </summary>
-    public int CurrentStepIndex => _currentStepIndex;
-
-    /// <summary>
-    /// 当前正在执行或即将执行的步骤。<c>-1</c> 表示尚未开始。
-    /// </summary>
-    public AccountCycleStep? CurrentStep =>
-        _currentStepIndex >= 0 && _currentStepIndex < _cycleSteps.Count
-            ? _cycleSteps[_currentStepIndex]
-            : null;
-
-    /// <summary>
-    /// 上一个步骤,用于判断是否需要跨账号切号。无返回 <c>null</c>。
-    /// </summary>
-    public AccountCycleStep? GetPreviousStep() =>
-        _currentStepIndex - 1 >= 0 ? _cycleSteps[_currentStepIndex - 1] : null;
-
-    /// <summary>
-    /// 当前步骤的 Phase (1 = 基础任务, 2 = 收尾任务)。未启动时返回 1。
-    /// </summary>
-    public int CurrentPhase => CurrentStep?.Phase ?? 1;
-
-    /// <summary>
-    /// 根据当前勾选账号与 <see cref="LateStageRogueAndReclamation"/> 重新构建扁平步骤列表。
-    /// Phase 1 = 所有账号的基础任务 (1 个 step/账号);
-    /// Phase 2 = 当开关开启且至少有 1 个肉鸽/生息任务勾选时,每个账号各加 1 个 step。
-    /// </summary>
-    public void RebuildCycleSteps()
-    {
-        _cycleSteps.Clear();
-
-        var accounts = _accountCycleItems
-            .Where(x => x.IsSelected && !string.IsNullOrEmpty(x.AccountName))
-            .OrderBy(x => x.Index)
-            .Select(x => x.AccountName)
-            .ToList();
-
-        // Phase 1: 每个账号各 1 个 step
-        foreach (var acc in accounts)
-        {
-            _cycleSteps.Add(new AccountCycleStep(acc, 1));
-        }
-
-        // Phase 2: 仅当开关开启 + 至少勾了肉鸽/生息时, 每个账号各加 1 个 step
-        if (LateStageRogueAndReclamation
-            && ConfigFactory.CurrentConfig.TaskQueue.Any(t =>
-                IsTaskEnable(t) &&
-                (t.TaskType == TaskType.Roguelike || t.TaskType == TaskType.Reclamation)))
-        {
-            foreach (var acc in accounts)
-            {
-                _cycleSteps.Add(new AccountCycleStep(acc, 2));
-            }
-        }
-
-        _currentStepIndex = _cycleSteps.Count > 0 ? 0 : -1;
-    }
-
-    /// <summary>
-    /// 将步骤索引推进 1,准备下一轮任务的提交。
-    /// </summary>
-    public void AdvanceStepIndex()
-    {
-        if (_currentStepIndex >= 0)
-        {
-            _currentStepIndex++;
-        }
-    }
 
     private static bool IsTaskEnable(BaseTask t) => TaskQueueViewModel.IsTaskEnable(t);
-
-    #endregion
 
     public void ProcSubTaskMsg(AsstMsg msg, AsstSubTaskMsg? details)
     {
@@ -424,7 +474,7 @@ public class StartUpSettingsUserControlModel : TaskSettingsViewModel, StartUpSet
             }
 
             var clientType = SettingsViewModel.GameSettings.ClientType;
-            var accountName = !SettingsViewModel.ConnectSettings.UseAttachWindow &&
+            var accountName = !SettingsViewModel.ConnectSettings.IsPCConnectConfig &&
                 clientType is ClientType.Official or ClientType.Bilibili or ClientType.Txwy &&
                 startUp.AccountSwitchEnabled is true
                     ? startUp.AccountName

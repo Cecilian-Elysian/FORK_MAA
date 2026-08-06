@@ -27,6 +27,7 @@ using System.Text.Unicode;
 using System.Threading;
 using System.Threading.Tasks;
 using MaaWpfGui.Configuration.Converter;
+using MaaWpfGui.Configuration.Converter.Specific;
 using MaaWpfGui.Configuration.Single;
 using MaaWpfGui.Configuration.Single.MaaTask;
 using MaaWpfGui.Helper;
@@ -62,7 +63,7 @@ public static class ConfigFactory
     // ReSharper disable once EventNeverSubscribedTo.Global
     public static event ConfigurationUpdateEventHandler? ConfigurationUpdateEvent;
 
-    private static readonly JsonSerializerOptions _options = new() { WriteIndented = true, Converters = { new RecruitTaskHoldTagsConverter(), new FightTaskStageResetModeConverter(), new FaultTolerantRootConverter(), new TolerantEnumConverterFactory(), new FightTaskStageResetModeInvalidToIgnoreConverter() }, Encoder = JavaScriptEncoder.Create(UnicodeRanges.All), DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull, TypeInfoResolver = new DefaultJsonTypeInfoResolver { Modifiers = { JsonPredictSerializationModifier.Modify } } };
+    private static readonly JsonSerializerOptions _options = new() { WriteIndented = true, Converters = { new DiscordWebhookFixConverter(), new GlobalGuiRenameConverter(), new RecruitTaskHoldTagsConverter(), new FightTaskStageResetModeConverter(), new FaultTolerantRootConverter(), new TolerantEnumConverterFactory(), new FightTaskStageResetModeInvalidToIgnoreConverter() }, Encoder = JavaScriptEncoder.Create(UnicodeRanges.All), DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull, TypeInfoResolver = new DefaultJsonTypeInfoResolver { Modifiers = { JsonPredictSerializationModifier.Modify } } };
 
     private static readonly List<string> _brokenConfigs = [];
 
@@ -123,7 +124,8 @@ public static class ConfigFactory
                 parsed.Configurations.Add(parsed.Current, new SpecificConfig());
             }
 
-            parsed.PropertyChanged += OnPropertyChangedFactory("Root.");
+            parsed.PropertyChanged += Handler.OnPropertyChangedFactory("Root.");
+            parsed.EventBinding("Root.");
             parsed.Configurations.CollectionChanged += (in NotifyCollectionChangedEventArgs<KeyValuePair<string, SpecificConfig>> args) => {
                 switch (args.Action)
                 {
@@ -153,11 +155,6 @@ public static class ConfigFactory
                 OnPropertyChanged("Root.Configurations." + args.NewItem.Key, args.OldItem.Value, args.NewItem.Value);
             };
 
-            parsed.Timers.CollectionChanged += OnCollectionChangedFactory<int, Global.Timer>("Root.Timers.");
-            parsed.VersionUpdate.PropertyChanged += OnPropertyChangedFactory();
-            parsed.AnnouncementInfo.PropertyChanged += OnPropertyChangedFactory();
-            parsed.GUI.PropertyChanged += OnPropertyChangedFactory();
-
             foreach (var keyValue in parsed.Configurations)
             {
                 SpecificConfigBind(keyValue.Key, keyValue.Value);
@@ -179,41 +176,12 @@ public static class ConfigFactory
                 parsed.Configurations.Add(parsed.Current, new SpecificConfig());
             }
 
-            if (ParseJsonFile(ConfigurationHelper.ConfigFile) is JsonObject oldConfigJson && oldConfigJson["Configurations"] is JsonObject configurationsObj)
-            {
-                var configNames = configurationsObj.Select(i => i.Key);
-                foreach (var name in parsed.Configurations.Select(i => i.Key).Except(configNames))
-                {
-                    _brokenConfigs.Add(name);
-                    ConfigurationHelper.AddConfiguration(name, parsed.Current); // old config补全
-                    _logger.Information("Config {ConfigName} does not exist in old configuration, add into old configuration copy from {Current}", name, parsed.Current);
-                }
-
-                foreach (var name in configNames)
-                {
-                    if (!parsed.Configurations.ContainsKey(name))
-                    {
-                        _brokenConfigs.Add(name);
-                        parsed.Configurations.Add(name, parsed.CurrentConfig); // new config补全
-                        _logger.Information("Config {ConfigName} exists in old configuration but not in new config, copy from {Current}", name, parsed.Current);
-                    }
-                }
-                if (oldConfigJson["Current"]?.GetValue<string>() is string oldCurrent && parsed.Current != oldCurrent)
-                {
-                    _logger.Warning("Current configuration in old configuration is {OldCurrent}, but in new config is {NewCurrent}, switching to old current", oldCurrent, parsed.Current);
-                    ConfigurationHelper.SwitchConfiguration(parsed.Current); // 检查 Current 一致性
-                }
-            }
-
             return parsed;
 
             void SpecificConfigBind(string name, SpecificConfig config)
             {
                 var key = "Root.Configurations." + name + ".";
-                config.PropertyChanged += OnPropertyChangedFactory(key);
-                config.DragItemIsChecked.CollectionChanged += OnCollectionChangedFactory<string, bool>(key + nameof(SpecificConfig.DragItemIsChecked) + ".");
-                config.InfrastOrder.CollectionChanged += OnCollectionChangedFactory<string, int>(key + nameof(SpecificConfig.InfrastOrder) + ".");
-
+                config.EventBinding(key);
                 config.TaskQueue.CollectionChanged += (in NotifyCollectionChangedEventArgs<BaseTask> args) => {
                     switch (args.Action)
                     {
@@ -221,13 +189,13 @@ public static class ConfigFactory
                         case NotifyCollectionChangedAction.Replace:
                             if (args.IsSingleItem)
                             {
-                                args.NewItem.PropertyChanged += TaskQueueItemOnPropertyChangedFactory(config.TaskQueue, key);
+                                args.NewItem.PropertyChanged += Handler.TaskQueueItemOnPropertyChangedFactory(config.TaskQueue, key);
                             }
                             else
                             {
                                 foreach (var value in args.NewItems)
                                 {
-                                    value.PropertyChanged += TaskQueueItemOnPropertyChangedFactory(config.TaskQueue, key);
+                                    value.PropertyChanged += Handler.TaskQueueItemOnPropertyChangedFactory(config.TaskQueue, key);
                                 }
                             }
                             OnPropertyChanged($"({args.Action}){key}TaskQueue[{args.NewStartingIndex}]", args.OldItem, args.NewItem);
@@ -245,7 +213,7 @@ public static class ConfigFactory
                 };
                 foreach (var task in config.TaskQueue)
                 {
-                    task.PropertyChanged += TaskQueueItemOnPropertyChangedFactory(config.TaskQueue, key);
+                    task.PropertyChanged += Handler.TaskQueueItemOnPropertyChangedFactory(config.TaskQueue, key);
                 }
             }
 
@@ -284,61 +252,78 @@ public static class ConfigFactory
         return messages;
     }
 
-    private static PropertyChangedEventHandler OnPropertyChangedFactory(string key, object? oldValue, object? newValue)
+    public static class Handler
     {
-        return (o, args) => {
-            var after = newValue;
-            if (after == null && args is PropertyChangedEventDetailArgs detailArgs)
-            {
-                after = detailArgs.NewValue;
-            }
+        public static PropertyChangedEventHandler OnPropertyChangedFactory(string key, object? oldValue, object? newValue)
+        {
+            return (o, args) => {
+                var after = newValue;
+                if (after == null && args is PropertyChangedEventDetailArgs detailArgs)
+                {
+                    after = detailArgs.NewValue;
+                }
 
-            OnPropertyChanged(key + args.PropertyName, oldValue, after);
-        };
-    }
+                OnPropertyChanged(key + args.PropertyName, oldValue, after);
+            };
+        }
 
-    private static PropertyChangedEventHandler OnPropertyChangedFactory(string key = "")
-    {
-        return (o, args) => {
-            object? oldValue = null;
-            object? newValue = null;
-            if (args is PropertyChangedEventDetailArgs detailArgs)
-            {
-                oldValue = detailArgs.OldValue;
-                newValue = detailArgs.NewValue;
-            }
+        public static PropertyChangedEventHandler OnPropertyChangedFactory(string key = "")
+        {
+            return (o, args) => {
+                object? oldValue = null;
+                object? newValue = null;
+                if (args is PropertyChangedEventDetailArgs detailArgs)
+                {
+                    oldValue = detailArgs.OldValue;
+                    newValue = detailArgs.NewValue;
+                }
 
-            OnPropertyChanged(key + o?.GetType().Name + "." + args.PropertyName, oldValue, newValue);
-        };
-    }
+                OnPropertyChanged(key + o?.GetType().Name + "." + args.PropertyName, oldValue, newValue);
+            };
+        }
 
-    private static PropertyChangedEventHandler TaskQueueItemOnPropertyChangedFactory(ObservableList<BaseTask> taskQueue, string key = "")
-    {
-        return (o, args) => {
-            object? oldValue = null;
-            object? newValue = null;
-            if (args is PropertyChangedEventDetailArgs detailArgs)
-            {
-                oldValue = detailArgs.OldValue;
-                newValue = detailArgs.NewValue;
-            }
+        public static PropertyChangedEventHandler TaskQueueItemOnPropertyChangedFactory(ObservableList<BaseTask> taskQueue, string key = "")
+        {
+            return (o, args) => {
+                object? oldValue = null;
+                object? newValue = null;
+                if (args is PropertyChangedEventDetailArgs detailArgs)
+                {
+                    oldValue = detailArgs.OldValue;
+                    newValue = detailArgs.NewValue;
+                }
 
-            int index = -1;
-            var taskName = string.Empty;
-            if (o is BaseTask task)
-            {
-                index = taskQueue.IndexOf(task);
-                taskName = task.Name;
-            }
-            OnPropertyChanged($"{key}[{index}]{taskName}({o?.GetType().Name})." + args.PropertyName, oldValue, newValue);
-        };
-    }
+                int index = -1;
+                var taskName = string.Empty;
+                if (o is BaseTask task)
+                {
+                    index = taskQueue.IndexOf(task);
+                    taskName = task.Name;
+                }
+                OnPropertyChanged($"{key}[{index}]{taskName}({o?.GetType().Name})." + args.PropertyName, oldValue, newValue);
+            };
+        }
 
-    private static NotifyCollectionChangedEventHandler<KeyValuePair<T1, T2>> OnCollectionChangedFactory<T1, T2>(string key)
-    {
-        return (in NotifyCollectionChangedEventArgs<KeyValuePair<T1, T2>> args) => {
-            OnPropertyChanged(key + args.NewItem.Key, args.OldItem.Value, args.NewItem.Value);
-        };
+        public static NotifyCollectionChangedEventHandler OnCollectionChangedFactory<T>(string key)
+        {
+            return (object? sender, NotifyCollectionChangedEventArgs e) => {
+                OnPropertyChanged(key + $"[{e.NewStartingIndex}].", e.OldItems?.Count > 0 ? e.OldItems : null, e.NewItems?.Count > 0 ? e.NewItems : null);
+            };
+        }
+
+        public static NotifyCollectionChangedEventHandler<T> OnObservableChangedFactory<T>(string key)
+        {
+            return (in NotifyCollectionChangedEventArgs<T> e) => {
+                OnPropertyChanged(key + $"[{e.NewStartingIndex}]", e.OldItem, e.NewItem);
+            };
+        }
+
+        public static NotifyCollectionChangedEventHandler<KeyValuePair<T1, T2>> OnCollectionChangedFactory<T1, T2>(string key)
+        {
+            return (in NotifyCollectionChangedEventArgs<KeyValuePair<T1, T2>> args) => {
+                OnPropertyChanged(key + args.NewItem.Key, args.OldItem.Value, args.NewItem.Value);
+            };
+        }
     }
 
     // ReSharper disable once MemberCanBePrivate.Global

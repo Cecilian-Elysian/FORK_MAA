@@ -69,30 +69,64 @@
                     </Hyperlink>
                 </controls:TextBlock>
             </StackPanel>
-            <StackPanel
-                Grid.Column="1"
-                Margin="5"
-                HorizontalAlignment="Center"
-                VerticalAlignment="Center">
-                <Button
-                    Margin="5,2"
+<StackPanel
+            Grid.Column="1"
+            Margin="5"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center">
+            <Grid Margin="5,2" HorizontalAlignment="Left">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <controls:TextBlock
+                    Grid.Column="0"
+                    Margin="0,0,8,0"
+                    VerticalAlignment="Center"
+                    Text="{DynamicResource DiagnosticDateRange}" />
+                <ComboBox
+                    Grid.Column="1"
+                    Width="120"
                     HorizontalAlignment="Left"
-                    Command="{s:Action GenerateSupportPayload}"
-                    Content="{DynamicResource GenerateSupportPayload}" />
+                    DisplayMemberPath="Display"
+                    ItemsSource="{Binding DateRangeOptions}"
+                    SelectedValue="{Binding DiagnosticDateRange}"
+                    SelectedValuePath="Value" />
+            </Grid>
+            <CheckBox
+                Margin="5,2"
+                HorizontalAlignment="Left"
+                Content="{DynamicResource DiagnosticIncludeConfig}"
+                IsChecked="{Binding IncludeConfig}" />
+            <CheckBox
+                Margin="5,2"
+                HorizontalAlignment="Left"
+                Content="{DynamicResource DiagnosticIncludeCache}"
+                IsChecked="{Binding IncludeCache}" />
+            <CheckBox
+                Margin="5,2"
+                HorizontalAlignment="Left"
+                Content="{DynamicResource DiagnosticIncludeCustomResource}"
+                IsChecked="{Binding IncludeCustomResource}" />
+            <Button
+                Margin="5,2"
+                HorizontalAlignment="Left"
+                Command="{s:Action GenerateSupportPayload}"
+                Content="{DynamicResource GenerateDiagnosticReport}" />
+            <Button
+                Margin="5,2"
+                HorizontalAlignment="Left"
+                Command="{s:Action OpenDebugFolder}"
+                Content="{DynamicResource OpenDebugFolder}" />
+            <StackPanel Margin="5,2" Orientation="Horizontal">
                 <Button
-                    Margin="5,2"
                     HorizontalAlignment="Left"
-                    Command="{s:Action OpenDebugFolder}"
-                    Content="{DynamicResource OpenDebugFolder}" />
-                <StackPanel Margin="5,2" Orientation="Horizontal">
-                    <Button
-                        HorizontalAlignment="Left"
-                        Command="{s:Action ClearImageCache,
-                                           Target={x:Type settings_vms:IssueReportUserControlModel}}"
-                        Content="{DynamicResource ClearImageCache}" />
-                    <controls:TooltipBlock TooltipText="{DynamicResource ClearImageCacheTip}" />
-                </StackPanel>
+                    Command="{s:Action ClearImageCache,
+                                       Target={x:Type settings_vms:IssueReportUserControlModel}}"
+                    Content="{DynamicResource ClearImageCache}" />
+                <controls:TooltipBlock TooltipText="{DynamicResource ClearImageCacheTip}" />
             </StackPanel>
-        </Grid>
-    </StackPanel>
+        </StackPanel>
+    </Grid>
+</StackPanel>
 </UserControl>

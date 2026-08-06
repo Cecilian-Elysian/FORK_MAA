@@ -6,6 +6,9 @@
 
 中文叙述为主，分支名 / 命令 / 协议字段等关键术语保留英文原文。无 emoji、无 vuepress 容器，遵循 `LOG.md` 既有的表格驱动风格。
 
+> **重要约束**：拉取上游新功能（merge `upstream/dev-v2`）**必须**按 [`WORKFLOW.md`](./WORKFLOW.md) 流程执行（§5 graft 假历史关联 + §6 合并手解 + §7 转 git replace + §8 编译验证）。该流程基于 2026-08-06 v6.16.5 合入经验总结，绕过 fork root 无父节点导致的 unrelated histories 问题。
+>
+
 
 ## 1. 项目概述
 
@@ -51,19 +54,66 @@
 | 分支 | 角色 | 备注 |
 |------|------|------|
 | `master` | 上游镜像 | 长期与 `upstream/dev-v2` 保持一致 |
-| `branch` | **本地下游整合** | 所有 feat / fix 最终合并至此 |
-| `feat/<name>` | 新功能 | 从 `branch` 拉出 |
-| `fix/<name>` / `fix/<name>/<n>` | 修复分支 | **必须从对应 `feat/<name>` 拉出**（详见 `§3.3`） |
+| `branch` | **稳定下游基线** | 从 `staging` 攒批晋升 + 与 `master` 上游同步 |
+| `staging` | **待验证整合区** | 所有 feat / fix 的合并目标；攒批测试通过后晋升至 `branch`（详见 `§2.4`） |
+| `feat/<name>` | 新功能 | 从 `branch` 拉出，合并到 `staging` |
+| `fix/<name>` / `fix/<name>/<n>` | 修复分支 | **必须从对应 `feat/<name>` 拉出**（详见 `§3.3`）；合并到 `staging` 或对应 feat |
 
 ### 2.3 已完结 feat 处理
 
-feat 合并到 `branch` 后：
+feat 合并到 `staging` 后：
 
 | 操作 | 说明 |
 |------|------|
 | 本地 | `git branch -d feat/<name>`（已合入，安全删除） |
 | 远端 | 保留不删（便于回溯 / cherry-pick / 行为对比） |
 | 记录 | 写入本文件 `§7` 与 `LOG.md` |
+
+### 2.4 staging 工作流
+
+`staging` 是 `branch` 与 feat / fix 之间的**待验证整合区**，所有 feat / fix 必经此缓冲层才能晋升到 `branch`。
+
+#### 拓扑
+
+```
+master (上游 dev-v2 镜像)
+  │  (rebase / merge 同步节奏不变)
+  ▼
+branch (稳定下游基线) ◄──── 用户手动合并 staging
+  │                                 ▲
+  │                                 │ (合并目标)
+  ▼                                 │
+staging ──── feat/<name>, fix/<name> ← 从 staging 拉出
+```
+
+#### 规则
+
+| 项 | 说明 |
+|----|------|
+| 合并目标 | 所有 feat / fix 一律合并到 `staging`（不直奔 `branch`） |
+| 拉取源 | feat / fix 一律从 `staging` 拉出（继承最新整合区；与原 `branch` 拉出约定对比，详见 §6 `feat/recruit-result-display` 行） |
+| 晋升时机 | `branch` 晋升由用户手动触发；不再自动攒批晋升（变更日 2026-07-30） |
+| 晋升方式 | `staging` → `branch` 由用户执行 `git merge staging --no-ff`；feat/fix → `staging` 自动 `--no-ff` |
+| 出问题回退 | 从远端保留的 `feat/<name>` / `fix/<name>` 重新拉 `fix/<name>/<n>`，仍合并到 `staging` |
+| **上游同步 SOP** | **拉取上游新功能（merge `upstream/dev-v2`）必须按 `WORKFLOW.md` 流程执行**（§5 graft + §6 合并 + §7 replace + §8 编译验证） |
+
+#### 当前待验证内容（截至 2026-08-06 v6.16.5 合入）
+
+`staging` 通过 commit `1abf898ef3` merge `upstream/dev-v2`（v6.16.5），已含：
+- Phase A: 移除 `feat/auto-recruit-3star-to-4star`（commit `3fd8903115`）
+- Phase B: AGENTS/CHANGELOG/csproj/.gitignore 清理（commit `dcb3cc6cb4`）
+- Phase D: 上游 v6.14.0 ~ v6.16.5 共 4467 commit 合入
+
+历史假关联：fork base `c8c8e75be5` 无父节点，通过 `git replace --graft` 接 `6147357bd0`（v6.14.0 upstream release），merge-base = `c8c8e75be5` 走 3-way 合并。
+
+晋升前需实测验证（仅适用于 `staging → branch` 晋升决策）：
+- 多账号切号（官服 + B 服，含新增繁中服支援）
+- 公招加急门槛（`expedite_min_level` fork 字段 + 上游 `expedite`/`expedite_times` 双轨）
+- 招募流程（无 3→4 升级的回归 + 新上游 sortIndex + 库存重构）
+- 刷理智代理倍率 7~10 校验（v6.16.5 新增）
+- LUID GPU OCR + Win32IO 竞态修复（v6.16.5）
+- 资源包拖入更新资源版本（v6.16.5 新增）
+- 工具：`tools/local-install-staging.bat` 部署到 `install-staging/`，启动 `MAA.exe` 跑一遍日常
 
 
 ## 3. 工作流与文档规范
@@ -83,19 +133,24 @@ feat 合并到 `branch` 后：
 
 | # | 步骤 | 产物 |
 |---|------|------|
-| 1 | `git switch -c feat/<name> branch` | 新分支 |
+| 1 | `git switch -c feat/<name> staging` | 新分支 |
+| 1.5 | 查阅 [`docs/downstream-changes.md`](./docs/downstream-changes.md)，确认本次改动文件不在清单「高敏感」段（多轮 feat/fix 反复动过的代码改动需特别谨慎）；如要改动清单中的文件，commit message 注明「downstream: 该文件曾被 feat/fix X 改动，本次改动原因」 | 防回归 |
 | 2 | `LOG.md` 追加「`feat/<name>` 启动」表格 | 启动记录 |
 | 3 | 实施期间 commit message 记录关键决策 | commit 历史 |
 | 4 | 实施完成 `LOG.md` 追加「`feat/<name>` 实施完成」表格（文件路径 + 行号 + commit） | 实施记录 |
-| 5 | 编译 / 部署验证 | `install/` |
-| 6 | FF 合并到 `branch`（无分叉时）；分叉时 `--no-ff` | merge commit |
+| 5 | 编译 / 部署验证 | `install-staging/` |
+| 6 | `--no-ff` 合并到 `staging`（合并目标固定为 staging） | merge commit |
 | 7 | `LOG.md` 记录合并事件，按 `§2.3` 处理 feat 分支 | 生命周期 |
+| 8 | 合并后重跑 `py tools/gen-downstream-changes.py` 刷新 [`docs/downstream-changes.md`](./docs/downstream-changes.md) | 清单维护 |
+
+> **`docs/downstream-changes.md`** 由 `tools/gen-downstream-changes.py` 自动从 `LOG.md` 提取，含文件路径 + 改动次数 + 操作列 + 说明列。改前查它能看清「这个文件之前被谁改过、改过几次」。
 
 ### 3.3 fix 分支命名与合并目标
 
 | 约束 | 说明 |
 |------|------|
 | 来源 | fix **必须从被修复的 `feat/<name>` 拉出**；或从 `branch` 拉出修复 `branch` 自身 |
+| 合并目标 | 修 feat 的 fix → 合并到对应 `feat/<name>`；修 branch 自身的 fix → 合并到 `staging` |
 | 跨多 feat 修复 | 合并目标选**依赖链最下游**的 feat；commit message 与 PR 列出所有涉及 feat |
 
 参考：`fix/account_rotation/修改次数` 同时修复 `feat/account_rotation` 与 `feat/defer-rogue` 交互缺陷，合并目标为 `feat/defer-rogue`（下游），详见 `LOG.md` 2026-07-15 同章节。
@@ -116,7 +171,6 @@ feat 合并到 `branch` 后：
 | C++ 安装 | `cmake --install build` | 部署到 `install/` |
 | WPF | `dotnet publish src/MaaWpfGui/MaaWpfGui.csproj -c Release -p:Platform=x64` | `global.json` 写 `10.0.100` + `rollForward:latestFeature`，本机 10.0.300 自动启用 |
 | 本地一键 | `tools/local-install.bat` | cmake 装 C++ + dotnet publish WPF 双轨；启动 `install/MAA.exe` |
-| 打包 zip | `tools/release-zip.{bat,ps1}` | 见 `§4.3` |
 
 ### 4.2 子模块
 
@@ -128,28 +182,36 @@ feat 合并到 `branch` 后：
 - 首次 clone：`git clone --recursive`
 - 已 clone 补全：`git submodule update --init --recursive`
 
-### 4.3 打包发布
-
-| 项 | 说明 |
-|----|------|
-| 版本号 | `VERSION` 文件，格式 `vX.Y.Z-fork.YYYYMMDD`（SemVer prerelease） |
-| 产物 | `installer/MAA-vX.Y.Z-fork.YYYYMMDD-win-x64.zip` |
-| 流程 | 单目标 cmake build → MaaCore install → 临时改 csproj 4 个 Version 字段 → dotnet publish → 剥 `*.pdb` `*.h` `*.bak` → robocopy staging（排除 `cache/` `config/` `data/` `debug/` 用户数据）→ ZipFile 压缩 |
-| try/finally 保护 | csproj 备份 `.bak` 后改，无论成功失败均还原；`global.json` 同处理 |
-| 仓库状态 | 脚本运行不污染 git 工作区 |
-
-### 4.4 辅助脚本（`tools/`）
+### 4.3 辅助脚本（`tools/`）
 
 | 脚本 | 用途 |
 |------|------|
 | `local-install.bat` | 本地构建并部署到 `install/` |
-| `release-zip.{bat,ps1}` | 一键打包 zip |
+| `local-install-staging.bat` | 本地构建并部署到 `install-staging/` |
 | `add_maa_to_nahimic_whitelist.ps1` | MAA.exe 加入 Nahimic DLL 注入白名单 |
 | `disable_nahimic.ps1` | 停用 NahimicService 开机自启 |
 | `cmake_build_for_wpf.bat` | 仅触发 cmake 的 WPF 构建 |
 | `maadeps-download.py` | 依赖库下载 |
+| `gen-downstream-changes.py` | 从 `LOG.md` 生成 `docs/downstream-changes.md` 下游改动清单 |
 | `ClangFormatter/` | clang-format 集成 |
-| `OverseasClients/`、`Roguelike*/`、`SmokeTesting/`、`SyncTemplate/`、`TaskSorter/` | 功能性辅助工具 |
+| `OverseasClients/`、`Roguelike*/`、`SmokeTesting/`、`SyncTemplate/`、`TaskSorter/`、`MaaWpfGui.Benchmarks/` | 功能性辅助工具 |
+
+
+### 4.5 部署目录职责
+
+| 目录 | 角色 | 来源分支 | 构建脚本 |
+|------|------|----------|----------|
+| `install/` | **生产版** | `branch` (稳定下游基线) | `tools/local-install.bat` |
+| `install-staging/` | **测试版** | `staging` (待验证整合区) | `tools/local-install-staging.bat` |
+
+**硬约束**:
+
+- staging 上的改动（含 `feat/*` / `fix/*` 在晋升 `branch` 之前）**必须**输出到 `install-staging/`，**绝不**写到 `install/`
+- `install/` 是 `branch` 的产物；本地调试 staging 改动务必先 `git switch staging`，再用 `tools/local-install-staging.bat`
+- 误把 staging 代码写进 `install/` 时立即 `git switch branch` → 跑 `tools/local-install.bat` 从 `branch` 重建恢复
+- 日常测试启动 `install-staging/MAA.exe`；发布与正式运行用 `install/MAA.exe`
+- 不允许在 `staging` 上执行 `dotnet publish -o install` 或 `cmake --install build --prefix install`（这两个命令属于 branch 构建步骤）
+- `dotnet publish` / `cmake --install` 的 `-o` / `--prefix` 必须与当前 git 分支匹配
 
 
 ## 5. 代码风格与质量
@@ -169,7 +231,9 @@ feat 合并到 `branch` 后：
 
 ## 6. 进行中分支速查
 
-**无** — 所有分支均已合入 `branch` 或已清理。
+| 分支 | 角色 | 修复目标 |
+|------|------|----------|
+| _无（2026-08-06 仓库清理后所有进行中 feat/fix 分支已合入 staging 或撤销；本节空）_ | | |
 
 
 ## 7. 分支生命周期记录
@@ -227,6 +291,59 @@ feat 合并到 `branch` 后：
 | 子修复分支 | 无 |
 | 作用域 | 仅本仓库 `branch` 修复，不推 upstream |
 | 详见 | `LOG.md` 2026-07-24 |
+
+### 7.6 fix/account-switch-retry
+
+| 项 | 内容 |
+|----|------|
+| 用途 | 修切号时 `AccountSwitchTask::navigate_to_start_page` 重试预算与 OCR 兜底 |
+| 根因 | 导航首步（`SwitchAccount@StartUpBegin` 含 22 个 next 候选）最坏需 ~13 次 retry 才有 UI 元素可识别；初版误判 `LoginOther` OCR 30×0.6s = 18s 空等，将 retry_times 降至 5 后 `TaskChainError`；正确修法是保持 retry=30 + 在 `LoginOther.next` 追加 `AccountManagerPageConfirm` 模板兜底 |
+| 修复 | `tasks.json:808-817`：`LoginOther.next` 追加 `AccountManagerPageConfirm`（`baseTask: AccountManagerListAccount` + `action: DoNothing`），OCR 失败时同 retry cycle 内模板命中；`AccountSwitchTask.cpp:68-77`：`set_retry_times(30)` + `last_name` 白名单加 `AccountManagerPageConfirm` |
+| 生命周期 | 2026-07-25 创建 → 2026-07-25 修正版 `--no-ff` 合入 `staging`（`6260abf14a`） |
+| 关键 commit | `cd704f8bbc`（初版 retry=5，`TaskChainError`） → `41cfcb736b`（修正版 retry=30 + 模板兜底） |
+| 子修复分支 | 无（独立分支） |
+| 作用域 | 仅本仓库 `branch` 修复，不推 upstream |
+| 详见 | `LOG.md` 2026-07-25（fix/account-switch-retry LoginOther OCR 模板兜底 + retry_times 分析修正） |
+
+### 7.7 fix/account_rotation/6
+
+| 项 | 内容 |
+|----|------|
+| 用途 | 修账号轮换切号时左侧任务面板不刷新 + 「当前账号」Header 视觉混淆 |
+| 根因 | `LinkStartWithTasks`（首账号）有 `MainTasksCompletedCount = 0` + `ResetTaskItemStatuses()`，但 `AdvanceAccountCycle`（后续账号）全程无等价重置，导致切号后左侧仍是上一账号绿色 Completed + 进度条不出现；`TaskItemViewModel.SetTaskIds` 不重置 `StatusDisplay`；显式切号 taskId 不绑回 StartUp 行 |
+| 修复 | `TaskQueueViewModel.cs`：`AdvanceAccountCycle` 切号前调用 `MainTasksCompletedCount = 0` + `ResetTaskItemStatuses()`，显式切号 taskId 绑回 StartUp 行，新增 `CurrentCycleAccountName` 属性在 5 处路径同步维护；`TaskItemViewModel.SetTaskIds` 末尾重置 `StatusDisplay`；`TaskQueueView.xaml` 左侧 Grid 2 行改 3 行 + Header Border + DataTrigger；五语 xaml 加 `CurrentAccountLabel` |
+| 生命周期 | 2026-07-25 创建 → 2026-07-25 `--no-ff` 合入 `staging`（`6260abf14a`） |
+| 关键 commit | `c5e2ba3831`（代码：8 文件 +74 -2） + `520dab59be`（docs：LOG.md / AGENTS.md §6） |
+| 子修复分支 | 无（独立 fix） |
+| 作用域 | 仅本仓库 `branch` 修复，不推 upstream |
+| 详见 | `LOG.md` 2026-07-25（fix/account_rotation/6 启动 + 实施完成） |
+
+### 7.8 fix/account-switch-template-missing
+
+| 项 | 内容 |
+|----|------|
+| 用途 | 修 `fix/account-switch-retry` 修正版（`41cfcb736b`）漏提交 `AccountManagerPageConfirm.png` 的资源完整性漏洞 |
+| 根因 | `tasks.json:813-817` 新增 `AccountManagerPageConfirm` task（`baseTask: AccountManagerListAccount` + `action: DoNothing`）但未提交对应 PNG。MAA `TemplResource::load` 期望每个 task 有同名 PNG（不依赖 `baseTask` 继承），文件缺失导致 `Templ load failed, file not exists` 与连锁 `TaskData load failed` / `OnnxSessions load failed` / `WordOcr load failed`，UI 报「资源损坏」无法启动 |
+| 修复 | `resource/template/WakeUp/AccountManager/AccountManagerPageConfirm.png`：复制 `AccountManagerListAccount.png`（149 字节）作为 sibling 占位。DoNothing 任务实际不调用模板匹配，仅需文件存在让加载器存在性检查通过 |
+| 生命周期 | 2026-07-25 创建 → 2026-07-25 `--no-ff` 合入 `staging`（`9ac844c10a`） |
+| 关键 commit | `ad03f949e4`（fix(switch-template): 补 AccountManagerPageConfirm.png 满足 TemplResource 存在性检查，2 文件 +32） |
+| 子修复分支 | 无 |
+| 作用域 | 仅本仓库 `branch` 修复，不推 upstream |
+| 详见 | `LOG.md` 2026-07-25（fix/account-switch-template-missing 启动 + 实施完成） |
+
+### 7.9 feat/recruit-result-display（已回退）
+
+| 项 | 内容 |
+|----|------|
+| 用途 | 自动加急公招后告诉用户实际招募到谁（fork 私有功能，详见 §6 原行） |
+| 生命周期 | 2026-07-10 创建 → 2026-07-30 合入 `staging`（`9f0f76d6fa`，46 files +2628） → 2026-08-02 由 `fix/remove-recruit-result-display` 回退合并到 staging |
+| 关键 commit | `3b1e13fcf9`（启动） → `d408fde841`（多通道识别） → `882d9b64bf`（经验+准确率+screenshot monitor） → `9d8a43e9d7`（round summary + AutoRecruitTask 接入） → `94d1b16579`（WPF 接收 + 5 语 18 key + 6★ Toast） → `579bec6879`（services + C1 脱敏 + .gitignore） → `f293a811f7`（B3 失败聚类） → `88b7a86028`（编译修复） |
+| 子修复分支 | `fix/recruit-screenshot-monitor-channels`（`84b339a870`，channels mismatch 修复），随功能回退一并删除 |
+| WPF UI 扩展 | `feat/recruit-history-tab`（`69c5e4f74c`，合并 `c143d8eef9`）— 工具箱「公招历史」Tab UI 依赖本功能 callback，随回退一并删除 |
+| 回退 commit | `fix/remove-recruit-result-display`：删 33 文件 + 回退 14 集成点，47 files +1/-2904，详见 `LOG.md` 2026-08-02 |
+| 保留约定 | AGENTS §2.4 staging 工作流（feat 拉取源 = staging + branch 手动晋升）由本 feat 引入，但已用于其他分支，**保留** |
+| 保留功能 | `fix/auto-recruit-expedite-original-level` 的 `m_original_min_level` 加急判定 + RecruitResult 回调 level 用原始星级（属 `feat/auto-recruit-3star-to-4star` 修复，与本功能无关） |
+| 作用域 | 仅本仓库 fork 私有代码 + 协议 callback 实现，不推 upstream |
 
 
 ## 8. 关键参考链接

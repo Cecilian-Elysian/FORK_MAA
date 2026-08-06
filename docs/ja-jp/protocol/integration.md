@@ -149,13 +149,22 @@ Bilibili：`张三`、入力可能：`张三`、`张`、`三`
   戦闘回数。  
   :::  
   ::: field name="series" type="number" optional  
-  連戦回数。-1～6。
+  連戦回数。-1～10。
   <br>
   `-1` は切り替えを無効にします。
   <br>
-  `0` は現在利用可能な最大回数に自動的に切り替わります。現在の理智が 6 回未満の場合は、利用可能な最小回数を選択します。
+  `0` は現在利用可能な最大回数に自動的に切り替わります。現在の理智が最大回数未満の場合は、利用可能な最小回数を選択します。
   <br>
-  `1～6` は指定した連戦回数です。  
+  `1～10` は指定した連戦回数です。
+  <br>
+  ::: info サーバー差異
+  入力検証はリソースに `FightSeries-OldMethodFlag` が存在するかどうかで決まります：
+  <br>
+  - 新リスト（中国版 2026/8/1 以降の主リソース、当該 flag なし）：`-1～10` を受け付け
+  - 旧リスト（海外リソースに当該 flag あり）：`-1～6` のみ受け付け、それより大きい値は拒否
+  <br>
+  海外サーバーは約半年後に追従予定で、その際に上限はリソースに合わせて 10 になります。Windows GUI の連戦回数ドロップダウンは現在固定で 10 まで表示されます。海外で手動で 7～10 を選ぶと、タスク投入時に Core に拒否されます。
+  :::  
   :::  
   ::: field name="drops" type="object" optional  
   ドロップ数を指定します。デフォルトで指定なし。キーは item_id、値は数量です。キーは `resource/item_index.json` ファイルを参照できます。  
@@ -263,7 +272,12 @@ Bilibili：`张三`、入力可能：`张三`、`张`、`三`
 ::: field name="expedite_times" type="number" optional  
 緊急招集の回数。`expedite` が true の場合のみ有効です。デフォルトは制限なし（`times` の上限まで）です。  
 :::  
-::: field name="skip_robot" type="boolean" optional default="true"  
+::: field name="expedite_min_level" type="number" optional default="0"  
+確認した募集の最低星級が設定値以上のときにのみ緊急招集を使用します。  
+<br>
+0 = 無制限（旧仕様と互換）、4 / 5 / 6 = 該当星級以上のときのみ加急。デフォルト 0  
+:::  
+::: field name="skip_robot" type="boolean" optional default="true"
 非推奨です。旧パラメータ互換のためにのみ残されています。  
 <br>
 `preserve_tags` が指定されておらず、この値が `true` の場合は `支援机械` を認識したときのみスキップします。`元素` は旧来の 1★ タグとしては扱われません。  

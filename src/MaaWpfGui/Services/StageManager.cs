@@ -23,6 +23,7 @@ using System.Threading.Tasks;
 using HandyControl.Controls;
 using HandyControl.Data;
 using MaaWpfGui.Constants.Enums;
+using MaaWpfGui.Extensions;
 using MaaWpfGui.Helper;
 using MaaWpfGui.Models;
 using MaaWpfGui.Models.MaaApi;
@@ -75,6 +76,28 @@ public class StageManager
     private Dictionary<string, SideStoryActivity> _activityList = [];
 
     public IReadOnlyDictionary<string, SideStoryActivity> ActivityList => _activityList.AsReadOnly();
+
+    // 资源全开放活动（resourceCollection），用于判断当前是否处于资源全开放期间
+    private StageActivityInfo _resourceCollection = new() { IsResourceCollection = true };
+
+    /// <summary>
+    /// 判断当前是否有 SideStory（SideStory/故事集/别的限时）活动进行中。
+    /// </summary>
+    /// <returns>存在进行中的活动则返回 <c>true</c>。</returns>
+    public bool IsActivityOpen()
+    {
+        var time = DateTimeOffset.Now;
+        return _activityList.Any(ss => ss.Value.Info.StartTimeUtc <= time && time <= ss.Value.Info.ExpireTimeUtc);
+    }
+
+    /// <summary>
+    /// 判断当前是否处于资源全开放活动（resourceCollection）期间。
+    /// </summary>
+    /// <returns>处于资源全开放期间则返回 <c>true</c>。</returns>
+    public bool IsResourceCollectionOpen()
+    {
+        return _resourceCollection.BeingOpen;
+    }
 
     // mini game entries exposed from StageActivityV2 (richer model including Tip/TipKey)
     private List<MiniGameEntry> _miniGameEntries = InitializeDefaultMiniGameEntries();
@@ -162,7 +185,7 @@ public class StageManager
         });
     }
 
-    private static string GetClientType() => SettingsViewModel.GameSettings.ClientType switch {
+    private static ClientType GetClientType() => SettingsViewModel.GameSettings.ClientType switch {
         ClientType.Bilibili => ClientType.Official,
         _ => SettingsViewModel.GameSettings.ClientType,
     };
@@ -210,7 +233,7 @@ public class StageManager
         bool globalTasksCached = true;
         if (clientType != ClientType.Official && tasksJson != null)
         {
-            var tasksPath = "resource/global/" + clientType + '/' + TasksApi;
+            var tasksPath = "resource/global/" + clientType.ToCustomString() + '/' + TasksApi;
 
             // Download the client specific resources only when the Official ones are successfully downloaded so that the client specific resource version is the actual version
             // TODO: There may be an issue when the CN resource is loaded from cache (e.g. network down) while global resource is downloaded (e.g. network up again)
@@ -250,7 +273,7 @@ public class StageManager
     {
         var tempStage = InitializeDefaultStages();
 
-        var clientType = GetClientType();
+        var clientType = GetClientType().ToCustomString();
 
         bool isDebugVersion = Instances.VersionUpdateDialogViewModel.IsDebugVersion();
         bool curVerParsed = TryParseVersion(VersionUpdateSettingsUserControlModel.CoreVersion, out var curVersionObj);
@@ -268,6 +291,7 @@ public class StageManager
         AddPermanentStages(tempStage, resourceCollection);
 
         _stages = tempStage;
+        _resourceCollection = resourceCollection;
 
         // parse mini-game tasks from activity json if provided (use helper to populate temp list)
         var tempMiniGames = InitializeDefaultMiniGameEntries();

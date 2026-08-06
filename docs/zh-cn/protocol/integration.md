@@ -149,13 +149,22 @@ B服：`张三`，可输入 `张三`、`张`、`三`
   战斗次数。  
   :::  
   ::: field name="series" type="number" optional  
-  连战次数, -1~6。
+  代理倍率, -1~10。
   <br>
   `-1` 为禁用切换。
   <br>
-  `0` 为自动切换为当前可用的最大次数, 如当前理智不够6次, 则选择最低可用次数。
+  `0` 为自动切换为当前可用的最大倍率, 如当前理智不够最大倍率, 则选择最低可用倍率。
   <br>
-  `1~6` 为指定连战次数。  
+  `1~10` 为指定代理倍率。
+  <br>
+  ::: info 服务器差异
+  输入校验取决于资源是否存在 `FightSeries-OldMethodFlag`：
+  <br>
+  - 新列表（国服 2026/8/1 后主资源，无该 flag）：接受 `-1~10`
+  - 旧列表（外服资源带该 flag）：仅接受 `-1~6`，更大值会被拒绝
+  <br>
+  外服预计约半年后跟进，届时上限随资源变为 10。Windows GUI 的代理倍率下拉目前固定提供到 10；外服若手动选择 7~10，任务下发时会被 Core 拒绝。
+  :::  
   :::  
   ::: field name="drops" type="object" optional  
   指定掉落数量，默认不指定。key 为 item_id, value 为数量。key 可参考 `resource/item_index.json` 文件。  
@@ -262,6 +271,11 @@ B服：`张三`，可输入 `张三`、`张`、`三`
 :::  
 ::: field name="expedite_times" type="number" optional  
 加急次数，仅在 `expedite` 为 true 时有效。默认无限使用（直到 `times` 达到上限）。  
+:::  
+::: field name="expedite_min_level" type="number" optional default="0"  
+仅在确认招募最低星级 ≥ 设定值时使用加急许可。  
+<br>
+0 = 不限（兼容旧行为），4 / 5 / 6 = 仅对应星级及以上加急。默认 0  
 :::  
 ::: field name="skip_robot" type="boolean" optional default="true"  
 已废弃，仅用于兼容旧参数。  

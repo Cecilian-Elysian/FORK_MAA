@@ -143,13 +143,22 @@ v6.8.0부터 폐기됨. 대신 `medicine_expire_days`를 사용하세요.
 전투 횟수  
 :::  
 ::: field name="series" type="number" optional  
-연속 전투 횟수, -1~6
+연속 전투 횟수, -1~10
 <br>
 `-1`: 전환 비활성화
 <br>
-`0`: 현재 사용 가능한 최대 횟수로 자동 전환. 만약 현재 이성이 6회 미만이면 사용 가능한 최소 횟수 선택
+`0`: 현재 사용 가능한 최대 횟수로 자동 전환. 만약 현재 이성이 최대 횟수 미만이면 사용 가능한 최소 횟수 선택
 <br>
-`1~6`: 지정된 연속 전투 횟수  
+`1~10`: 지정된 연속 전투 횟수
+<br>
+::: info 서버 차이
+입력 검증은 리소스에 `FightSeries-OldMethodFlag`가 있는지에 따라 달라집니다:
+<br>
+- 새 목록(중국 서버 2026/8/1 이후 주 리소스, 해당 flag 없음): `-1~10` 허용
+- 이전 목록(해외 리소스에 해당 flag 있음): `-1~6`만 허용, 더 큰 값은 거부
+<br>
+해외 서버는 약 반년 후 따를 예정이며, 그때 상한은 리소스에 맞춰 10이 됩니다. Windows GUI의 연속 전투 드롭다운은 현재 고정으로 10까지 제공합니다. 해외에서 수동으로 7~10을 선택하면 작업 전달 시 Core에서 거부됩니다.
+:::  
 :::  
 ::: field name="drops" type="object" optional  
 지정 드랍 수량, 기본값은 지정 안 함. key는 item_id, value는 수량. key는 `resource/item_index.json` 파일 참조
@@ -252,7 +261,12 @@ v6.8.0부터 폐기됨. 대신 `medicine_expire_days`를 사용하세요.
 ::: field name="expedite_times" type="number" optional  
 즉시 완료 사용 횟수, `expedite`가 true일 때만 유효. 기본값은 무제한(즉 `times` 상한까지)  
 :::  
-::: field name="skip_robot" type="boolean" optional default="true"  
+::: field name="expedite_min_level" type="number" optional default="0"  
+확정된 모집의 최소 등급이 설정값 이상일 때에만 즉시 완료를 사용합니다.  
+<br>
+0 = 무제한(구 동작 호환), 4 / 5 / 6 = 해당 등급 이상에서만 즉시 완료. 기본값 0  
+:::  
+::: field name="skip_robot" type="boolean" optional default="true"
 폐기 예정이며 구형 파라미터 호환용으로만 유지됩니다.  
 <br>
 `preserve_tags`가 없고 이 값이 `true`이면 `支援机械` 인식 시에만 건너뜁니다. `元素`는 더 이상 구형 1★ 태그로 취급하지 않습니다.  

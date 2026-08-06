@@ -80,6 +80,12 @@ public class RecruitSettingsUserControlModel : TaskSettingsViewModel, RecruitSet
         set => SetTaskConfig<RecruitTask>(t => t.PreferTagEnabled == value, t => t.PreferTagEnabled = value);
     }
 
+    /// <summary>
+    /// Gets or sets a value indicating whether 3星Tag组合里能开4★干员时自动升级为4★处理路径。
+    /// 启用后,3星组合若有4★潜力(如「费用回复+先锋干员」出桃金娘),按4★路径处理:
+    /// 3:50计时 + 联动 ExpediteMode 加急 + 沿用 SelectExtraTags 选 tag。
+    /// </summary>
+
     public object[] AutoRecruitPreserveTagList
     {
         get {

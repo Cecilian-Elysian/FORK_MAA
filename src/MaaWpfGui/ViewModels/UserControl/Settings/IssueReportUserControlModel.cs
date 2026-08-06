@@ -18,12 +18,16 @@ using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Text.Json;
 using System.Windows;
 using HandyControl.Controls;
 using HandyControl.Data;
 using JetBrains.Annotations;
 using MaaWpfGui.Constants;
 using MaaWpfGui.Helper;
+using MaaWpfGui.Main;
+using MaaWpfGui.Models;
+using Microsoft.Win32;
 using Serilog;
 using Stylet;
 
@@ -40,6 +44,60 @@ public class IssueReportUserControlModel : PropertyChangedBase
     }
 
     public static IssueReportUserControlModel Instance { get; }
+
+    // ===== Diagnostic Report Properties (used by GenerateSupportPayload) =====
+
+    private int _diagnosticDateRange = 7;
+
+    public int DiagnosticDateRange
+    {
+        get => _diagnosticDateRange;
+        set => SetAndNotify(ref _diagnosticDateRange, value);
+    }
+
+    private List<DateRangeOption>? _dateRangeOptions;
+
+    public List<DateRangeOption> DateRangeOptions => _dateRangeOptions ??= InitDateRangeOptions();
+
+    private static List<DateRangeOption> InitDateRangeOptions()
+    {
+        return
+        [
+            new(1, LocalizationHelper.GetString("DiagnosticLast1Day")),
+            new(3, LocalizationHelper.GetStringFormat("DiagnosticLastNDays", 3)),
+            new(7, LocalizationHelper.GetStringFormat("DiagnosticLastNDays", 7)),
+            new(14, LocalizationHelper.GetStringFormat("DiagnosticLastNDays", 14)),
+            new(30, LocalizationHelper.GetStringFormat("DiagnosticLastNDays", 30)),
+        ];
+    }
+
+    public record DateRangeOption(int Value, string Display);
+
+    private bool _includeConfig = true;
+
+    public bool IncludeConfig
+    {
+        get => _includeConfig;
+        set => SetAndNotify(ref _includeConfig, value);
+    }
+
+    private bool _includeCache;
+
+    public bool IncludeCache
+    {
+        get => _includeCache;
+        set => SetAndNotify(ref _includeCache, value);
+    }
+
+    private bool _includeCustomResource = true;
+
+    public bool IncludeCustomResource
+    {
+        get => _includeCustomResource;
+        set => SetAndNotify(ref _includeCustomResource, value);
+    }
+
+    // ===== End Diagnostic Export Properties =====
 
     public void OpenDebugFolder()
     {
@@ -157,38 +215,81 @@ public class IssueReportUserControlModel : PropertyChangedBase
     }
 
     /// <summary>
-    /// 生成日志压缩包
+    /// 生成诊断报告 — 合并原「生成日志压缩包」+「导出诊断包」：SaveFileDialog 选位置 + 日志按日期范围过滤 + diagnostic.json 系统信息 + 可选配置/缓存/自定义资源
     /// </summary>
     public void GenerateSupportPayload()
     {
         try
         {
             const int PartSize = 20 * 1024 * 1024; // 20 MB
-            string reportNameBase = $"report_{DateTimeOffset.Now:MM-dd_HH-mm-ss}";
-            string tempPath = Path.Combine(PathsHelper.ReportsDir, $"maa-report-{Guid.NewGuid()}");
-            Directory.CreateDirectory(tempPath);
 
             if (!Directory.Exists(PathsHelper.ReportsDir))
             {
                 Directory.CreateDirectory(PathsHelper.ReportsDir);
             }
 
-            // 复制文件
-            CopyDirectoryIfExists(PathsHelper.DebugDir, Path.Combine(tempPath, "debug"),
-                f => { return !Path.GetFileName(f).StartsWith("report", StringComparison.OrdinalIgnoreCase); });
-            CopyDirectoryIfExists(PathsHelper.ResourceDir, Path.Combine(tempPath, "resource"),
-                f => { return Path.GetFileName(f).Contains("_custom.", StringComparison.OrdinalIgnoreCase); });
-            CopyDirectoryIfExists(PathsHelper.ConfigDir, Path.Combine(tempPath, "config"));
-            CopyDirectoryIfExists(PathsHelper.CacheDir, Path.Combine(tempPath, "cache"));
+            string reportNameBase = $"report_{DateTimeOffset.Now:MM-dd_HH-mm-ss}";
+            string tempPath = Path.Combine(PathsHelper.ReportsDir, $"maa-report-{Guid.NewGuid()}");
+            Directory.CreateDirectory(tempPath);
 
-            string partsFolder = Path.Combine(PathsHelper.ReportsDir, $"{reportNameBase}_parts");
+            // 弹保存对话框选保存位置
+            var saveDialog = new SaveFileDialog
+            {
+                Title = LocalizationHelper.GetString("GenerateDiagnosticReportSelectLocation"),
+                Filter = "ZIP files (*.zip)|*.zip",
+                FileName = $"{reportNameBase}.zip",
+                InitialDirectory = PathsHelper.ReportsDir,
+                OverwritePrompt = true,
+                AddExtension = true,
+                DefaultExt = ".zip",
+            };
+            if (saveDialog.ShowDialog() != true)
+            {
+                Directory.Delete(tempPath, recursive: true);
+                return;
+            }
+
+            string userChosenDir = Path.GetDirectoryName(saveDialog.FileName) ?? PathsHelper.ReportsDir;
+
+            // 收集系统信息并写入 diagnostic.json
+            var toDate = DateTime.Now.Date;
+            var fromDate = toDate.AddDays(-_diagnosticDateRange);
+            var diagInfo = DiagnosticInfo.Collect(fromDate, toDate);
+            string diagJson = JsonSerializer.Serialize(diagInfo, new JsonSerializerOptions { WriteIndented = true });
+            File.WriteAllText(Path.Combine(tempPath, "diagnostic.json"), diagJson);
+
+            // 复制 debug/（rotated logs 由 LastWriteTime 在后续 part02+ 阶段过滤）
+            CopyDirectoryIfExists(PathsHelper.DebugDir, Path.Combine(tempPath, "debug"),
+                f => !Path.GetFileName(f).StartsWith("report", StringComparison.OrdinalIgnoreCase));
+
+            // 可选目录
+            if (_includeCustomResource)
+            {
+                CopyDirectoryIfExists(PathsHelper.ResourceDir, Path.Combine(tempPath, "resource"),
+                    f => Path.GetFileName(f).Contains("_custom.", StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (_includeConfig)
+            {
+                CopyDirectoryIfExists(PathsHelper.ConfigDir, Path.Combine(tempPath, "config"));
+            }
+
+            if (_includeCache)
+            {
+                CopyDirectoryIfExists(PathsHelper.CacheDir, Path.Combine(tempPath, "cache"));
+            }
+
+            // 分卷输出目录紧贴用户选定的 zip 路径所在目录
+            string partsFolder = Path.Combine(userChosenDir, $"{reportNameBase}_parts");
             if (!Directory.Exists(partsFolder))
             {
                 Directory.CreateDirectory(partsFolder);
             }
 
-            // ====== part01：config + resource + cache + debug 根目录文件 ======
+            // ====== part01：tempPath 根文件 + config + resource + cache + debug 根目录文件 ======
             List<string> part01Files = [];
+
+            part01Files.AddRange(Directory.EnumerateFiles(tempPath, "*", SearchOption.TopDirectoryOnly));
 
             string[] categories = ["config", "resource", "cache"];
             foreach (string category in categories)
@@ -203,7 +304,6 @@ public class IssueReportUserControlModel : PropertyChangedBase
             string debugPath = Path.Combine(tempPath, "debug");
             if (Directory.Exists(debugPath))
             {
-                // 只取 debug 根目录文件
                 var debugRootFiles = Directory.EnumerateFiles(debugPath, "*", SearchOption.TopDirectoryOnly).ToList();
                 part01Files.AddRange(debugRootFiles);
             }
@@ -224,11 +324,11 @@ public class IssueReportUserControlModel : PropertyChangedBase
                 }
             }
 
-            // ====== part02：debug 子目录文件按 PartSize 分卷 ======
-            var threeDaysAgo = DateTime.Now.AddDays(-3);
+            // ====== part02+：debug 子目录文件按日期范围 + PartSize 分卷 ======
+            var cutoffTime = DateTime.Now.AddDays(-_diagnosticDateRange);
             var debugSubFiles = Directory.EnumerateFiles(debugPath, "*", SearchOption.AllDirectories)
                 .Where(f => Path.GetDirectoryName(f) != debugPath)
-                .Where(f => new FileInfo(f).LastWriteTime >= threeDaysAgo)
+                .Where(f => new FileInfo(f).LastWriteTime >= cutoffTime)
                 .ToList();
 
             int partNumber = 2;
@@ -271,8 +371,8 @@ public class IssueReportUserControlModel : PropertyChangedBase
                 partNumber++;
             }
 
-            // ====== 生成完整压缩包 ======
-            string fullZipPath = Path.Combine(PathsHelper.ReportsDir, $"{reportNameBase}.zip");
+            // ====== 生成完整压缩包（用户选定路径） ======
+            string fullZipPath = saveDialog.FileName;
             ZipFile.CreateFromDirectory(tempPath, fullZipPath, CompressionLevel.SmallestSize, includeBaseDirectory: false);
 
             // 清理临时目录

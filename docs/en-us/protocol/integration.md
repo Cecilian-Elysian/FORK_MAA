@@ -149,13 +149,22 @@ Currently supported stages for navigation include:
   Number of battles.  
   :::  
   ::: field name="series" type="number" optional  
-  Number of consecutive battles, -1~6.
+  Number of consecutive battles, -1~10.
   <br>
   `-1` to disable switching.
   <br>
-  `0` to automatically switch to the current maximum available times, if current sanity is not enough for 6 times, select the minimum available times.
+  `0` to automatically switch to the current maximum available times, if current sanity is not enough for the maximum times, select the minimum available times.
   <br>
-  `1~6` to specify number of consecutive battles.  
+  `1~10` to specify number of consecutive battles.
+  <br>
+  ::: info Server Difference
+  Input validation depends on whether the resource contains `FightSeries-OldMethodFlag`:
+  <br>
+  - New list (CN main resources after 2026/8/1, without this flag): accepts `-1~10`
+  - Old list (overseas resources with this flag): accepts only `-1~6`; larger values are rejected
+  <br>
+  Overseas servers are expected to follow in about six months, after which the limit becomes 10 with the resource update. The Windows GUI series dropdown currently always offers up to 10; on overseas clients, manually selecting 7~10 will be rejected by Core when the task is submitted.
+  :::  
   :::  
   ::: field name="drops" type="object" optional  
   Specifying the number of drops, no specification by default. key is item_id, value is quantity. key can refer to `resource/item_index.json` file.  
@@ -263,7 +272,12 @@ Whether to use Expedited Plans.
 ::: field name="expedite_times" type="number" optional  
 Number of expedites, only effective when `expedite` is true. By default unlimited (until `times` limit is reached).  
 :::  
-::: field name="skip_robot" type="boolean" optional default="true"  
+::: field name="expedite_min_level" type="number" optional default="0"  
+Use Expedited Plans only when the minimum rarity of the confirmed recruitment combo is ≥ the value.  
+<br>
+0 = unlimited (backward compatible), 4 / 5 / 6 = expedite only for that rarity and above. Default 0  
+:::  
+::: field name="skip_robot" type="boolean" optional default="true"
 Deprecated and kept only for backward compatibility.  
 <br>
 When `preserve_tags` is absent and this value is `true`, MAA skips on `支援机械` only; `元素` is no longer treated as the legacy 1★ tag.  

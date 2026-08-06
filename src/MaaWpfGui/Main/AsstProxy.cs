@@ -40,12 +40,14 @@ using MaaWpfGui.Extensions;
 using MaaWpfGui.Helper;
 using MaaWpfGui.Models;
 using MaaWpfGui.Models.AsstTasks;
+using MaaWpfGui.Models.EmulatorConnectionExtra;
 using MaaWpfGui.Services;
-using MaaWpfGui.Services.Notification;
+using MaaWpfGui.Services.ExternalNotification;
 using MaaWpfGui.Services.Web;
 using MaaWpfGui.States;
 using MaaWpfGui.Utilities;
 using MaaWpfGui.ViewModels.UI;
+using MaaWpfGui.ViewModels.UserControl.Settings;
 using MaaWpfGui.ViewModels.UserControl.TaskQueue;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -470,12 +472,12 @@ public class AsstProxy
     {
         using var log = new LogScope(_logger);
 
-        string clientType = SettingsViewModel.GameSettings.ClientType;
+        var clientType = SettingsViewModel.GameSettings.ClientType;
 
         string mainRes = PathsHelper.ResourceDir;
-        string globalRes = Path.Combine(mainRes, "global", clientType, "resource");
+        string globalRes = Path.Combine(mainRes, "global", clientType.ToCustomString(), "resource");
         string mainCacheRes = PathsHelper.CacheResourceDir;
-        string globalCacheRes = Path.Combine(mainCacheRes, "global", clientType, "resource");
+        string globalCacheRes = Path.Combine(mainCacheRes, "global", clientType.ToCustomString(), "resource");
 
         bool loaded;
         if (clientType is ClientType.Official or ClientType.Bilibili)
@@ -495,7 +497,7 @@ public class AsstProxy
         }
 
         // 使用窗口绑定模式时，额外加载 PC 平台差异资源
-        if (SettingsViewModel.ConnectSettings.UseAttachWindow)
+        if (SettingsViewModel.ConnectSettings.IsPCConnectConfig)
         {
             string pcPlatformRes = Path.Combine(mainRes, "platform_diff", "PC", "resource");
             loaded &= LoadResIfExists(pcPlatformRes);
@@ -613,7 +615,7 @@ public class AsstProxy
                 }
             }
 
-            AsstSetStaticOption(AsstStaticOptionKey.GpuOCR, x.Index.ToString());
+            AsstSetStaticOption(AsstStaticOptionKey.GpuOCR, x.DeviceSelector);
         }
 
         bool loaded = LoadResource();
@@ -630,7 +632,7 @@ public class AsstProxy
         }
 
         _runningState.SetInit(true);
-        AsstSetInstanceOption(InstanceOptionKey.TouchMode, SettingsViewModel.ConnectSettings.TouchMode);
+        AsstSetInstanceOption(InstanceOptionKey.TouchMode, SettingsViewModel.ConnectSettings.TouchMode.ToCustomString());
         AsstSetInstanceOption(InstanceOptionKey.DeploymentWithPause, SettingsViewModel.GameSettings.DeploymentWithPause ? "1" : "0");
         AsstSetInstanceOption(InstanceOptionKey.AdbLiteEnabled, SettingsViewModel.ConnectSettings.AdbLiteEnabled ? "1" : "0");
 
@@ -638,7 +640,36 @@ public class AsstProxy
         // ReSharper disable once AsyncVoidLambda
         Execute.OnUIThread(
             async () => {
-                if (SettingsViewModel.StartSettings.RunDirectly)
+                bool runDirectly = SettingsViewModel.StartSettings.RunDirectly;
+                bool openEmulator = SettingsViewModel.StartSettings.OpenEmulatorAfterLaunch;
+
+                // 更新重启链写入的 --skip-startup-auto-run：跳过启动后自动开任务/模拟器
+                if (Bootstrapper.ShouldSkipStartupAutoRun)
+                {
+                    _logger.Information("Skip startup auto-run due to {Arg}", Bootstrapper.SkipStartupAutoRunArg);
+                    return;
+                }
+
+                // 会自动开任务或模拟器时，先给 10 秒反悔倒计时（不强制拉起主窗口）
+                if (runDirectly || openEmulator)
+                {
+                    string tipKey = (runDirectly, openEmulator) switch {
+                        (true, true) => "StartupAutoRunCountdownTaskAndEmulator",
+                        (true, false) => "StartupAutoRunCountdownTaskOnly",
+                        _ => "StartupAutoRunCountdownEmulatorOnly",
+                    };
+
+                    if (await Instances.TaskQueueViewModel.ConfirmStartupAutoRunAsync(
+                            LocalizationHelper.GetString("StartupAutoRunCountdownTitle"),
+                            LocalizationHelper.GetString(tipKey),
+                            seconds: 10))
+                    {
+                        _logger.Information("Startup auto-run canceled by user during countdown");
+                        return;
+                    }
+                }
+
+                if (runDirectly)
                 {
                     // 如果是直接运行模式，就先让按钮显示为运行
                     _runningState.SetIdle(false);
@@ -654,7 +685,7 @@ public class AsstProxy
                 }
 
                 // ReSharper disable once InvertIf
-                if (SettingsViewModel.StartSettings.RunDirectly)
+                if (runDirectly)
                 {
                     // 重置按钮状态，不影响LinkStart判断
                     _runningState.SetIdle(true);
@@ -777,6 +808,11 @@ public class AsstProxy
     private string _connectedAddress = string.Empty;
     private string _lastConnectionError = string.Empty;
 
+    /// <summary>
+    /// MuMu 触控增强是否实际生效（由 core 连接后通过 MuMuExtrasInputStatus 回调报告）。
+    /// </summary>
+    private bool _mumuExtrasInputAvailable;
+
     private void ProcConnectInfo(JObject details)
     {
         var what = details["what"]?.ToString() ?? string.Empty;
@@ -788,18 +824,6 @@ public class AsstProxy
                 _connectedAddress = details["details"]!["address"]!.ToString();
                 SettingsViewModel.ConnectSettings.ConnectAddress = _connectedAddress;
                 _lastConnectionError = string.Empty;
-
-                // 检测 MuMu 后台保活是否开启（异步执行，避免阻塞 UI 线程）
-                if (SettingsViewModel.ConnectSettings.ConnectConfig == "MuMuEmulator12")
-                {
-                    _ = Task.Run(() =>
-                    {
-                        if (EmulatorHelper.CheckMuMuKeepAlive())
-                        {
-                            Instances.TaskQueueViewModel.AddLog(LocalizationHelper.GetString("MuMuEmulator12KeepAliveOn"), UiLogColor.Warning);
-                        }
-                    });
-                }
 
                 break;
 
@@ -825,6 +849,11 @@ public class AsstProxy
                         Instances.TaskQueueViewModel.AddLog(LocalizationHelper.GetString("ResolutionInfoYoStarEN"), UiLogColor.Error);
                     }
                 }
+                break;
+
+            case "MuMuExtrasInputStatus":
+                // core 连接后报告 MuMu 触控增强是否实际生效
+                _mumuExtrasInputAvailable = details["details"]?["available"]?.ToObject<bool>() ?? false;
                 break;
 
             case "ResolutionError":
@@ -906,8 +935,22 @@ public class AsstProxy
                     var needToStop = false;
                     switch (SettingsViewModel.ConnectSettings.ConnectConfig)
                     {
-                        case "MuMuEmulator12":
-                            if (!SettingsViewModel.ConnectSettings.MuMuEmulatorExtras.Enable)
+                        case ConnectConfig.MuMuEmulator12:
+
+                            // 保活开启但触控未生效 → 后台保活下无法操作，直接停止
+                            if (!_mumuExtrasInputAvailable && EmulatorHelper.CheckMuMuKeepAlive())
+                            {
+                                Instances.TaskQueueViewModel.AddLog(
+                                    LocalizationHelper.GetString("MuMuEmulator12KeepAliveOn"),
+                                    UiLogColor.Error);
+                                Instances.CopilotViewModel.AddLog(
+                                    LocalizationHelper.GetString("MuMuEmulator12KeepAliveOn"),
+                                    UiLogColor.Error, showTime: false);
+                                needToStop = true;
+                            }
+
+                            // 以下是截图增强相关逻辑
+                            if (SettingsViewModel.ConnectSettings.ExtraConfig is not MuMu12Extra muMu12 || !muMu12.Enable)
                             {
                                 break;
                             }
@@ -921,12 +964,20 @@ public class AsstProxy
                             else if (timeCost < 100)
                             {
                                 color = UiLogColor.MuMuSpecialScreenshot;
+
+                                // 截图 + 触控均生效，完整增强就绪
+                                if (_mumuExtrasInputAvailable)
+                                {
+                                    Instances.TaskQueueViewModel.AddLog(
+                                        LocalizationHelper.GetString("MuMuEmulator12FullExtrasReady"),
+                                        UiLogColor.Rainbow);
+                                }
                             }
 
                             break;
 
-                        case "LDPlayer":
-                            if (!SettingsViewModel.ConnectSettings.LdPlayerExtras.Enable)
+                        case ConnectConfig.LDPlayer:
+                            if (SettingsViewModel.ConnectSettings.ExtraConfig is not LDPlayerExtra ldPlayer || !ldPlayer.Enable)
                             {
                                 break;
                             }
@@ -1051,9 +1102,9 @@ public class AsstProxy
         }
     }
 
-    private DispatcherTimer? _toastNotificationTimer;
+    private DispatcherTimer? _sanityRecoveryTimer;
 
-    private void OnToastNotificationTimerTick(object? sender, EventArgs e)
+    private void OnSanityRecoveryTimer(object? sender, EventArgs e)
     {
         if (FightSetting.SanityReport is not null)
         {
@@ -1068,14 +1119,14 @@ public class AsstProxy
 
     public void DisposeTimer()
     {
-        if (_toastNotificationTimer is null)
+        if (_sanityRecoveryTimer is null)
         {
             return;
         }
 
-        _toastNotificationTimer.Stop();
-        _toastNotificationTimer.Tick -= OnToastNotificationTimerTick;
-        _toastNotificationTimer = null;
+        _sanityRecoveryTimer.Stop();
+        _sanityRecoveryTimer.Tick -= OnSanityRecoveryTimer;
+        _sanityRecoveryTimer = null;
     }
 
     private void ProcTaskChainMsg(AsstMsg msg, JObject details)
@@ -1279,9 +1330,9 @@ public class AsstProxy
 
                     var allTaskCompleteTitle = LocalizationHelper.GetStringFormat("AllTasksComplete", diffTaskTime);
                     var allTaskCompleteMessage = LocalizationHelper.GetString("AllTaskCompleteContent");
-                    var sanityReport = LocalizationHelper.GetString("SanityReport");
+                    var sanityReport = string.Empty;
 
-                    var configurationPreset = ConfigurationHelper.GetCurrentConfiguration();
+                    var configurationPreset = ConfigFactory.Root.Current;
 
                     allTaskCompleteMessage = allTaskCompleteMessage
                         .Replace("{DateTime}", dateTimeNow.ToString("yyyy-MM-dd HH:mm:ss"))
@@ -1293,22 +1344,10 @@ public class AsstProxy
                     if (FightSetting.SanityReport is not null)
                     {
                         var recoveryTime = FightSetting.SanityReport.ReportTime.AddMinutes(FightSetting.SanityReport.SanityCurrent < FightSetting.SanityReport.SanityMax ? (FightSetting.SanityReport.SanityMax - FightSetting.SanityReport.SanityCurrent) * 6 : 0);
-                        sanityReport = sanityReport.Replace("{DateTime}", recoveryTime.ToString("yyyy-MM-dd HH:mm")).Replace("{TimeDiff}", (recoveryTime - DateTimeOffset.Now).ToString(@"h\h\ m\m"));
+                        sanityReport = LocalizationHelper.GetString("SanityReport").Replace("{DateTime}", recoveryTime.ToString("yyyy-MM-dd HH:mm")).Replace("{TimeDiff}", (recoveryTime - DateTimeOffset.Now).ToString(@"h\h\ m\m"));
 
                         allTaskCompleteLog = allTaskCompleteLog + Environment.NewLine + sanityReport;
-                        Instances.TaskQueueViewModel.AddLog(allTaskCompleteLog, splitMode: TaskQueueViewModel.LogCardSplitMode.Both);
-
-                        if (SettingsViewModel.ExternalNotificationSettings.ExternalNotificationSendWhenComplete)
-                        {
-                            var logs = SettingsViewModel.ExternalNotificationSettings.ExternalNotificationEnableDetails
-                                ? Instances.TaskQueueViewModel.LogItemViewModels.Aggregate(string.Empty, (current, logItem) => current + $"[{logItem.Time}][{logItem.Color}]{logItem.Content}\n")
-                                : string.Empty;
-                            logs += allTaskCompleteMessage;
-
-                            ExternalNotificationService.Send(allTaskCompleteTitle, logs + Environment.NewLine + sanityReport);
-                        }
-
-                        if (_toastNotificationTimer is not null)
+                        if (_sanityRecoveryTimer is not null)
                         {
                             DisposeTimer();
                         }
@@ -1316,28 +1355,16 @@ public class AsstProxy
                         var interval = recoveryTime - DateTimeOffset.Now.AddMinutes(6);
                         if (interval > TimeSpan.Zero)
                         {
-                            _toastNotificationTimer = new DispatcherTimer {
+                            _sanityRecoveryTimer = new DispatcherTimer {
                                 Interval = interval,
                             };
-                            _toastNotificationTimer.Tick += OnToastNotificationTimerTick;
-                            _toastNotificationTimer.Start();
+                            _sanityRecoveryTimer.Tick += OnSanityRecoveryTimer;
+                            _sanityRecoveryTimer.Start();
                         }
                     }
-                    else
-                    {
-                        Instances.TaskQueueViewModel.AddLog(allTaskCompleteLog, splitMode: TaskQueueViewModel.LogCardSplitMode.Both);
+                    Instances.TaskQueueViewModel.AddLog(allTaskCompleteLog, splitMode: TaskQueueViewModel.LogCardSplitMode.Both);
 
-                        if (SettingsViewModel.ExternalNotificationSettings.ExternalNotificationSendWhenComplete)
-                        {
-                            var logs = SettingsViewModel.ExternalNotificationSettings.ExternalNotificationEnableDetails
-                                ? Instances.TaskQueueViewModel.LogItemViewModels.Aggregate(string.Empty, (current, logItem) => current + $"[{logItem.Time}][{logItem.Color}]{logItem.Content}\n")
-                                : string.Empty;
-                            logs += allTaskCompleteMessage;
-
-                            ExternalNotificationService.Send(allTaskCompleteTitle, logs);
-                        }
-                    }
-
+                    ExternalNotificationService.Event.AllTaskComplete(allTaskCompleteTitle, allTaskCompleteMessage, sanityReport);
                     using (var toast = new ToastNotification(allTaskCompleteTitle))
                     {
                         if (FightSetting.SanityReport is not null)
@@ -1372,7 +1399,7 @@ public class AsstProxy
 
                 if (buyWine)
                 {
-                    Instances.SettingsViewModel.LastBuyWineTime = DateTime.UtcNow.ToYjDate().ToFormattedString();
+                    Instances.SettingsViewModel.LastBuyWineTime = DateTimeOffset.UtcNow.ToYjDateTime();
 
                     // 非阻塞 Dialog：喝醉提示，用户点确认后再切换到 Pallas 语言
                     SettingsViewModel.ShowEasterEggDialog(
@@ -1604,7 +1631,8 @@ public class AsstProxy
 
                             if (FightSetting.SanityReport is not null)
                             {
-                                missionStartLogBuilder.AppendFormat(LocalizationHelper.GetString("CurrentSanity"), FightSetting.SanityReport.SanityCurrent, FightSetting.SanityReport.SanityMax);
+                                int postBattleSanity = FightSetting.SanityReport.SanityCurrent - FightSetting.FightReport!.SanityCost;
+                                missionStartLogBuilder.AppendFormat(LocalizationHelper.GetString("CurrentSanity"), postBattleSanity, FightSetting.SanityReport.SanityMax);
                             }
 
                             if (ExpiringMedicineUsedTimes > 0)
@@ -2391,7 +2419,7 @@ public class AsstProxy
             return;
         }
 
-        if (SettingsViewModel.ConnectSettings.UseAttachWindow && (subTask == "ReportToPenguinStats" || subTask == "ReportToYituliu"))
+        if (SettingsViewModel.ConnectSettings.IsPCConnectConfig && (subTask == "ReportToPenguinStats" || subTask == "ReportToYituliu"))
         {
             Instances.TaskQueueViewModel.AddLog(LocalizationHelper.GetString("ReportSkippedForPcClient"), UiLogColor.Warning);
             return;
@@ -2513,7 +2541,7 @@ public class AsstProxy
     public bool AsstConnect(ref string error)
     {
         // 如果启用了 AttachWindow 模式，则使用窗口绑定而非 ADB 连接
-        if (SettingsViewModel.ConnectSettings.UseAttachWindow)
+        if (SettingsViewModel.ConnectSettings.IsPCConnectConfig)
         {
             return AsstAttachWindowConnect(ref error);
         }
@@ -2615,21 +2643,13 @@ public class AsstProxy
             _logger.Information("AttachWindow: Found window \"{WindowName}\" with HWND: {Hwnd}", TargetWindowName, hwnd);
         }
 
-        if (!ulong.TryParse(SettingsViewModel.ConnectSettings.AttachWindowScreencapMethod, out var screencapMethod))
+        if (SettingsViewModel.ConnectSettings.ExtraConfig is not Win32Extra win32Extra)
         {
-            screencapMethod = 2; // 默认 FramePool
+            return false;
         }
-
-        if (!ulong.TryParse(SettingsViewModel.ConnectSettings.AttachWindowMouseMethod, out var mouseMethod))
-        {
-            mouseMethod = 32; // 默认 SendMessageWithCursorPos
-        }
-
-        if (!ulong.TryParse(SettingsViewModel.ConnectSettings.AttachWindowKeyboardMethod, out var keyboardMethod))
-        {
-            keyboardMethod = 2; // 默认 SendMessage
-        }
-
+        var screencapMethod = (ulong)win32Extra.ScreencapMethod;
+        var mouseMethod = (ulong)win32Extra.MouseMethod;
+        var keyboardMethod = (ulong)win32Extra.KeyboardMethod;
         bool ret = AsstAttachWindow(_handle, hwnd, screencapMethod, mouseMethod, keyboardMethod);
 
         if (!ret)
@@ -2661,22 +2681,20 @@ public class AsstProxy
     {
         _lastConnectionError = string.Empty;
 
-        switch (SettingsViewModel.ConnectSettings.ConnectConfig)
+        if (ConnectSettingsUserControlModel.Instance.ExtraConfig is MuMu12Extra mumu12)
         {
-            case "MuMuEmulator12":
-                AsstSetConnectionExtrasMuMu(SettingsViewModel.ConnectSettings.MuMuEmulatorExtras.Config);
-                break;
-
-            case "LDPlayer":
-                AsstSetConnectionExtrasLdPlayer(SettingsViewModel.ConnectSettings.LdPlayerExtras.Config);
-                break;
+            AsstSetConnectionExtrasMuMu(mumu12.Config);
+        }
+        else if (ConnectSettingsUserControlModel.Instance.ExtraConfig is LDPlayerExtra ldPlayer)
+        {
+            AsstSetConnectionExtrasLdPlayer(ldPlayer.Config);
         }
 
         switch (SettingsViewModel.ConnectSettings.ConnectConfig)
         {
-            case "WSA":
-            case "Androws":
-                AsstSetInstanceOption(InstanceOptionKey.ClientType, SettingsViewModel.GameSettings.ClientType);
+            case ConnectConfig.WSA:
+            case ConnectConfig.Androws:
+                AsstSetInstanceOption(InstanceOptionKey.ClientType, SettingsViewModel.GameSettings.ClientType.ToCustomString());
                 break;
             default:
                 AsstSetInstanceOption(InstanceOptionKey.ClientType, string.Empty);
@@ -2722,7 +2740,7 @@ public class AsstProxy
             }
         }
 
-        bool ret = AsstConnect(_handle, SettingsViewModel.ConnectSettings.AdbPath, SettingsViewModel.ConnectSettings.ConnectAddress, SettingsViewModel.ConnectSettings.ConnectConfig);
+        bool ret = AsstConnect(_handle, SettingsViewModel.ConnectSettings.AdbPath, SettingsViewModel.ConnectSettings.ConnectAddress, SettingsViewModel.ConnectSettings.ConnectConfig.ToString());
 
         // 如果连接失败，等待回调完成以获取详细错误信息
         if (!ret)
@@ -2733,12 +2751,12 @@ public class AsstProxy
         // 尝试默认的备选端口
         if (!ret && SettingsViewModel.ConnectSettings.AutoDetectConnection)
         {
-            if (SettingsViewModel.ConnectSettings.DefaultAddress.TryGetValue(SettingsViewModel.ConnectSettings.ConnectConfig, out var value))
+            if (SettingsViewModel.ConnectSettings.DefaultAddress.TryGetValue(SettingsViewModel.ConnectSettings.ConnectConfig.ToString(), out var value))
             {
                 foreach (var address in value
                              .TakeWhile(_ => !_runningState.GetIdle()))
                 {
-                    ret = AsstConnect(_handle, SettingsViewModel.ConnectSettings.AdbPath, address, SettingsViewModel.ConnectSettings.ConnectConfig);
+                    ret = AsstConnect(_handle, SettingsViewModel.ConnectSettings.AdbPath, address, SettingsViewModel.ConnectSettings.ConnectConfig.ToString());
                     if (!ret)
                     {
                         continue;
@@ -2892,6 +2910,9 @@ public class AsstProxy
         /// <summary>更新用户数据</summary>
         UserDataUpdate,
 
+        /// <summary>仓库维护</summary>
+        DepotMaintain,
+
         /// <summary>小游戏</summary>
         MiniGame,
 
@@ -2948,7 +2969,7 @@ public class AsstProxy
         return true;
     }
 
-    public bool AsstAppendCloseDown(string clientType)
+    public bool AsstAppendCloseDown(ClientType clientType)
     {
         if (!AsstStop())
         {
@@ -2964,7 +2985,7 @@ public class AsstProxy
     /// </summary>
     /// <param name="clientType">客户端版本。</param>
     /// <returns>是否成功。</returns>
-    public bool AsstStartCloseDown(string clientType)
+    public bool AsstStartCloseDown(ClientType clientType)
     {
         return AsstAppendCloseDown(clientType) && AsstStart();
     }

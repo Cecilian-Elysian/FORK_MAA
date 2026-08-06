@@ -45,11 +45,11 @@
   <!-- Version -->
   <PropertyGroup>
     <ApplicationRevision>0</ApplicationRevision>
-    <ApplicationVersion>6.0.0.0</ApplicationVersion>
-    <Version>6.14.0</Version>
-    <FileVersion>6.14.0</FileVersion>
-    <AssemblyVersion>6.14.0</AssemblyVersion>
-    <InformationalVersion>6.14.0</InformationalVersion>
+    <ApplicationVersion>0.0.1</ApplicationVersion>
+    <Version>0.0.1</Version>
+    <FileVersion>0.0.1</FileVersion>
+    <AssemblyVersion>0.0.1</AssemblyVersion>
+    <InformationalVersion>0.0.1</InformationalVersion>
   </PropertyGroup>
 
   <ItemGroup>
@@ -91,7 +91,9 @@
   <ItemGroup>
     <AdditionalFiles Include="stylecop.json" />
     <Resource Include="newlogo.ico" />
-    <Resource Include="Res\Backgrounds\*" />
+    <!--  Internal 为内部资源（喜报等，嵌入）；Wallpapers 为用户可选壁纸，复制到输出目录供下拉列表读取  -->
+    <Resource Include="Res\Backgrounds\Internal\**\*" />
+    <Content Include="Res\Backgrounds\Wallpapers\**\*" CopyToOutputDirectory="PreserveNewest" />
     <Resource Include="Res\Img\*" />
     <Resource Include="Res\Img\EasterEgg\*" />
     <Resource Include="Res\Img\Operator\*" />

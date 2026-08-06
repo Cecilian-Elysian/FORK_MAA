@@ -1,33 +1,80 @@
+## v6.14.0-fork.20260806
+
+基于上游 v6.16.5（dev-v2 `c5d48f4971`），本仓 fork 累积下游增强：
+
+### 新增 fork 特性
+
+- 多账号自动轮换日常任务（`feat/account_rotation`）
+- 肉鸽与生息演算延后到所有账号基础任务完成后执行（`feat/defer-rogue`）
+- 公招加急门槛：仅在确认最低星级 ≥ 阈值时使用加急许可（`feat/expedite-threshold`）
+- 抽 `AccountCycleOrchestrator` 单一职责类（`feat/account-cycle-refactor`）
+- StartUp OCR 失败熔断（`feat/startup-restart-breaker`）
+- 诊断包导出（`feat/diagnostic-export`）
+- 下游改动清单自动生成器（`feat/downstream-changes`）
+- 外部通知服务（Bark / Discord / DingTalk / Gotify / Qmsg / ServerChan / Smtp / Telegram / Custom Webhook）
+- 本地构建脚本 SDK 锁死修复（`tools/local-install*.bat`）
+
+### Fork 修复
+
+- 官服账号切换界面识别补全（`fix/account-official-recognize`）
+- 切号时 LoginOther OCR 模板兜底（`fix/account-switch-retry`）
+- 切号时左侧任务面板刷新 + 当前账号 Header（`fix/account_rotation/6`）
+- 多账号轮换账号名 Trim 防御（`fix/trim-account-name`）
+- 资源补图（`fix/account-switch-template-missing`）
+- 立即完成 OCR 别名（`fix/recruit-now-text-aliases`）
+- MissionStart 日志战后理智（`fix/post-battle-sanity-display`）
+- 会客室填充线索空位早返回（`fix/reception-clue-vacancy` cherry-pick）
+
+### 删除的不成熟功能（2026-08-06 仓库清理）
+
+- `feat/auto-recruit-3star-to-4star`（3★→4★ 自动升级）：未充分验证
+- `fix/auto-recruit-expedite-original-level`：随上一项删除而冗余
+- `feat/recruit-result-display` 招募结果干员识别：2026-08-02 回退
+- `feat/recruit-history-tab` 公招历史 Tab：依赖已回退的 callback
+
+### 协议字段双轨
+
+公招参数 fork 扩展字段 `expedite_min_level`（最低 N 星才加急，0 = 所有星级）与上游 `expedite` / `expedite_times` 并存，5 语种 `docs/{lang}/protocol/integration.md` 双轨呈现。
+
+## v6.16.5
 ## v6.14.0
 
 ### Highlights
 
-#### 莫奈取色
+#### 适配新代理倍率
 
-新增背景莫奈取色，可根据背景图自动生成主题色，也支持手动选色。
+游戏代理倍率上限已提升至 10 倍。本版本全面适配新的倍率列表界面与识别逻辑，支持最高 10 倍连战，并移除此前因未适配而临时锁定的限制，AUTO 与手动倍率切换可正常使用。
 
-#### 仓库识别支持更多基础资源
+#### 背景选择器增强
 
-仓库识别现已新增对源石、合成玉、龙门币、赤金与采购凭证的识别支持，导出与库存核对更完整；排序现已改为按游戏内顺序排列。
+背景设置支持树形结构选择与缩略图预览，自定义界面更方便。
 
-#### 截图与模拟器兼容性提示更完整
+#### 更新后自动运行可控
 
-在设置指引与开始唤醒中补充截图增强与截图测试入口，MuMu 截图增强也已支持 `emulator-5xxx` 格式端口；新增当前模拟器帧率检测与提示，补充 MuMu 后台保活检测，以及雷电模拟器搭配 MaaTouch 时的组合警告，帮助更快定位截图异常、操作异常与性能设置问题。
+新增「更新后立即重启时不自动运行」选项；启动自动运行任务或模拟器前增加 10 秒倒计时确认，避免更新重启后非预期地直接开跑。
+
+#### 库存保持任务增强
+
+库存保持任务 UI 重构：新增理智药/源石全局开关与临期药支持，并提供芯片、龙门币、采购凭证、技巧概要等刷图预设，计划管理更方便。
 
 <details>
 <summary><b>English</b></summary>
 
-#### Monet Theming
+#### New Series Multiplier Support
 
-Added background Monet theming with both automatic color extraction and manual color selection.
+In-game series (proxy) multiplier cap is now up to 10x. This version fully adapts to the new series list UI and recognition logic, supports up to 10x consecutive battles, and removes the temporary lock used before adaptation so AUTO and manual multiplier switching work normally again.
 
-#### More Base Resources Supported in Depot Recognition
+#### Enhanced Background Picker
 
-Depot recognition now supports Originium, Orundum, LMD, Gold, and Purchase Certificates, making inventory checks and exports more complete. Items are now sorted by in-game order.
+Background settings now support a tree-style picker with thumbnail previews for easier customization.
 
-#### Better Screenshot and Emulator Compatibility Guidance
+#### Controllable Auto-Run After Update
 
-Screenshot enhancement and screenshot test entries are now surfaced in setup guidance and startup wake-up, and MuMu screenshot enhancement now supports `emulator-5xxx` style ports. Added emulator frame rate detection and warnings, MuMu background keep-alive detection, and a warning for the LDPlayer + MaaTouch combination, making screenshot, input, and performance issues easier to diagnose.
+Added an option to skip auto-run after an immediate post-update restart, plus a 10-second countdown confirmation before automatically starting tasks or the emulator, preventing unexpected runs after update restarts.
+
+#### Enhanced Depot Maintain Task
+
+Refactored the depot maintain task UI with global medicine/originium toggles and expiring-medicine support, plus farming presets for chips, LMD, certificates, and skill summaries for easier plan management.
 
 </details>
 
@@ -36,59 +83,123 @@ Screenshot enhancement and screenshot test entries are now surfaced in setup gui
 以下是详细内容：
 
 <details open>
-<summary><b>v6.14.0 (2026-07-09)</b></summary>
+<summary><b>v6.16.5 (2026-08-06)</b></summary>
 
 ### 新增 | New
 
-* 新增背景莫奈取色，支持根据背景图自动生成主题色，也支持手动选择自定义颜色；优化主题色板生成与对比度表现 ([#17242](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/17242), [#17243](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/17243), [#17249](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/17249)) @ABA2396
-* 自动战斗多作业模式新增支持异体字关卡导航；部分活动与支线关卡新增模板导航，在有模板时可优先使用模板识别、无模板时回退 OCR ([#16984](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/16984)) @ABA2396
-* 仓库识别新增支持源石、合成玉、龙门币、赤金与采购凭证 ([#17287](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/17287)) @ABA2396
-* 账号切换新增启用勾选框，可按需关闭账号切换 ([#17280](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/17280)) @ABA2396
-* 新增当前模拟器帧率检测与提示，可识别过低、非 60 FPS 与异常高帧率设置 ([#17219](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/17219)) @ABA2396
-* 新增 MuMu 后台保活检测，连接后可提示可能导致截图与操作异常的后台保活设置 ([#17241](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/17241)) @ABA2396
-* 新增同时使用雷电模拟器 + MaaTouch 组合的警告 ([#17238](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/17238)) @ABA2396
-* 设置指引与开始唤醒中新增截图增强与截图测试相关选项 ([#17247](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/17247)) @ABA2396
-* MuMu 截图增强新增支持 `emulator-5xxx` 格式端口 ([#17255](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/17255)) @ABA2396
-* 新增更新器进度窗口显示开关，并补充自动下载更新包提示文本 @ABA2396
-* 繁中服新增「未許之地」关卡导航支持 ([#17285](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/17285)) @momomochi987
-* 繁中服新增「衛戍協議：盟約」小玩法模板支持 ([#17257](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/17257)) @momomochi987
-* YostarEN/JP/KR add JieGarden DLC2 roguelike support, including new squad names and a large batch of OCR/recognition mappings ([#17286](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/17286), [#17290](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/17290), [#17294](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/17294)) @Manicsteiner @Constrat @HX3N
+* 支持拖入资源包更新资源版本，并收窄完整包/OTA 包识别以避免误匹配；拖入检测改为异步避免卡 UI，导入失败时显示提示 ([#17569](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/17569)) @ABA2396
 
 ### 改进 | Improved
 
-* 持久化保存主题色，减少启动时主题闪烁 ([#17263](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/17263)) @ABA2396
-* 帧率检查改为异步执行，减少截图返回阻塞 ([#17277](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/17277)) @ABA2396
-* JieGarden DLC2 在通宝页面滑动与选取之间添加延迟，提升选取稳定性 ([#17295](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/17295)) @Manicsteiner
-* 优化被注入提示文案，提示信息更清晰 ([#17272](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/17272)) @ABA2396
-* 确认招募时同步更新 UI 日志 Card 图片，界面展示更及时 ([#17268](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/17268)) @ABA2396
-* 禁用 Xe-LPG+ Arrow Lake Arc 140T 的 GPU 推理选项，避免相关机型出现识别异常 @ABA2396
-* YostarEN/JP improve JieGarden and Sami roguelike event/option recognition; YostarEN additionally improves MASS encounter option mappings ([#17261](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/17261)) @Manicsteiner @Constrat
+* 更新器进度窗口延后至主窗口退出后再显示，避免与正在退出的 MAA 抢占前台；等待超时后自动弹出窗口并提示等待状态，防止主进程退出卡住时更新器变成不可见进程 @ABA2396
 
 ### 修复 | Fix
 
-* 修复首次运行时错误弹出目标配置缺失的提示 @status102
-* 修复 MuMu 模拟器下第 32 个及以后多开实例的编号计算错误 ([#17112](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/17112)) @dikxingmengya @ABA2396
-* 修复 DBNet UnClip 多边形偏移实现，提升 NCNN OCR 结果与 fastdeploy 的一致性 ([#17227](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/17227)) @Aliothmoon
-* 修复基建产物收取时因 loading 遮挡导致跳过的问题 ([#17232](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/17232)) @ZiyinLin @status102
-* 修复自定义基建配置列表显示异常 ([#17254](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/17254)) @ABA2396
-* 修复使用莫奈取色吸管工具后二次打开页面时崩溃的问题 ([#17270](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/17270)) @ABA2396
-* 修复背景填充模式仍可编辑的问题 @ABA2396
-* 修复未开启系统通知时仍执行系统通知检查的问题 @ABA2396
-* 修复萨米肉鸽「特里蒙旅行社特派团」识别错误 @Saratoga-Official
-* 修复肉鸽事件与选项中的问号、空格、重复项及相似项锚定问题，统一多项事件名识别 ([#17256](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/17256)) @ABA2396 @Constrat
-* 繁中服补充与修正萨米肉鸽大量事件/选项识别 @Constrat
-* YostarEN/JP/KR: add and fix a large batch of Sami roguelike event/option recognition; YostarEN additionally adds a set of MASS event option mappings @Constrat
-* YostarEN: fix a JieGarden DLC2 tongbao regex recognition issue @Constrat
-* YostarEN: fix `MissionFailedFlag2` template mismatch recognition issue @Constrat
-* YostarEN: fix a Varkaris text/accent recognition issue @Constrat
+* 倒计时、关闭模拟器、完成后脚本等非可打断期间阻止自动更新重启 ([#17566](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/17566)) @ABA2396
+* 修复刷理智未能关闭代理倍率列表的问题 @status102
+* 修复悖论自动战斗作业使用本地文件时始终读取临时文件的问题 @status102
+* 修复干员 `sortIndex` 缺失时误用默认值 0 导致排序错误的问题 @ABA2396
+* 修复中断锁引用计数下溢时钳制操作的竞态，避免误抹合法锁 @ABA2396
+* YostarJP fix OCR replace chain mangling operator names (e.g. FEater) and TA single-character rules ([#17516](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/17516)) @Ronnoc @Manicsteiner
 
 ### 文档 | Docs
 
-* 补充截图相关回调文档 @ABA2396
-* 修复多语言协议文档中的 `<object>` 标签问题 ([#17296](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/17296)) @Constrat
+* 新增库存保持与更新数据文档，补充手动更新、代理倍率、定时执行与剿灭等说明，并同步各语言文档 ([#17576](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/17576)) @ABA2396
 
-### 其他 | Other
+</details>
 
-* 优化 MAAUnified 构建流程，复用 MaaCore 构建产物 ([#17233](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/17233)) @GhostKiller127
+<details>
+<summary><b>v6.16.4 (2026-08-04)</b></summary>
+
+### 修复 | Fix
+
+* 修复 Win32IO 竞争条件导致的 `am start` 误判失败，并修正超时路径的异步 I/O 取消与资源释放 ([#17545](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/17545)) @ABA2396
+* 修复 SplitButton 在亮色模式下显示异常 @ABA2396
+* YostarJP fix TA (SS) activity OCR mismatch causing wrong activity navigation @Jason's-Miku
+
+</details>
+
+<details>
+<summary><b>v6.16.3 (2026-08-03)</b></summary>
+
+### 改进 | Improved
+
+* 重构库存保持计划项为独立 ViewModel，按索引同步任务配置 ([#17468](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/17468)) @status102
+* 优化库存保持预设按钮：左侧区域可点击展开下拉，并统一 SplitButton 背景样式 @ABA2396
+* 更新进度窗口不再强制置顶，仅在开始更新时前置一次，避免打断全屏游戏或其他操作 ([#17525](https://github.com/MaaAssistantArknights/MaaAssistantArknights/issues/17525)) @ABA2396
+* 统一配置与启动设置下拉列表中的删除按钮样式 @ABA2396
+
+### 修复 | Fix
+
+* 修复刷理智选择代理倍率后未关闭次数列表的问题 @status102
+* 修复 iOS/PlayCover 基建办公室入口模板阈值过高导致识别失败的问题 ([#17527](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/17527)) @Rememorio
+
+</details>
+
+<details>
+<summary><b>v6.16.2 (2026-08-02)</b></summary>
+
+### 新增 | New
+
+* 库存保持任务 UI 重构：新增理智药/源石全局开关与临期药支持，并提供芯片、龙门币、采购凭证、技巧概要等刷图预设 ([#17512](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/17512)) @ABA2396
+
+### 改进 | Improved
+
+* 优化库存保持界面布局与显示，清空计划时增加确认弹窗 @ABA2396
+
+### 修复 | Fix
+
+* 修复库存保持界面未选择掉落物时切换语言无法正确显示的问题 @ABA2396
+* YostarEN fix Mountain OCR regex matching @Constrat
+
+</details>
+
+<details>
+<summary><b>v6.16.1 (2026-08-02)</b></summary>
+
+~~MAA不会在周██凌晨更新。如果收到更新提示，请忽略，不要查看更新公告，直到周██。~~
+
+### 改进 | Improved
+
+* 更新后自动运行倒计时弹窗移除关闭按钮，避免误关后仍继续自动运行 @ABA2396
+
+### 修复 | Fix
+
+* 使用 DXGI 适配器 LUID 解析 GPU OCR 设备，避免多显卡环境下绑定错误 GPU；解析失败或执行提供程序不可用时回退 CPU ([#17488](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/17488)) @GSY707
+* 修复 MuMu display id 在 fallback 时被错误缓存，避免连接时游戏未启动导致截图/触控锁死在错误窗口 @ABA2396
+* 修复「直到大地变成一颗酸橙」活动上次战斗关卡未在后三关结束时关卡导航错误 @ABA2396
+* 修复 FightTask 在新代理倍率列表下无法指定 7~10 倍的参数校验 @status102
+
+</details>
+
+<details>
+<summary><b>v6.16.0 (2026-08-01)</b></summary>
+
+### 新增 | New
+
+* 适配游戏新代理倍率设置与列表界面，支持最高 10 倍连战，并移除临时锁定限制 ([#17500](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/17500)) @status102 @ABA2396
+* 背景设置支持树形选择器与缩略图预览 @ABA2396
+* 新增「更新后立即重启时不自动运行」选项，启动自动运行前增加 10 秒倒计时确认 ([#17483](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/17483)) @ABA2396
+* 新增「直到大地变成一颗酸橙」活动关卡导航 @ABA2396
+
+### 改进 | Improved
+
+* 增强 MouseWheelHelper：弹层打开时隔离外层页面滚动，避免滚动穿透 @ABA2396
+* 库存保持任务先比较库存数量再判断关卡开放状态，已满足目标时直接跳过 @ABA2396
+* MuMu / Win32 触控对齐 minitouch 默认延迟，提升点击稳定性 @ABA2396
+* 优化自动战斗新活动关卡提示文案 @ABA2396
+* 优化库存保持 Item 初始化与作业解析干员属性要求默认值处理 @status102
+
+### 修复 | Fix
+
+* 修复未开启截图增强时 MuMu 后台保活检测失效的问题 @ABA2396
+* 修复开启自动检测连接时无法修改 Extra 配置的问题 ([#17480](https://github.com/MaaAssistantArknights/MaaAssistantArknights/issues/17480)) @ABA2396
+* 修复更新数据任务仅勾选仓库识别时被跳过的问题 ([#17482](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/17482)) @2436238575 @ABA2396
+* 修复自动战斗多作业模式超长关卡名显示异常 @ABA2396
+* 修复自动战斗添加作业时地图信息不存在的提示错误使用 stageCode 的问题 @status102
+* 修复「直到大地变成一颗酸橙」关卡 OCR 可能将 TO 识别为 T0 的问题 @ABA2396
+* 修复 BadModules 在注入环境下弹窗崩溃，回退至 Win32 MessageBox @ABA2396
+* 修正 PC 端推荐分辨率文案为 1280x720 / 1920x1080 @ABA2396
+* YostarKR add BattleQuickFormationClear2 for Vector Breakthrough @HX3N
 
 </details>
