@@ -22,9 +22,11 @@ using MaaWpfGui.Constants;
 using MaaWpfGui.Constants.Enums;
 using MaaWpfGui.Extensions;
 using MaaWpfGui.Helper;
+using MaaWpfGui.Services;
 using MaaWpfGui.Utilities.ValueType;
 using MaaWpfGui.ViewModels.UI;
 using Stylet;
+using static MaaWpfGui.Main.AsstProxy;
 
 namespace MaaWpfGui.ViewModels.UserControl.TaskQueue;
 
@@ -108,11 +110,10 @@ public class UserDataUpdateSettingsUserControlModel : TaskSettingsViewModel, Use
             }
 
             List<int> ids = [];
-            bool ret = false;
             if (operBoxTriggerDue)
             {
-                ret = Instances.ToolboxViewModel.StartOperBoxRecognitionTask(startImmediately: false);
-                if (!ret)
+                bool operBoxRet = Instances.ToolboxViewModel.StartOperBoxRecognitionTask(startImmediately: false);
+                if (!operBoxRet)
                 {
                     return (false, []);
                 }
@@ -124,23 +125,22 @@ public class UserDataUpdateSettingsUserControlModel : TaskSettingsViewModel, Use
 
             if (depotTriggerDue)
             {
-                ret = Instances.ToolboxViewModel.StartDepotRecognitionTask(false);
-                if (!ret)
+                var (result, depotTaskId) = Instances.AsstProxy.AsstAppendTaskWithEncoding(TaskType.Depot, (AsstTaskType.Depot, null));
+                if (!result)
                 {
+                    Instances.TaskQueueViewModel.AddLog(LocalizationHelper.GetString("DepotPlanUpdateDepotFailed"), UiLogColor.Error);
                     return (false, []);
                 }
-
-                int depotTaskId = Instances.AsstProxy.TasksStatus.Last().Key;
                 Instances.ToolboxViewModel.MarkDepotRecognitionSyncTimeForReset(depotTaskId);
                 ids.Add(depotTaskId);
             }
 
-            if (ret && operBoxTriggerDue && depotTriggerDue)
+            if (operBoxTriggerDue && depotTriggerDue)
             {
                 AchievementTrackerHelper.Instance.Unlock(AchievementIds.DoubleSync);
             }
 
-            return ret ? (true, ids) : (null, []);
+            return ids.Count > 0 ? (true, ids) : (null, []);
         }
 
         private static bool IsTriggerDue(DateTimeOffset? lastSyncTime, UserDataUpdateTriggerInterval triggerInterval)

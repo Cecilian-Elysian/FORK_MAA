@@ -52,6 +52,7 @@
     <system:String x:Key="ExternalNotificationSendSuccess">Send successfully</system:String>
     <system:String x:Key="ExternalNotificationSendFail">Send failed</system:String>
     <system:String x:Key="ExternalNotificationSendTest">Send Test</system:String>
+    <system:String x:Key="ExternalNotificationAddConfig">Add Notification</system:String>
     <system:String x:Key="ExternalNotificationSendTestTitle">MAA external notification test</system:String>
     <system:String x:Key="ExternalNotificationSendTestContent">This is MAA external notification test information. If you see this content, the notification was sent successfully!</system:String>
     <system:String x:Key="ExternalNotificationServerChanSendKey">Server Chan Send Key</system:String>
@@ -332,6 +333,7 @@ To customize rotation schedules, please use ｢{key=InfrastModeCustom}｣.</syst
     <system:String x:Key="Delete">Delete</system:String>
     <system:String x:Key="RenameTask">Rename Task</system:String>
     <system:String x:Key="RenameTaskPrompt">Please enter a new task name:</system:String>
+    <system:String x:Key="AddTaskQueueTask">Add New Task</system:String>
     <system:String x:Key="ConfirmDeleteTask">Confirm Delete</system:String>
     <system:String x:Key="ConfirmDeleteTaskMessage">Are you sure you want to delete {0} task "{1}"?</system:String>
     <system:String x:Key="TaskRenamed">Task renamed to: {0}</system:String>
@@ -349,7 +351,7 @@ To customize rotation schedules, please use ｢{key=InfrastModeCustom}｣.</syst
 • {key=Quantity}: uses the selected material's drop count in this combat task as the target, and stops when the set amount is reached.
 • {key=TargetInventory}: uses the saved inventory data from ｢{key=Toolbox}-{key=DepotRecognition}｣ and only farms until the target stock is reached.
   • Inventory data is cached and may differ from your real stock after manual farming, crafting, or material use. Sync it with ｢{key=UserDataUpdate}｣ or ｢{key=Toolbox}-{key=DepotRecognition}｣.
-  • When {key=TargetInventory} is enabled, the material and amount cannot be changed during a run.</system:String>
+  • Inventory is updated in real time based on drops during a run; materials farmed by earlier tasks will reduce the deficit of subsequent tasks.</system:String>
     <system:String x:Key="StartupUpdateCheck">Startup Update Check</system:String>
     <system:String x:Key="UpdateAutoCheck">Scheduled Update Check</system:String>
     <system:String x:Key="UpdateAutoCheckTip">In-game 00:00 / 18:00 (Server local time 04:00 / 22:00)</system:String>
@@ -470,6 +472,7 @@ Continue only after you have verified the directory layout and finished a manual
     <system:String x:Key="LocalUpdatePackageImportedTitle">Local update package ready</system:String>
     <system:String x:Key="LocalUpdatePackageImportedDesc">A compatible local update package was detected. Update MAA now? (Restart required)</system:String>
     <system:String x:Key="LocalUpdatePackageUnsupported">Cannot recognize archive: {0}\nOnly full packages for the current architecture, or OTA packages from the current version to a newer version, can be imported.\nCurrent version: {1}\nCurrent architecture: {2}\nSupported filename examples: MAA-vTARGET_VERSION-win-{2}.zip\nor MAAComponent-OTA-{1}_vTARGET_VERSION-win-{2}.zip</system:String>
+    <system:String x:Key="LocalResourcePackageTooOld">Resource package version ({0}) is not newer than the current version ({1}). Import skipped.</system:String>
     <system:String x:Key="NewVersionFoundButNoPackageTitle">New version found, but no update package</system:String>
     <system:String x:Key="NewVersionFoundButNoPackageDesc">Please manually download the full package to update!</system:String>
     <system:String x:Key="ForceScheduledStart">Force scheduled start</system:String>
@@ -495,6 +498,13 @@ If you are concerned about leftover entries, please disable this option before d
         Administrator mode does not support startup on boot. It is not recommended to run MAA with administrator privileges for an extended period.\nIf necessary, please go to Control Panel &gt; Windows Tools &gt; Task Scheduler to create a custom task. When setting the trigger, make sure to check ｢Run with highest privileges｣
     </system:String>
     <system:String x:Key="RunTaskAfterLaunch">Auto Run task after launched</system:String>
+    <system:String x:Key="SkipStartupAutoRunAfterUpdate">Do not auto-run when restarting immediately for update</system:String>
+    <system:String x:Key="SkipStartupAutoRunAfterUpdateTip" xml:space="preserve">Only applies when ｢{key=AutoInstallUpdatePackage}｣ is on, or when you choose to restart immediately in the update prompt.
+If you choose ｢{key=ManualRestart}｣ and start MAA manually later, ｢{key=RunTaskAfterLaunch}｣ / ｢{key=OpenEmulatorAfterLaunch}｣ still run as usual.</system:String>
+    <system:String x:Key="StartupAutoRunCountdownTitle">Auto-start pending</system:String>
+    <system:String x:Key="StartupAutoRunCountdownTaskOnly">About to auto-run tasks. Cancel?</system:String>
+    <system:String x:Key="StartupAutoRunCountdownEmulatorOnly">About to start the emulator automatically. Cancel?</system:String>
+    <system:String x:Key="StartupAutoRunCountdownTaskAndEmulator">About to auto-run tasks and start the emulator. Cancel?</system:String>
     <system:String x:Key="MinimizeAfterLaunch">Auto Minimize after launched</system:String>
     <system:String x:Key="ClientType">Client Type</system:String>
     <system:String x:Key="StartGameLaunchClient">Launch Client on Start</system:String>
@@ -521,6 +531,7 @@ If you are concerned about leftover entries, please disable this option before d
     <system:String x:Key="MaaTouchMode">MaaTouch (Experimental)</system:String>
     <system:String x:Key="AdbTouchMode">ADB Input (Deprecated)</system:String>
     <system:String x:Key="MaaFwAdbTouchMode">MaaFramework (Experimental)</system:String>
+    <system:String x:Key="MumuExtrasTouchMode">MuMu Touch (Experimental)</system:String>
     <system:String x:Key="TouchModeTip" xml:space="preserve">ADB Input is for physical devices running an older OS version that cannot use Minitouch or MaaTouch. Do not use ADB Input if the other two modes work.&#10;ADB Input swipes tend to drift. To avoid this, swipe speed is set very slow and swipe distances differ from the other two modes. It cannot be used in scenarios requiring precise coordinate control.</system:String>
     <system:String x:Key="AdditionCommand">Additional command arguments</system:String>
     <system:String x:Key="AdditionCommandTip" xml:space="preserve">Additional commands for emulator parameters (e.g. ｢--instance 1｣ for instance 1).&#10;Command formats vary by emulator, typically including instance numbers and window modes, please consult your emulator's documentation.</system:String>
@@ -651,7 +662,6 @@ Then delete the entries corresponding to the paths.
     <system:String x:Key="UseCardLog">Use card style log</system:String>
     <system:String x:Key="MaxNumberOfLogThumbnails">Maximum number of log thumbnails</system:String>
     <system:String x:Key="TitleBarDisplayContent">Title Bar Display Content</system:String>
-    <system:String x:Key="CustomBackgroundTip">Manually create a ｢background｣ folder and place ｢background.png｣ inside to customize the background</system:String>
     <system:String x:Key="UseLogItemDateFormat">Custom log date format</system:String>
     <system:String x:Key="LogItemDateFormatString">Date format string</system:String>
     <system:String x:Key="PromptRestartForSettingsChange">Restart immediately to apply changes?</system:String>
@@ -705,6 +715,7 @@ Only supports Official(CN), Bilibili and Traditional Chinese servers. Third-part
     <system:String x:Key="ConnectionPreset">Connection Preset</system:String>
     <system:String x:Key="ScreenshotTest">Screenshot test</system:String>
     <system:String x:Key="MuMu12ExtrasEnabled">Enable MuMu's screenshot enhancement mode</system:String>
+    <system:String x:Key="MuMuExtrasTouchEnabled">Enable MuMu touch enhancement (experimental, requires MuMu Emulator 6.3.2+, supports background keep-alive)</system:String>
     <system:String x:Key="MuMuEmulatorPathNotFound">MuMu Emulator path not found.</system:String>
     <system:String x:Key="MuMuExternalRendererMissing" xml:space="preserve">external_renderer_ipc.dll was not found under the selected MuMu installation.\n
 Expected relative path: nx_device/15.0/shell/sdk/external_renderer_ipc.dll or
@@ -729,20 +740,24 @@ Note:
     <system:String x:Key="MuMu12Index">Instance Number</system:String>
     <system:String x:Key="MuMu12Display">Display Number</system:String>
     <system:String x:Key="MuMuExtrasNotEnabledMessage">Mumu screenshot enhancement not enabled, please check related settings</system:String>
-    <system:String x:Key="MuMuEmulator12KeepAliveOn">MuMu emulator background keep-alive is enabled, which may cause screenshot failures and abnormal operations. Please disable "background keep-alive" (or "app keep-alive", etc.) in MuMu settings</system:String>
+    <system:String x:Key="MuMuEmulator12KeepAliveOn">MuMu background keep-alive is on, but MuMu touch enhancement is not working. Operations are not possible under keep-alive. Please enable ｢{key=MuMuExtrasTouchEnabled}｣ or disable ｢Keep Alive in Background｣ in MuMu settings.</system:String>
+    <system:String x:Key="MuMuEmulator12FullExtrasReady">Full MuMu enhancement online — screenshot &amp; touch dual-link engaged. Background keep-alive bows to our will!</system:String>
     <system:String x:Key="LdExtrasEnabled">Enable LD's screenshot enhancement mode</system:String>
     <system:String x:Key="LdPlayerEmulatorPathNotFound">LDPlayer emulator path not found.</system:String>
     <system:String x:Key="LdPlayerOpenglMissing">ldopengl64.dll was not found in the selected LDPlayer path. Please verify the installation directory.</system:String>
     <system:String x:Key="LdExtrasEnabledTip" xml:space="preserve">
 LDPlayer 9 V9.1.32 or later is required.
 It's strongly recommended to run a screenshot test immediately after enabling this feature.
-MAA will attempt to automatically fill in the exec path through the registry. If failed, please fill it in manually.\n
+MAA will attempt to automatically fill in the exec path through the registry. If failed, please fill it in manually.
+
 The installation path should be the root directory of the emulator installation, for example, if the emulator process file path is
 C:\\leidian\\LDPlayer9\\dnplayer.exe
 then it should be filled in as
-C:\\leidian\\LDPlayer9。\n
+C:\\leidian\\LDPlayer9
+
 The instance number can be viewed in LDPlayer Multi-Instance Manager,
-The primary instance is 0, and other instances are the numbers after the version/instance ID.\n
+The primary instance is 0, and other instances are the numbers after the version/instance ID.
+
 The screenshot enhancement feature requires the emulator resolution to be set to landscape mode and the screen orientation not to be changed during connection.
 If the game is launched in portrait mode and then switched to landscape, it may cause screen tearing or other issues.
     </system:String>
@@ -774,6 +789,7 @@ If the game is launched in portrait mode and then switched to landscape, it may 
     <system:String x:Key="Roguelike">{key=AutoRoguelike}</system:String>
     <system:String x:Key="Reclamation">Reclamation Algorithm</system:String>
     <system:String x:Key="UserDataUpdate">Update Doctor Data</system:String>
+    <system:String x:Key="DepotMaintain">Depot Maintain</system:String>
     <system:String x:Key="MiniGame">Useful Tasks</system:String>
     <system:String x:Key="MiniGameCategoryPermanent">Permanent</system:String>
     <system:String x:Key="MiniGameCategoryCurrentEvent">Current Events</system:String>
@@ -834,7 +850,7 @@ Right-clicking other options will check/uncheck this option simultaneously</syst
     <system:String x:Key="SeriesTip" xml:space="preserve">• AUTO:
 Automatically identify the maximum proxy multiplier of the level, maintain the maximum proxy multiplier and do not overflow sanity after using sanity potion
 
-• Value (1~6):
+• Value (1~10):
 Execute proxy according to the set multiplier
 If the current sanity is not enough to complete the set multiplier (such as only enough for 5 times but set to 6 times), you cannot enter the battle
 Or
@@ -853,13 +869,44 @@ Do not adjust the proxy multiplier setting in the game</system:String>
     <system:String x:Key="DefaultStage">Cur/Last</system:String>
     <!--<system:String x:Key="InvalidStage">Invalid</system:String>-->
     <system:String x:Key="ClosedStage">The event is not open</system:String>
-    <system:String x:Key="UnsupportedStages">Unsupported stages</system:String>
+    <system:String x:Key="UnsupportedStages">Unsupported stage {0}. If this is a stage from a new event, please wait for the map resource update before using auto-combat</system:String>
     <system:String x:Key="LowVersion">Old Version, Update required</system:String>
     <system:String x:Key="MinimumRequirements" xml:space="preserve">Minimum Requirements:&#160;</system:String>
     <system:String x:Key="DaysLeftOpen" xml:space="preserve">Days left open:&#160;</system:String>
-    <system:String x:Key="Inventory">Inv: </system:String>
+    <system:String x:Key="Inventory">Inv:</system:String>
     <system:String x:Key="InventoryUpdateTip">Inventory data can be updated via  ｢{key=Toolbox}-{key=DepotRecognition}｣</system:String>
     <system:String x:Key="SpecifiedDropsInventoryUnavailable">Task "{0}" uses {key=TargetInventory}, but no inventory data is currently available, so it was skipped. Update it via ｢{key=Toolbox}-{key=DepotRecognition}｣.</system:String>
+    <!--  DepotMaintain  -->
+    <system:String x:Key="DepotUpdateBeforeStart">Update inventory before starting</system:String>
+    <system:String x:Key="AddPlan">Add</system:String>
+    <system:String x:Key="DepotPreset">Preset</system:String>
+    <system:String x:Key="DepotPresetChip1">Chips (All Classes)</system:String>
+    <system:String x:Key="DepotPresetChip2">Chip Packs (All Classes)</system:String>
+    <system:String x:Key="DepotPresetLmd">LMD</system:String>
+    <system:String x:Key="DepotPresetCertificate">Purchase Certificates</system:String>
+    <system:String x:Key="DepotPresetSkillSummary">Skill Summary - III</system:String>
+    <system:String x:Key="CollapseAll">Collapse</system:String>
+    <system:String x:Key="ClearPlans">Clear</system:String>
+    <system:String x:Key="ClearPlansConfirm">Are you sure you want to clear all plans?</system:String>
+    <system:String x:Key="DepotPlanInvalidDropItem">Plan {0}: no drop item specified.</system:String>
+    <system:String x:Key="DepotPlanZeroDropCount">Plan {0}: target inventory is 0.</system:String>
+    <system:String x:Key="DepotPlanNoStage">Plan {0}: stage not specified or is "Current/Last".</system:String>
+    <system:String x:Key="DepotPlanInventoryEnough">Plan {0}: {1} inventory sufficient (current {2} / target {3}).</system:String>
+    <system:String x:Key="DepotPlanStageNotOpen">Plan {0}: stage '{1}' is not open.</system:String>
+    <system:String x:Key="DepotPlanAddTaskFailed">Plan {0}: add task failed.</system:String>
+    <system:String x:Key="DepotSkipDuringActivity">Skip during event</system:String>
+    <system:String x:Key="DepotSkipDuringResourceCollection">Skip during resource collection limited-time all-day open</system:String>
+    <system:String x:Key="DepotPlanSkippedActivity">An event is in progress, depot maintain skipped.</system:String>
+    <system:String x:Key="DepotPlanSkippedResourceCollection">Resource collection limited-time all-day open is in progress, depot maintain skipped.</system:String>
+    <system:String x:Key="DepotPlanUpdateDepotFailed">Failed to update inventory data.</system:String>
+    <system:String x:Key="DepotUseAutoSeries">Auto Series</system:String>
+    <system:String x:Key="DepotUseAutoSeriesTip" xml:space="preserve">When unchecked, runs at 1×; when checked, runs at the highest series multiplier allowed by current sanity, so drops from a single run may exceed the target inventory limit.</system:String>
+    <system:String x:Key="DepotEnableUseMedicine">Enable "{key=UseSanityPotion}" checkbox</system:String>
+    <system:String x:Key="DepotEnableUseStone">Enable "{key=UseOriginitePrime}" checkbox</system:String>
+    <system:String x:Key="DepotUseExpiringMedicine">Use expiring sanity potions (within 48 hours)</system:String>
+    <system:String x:Key="DepotGroupTaskBehavior">Task Behavior</system:String>
+    <system:String x:Key="DepotGroupStageAndBattle">Stage &amp; Battle</system:String>
+    <system:String x:Key="DepotGroupSanityRecovery">Sanity Recovery</system:String>
     <system:String x:Key="LessThanOneDay">Less than 1 day</system:String>
     <system:String x:Key="1-7">1-7</system:String>
     <system:String x:Key="CE-6">CE-6</system:String>
@@ -1153,7 +1200,7 @@ Right-click to clear inactive jobs</system:String>
         4. {key=ParadoxSimulation}: After selecting Skills, start from the Skill selection screen where the "Start Simulation" button appears. For 1/2★ {key=Operator}s (without Skills), start from the screen with the "Start Simulation" button in the bottom right. If using ｢{key=UseCopilotList}｣, please start from the ｢Level/Rarity｣ tab in the {key=Operator} list.\n\n
         5. {key=Operator}s marked as "Favorite" may affect ｢{key=AutoSquad}｣ recognition and selection. When using ｢{key=AutoSquad}｣, consider removing favorites, or if errors occur, turn off ｢{key=AutoSquad}｣ and manually supplement the missing {key=Operator}s as prompted.\n\n
         6. ZOOT workstation codes can be pasted via the paste button on the right side of the input box. Formats are auto-detected:\n
-        • prts://s = Job set prts:// = Single job\n
+• prts://s = Job set prts:// = Single job\n
         The third button is for legacy job sets and will be removed later.\n\n
         7. {key=UseCopilotList}:\n
         • After selecting a job, verify the stage name below is correct (e.g., CV-EX-1).\n
@@ -1424,7 +1471,7 @@ Before use, please ensure:
 1. MAA is launched with administrator privileges
 2. For some screencap methods, the game window cannot be minimized
 3. Arknights Settings → Game → UI Scaling is set to 100%
-4. Game resolution must be 16:9, recommended settings: 720×1280 or 1080×1920</system:String>
+4. Game resolution must be 16:9, recommended settings: 1280x720 or 1920x1080</system:String>
     <system:String x:Key="AttachWindowScreencapMethod">Screencap Method</system:String>
     <system:String x:Key="AttachWindowMouseMethod">Mouse Input Method</system:String>
     <system:String x:Key="AttachWindowKeyboardMethod">Keyboard Input Method</system:String>
@@ -2146,8 +2193,9 @@ These locations are too high-level and can lead to file overwrites, config write
     <system:String x:Key="BadModules.Warning.Prolog">The following third-party software has injected DLL(s) into MAA, which will interfere with WPF rendering and ONNX/DML inference, causing MAA to crash, display rendering anomalies, or OCR recognition failures:</system:String>
     <system:String x:Key="BadModules.Warning.Epilog">If you encounter such issues with MAA, please try adding MAA to the exclusion list of the relevant software, or uninstall the related software and check if the problem persists.</system:String>
     <system:String x:Key="BadModules.Warning.DoNotShowAgain">Do not show this warning again</system:String>
+    <system:String x:Key="BadModules.Warning.Fallback">Additionally, the system's dialog component has been damaged and crashed — all subsequent dialogs may fail to display, and other system functionality may also be affected. Click "Yes" to suppress this warning, or "No" to dismiss for now.</system:String>
     <system:String x:Key="BadModules.Confirmation.Heading">Warning: Performance Impact</system:String>
-    <system:String x:Key="BadModules.Confirmation.Text" xml:space="preserve">If you choose to suppress this warning, MAA will use software rendering instead of hardware rendering. This will cause:&#x0a;&#x0a;• Performance degradation&#x0a;• UI lag&#x0a;• Increased CPU usage&#x0a;&#x0a;&#x0a;Do you confirm to suppress the warning and accept these consequences?</system:String>
+    <system:String x:Key="BadModules.Confirmation.Text" xml:space="preserve">If you choose to suppress this warning, MAA will use software rendering instead of hardware rendering, which can mitigate rendering-related issues but does not guarantee resolving all problems (such as dialog crashes). This will also cause:&#x0a;&#x0a;• Performance degradation&#x0a;• UI lag&#x0a;• Increased CPU usage&#x0a;&#x0a;Do you confirm to suppress the warning and accept these consequences?</system:String>
     <system:String x:Key="BadModules.UseSoftwareRendering">Use Software Rendering</system:String>
     <system:String x:Key="BadModules.UseSoftwareRenderingTip">When enabled, bad module warnings will be suppressed and software rendering mode will be used. This causes performance degradation, UI lag, and increased CPU usage. Uncheck to restore hardware rendering.</system:String>
     <system:String x:Key="BadModules.ResetWarning">Software rendering mode is now enabled. Restart MAA to apply this setting.</system:String>

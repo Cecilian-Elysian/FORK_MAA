@@ -122,7 +122,7 @@ public class FightSettingsUserControlModel : TaskSettingsViewModel, FightSetting
     }
 
     /// <summary>
-    /// 当作战任务进入进行中状态时，仅捕获一次目标库存值，并在需要时刷新当前选中的面板。
+    /// 当作战任务进入进行中状态时，用最新库存重算指定掉落缺口并更新参数。
     /// </summary>
     private void OnTaskStatusChanged(int taskId, TaskItemStatus status)
     {
@@ -133,9 +133,28 @@ public class FightSettingsUserControlModel : TaskSettingsViewModel, FightSetting
 
         if (GetFightTaskByTaskId(taskId) is { } startedFight &&
             IsInventoryTargetDropEnabled(startedFight) &&
-            GetInventoryTargetRuntimeState(taskId) == null)
+            !string.IsNullOrEmpty(startedFight.DropId))
         {
-            SerializeTask(startedFight, taskId);
+            // 每次任务开始时用最新库存重算缺口（前序任务可能已经刷出了该材料）
+            var stage = GetFightStage(startedFight.StagePlan);
+            if (!string.IsNullOrEmpty(stage))
+            {
+                var task = new AsstFightTask() {
+                    Stage = stage,
+                    Medicine = startedFight.UseMedicine != false ? startedFight.MedicineCount : 0,
+                    Stone = startedFight.UseStone != false ? startedFight.StoneCount : 0,
+                    Series = startedFight.Series,
+                    MaxTimes = int.MaxValue,
+                    IsDrGrandet = startedFight.IsDrGrandet,
+                    ReportToPenguin = SettingsViewModel.GameSettings.EnablePenguin,
+                    ReportToYituliu = SettingsViewModel.GameSettings.EnableYituliu,
+                    PenguinId = SettingsViewModel.GameSettings.PenguinId,
+                    YituliuId = SettingsViewModel.GameSettings.PenguinId,
+                    ServerType = Instances.SettingsViewModel.ServerType,
+                    ClientType = SettingsViewModel.GameSettings.ClientType,
+                };
+                RefreshFightTaskDrops(taskId, startedFight.DropId, startedFight.DropCount, startedFight.NameOrTaskType, task);
+            }
         }
 
         Execute.OnUIThread(() => {
@@ -390,6 +409,10 @@ public class FightSettingsUserControlModel : TaskSettingsViewModel, FightSetting
 
     public LocalizedObservableList<int> SeriesList { get; } = new(
         (0, "AUTO"),
+        (10, "10"),
+        (9, "9"),
+        (8, "8"),
+        (7, "7"),
         (6, "6"),
         (5, "5"),
         (4, "4"),
@@ -404,13 +427,12 @@ public class FightSettingsUserControlModel : TaskSettingsViewModel, FightSetting
     public int Series
     {
         get => GetTaskConfig<FightTask>().Series;
-        set {
-            if (!SetTaskConfig<FightTask>(t => t.Series == value, t => t.Series = value))
-            {
-                return;
-            }
 
-            SetFightParams();
+        set {
+            if (SetTaskConfig<FightTask>(t => t.Series == value, t => t.Series = value))
+            {
+                SetFightParams();
+            }
         }
     }
 
@@ -723,8 +745,44 @@ public class FightSettingsUserControlModel : TaskSettingsViewModel, FightSetting
         }
 
         AllDrops.Sort((a, b) => string.Compare(a.Value, b.Value, StringComparison.Ordinal));
-        DropsList = [.. AllDrops];
-        NotifyOfPropertyChange(nameof(DropsList));
+
+        // 原地更新 DropsList：只更新 Display 不增删项，避免 ComboBox SelectedValue 丢失
+        // 首次构建时 DropsList 为空，需要完整 Add；后续语言切换时只更新 Display
+        var allDropsDict = AllDrops.ToDictionary(i => i.Value, i => i.Display);
+        if (DropsList.Count == 0)
+        {
+            foreach (var item in AllDrops)
+            {
+                DropsList.Add(item);
+            }
+        }
+        else
+        {
+            // 更新已有项的 Display
+            foreach (var item in DropsList)
+            {
+                if (allDropsDict.TryGetValue(item.Value, out var newDisplay))
+                {
+                    item.Display = newDisplay;
+                }
+            }
+
+            // 补充新出现的项（如特有材料）
+            var existingValues = DropsList.Select(i => i.Value).ToHashSet();
+            foreach (var item in AllDrops.Where(i => !existingValues.Contains(i.Value)))
+            {
+                DropsList.Add(item);
+            }
+
+            // 删除不再存在的项（保留空值项即"不选择"）
+            for (int i = DropsList.Count - 1; i >= 0; i--)
+            {
+                if (!string.IsNullOrEmpty(DropsList[i].Value) && !allDropsDict.ContainsKey(DropsList[i].Value))
+                {
+                    DropsList.RemoveAt(i);
+                }
+            }
+        }
 
         foreach (var task in ConfigFactory.CurrentConfig.TaskQueue.OfType<FightTask>())
         {
@@ -758,6 +816,9 @@ public class FightSettingsUserControlModel : TaskSettingsViewModel, FightSetting
         }
 
         RefreshDropName();
+
+        // 通知 DepotMaintain 刷新各 plan 的 DropName
+        DepotMaintainTaskUserControlModel.Instance.OnLanguageChanged();
     }
 
     /// <summary>
@@ -1051,12 +1112,11 @@ public class FightSettingsUserControlModel : TaskSettingsViewModel, FightSetting
 
     public bool AutoRestartOnDrop
     {
-        get => field;
-        set {
+        get; set {
+            ConfigFactory.CurrentConfig.Gui.RuntimeSettings.AutoRestartOnDrop = value;
             SetAndNotify(ref field, value);
-            ConfigurationHelper.SetValue(ConfigurationKeys.AutoRestartOnDrop, value.ToString());
         }
-    } = ConfigurationHelper.GetValue(ConfigurationKeys.AutoRestartOnDrop, true);
+    } = ConfigFactory.CurrentConfig.Gui.RuntimeSettings.AutoRestartOnDrop;
 
     private static string ToUpperAndCheckStage(string value)
     {
@@ -1092,6 +1152,48 @@ public class FightSettingsUserControlModel : TaskSettingsViewModel, FightSetting
         var stage = list?.FirstOrDefault(s => Instances.StageManager.IsStageOpen(s, Instances.TaskQueueViewModel.CurDayOfWeek));
         _logger.Information("GetFightStage: from {list}, selected {stage}", list, stage);
         return stage;
+    }
+
+    /// <summary>
+    /// 任务开始时用最新库存重算指定掉落材料的缺口，达标则 times=0，否则更新 drops 和 times。
+    /// 供理智作战和库存保持任务统一调用。
+    /// </summary>
+    /// <param name="taskId">core 任务 id</param>
+    /// <param name="dropId">指定掉落材料 ID</param>
+    /// <param name="dropCount">目标库存</param>
+    /// <param name="logLabel">日志标签（如计划序号）</param>
+    /// <param name="task">包含全量字段的作战任务参数；本方法仅按库存缺口覆盖 Drops/MaxTimes，其余字段原样下发。</param>
+    /// <returns>是否成功更新参数。</returns>
+    public static bool RefreshFightTaskDrops(int taskId, string dropId, int dropCount, string? logLabel, AsstFightTask task)
+    {
+        if (taskId <= 0 || string.IsNullOrEmpty(dropId) || dropCount <= 0)
+        {
+            return false;
+        }
+
+        var depotList = Instances.ToolboxViewModel?.DepotResult.Where(item => item.Count >= 0).ToDictionary(item => item.Id, item => item.Count) ?? [];
+        var currentCount = depotList.TryGetValue(dropId, out var value) ? value : 0;
+        var need = dropCount - currentCount;
+
+        var dropName = ItemListHelper.GetItemName(dropId) ?? dropId;
+
+        if (need <= 0)
+        {
+            // 库存已充足，times=0 阻止进入关卡
+            task.MaxTimes = 0;
+            task.Drops = new() { { dropId, 1 } };
+            Instances.TaskQueueViewModel.AddLog(
+                LocalizationHelper.GetStringFormat("DepotPlanInventoryEnough", logLabel ?? string.Empty, dropName, currentCount.ToString("N0"), dropCount.ToString("N0")),
+                UiLogColor.Info);
+        }
+        else
+        {
+            task.Drops = new() { { dropId, need } };
+            _logger.Information("FightTask {taskId} ({label}) re-calculated: {dropName} need {need} (current {current} / target {target})",
+                taskId, logLabel, dropName, need, currentCount, dropCount);
+        }
+
+        return Instances.AsstProxy.AsstSetTaskParamsEncoded(taskId, task);
     }
 
     /// <summary>

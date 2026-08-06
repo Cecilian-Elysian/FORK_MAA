@@ -20,7 +20,9 @@ using System.IO;
 using System.Text.Json;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using MaaWpfGui.Constants;
+using MaaWpfGui.Configuration.Factory;
+using MaaWpfGui.Constants.Enums;
+using MaaWpfGui.Extensions;
 using MaaWpfGui.Models;
 using Serilog;
 
@@ -47,7 +49,7 @@ public static class ItemListHelper
 
     private static Dictionary<string, ArkItem> LoadItems()
     {
-        var language = ConfigurationHelper.GetGlobalValue(ConfigurationKeys.Localization, LocalizationHelper.DefaultLanguage);
+        var language = ConfigFactory.Root.Gui.Localization;
         string filename = string.Empty;
         switch (language)
         {
@@ -59,7 +61,7 @@ public static class ItemListHelper
                 break;
 
             default:
-                filename = Path.Combine(PathsHelper.ResourceDir, "global", DataHelper.ClientDirectoryMapper[language], "resource", "item_index.json");
+                filename = Path.Combine(PathsHelper.ResourceDir, "global", DataHelper.ClientDirectoryMapper[language].ToCustomString(), "resource", "item_index.json");
                 break;
         }
 
@@ -82,7 +84,7 @@ public static class ItemListHelper
             _logger.Error(e, "Failed to load item list from {filename}", filename);
         }
 
-        return tempItems ?? new Dictionary<string, ArkItem>();
+        return tempItems ?? [];
     }
 
     /// <summary>

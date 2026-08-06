@@ -5,6 +5,10 @@
     "BattleQuickFormationSkillPage": {
         "text": "Skill"
     },
+    "FightSeries-OldMethodFlag": {
+        "algorithm": "JustReturn",
+        "doc": "whether to use old series method"
+    },
     "ClickChapter1": {
         "text": ["Hour of An Awakening", "Hour of An"]
     },
@@ -70,7 +74,9 @@
             ["Estelle", "艾丝黛尔"],
             ["Hellagur", "赫拉格"],
             ["Pallas", "帕拉斯"],
-            ["Mountain", "山"],
+            ["Sui's Mountain", "岁用山"],
+            ["^Mountain'$", "山字"],
+            ["^Mountain$", "山"],
             ["^Skadi$", "斯卡蒂"],
             ["Ayerscarpe", "断崖"],
             ["Tequila", "龙舌兰"],
@@ -349,7 +355,7 @@
             ["Tattered Pillar", "破碎支柱"],
             ["City Neon", "城市霓虹"],
             ["Knight Crest", "骑士之徽"],
-            ["Blizzard", "暴风雪"],
+            ["^Blizzard$", "暴风雪"],
             ["Broken Fog Machine", "失修舞台雾机"],
             ["'Gelato Stop'", "“冰淇淋机”"],
             ["Londinium Secondary Defense Artillery", "伦蒂尼姆城防副炮"],
@@ -474,7 +480,7 @@
             ["Hypnotic Censer", "安眠迷香"],
             ["Modular Computing Station", "模块演算设施"],
             ["Refreshing Potion", "醒神秘药"],
-            ["Base", "基地"],
+            ["^Base$", "基地"],
             ["Old Isin", "老伊辛"],
             ["Fortification", "防御工事"],
             ["Trap Net Launcher", "缚网发射台"],
@@ -1027,8 +1033,6 @@
             ["Eye of the Blizzard", "风雪之眼"],
             ["'Emergency Load-Bearing Squad'", "“应急承重小组”"],
             ["Protection Objective (Frozen)", "保护目标（冻结状态）"],
-            ["Eye of the Blizzard", "风雪之眼"],
-            ["Eye of the Blizzard", "风雪之眼"],
             ["Astgenne the Lightchaser", "溯光星源"],
             ["Snow Retention System", "积雪固定装置"],
             ["Akkord", "协律"],
@@ -1094,7 +1098,22 @@
             ["Fountain", "喷泉水池"],
             ["Vark.ris", "摆渡人"],
             ["Perfumer the Distilled", "撷英调香师"],
-            ["Titi", "缇缇"]
+            ["Titi", "缇缇"],
+            ["Performer Wang", "演出望"],
+            ["Stamp'", "印字"],
+            ["Soldier'", "兵字"],
+            ["Suppression Pillar", "镇岁柱"],
+            ["Writing Knife", "书刀"],
+            ["Ridge", "山脊"],
+            ["Taraxacum", "风絮"],
+            ["Stone", "棋子"],
+            ["Wealth'", "财字"],
+            ["Wang", "望"],
+            ["Ju", "矩"],
+            ["Broken", "断"],
+            ["Friend'", "友字"],
+            ["Food'", "食字"],
+            ["Ch'en the Dawnstreak", "赤刃明霄陈"]
         ]
     },
     "GameStartCheckResourceOCR": {
@@ -1130,6 +1149,26 @@
     },
     "UsePrts": {
         "templThreshold": 0.7
+    },
+    "FightSeries-Opened": {
+        "template": "FightSeries-Indicator.png",
+        "roi": [940, 190, 80, 380],
+        "templThreshold": 0.9,
+        "maskRange": [1, 255]
+    },
+    "FightSeries-Close": {
+        "baseTask": "FightSeries-Icon",
+        "template": "FightSeries-Icon.png",
+        "action": "ClickSelf",
+        "next": ["FightSeries-CloseList"]
+    },
+    "FightSeries-List-Multiply": {
+        "Doc": "代理倍率列表每个选项的乘号, rectMove到次数, 灰度低于150为碎石才能打",
+        "action": "ClickRect",
+        "roi": [970, 200, 40, 360],
+        "rectMove": [25, 10, 20, 25],
+        "specificRect": [0, 0, 55, 40],
+        "specialParams": [150]
     },
     "StartButton1": {
         "text": ["Start"]

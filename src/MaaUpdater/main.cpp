@@ -9,7 +9,12 @@
 //                   [--mutex-name <name>] [--show-console] [--no-progress-ui]
 //
 // Plan file format (UTF-8 JSON):
-//   { "packageType": "full|ota", "removeList": ["rel/path", ...], "moveList": ["rel/path", ...] }
+//   {
+//     "packageType": "full|ota",
+//     "removeList": ["rel/path", ...],
+//     "moveList": ["rel/path", ...],
+//     "relaunchArgs": ["--skip-startup-auto-run", ...]   // optional, forwarded to MAA.exe
+//   }
 
 #include <windows.h>
 #include <commctrl.h>
@@ -380,7 +385,7 @@ static bool InitializeProgressUi()
     int originY = (GetSystemMetrics(SM_CYSCREEN) - PROGRESS_WINDOW_HEIGHT) / 2;
 
     HWND window = CreateWindowExW(
-        WS_EX_TOPMOST | WS_EX_APPWINDOW | WS_EX_DLGMODALFRAME,
+        WS_EX_APPWINDOW | WS_EX_DLGMODALFRAME,
         PROGRESS_WINDOW_CLASS_NAME,
         L"MAA 正在更新 | MAA Updating",
         WS_CAPTION,
@@ -395,6 +400,9 @@ static bool InitializeProgressUi()
     if (window == nullptr) {
         return false;
     }
+
+    // 弹出时带到前台一次，不强制永久置顶，避免打断全屏游戏或其他操作
+    SetForegroundWindow(window);
 
     HWND statusLabel = CreateWindowExW(
         0,
@@ -1394,6 +1402,8 @@ struct PendingUpdatePlan
     std::wstring packageType;
     std::vector<std::wstring> removeList;
     std::vector<std::wstring> moveList;
+    // Optional args forwarded to MAA.exe on relaunch (e.g. --skip-startup-auto-run).
+    std::vector<std::wstring> relaunchArgs;
 };
 
 static bool LoadPendingUpdatePlan(
@@ -1427,7 +1437,47 @@ static bool LoadPendingUpdatePlan(
     outPlan.packageType = ParseJsonStringProperty(planJson, "packageType");
     outPlan.removeList = ParseJsonStringArray(planJson, "removeList");
     outPlan.moveList = ParseJsonStringArray(planJson, "moveList");
+    outPlan.relaunchArgs = ParseJsonStringArray(planJson, "relaunchArgs");
     return true;
+}
+
+// Build a CreateProcess command line: "exe" [quoted args...]
+static std::wstring BuildRelaunchCommandLine(
+    const std::wstring& executable,
+    const std::vector<std::wstring>& args)
+{
+    auto needsQuotes = [](const std::wstring& value) {
+        return value.find_first_of(L" \t\"") != std::wstring::npos;
+    };
+    auto appendQuoted = [&](std::wstring& dest, const std::wstring& value) {
+        if (!needsQuotes(value)) {
+            dest += value;
+            return;
+        }
+
+        dest.push_back(L'"');
+        for (wchar_t ch : value) {
+            if (ch == L'"') {
+                dest += L"\\\"";
+            } else {
+                dest.push_back(ch);
+            }
+        }
+        dest.push_back(L'"');
+    };
+
+    std::wstring cmdLine;
+    appendQuoted(cmdLine, executable);
+    for (const std::wstring& arg : args) {
+        if (arg.empty()) {
+            continue;
+        }
+
+        cmdLine.push_back(L' ');
+        appendQuoted(cmdLine, arg);
+    }
+
+    return cmdLine;
 }
 
 static void PrintPlanEntries(const std::wstring& title, const std::vector<std::wstring>& entries)
@@ -1465,6 +1515,7 @@ static int RunPlanParserTest(const std::wstring& initialPlanFile)
         L" | Package type: " + (plan.packageType.empty() ? std::wstring(L"<empty>") : plan.packageType), true);
     PrintPlanEntries(L"待删除文件列表 | Files to remove", plan.removeList);
     PrintPlanEntries(L"待安装文件列表 | Files to install", plan.moveList);
+    PrintPlanEntries(L"重启参数 | Relaunch args", plan.relaunchArgs);
     return 0;
 }
 
@@ -1815,10 +1866,6 @@ int wmain(int argc, wchar_t* argv[])
 
     g_logFile = rootDir + L"\\debug\\pending-update-applier.log";
     RotateLogIfNeeded();
-    InitializeProgressUi();
-    SetProgressUiStatus(
-        L"正在准备更新... | Preparing update...",
-        L"等待 MAA 主程序退出 | Waiting for the main MAA process to exit");
 
     WriteLog(L"MAA.Updater started (C++ external updater).");
     WriteLog((std::wstring(L"Console output: ") + (g_writeConsoleLog ? L"enabled" : L"disabled")).c_str());
@@ -1829,27 +1876,42 @@ int wmain(int argc, wchar_t* argv[])
     bool success = false;
     std::wstring failureReason;
     HANDLE hUpdateMutex = nullptr;
+    // Copied from plan for CreateProcess after a successful update.
+    std::vector<std::wstring> relaunchArgs;
 
     // ------------------------------------------------------------------
     // Wait for parent process to exit
+    // 进度窗口延后到主程序退出后再显示，避免与正在退出的 MAA 抢前台
     // ------------------------------------------------------------------
     HANDLE hParent = OpenProcess(SYNCHRONIZE, FALSE, parentPid);
     if (hParent != nullptr) {
         WriteLog((L"Waiting for parent process to exit, PID=" + std::to_wstring(parentPid)).c_str());
-        while (WaitForSingleObject(hParent, 100) == WAIT_TIMEOUT) {
-            PumpProgressUiMessages();
+        // 快路径：15 秒内父进程退出则不弹窗，避免与正在退出的 MAA 抢前台；
+        // 超时后创建进度窗口并泵消息继续等待，防止父进程退出卡住时 Updater
+        // 变成不可见、永不退出的幽灵进程
+        if (WaitForSingleObject(hParent, 15000) == WAIT_TIMEOUT) {
+            InitializeProgressUi();
+            SetProgressUiStatus(
+                L"正在准备更新... | Preparing update...",
+                L"等待 MAA 主程序退出 | Waiting for the main MAA process to exit");
+            while (WaitForSingleObject(hParent, 100) == WAIT_TIMEOUT) {
+                PumpProgressUiMessages();
+            }
         }
         CloseHandle(hParent);
         WriteLog(L"Parent process exited.");
-        SetProgressUiStatus(
-            L"正在准备更新... | Preparing update...",
-            L"已确认主程序退出，开始读取更新计划 | Parent process exited, reading update plan");
     } else {
         WriteLog((L"Could not open the parent process, it may have already exited, PID=" + std::to_wstring(parentPid) + L". Continuing.").c_str());
-        SetProgressUiStatus(
-            L"正在准备更新... | Preparing update...",
-            L"主程序已退出，开始读取更新计划 | Main process already exited, reading update plan");
     }
+
+    // 主程序已退出（或无法打开句柄时视为已退出）后再弹出进度窗口。
+    // 若超时路径已创建窗口，则跳过，避免重复创建
+    if (!g_progressUi.enabled) {
+        InitializeProgressUi();
+    }
+    SetProgressUiStatus(
+        L"正在准备更新... | Preparing update...",
+        L"已确认主程序退出，开始读取更新计划 | Parent process exited, reading update plan");
 
     // ------------------------------------------------------------------
     // Acquire update mutex to prevent new MAA instances from starting
@@ -1898,6 +1960,8 @@ int wmain(int argc, wchar_t* argv[])
             break;
         }
 
+        relaunchArgs = plan.relaunchArgs;
+
         bool isFullPackage = EqualsIgnoreCase(plan.packageType, L"full");
         const std::vector<std::wstring>& removeList = plan.removeList;
         const std::vector<std::wstring>& moveList = plan.moveList;
@@ -1907,7 +1971,7 @@ int wmain(int argc, wchar_t* argv[])
             L"正在分析更新内容... | Analyzing update contents...",
             L"更新计划读取完成 | Update plan loaded");
 
-        WriteLog((L"Plan loaded, package type: " + plan.packageType + L", remove entries: " + std::to_wstring(removeList.size()) + L", install entries: " + std::to_wstring(moveList.size())).c_str());
+        WriteLog((L"Plan loaded, package type: " + plan.packageType + L", remove entries: " + std::to_wstring(removeList.size()) + L", install entries: " + std::to_wstring(moveList.size()) + L", relaunch args: " + std::to_wstring(relaunchArgs.size())).c_str());
         WriteLogEntries(L"Files to remove", removeList);
         WriteLogEntries(L"Files to install", moveList);
 
@@ -2123,7 +2187,9 @@ int wmain(int argc, wchar_t* argv[])
         STARTUPINFOW si {};
         si.cb = sizeof(si);
         PROCESS_INFORMATION pi {};
-        std::wstring cmdLine = L"\"" + relaunchExecutable + L"\"";
+        // Forward plan.relaunchArgs to the next MAA process (e.g. --skip-startup-auto-run).
+        std::wstring cmdLine = BuildRelaunchCommandLine(relaunchExecutable, relaunchArgs);
+        WriteLog((L"Relaunch command line: " + cmdLine).c_str());
         if (CreateProcessW(
                 relaunchExecutable.c_str(),
                 cmdLine.data(),

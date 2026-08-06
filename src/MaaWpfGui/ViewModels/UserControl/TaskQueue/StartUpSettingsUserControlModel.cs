@@ -104,8 +104,7 @@ public class StartUpSettingsUserControlModel : TaskSettingsViewModel, StartUpSet
             Instances.TaskQueueViewModel.AddLog("Current task is not StartUpTask", UiLogColor.Error);
             return;
         }
-
-        var singleTask = new StartUpTask() { AccountSwitchEnabled = true, AccountName = startUp.AccountName };
+var singleTask = new StartUpTask() { AccountSwitchEnabled = true, AccountName = startUp.AccountName };
         await Instances.TaskQueueViewModel.LinkStartWithTasks([singleTask]);
     }
 
@@ -475,7 +474,7 @@ public class StartUpSettingsUserControlModel : TaskSettingsViewModel, StartUpSet
             }
 
             var clientType = SettingsViewModel.GameSettings.ClientType;
-            var accountName = !SettingsViewModel.ConnectSettings.UseAttachWindow &&
+            var accountName = !SettingsViewModel.ConnectSettings.IsPCConnectConfig &&
                 clientType is ClientType.Official or ClientType.Bilibili or ClientType.Txwy &&
                 startUp.AccountSwitchEnabled is true
                     ? startUp.AccountName

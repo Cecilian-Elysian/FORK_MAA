@@ -32,6 +32,7 @@ jobs:
             /gamedata/excel/building_data.json
             /gamedata/excel/range_table.json
             /gamedata/excel/character_table.json
+            /gamedata/excel/char_patch_table.json
             /gamedata/excel/gacha_table.json
             /gamedata/excel/roguelike_topic_table.json
             /gamedata/excel/activity_table.json
@@ -160,7 +161,7 @@ jobs:
         with:
           key: ResourceUpdater-${{ runner.os }}-${{ hashFiles('tools/ResourceUpdater/main.cpp') }}
           path: |
-            ./tools/ResourceUpdater/libopencv_world4.4.11.0.dylib
+            ./tools/ResourceUpdater/libopencv_world4*.dylib
             ./tools/ResourceUpdater/res_updater
 
       - name: Fetch submodules
@@ -200,7 +201,7 @@ jobs:
         with:
           key: ResourceUpdater-${{ runner.os }}-${{ hashFiles('tools/ResourceUpdater/main.cpp') }}
           path: |
-            ./tools/ResourceUpdater/libopencv_world4.4.11.0.dylib
+            ./tools/ResourceUpdater/libopencv_world4*.dylib
             ./tools/ResourceUpdater/res_updater
 
       - name: Wait for resource cloning
@@ -236,7 +237,7 @@ jobs:
           ./tools/ResourceUpdater/res_updater
 
       - name: Setup python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: "3.11"
           cache: pip
@@ -255,7 +256,7 @@ jobs:
           echo "gitdiff=$(echo $(git diff --name-only --diff-filter=ACM 2>/dev/null | grep '\.json$'))" >> $GITHUB_OUTPUT
 
       - name: Run prettier
-        uses: Nerixyz/actionsx-prettier@v3-adj
+        uses: Nerixyz/actionsx-prettier@v4.0.0
         with:
           args: -w ${{ steps.task_sorting.outputs.gitdiff }}
 

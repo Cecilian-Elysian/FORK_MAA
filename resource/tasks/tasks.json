@@ -273,6 +273,7 @@
             ["'", ""],
             ["(H\\d+)O(?=-)", "${1}0"],
             ["(-\\d+)O", "${1}0"],
+            ["([A-Z])0(?=-)", "${1}O"],
             [".*?([A-Z]{2}-EX-\\d+)", "$1"],
             ["-I$", "-1"]
         ],
@@ -309,6 +310,7 @@
             ["'", ""],
             ["(H\\d+)O(?=-)", "${1}0"],
             ["(-\\d+)O", "${1}0"],
+            ["([A-Z])0(?=-)", "${1}O"],
             [".*?([A-Z]{2}-EX-\\d+)", "$1"]
         ],
         "roi": [845, 72, 220, 50]
@@ -787,18 +789,10 @@
         "next": ["LoginOther"]
     },
     "SwitchAccount@StartToWakeUp": {
-        "Doc": "切号场景：开始唤醒按钮识别（与 StartUpThemes@StartToWakeUp 对齐）",
+        "Doc": "干掉点击登录",
         "template": "StartToWakeUp.png",
         "action": "DoNothing",
-        "next": ["AccountManager", "SwitchAccount@StartToWakeUpOCR"]
-    },
-    "SwitchAccount@StartToWakeUpOCR": {
-        "Doc": "切号场景：鹰角登录弹窗 OCR 兜底（与 StartUpThemes@StartToWakeUpOCR 对齐）",
-        "baseTask": "SwitchAccount@StartToWakeUp",
-        "algorithm": "OcrDetect",
-        "text": ["开始唤醒", "登录", "登", "录"],
-        "fullMatch": true,
-        "roi": [373, 145, 535, 430]
+        "next": ["AccountManager"]
     },
     "AccountManager": {
         "action": "ClickSelf",
@@ -811,7 +805,7 @@
         "next": ["AccountManagerOfficial", "AccountManagerBili", "AccountManagerPageConfirm"]
     },
     "AccountManagerPageConfirm": {
-        "Doc": "OCR 词表不匹配时的模板兜底, 确认到达账号管理页但不点击 (action=DoNothing)",
+        "Doc": "OCR 词表不匹配时的模板兜底，确认到达账号管理页但不点击 (action=DoNothing)",
         "baseTask": "AccountManagerListAccount",
         "action": "DoNothing"
     },
@@ -819,12 +813,12 @@
         "Doc": "官方服账号切换界面识别，与 B 服统一 OCR「登录记录 / 上次登录」",
         "algorithm": "OcrDetect",
         "text": ["登录记录", "上次登录"],
-        "roi": [237, 50, 771, 242]
+        "roi": [570, 165, 140, 80]
     },
     "AccountManagerBili": {
         "Doc": "b 服的标题大小会跟着 dpi 变，现在还没特征点匹配，识别文字",
         "algorithm": "OcrDetect",
-        "text": ["登录记录", "上次登录"],
+        "text": ["登录记录"],
         "roi": [237, 50, 771, 242]
     },
     "AccountCurrentOCR": {
@@ -864,17 +858,6 @@
     },
     "AccountManagerTrashButtonBili": {
         "roi": [770, 270, 50, 280]
-    },
-    "AccountListOcr": {
-        "algorithm": "OcrDetect",
-        "isAscii": true,
-        "text": [],
-        "roi": [480, 380, 390, 170]
-    },
-    "AccountListOcrBili": {
-        "algorithm": "OcrDetect",
-        "text": [],
-        "roi": [480, 380, 390, 170]
     },
     "AccountListSwipe": {
         "algorithm": "JustReturn",
@@ -1296,15 +1279,15 @@
         "next": ["StartButton1"]
     },
     "FightSeries-Icon": {
-        "doc": "代理指挥左侧的连战乘号, rectMove为乘号到次数偏移",
+        "doc": "代理指挥左侧的代理倍率乘号, rectMove为乘号到次数偏移",
         "method": "RGBCount",
         "colorScales": [[30, 70]],
         "roi": [927, 567, 122, 66],
-        "rectMove": [27, -10, 25, 32]
+        "rectMove": [20, -10, 32, 32]
     },
     "FightSeries-Opened": {
         "template": "FightSeries-Indicator.png",
-        "roi": [940, 190, 80, 380],
+        "roi": [900, 370, 70, 40],
         "templThreshold": 0.9,
         "maskRange": [1, 255]
     },
@@ -1322,8 +1305,8 @@
         "next": ["FightSeries-Close"]
     },
     "FightSeries-Close": {
-        "baseTask": "FightSeries-Icon",
-        "template": "FightSeries-Icon.png",
+        "baseTask": "FightSeries-Opened",
+        "template": "FightSeries-Indicator.png",
         "action": "ClickSelf",
         "next": ["FightSeries-CloseList"]
     },
@@ -1337,19 +1320,31 @@
         "next": ["FightSeries-NotClosed", "FightSeries-Closed"]
     },
     "FightSeries-List-Exceeded": {
-        "doc": "连战列表中需要使用理智药才能打的次数会带+号标记",
+        "doc": "代理倍率列表中需要使用理智药才能打的次数会带+号标记",
         "roi": [965, 200, 70, 325]
     },
     "FightSeries-List-Multiply": {
-        "Doc": "连战次数列表每个选项的乘号, rectMove到次数, 灰度低于150为碎石才能打",
+        "Doc": "代理倍率列表每个选项的乘号, rectMove到次数, 灰度低于150为碎石才能打",
         "action": "ClickRect",
-        "roi": [970, 200, 40, 360],
-        "rectMove": [25, 10, 20, 25],
-        "specificRect": [0, 0, 55, 40],
+        "roi": [960, 200, 40, 360],
+        "rectMove": [25, 13, 32, 25],
+        "specificRect": [0, -1, 75, 45],
         "specialParams": [150]
     },
+    "FightSeries-List-SlideDown": {
+        "algorithm": "JustReturn",
+        "action": "Swipe",
+        "specificRect": [930, 520, 140, 40],
+        "rectMove": [930, 230, 140, 40],
+        "postDelay": 500
+    },
+    "FightSeries-List-SlideUp": {
+        "baseTask": "FightSeries-List-SlideDown",
+        "specificRect": [930, 230, 140, 40],
+        "rectMove": [930, 520, 140, 40]
+    },
     "StartButton1": {
-        "doc": "绑定插件调整连战次数",
+        "doc": "绑定插件调整代理倍率",
         "algorithm": "OcrDetect",
         "action": "ClickSelf",
         "text": ["开始行动", "开始作战", "开始推演"],
@@ -1763,11 +1758,10 @@
         "action": "Stop"
     },
     "RecruitNow": {
-        "Doc": "加急许可按钮 OCR,兼容新旧 UI 文案「立即招 / 立即完成」任一命中即视为按钮已渲染。",
         "algorithm": "OcrDetect",
         "action": "ClickSelf",
         "postDelay": 500,
-        "text": ["立即招", "立即完成"],
+        "text": ["立即招"],
         "roi": [0, 300, 1280, 420],
         "next": ["RecruitNowConfirm"]
     },
@@ -1843,7 +1837,7 @@
     "OrundumActivities": {
         "doc": "幸运墙领合成玉",
         "algorithm": "OcrDetect",
-        "text": ["幸运墙", "幸运", "好运墙", "好运", "游乐", "育婴圣堂", "许愿墙", "告示板", "泽尔格勒"],
+        "text": ["幸运墙", "幸运", "好运墙", "好运", "游乐", "育婴圣堂", "许愿墙", "告示板", "泽尔格勒", "零号公路"],
         "action": "ClickSelf",
         "roi": [64, 72, 97, 156],
         "next": ["OrundumActivitiesChoose", "OrundumActivitiesReturn"],
@@ -2409,11 +2403,18 @@
             "Infrast",
             "InfrastNotification",
             "InfrastEnteredFlag",
+            "InfrastBegin@InfrastLoading",
             "(Infrast@MainThemes)@QuickSwitch@ToInfrast#next",
             "Infrast@ReturnButtons#next",
             "Infrast@CloseAnnos#next",
             "Infrast@OfflineConfirm"
         ]
+    },
+    "InfrastLoading": {
+        "doc": "等待基建加载画面结束",
+        "template": "InfrastPic/InfrastLoading.png",
+        "roi": [520, 330, 240, 180],
+        "next": ["#self", "#next", "#back"]
     },
     "Infrast@MainThemes": {
         "next": ["(InfrastBegin#next)^((Infrast@MainThemes)@QuickSwitch@ToInfrast#next)"]
@@ -2429,7 +2430,7 @@
         "template": "SwitchTheme@ToggleSettingsMenu.png",
         "roi": [227, 327, 159, 152],
         "sub": ["Infrast-Entry"],
-        "next": ["InfrastEnteredFlag", "Infrast@CloseAnnos#next", "Infrast@OfflineConfirm"]
+        "next": ["InfrastEnteredFlag", "Infrast@InfrastLoading", "Infrast@CloseAnnos#next", "Infrast@OfflineConfirm"]
     },
     "InfrastEnteredFlag": {
         "template": "InfrastOverview.png",
@@ -3272,7 +3273,7 @@
         "templThreshold": 0.9,
         "roi": [200, 600, 700, 120],
         "postDelay": 5000,
-        "next": ["UnlockCluesIsFake"]
+        "next": ["UnlockCluesIsFake", "InfrastBottomLeftTab"]
     },
     "UnlockCluesIsFake": {
         "Doc": "点了一次解锁了还在这个界面，说明是识别错了",

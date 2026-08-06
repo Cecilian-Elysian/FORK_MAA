@@ -432,6 +432,9 @@ FodyWeavers.xsd
 # Cursor (moved to .crush)
 .cursor/
 
+# Claude Code (upstream baseline)
+.claude/*
+
 # Windows Installer files from build outputs
 *.cab
 *.msi
