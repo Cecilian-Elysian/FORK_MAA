@@ -489,6 +489,10 @@ build
 install-*
 install/
 
+# dotnet publish 产物（由 tools/local-install*.bat 生成，不入仓）
+MAA.deps.json
+MAA.runtimeconfig.json
+
 # pnpm cache
 .pnpm-store
 

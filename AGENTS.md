@@ -93,19 +93,14 @@ staging ──── feat/<name>, fix/<name> ← 从 staging 拉出
 | 晋升方式 | `staging` → `branch` 由用户执行 `git merge staging --no-ff`；feat/fix → `staging` 自动 `--no-ff` |
 | 出问题回退 | 从远端保留的 `feat/<name>` / `fix/<name>` 重新拉 `fix/<name>/<n>`，仍合并到 `staging` |
 
-#### 当前待验证内容（截至 2026-07-25）
+#### 当前待验证内容（截至 2026-08-06 仓库清理）
 
-`staging` 由 `fix/expedite-threshold` 重命名而来，当前领先 `branch` 11 commits、落后 2 commits（branch 上的 `784d9005f6` + `da157d163d` 与 staging 上的 cherry-pick `6011051af2` + `f241b2160b` 内容等价、SHA 不同）。
+`staging` 已通过 `a13825c68f` 删除 `feat/recruit-result-display` 及其孤儿基础设施，并通过最新 commit `3fd8903115` 移除 `feat/auto-recruit-3star-to-4star`。当前 staging 领先 `branch` ~52 commits（fork 全部累积 + 3→4 删除）。
 
-| 主题 | commit 数 | SHA |
-|------|-----------|-----|
-| StartUp 启动链（双重缓冲清理 / run 重排 / 恢复原序 + OCR 兜底 / 官方服账号识别补全） | 4 | `eb3cc67595` `3f411e494a` `2715162c3d` `6011051af2` |
-| Account-switch OCR 适配 UI 改版（登录记录 / 上次登录 双文本兜底） | 1 | `f9668a0c9c` |
-| Expedite-threshold `m_last_confirmed_min_level` 重置补回 | 1 | `d73f61adc1` |
-| Recruit_now 顺序（移到 confirm 之后） | 1 | `2718046060` |
-| Docs（启动 / 实施完成登记 / cherry-pick 同步 / 字段说明） | 4 | `301f90897a` `20cd79d4ca` `f241b2160b` `1249c9a4dd` |
-
-晋升前需至少实测验证：多账号切号（官服 + B 服）+ 公招加急（4 / 5 / 6 星门槛）+ recruit_now 主页立即完成路径。
+晋升前需实测验证（仅适用于 `staging → branch` 晋升决策）：
+- 多账号切号（官服 + B 服）
+- 公招加急门槛（`expedite_min_level`）
+- 招募流程（无 3→4 升级的回归）
 
 
 ## 3. 工作流与文档规范
@@ -163,7 +158,6 @@ staging ──── feat/<name>, fix/<name> ← 从 staging 拉出
 | C++ 安装 | `cmake --install build` | 部署到 `install/` |
 | WPF | `dotnet publish src/MaaWpfGui/MaaWpfGui.csproj -c Release -p:Platform=x64` | `global.json` 写 `10.0.100` + `rollForward:latestFeature`，本机 10.0.300 自动启用 |
 | 本地一键 | `tools/local-install.bat` | cmake 装 C++ + dotnet publish WPF 双轨；启动 `install/MAA.exe` |
-| 打包 zip | `tools/release-zip.{bat,ps1}` | 见 `§4.3` |
 
 ### 4.2 子模块
 
@@ -175,29 +169,19 @@ staging ──── feat/<name>, fix/<name> ← 从 staging 拉出
 - 首次 clone：`git clone --recursive`
 - 已 clone 补全：`git submodule update --init --recursive`
 
-### 4.3 打包发布
-
-| 项 | 说明 |
-|----|------|
-| 版本号 | `VERSION` 文件，格式 `vX.Y.Z-fork.YYYYMMDD`（SemVer prerelease） |
-| 产物 | `installer/MAA-vX.Y.Z-fork.YYYYMMDD-win-x64.zip` |
-| 流程 | 单目标 cmake build → MaaCore install → 临时改 csproj 4 个 Version 字段 → dotnet publish → 剥 `*.pdb` `*.h` `*.bak` → robocopy staging（排除 `cache/` `config/` `data/` `debug/` 用户数据）→ ZipFile 压缩 |
-| try/finally 保护 | csproj 备份 `.bak` 后改，无论成功失败均还原；`global.json` 同处理 |
-| 仓库状态 | 脚本运行不污染 git 工作区 |
-
-### 4.4 辅助脚本（`tools/`）
+### 4.3 辅助脚本（`tools/`）
 
 | 脚本 | 用途 |
 |------|------|
 | `local-install.bat` | 本地构建并部署到 `install/` |
 | `local-install-staging.bat` | 本地构建并部署到 `install-staging/` |
-| `release-zip.{bat,ps1}` | 一键打包 zip |
 | `add_maa_to_nahimic_whitelist.ps1` | MAA.exe 加入 Nahimic DLL 注入白名单 |
 | `disable_nahimic.ps1` | 停用 NahimicService 开机自启 |
 | `cmake_build_for_wpf.bat` | 仅触发 cmake 的 WPF 构建 |
 | `maadeps-download.py` | 依赖库下载 |
+| `gen-downstream-changes.py` | 从 `LOG.md` 生成 `docs/downstream-changes.md` 下游改动清单 |
 | `ClangFormatter/` | clang-format 集成 |
-| `OverseasClients/`、`Roguelike*/`、`SmokeTesting/`、`SyncTemplate/`、`TaskSorter/` | 功能性辅助工具 |
+| `OverseasClients/`、`Roguelike*/`、`SmokeTesting/`、`SyncTemplate/`、`TaskSorter/`、`MaaWpfGui.Benchmarks/` | 功能性辅助工具 |
 
 
 ### 4.5 部署目录职责
@@ -236,15 +220,7 @@ staging ──── feat/<name>, fix/<name> ← 从 staging 拉出
 
 | 分支 | 角色 | 修复目标 |
 |------|------|----------|
-| `fix/account-switch-retry` | LoginOther OCR 不匹配时追加 AccountManagerPageConfirm 模板兜底（DoNothing），消除 ~18s retry 空等；retry_times 保持 30 不变 | `staging`（依赖其诊断日志改动） |
-| `fix/account_rotation/6` | 从 `branch` 拉出，从属 `feat/account_rotation`（已合入） | 账号轮换切号时左侧任务面板不刷新：`AdvanceAccountCycle` 未重置任务行状态/进度计数 + StartUp 行 `_taskIds` 丢失；顺带加「当前账号」Header 解决「误以为同一账号跑两次」的视觉混淆 |
-| `fix/account-switch-template-missing` | 从 `branch` 拉出，修正 `fix/account-switch-retry` 修正版（`41cfcb736b`）漏提交 `AccountManagerPageConfirm.png` 的资源完整性漏洞；`TemplResource::load` 期望 `task_name + .png` 存在，不依赖 `baseTask` 继承 | `staging`（连带修复资源损坏导致 MAA 无法启动的连锁错误） |
-| `fix/recruit-now-text-aliases` | 修公招加急按钮 OCR 文本漂移（新版 Arknights CN UI「立即完成」不被旧 `text:["立即招"]` 命中 → 加急必失败降级为正常 9h）。修法同 YoStarKR 3 备选先例 | `staging`（不阻塞晋升），关键 commit `9179d5e3a6` → `2f84118b07` → `633e8523f4`，详见 `LOG.md` 2026-07-27 |
-| `fix/post-battle-sanity-display` | 修 `FightTask` MissionStart 日志「理智: x/y」展示语义：原 `x = SanityCurrent`（OCR 战前快照）与上一行「开始行动 1~6 次, -126 理智」消耗语义不连贯 → `x = SanityCurrent - FightReport.SanityCost`（series 实际成本战后预测）。仅 MissionStart 一处，不动 `SanityInfo` / Toast / CompleteTask / AllTasksComplete | `staging`（不阻塞晋升），关键 commit `d4b23812d3`，详见 `LOG.md` 2026-07-27 |
-| `fix/reception-clue-vacancy` | 修会客室「填充线索空位」失效：`proc_clue_vacancy()` 快捷置入路径 4 类失败（OCR / 数字 / vacancy_cnt / confirm_task 缺失）都 `return true` 跳过 legacy 循环；`remove_clue` suffix `{1..7}` 与 `use_clue`/`proc_clue_vacancy` `{No1..No7}` 不一致导致模板错配空位（`ClueVacancy*.png`）而非已放置线索（`ClueVacancyNo*.png`）；legacy 循环 `continue` 前未刷新 `image` 死循环 + 放置后未关面板；`UnlockClues.next` 含 `InfrastBottomLeftTab` 在 720p 误触底部 Tab | `staging`（修复 `branch` 自身，按 §3.3 合并目标为 staging），关键 commit `ad725916b4`，详见 `LOG.md` 2026-07-27 |
-| `feat/auto-recruit-3star-to-4star` | 自动公招 3★ 组合里有 4★ 干员潜力时升级为 4★ 处理路径（默认开启）：3:50 计时 + 联动 `ExpediteMinLevel` 加急 + 沿用 `SelectExtraTagsMode` 选 tag。新增 UI 选项 `AutoUpgrade3StarWith4StarToLevel4`（默认 `true`），与现有 `UseLevel3PreferTags` / `RefreshLevel3` / `ChooseLevel3` / `ExpediteMinLevel` 全兼容 | `staging`（与 `fix/recruit-now-text-aliases` / `fix/post-battle-sanity-display` / `fix/reception-clue-vacancy` 一起攒批验证），关键 commit `a41ce91369`（4★ 潜力检测） + `bb3e2799eb`（clang-format），详见 `LOG.md` 2026-07-30 |
-| `fix/trim-account-name` | 修「开始唤醒」在多账号轮换场景下反复 `Login failed, entering game-restart loop`：根因 `install-staging/config/gui.new.json` 中 `AccountNames[0]="192xxxx6952 "` 末尾带半角空格（用户编辑残留），`select_account` `set_required` 严格匹配永远不命中 OCR 识别的无空格版本 → 30 retry 全空 → 5x restart_game 死循环。5 层深度防御（自顶向下）：WPF `SyncAccountNamesToItems` 入口迁移清理 + WPF `AdvanceAccountCycle` 步骤 Trim + WPF `ISerialize.Serialize` Trim（后续 PR）+ MaaCore `set_account` Trim 深度防御 + MaaCore `select_account` 子串匹配（上游语义保留）。`fix/account-name-trailing-whitespace`（HEAD `4c2b4a89e3`）起点 `3b947a6688` 不在 staging 上且引用 `feat/account-cycle-refactor` 之后才有的方法，**过时**；本 fix 重新从 staging 拉出移植核心 Trim 逻辑 | `staging`（修复 `branch` 自身，按 §3.3 合并目标为 staging），关键 commit `09aa1990da`（MaaCore set_account Trim） + `a5a7b4121e`（SyncAccountNamesToItems 入口迁移） + `50e4ae58b7`（AdvanceAccountCycle 步骤 Trim），详见 `LOG.md` 2026-07-30 |
-| `fix/auto-recruit-expedite-original-level` | 修 `feat/auto-recruit-3star-to-4star` 语义冲突：3★ 组合里有 4★ 潜力时 `m_last_confirmed_min_level` 被升级为 4，与 `feat/expedite-threshold` 的加急门槛 `m_expedite_min_level >= 4` 冲突，导致非必出 4★ 的场景误用加急许可。修复：新增 `m_original_min_level` 追踪升级前原始最低星级，加急判定改用 `m_original_min_level`（通过扫描 `final_combination.opers` 中 ≥3★ 的最低干员等级推导，仅当全部 opers ≥4★ 时才为 4，即「必出四星才加急」） | `staging`，关键 commit `3780039555`（加急） + `f9646ecc07`（日志），详见 `LOG.md` 2026-07-31 |
+| _无（2026-08-06 仓库清理后所有进行中 feat/fix 分支已合入 staging 或撤销；本节空）_ | | |
 
 
 ## 7. 分支生命周期记录

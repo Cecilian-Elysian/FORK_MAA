@@ -1,3 +1,41 @@
+## v6.14.0-fork.20260806
+
+基于上游 v6.16.5（dev-v2 `c5d48f4971`），本仓 fork 累积下游增强：
+
+### 新增 fork 特性
+
+- 多账号自动轮换日常任务（`feat/account_rotation`）
+- 肉鸽与生息演算延后到所有账号基础任务完成后执行（`feat/defer-rogue`）
+- 公招加急门槛：仅在确认最低星级 ≥ 阈值时使用加急许可（`feat/expedite-threshold`）
+- 抽 `AccountCycleOrchestrator` 单一职责类（`feat/account-cycle-refactor`）
+- StartUp OCR 失败熔断（`feat/startup-restart-breaker`）
+- 诊断包导出（`feat/diagnostic-export`）
+- 下游改动清单自动生成器（`feat/downstream-changes`）
+- 外部通知服务（Bark / Discord / DingTalk / Gotify / Qmsg / ServerChan / Smtp / Telegram / Custom Webhook）
+- 本地构建脚本 SDK 锁死修复（`tools/local-install*.bat`）
+
+### Fork 修复
+
+- 官服账号切换界面识别补全（`fix/account-official-recognize`）
+- 切号时 LoginOther OCR 模板兜底（`fix/account-switch-retry`）
+- 切号时左侧任务面板刷新 + 当前账号 Header（`fix/account_rotation/6`）
+- 多账号轮换账号名 Trim 防御（`fix/trim-account-name`）
+- 资源补图（`fix/account-switch-template-missing`）
+- 立即完成 OCR 别名（`fix/recruit-now-text-aliases`）
+- MissionStart 日志战后理智（`fix/post-battle-sanity-display`）
+- 会客室填充线索空位早返回（`fix/reception-clue-vacancy` cherry-pick）
+
+### 删除的不成熟功能（2026-08-06 仓库清理）
+
+- `feat/auto-recruit-3star-to-4star`（3★→4★ 自动升级）：未充分验证
+- `fix/auto-recruit-expedite-original-level`：随上一项删除而冗余
+- `feat/recruit-result-display` 招募结果干员识别：2026-08-02 回退
+- `feat/recruit-history-tab` 公招历史 Tab：依赖已回退的 callback
+
+### 协议字段双轨
+
+公招参数 fork 扩展字段 `expedite_min_level`（最低 N 星才加急，0 = 所有星级）与上游 `expedite` / `expedite_times` 并存，5 语种 `docs/{lang}/protocol/integration.md` 双轨呈现。
+
 ## v6.14.0
 
 ### Highlights

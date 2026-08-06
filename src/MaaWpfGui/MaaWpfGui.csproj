@@ -45,11 +45,11 @@
   <!-- Version -->
   <PropertyGroup>
     <ApplicationRevision>0</ApplicationRevision>
-    <ApplicationVersion>6.0.0.0</ApplicationVersion>
-    <Version>6.14.0</Version>
-    <FileVersion>6.14.0</FileVersion>
-    <AssemblyVersion>6.14.0</AssemblyVersion>
-    <InformationalVersion>6.14.0</InformationalVersion>
+    <ApplicationVersion>0.0.1</ApplicationVersion>
+    <Version>0.0.1</Version>
+    <FileVersion>0.0.1</FileVersion>
+    <AssemblyVersion>0.0.1</AssemblyVersion>
+    <InformationalVersion>0.0.1</InformationalVersion>
   </PropertyGroup>
 
   <ItemGroup>
