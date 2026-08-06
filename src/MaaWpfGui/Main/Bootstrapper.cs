@@ -85,14 +85,55 @@ public class Bootstrapper : Bootstrapper<RootViewModel>
             // 因为经常有人把 MAA 和别的东西解压到一起然后发生 DLL 劫持然后报错，遂检测
             var maaDlls = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
+                // .NET runtime
                 "hostfxr.dll",
                 "hostpolicy.dll",
+
+                // MAA native
                 "libloader.dll",
                 "DirectML.dll",
-                "fastdeploy_ppocr.dll",
+                "fastdeploy_ppocr_maa.dll",
                 "MaaCore.dll",
+                "MaaUtils.dll",
                 "onnxruntime_maa.dll",
                 "opencv_world4_maa.dll",
+
+                // NuGet dependencies
+                "BouncyCastle.Cryptography.dll",
+                "CalcBinding.dll",
+                "DynamicExpresso.Core.dll",
+                "GlobalHotKey.dll",
+                "GongSolutions.WPF.DragDrop.dll",
+                "HandyControl.dll",
+                "HtmlAgilityPack.dll",
+                "ICSharpCode.AvalonEdit.dll",
+                "JetBrains.Annotations.dll",
+                "MailKit.dll",
+                "MdXaml.dll",
+                "MdXaml.Html.dll",
+                "MdXaml.Plugins.dll",
+                "Microsoft.Extensions.Primitives.dll",
+                "Microsoft.Toolkit.Uwp.Notifications.dll",
+                "Microsoft.Windows.SDK.NET.dll",
+                "Microsoft.WindowsAPICodePack.Core.dll",
+                "Microsoft.WindowsAPICodePack.dll",
+                "Microsoft.WindowsAPICodePack.ExtendedLinguisticServices.dll",
+                "Microsoft.WindowsAPICodePack.Sensors.dll",
+                "Microsoft.WindowsAPICodePack.Shell.dll",
+                "Microsoft.WindowsAPICodePack.ShellExtensions.dll",
+                "Microsoft.Xaml.Behaviors.dll",
+                "MimeKit.dll",
+                "Newtonsoft.Json.dll",
+                "Notification.Wpf.dll",
+                "ObservableCollections.dll",
+                "Semver.dll",
+                "Serilog.dll",
+                "Serilog.Enrichers.Thread.dll",
+                "Serilog.Sinks.Debug.dll",
+                "Serilog.Sinks.File.dll",
+                "Stylet.dll",
+                "System.Management.dll",
+                "WinRT.Runtime.dll",
             };
 
             var currentDirectory = AppDomain.CurrentDomain.BaseDirectory;
