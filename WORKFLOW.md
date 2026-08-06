@@ -1,6 +1,6 @@
-# 上游拉取新功能操作流程（SOP）
+﻿# 上游拉取新功能操作流程（SOP）
 
-> 基于 2026-08-06 fork 同步上游 v6.16.5（dev-v2 `c5d48f4971`）的实际经验总结。
+> 基于 2026-08-06 fork 同步上游 v6.16.5（master-v2 `a02e95a9af`）的实际经验总结。
 > 适用场景：从上游 `MaaAssistantArknights/MaaAssistantArknights` 拉取新功能到本地 fork。
 
 ## §0 适用范围与前置假设
@@ -8,7 +8,7 @@
 | 项 | 说明 |
 |----|------|
 | **适用对象** | 本 fork 仓库所有 maintainer |
-| **前置假设 1** | `master` 分支永远保持与 `upstream/dev-v2` 同步（镜像） |
+| **前置假设 1** | `master` 分支永远保持与 `upstream/master-v2` 同步（镜像） |
 | **前置假设 2** | `staging` 分支累积本地 fork 工作（162 个 commit 量级） |
 | **前置假设 3** | `branch` 分支为稳定下游基线，由用户手动晋升 staging |
 | **触发时机** | 上游发布新版本（如 v6.17.0）或累积 N 个 commit 后 |
@@ -31,7 +31,7 @@ git branch backup/staging-pre-merge-$date staging
 
 # 1.3 统计 fork commits 与上游 commits 数量
 $forkCount = (git log master..staging --oneline).Count
-$upstreamCount = (git log staging..upstream/dev-v2 --oneline).Count
+$upstreamCount = (git log staging..upstream/master-v2 --oneline).Count
 Write-Host "Fork commits: $forkCount, Upstream new: $upstreamCount"
 
 # 1.4 拉取上游最新引用（即使本地已缓存，再 fetch 一次确保最新）
@@ -50,7 +50,7 @@ $forkFiles = git diff master..staging --name-only --diff-filter=ACD | Where-Obje
 
 # 2.2 上游近期修改的文件清单（限定时间窗口）
 $since = "2026-07-27"  # 调整为上次合并的时间
-$upstreamFiles = git log staging..upstream/dev-v2 --no-merges --since=$since --name-only --format="" |
+$upstreamFiles = git log staging..upstream/master-v2 --no-merges --since=$since --name-only --format="" |
     Where-Object { $_ -ne "" -and $_ -notmatch '^resource/' } | Select-Object -Unique
 
 # 2.3 重叠文件（fork 与 upstream 都改了）→ 冲突候选
@@ -148,7 +148,7 @@ fork base commit `c8c8e75be5` 在 2026-07-11 初始化时无父节点（孤儿 r
 **原始错误输出**（2026-08-06 实测）：
 
 ```
-$ git merge --no-commit --no-ff upstream/dev-v2
+$ git merge --no-commit --no-ff upstream/master-v2
 fatal: refusing to merge unrelated histories
 ```
 
@@ -170,7 +170,7 @@ Write-Host "Fork base Version: $version"
 # 2026-08-06 实例输出: <Version>6.14.0</Version>
 
 # 5.2.2 在上游历史中找对应 release
-git log upstream/dev-v2 --grep="Release v6.14.0" --oneline | Select-Object -First 1
+git log upstream/master-v2 --grep="Release v6.14.0" --oneline | Select-Object -First 1
 # 2026-08-06 实例输出:
 #   6147357bd0 Release v6.14.0 (#17291)
 
@@ -179,12 +179,12 @@ $upstreamAnchor = "6147357bd074d926047d1e391ba3759f40477ef1"
 "$forkRoot $upstreamAnchor" | Out-File ".git/info/grafts" -Encoding utf8 -NoNewline
 
 # 5.2.4 验证 merge-base
-git merge-base HEAD upstream/dev-v2
+git merge-base HEAD upstream/master-v2
 # 预期输出: c8c8e75be5227d0fcc8d1ebe9fdbc462055cdfce
 # 若输出为空或不同，graft 未生效，检查拼写
 ```
 
-**完成标志**：`git merge-base HEAD upstream/dev-v2` 返回 fork root SHA。
+**完成标志**：`git merge-base HEAD upstream/master-v2` 返回 fork root SHA。
 
 ---
 
@@ -194,7 +194,7 @@ git merge-base HEAD upstream/dev-v2
 
 ```powershell
 git switch staging
-git merge --no-commit --no-ff upstream/dev-v2
+git merge --no-commit --no-ff upstream/master-v2
 ```
 
 ### §6.2 真实 conflict 输出示例（2026-08-06 v6.16.5 合入，实际数据）
@@ -208,7 +208,7 @@ Auto-merging docs/en-us/protocol/integration.md
 ... (5 语种都冲突)
 CONFLICT (content): Merge conflict in resource/tasks/tasks.json
 CONFLICT (content): Merge conflict in resource/version.json
-CONFLICT (modify/delete): src/MaaMacGui deleted in HEAD and modified in upstream/dev-v2.
+CONFLICT (modify/delete): src/MaaMacGui deleted in HEAD and modified in upstream/master-v2.
 ... (MaaMacGui + maa-cli)
 CONFLICT (content): Merge conflict in src/MaaWpfGui/Res/Localizations/en-us.xaml
 ... (5 语种都冲突)
@@ -248,7 +248,7 @@ git diff --name-only --diff-filter=U
 <<<<<<< HEAD
     <system:String x:Key="PasteClipboardCopilotSetTip">读取剪贴板并添加为作业集</system:String>
 =======
->>>>>>> upstream/dev-v2
+>>>>>>> upstream/master-v2
     <system:String x:Key="ImportFilesTip">批量导入</system:String>
 ```
 
@@ -298,7 +298,7 @@ git add src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs
 基于上游 v6.16.5...
 =======
 ## v6.16.5
->>>>>>> upstream/dev-v2
+>>>>>>> upstream/master-v2
 ```
 
 **手解**：保留 fork 章节 + 移除冲突标记 + 在后面追加 upstream 章节标题。
@@ -307,7 +307,7 @@ git add src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs
 
 ```powershell
 git add -u  # 或单独 git add <resolved-files>
-git commit -m "merge: upstream/dev-v2 (vX.Y.Z) → staging
+git commit -m "merge: upstream/master-v2 (vX.Y.Z) → staging
 
 拉取上游 v6.X.0 ~ vX.Y.Z 共 N commit
 解决冲突文件：~20 个
@@ -336,7 +336,7 @@ Remove-Item ".git/info/grafts" -Force
 git config --local advice.graftFileDeprecated false
 
 # 7.4 验证
-git merge-base HEAD upstream/dev-v2
+git merge-base HEAD upstream/master-v2
 # 预期: c8c8e75be5227d0fcc8d1ebe9fdbc462055cdfce
 
 git replace --list
@@ -484,7 +484,7 @@ fatal: refusing to merge unrelated histories
 **诊断**：
 
 ```powershell
-git merge-base HEAD upstream/dev-v2
+git merge-base HEAD upstream/master-v2
 # 若输出为空 → 历史无关联
 ```
 
@@ -584,7 +584,7 @@ git config --local advice.graftFileDeprecated false
 # ============================================================
 # WORKFLOW.md - 上游拉取新功能完整脚本
 # 用法：在仓库根目录运行此脚本
-# 前提：master 已 reset 到 upstream/dev-v2
+# 前提：master 已 reset 到 upstream/master-v2
 # ============================================================
 
 $ErrorActionPreference = "Stop"
@@ -604,14 +604,14 @@ git branch "backup/staging-pre-merge-$date" staging
 git fetch upstream | Out-Null
 
 $forkCount = (git log master..staging --oneline).Count
-$upstreamCount = (git log staging..upstream/dev-v2 --oneline).Count
+$upstreamCount = (git log staging..upstream/master-v2 --oneline).Count
 Write-Host "Fork commits: $forkCount, Upstream new: $upstreamCount"
 
 # --- §2 评估 ---
 Write-Host "`n=== §2 评估冲突 ===" -ForegroundColor Cyan
 $forkFiles = git diff master..staging --name-only --diff-filter=ACD |
     Where-Object { $_ -notmatch '^resource/' } | Select-Object -Unique
-$upstreamFiles = git log staging..upstream/dev-v2 --no-merges --name-only --format="" |
+$upstreamFiles = git log staging..upstream/master-v2 --no-merges --name-only --format="" |
     Where-Object { $_ -ne "" -and $_ -notmatch '^resource/' } | Select-Object -Unique
 $overlap = $forkFiles | Where-Object { $upstreamFiles -contains $_ }
 Write-Host "潜在冲突文件: $($overlap.Count)"
@@ -625,7 +625,7 @@ if (-not $forkRootSha) {
     Write-Warning "Fork root $forkRoot 不存在，本脚本仅适用于当前 fork 结构"
 } else {
     "$forkRootSha $upstreamAnchor" | Out-File ".git/info/grafts" -Encoding utf8 -NoNewline
-    $mergeBase = git merge-base HEAD upstream/dev-v2
+    $mergeBase = git merge-base HEAD upstream/master-v2
     if ($mergeBase -eq $forkRootSha) {
         Write-Host "✅ graft 设置成功" -ForegroundColor Green
     } else {
@@ -636,7 +636,7 @@ if (-not $forkRootSha) {
 # --- §6 merge ---
 Write-Host "`n=== §6 合并 upstream ===" -ForegroundColor Cyan
 git switch staging | Out-Null
-git merge --no-commit --no-ff upstream/dev-v2 2>&1 | Out-Null
+git merge --no-commit --no-ff upstream/master-v2 2>&1 | Out-Null
 
 $conflictFiles = git diff --name-only --diff-filter=U
 Write-Host "冲突文件数: $($conflictFiles.Count)"
@@ -650,7 +650,7 @@ if ($conflictFiles.Count -gt 100) {
 # 此时需要手动解决冲突
 Write-Host "`n请手动解决以下冲突文件:" -ForegroundColor Yellow
 $conflictFiles | ForEach-Object { Write-Host "  - $_" }
-Write-Host "`n完成后继续执行：git add -u && git commit -m 'merge: upstream/dev-v2 ...'" -ForegroundColor Yellow
+Write-Host "`n完成后继续执行：git add -u && git commit -m 'merge: upstream/master-v2 ...'" -ForegroundColor Yellow
 ```
 
 ---
@@ -665,7 +665,7 @@ Write-Host "`n完成后继续执行：git add -u && git commit -m 'merge: upstre
 □ install-staging/MAA.exe 启动无错误对话框
 □ git config advice.graftFileDeprecated = false
 □ git replace --list 包含 fork_root
-□ git merge-base HEAD upstream/dev-v2 返回 fork_root
+□ git merge-base HEAD upstream/master-v2 返回 fork_root
 □ 所有 DLL 在 maaDlls 白名单内（§8.4 验证）
 ```
 

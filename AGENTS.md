@@ -6,7 +6,7 @@
 
 中文叙述为主，分支名 / 命令 / 协议字段等关键术语保留英文原文。无 emoji、无 vuepress 容器，遵循 `LOG.md` 既有的表格驱动风格。
 
-> **重要约束**：拉取上游新功能（merge `upstream/dev-v2`）**必须**按 [`WORKFLOW.md`](./WORKFLOW.md) 流程执行（§5 graft 假历史关联 + §6 合并手解 + §7 转 git replace + §8 编译验证）。该流程基于 2026-08-06 v6.16.5 合入经验总结，绕过 fork root 无父节点导致的 unrelated histories 问题。
+> **重要约束**：拉取上游新功能（merge `upstream/master-v2`）**必须**按 [`WORKFLOW.md`](./WORKFLOW.md) 流程执行（§5 graft 假历史关联 + §6 合并手解 + §7 转 git replace + §8 编译验证）。该流程基于 2026-08-06 v6.16.5 合入经验总结，绕过 fork root 无父节点导致的 unrelated histories 问题。
 >
 
 
@@ -14,7 +14,7 @@
 
 ### 1.1 一句话
 
-基于 [MaaAssistantArknights/MaaAssistantArknights](https://github.com/MaaAssistantArknights/MaaAssistantArknights) 上游 `dev-v2` 的本地 fork，主仓 `branch` 累积本地下游增强。业务语义：基于 [MaaFramework](https://github.com/MaaXYZ/MaaFramework) 的图像识别明日方舟小助手，「一键完成全部日常任务」。
+基于 [MaaAssistantArknights/MaaAssistantArknights](https://github.com/MaaAssistantArknights/MaaAssistantArknights) 上游 `master-v2`（稳定 release 分支）的本地 fork，主仓 `branch` 累积本地下游增强。业务语义：基于 [MaaFramework](https://github.com/MaaXYZ/MaaFramework) 的图像识别明日方舟小助手，「一键完成全部日常任务」。
 
 ### 1.2 技术栈
 
@@ -45,7 +45,7 @@
 
 | Remote | 用途 |
 |--------|------|
-| `upstream` | 上游 `MaaAssistantArknights/MaaAssistantArknights`，`HEAD` 跟踪 `dev-v2` |
+| `upstream` | 上游 `MaaAssistantArknights/MaaAssistantArknights`，`HEAD` 跟踪 `master-v2`（稳定 release 分支） |
 | `Github` | 个人 fork 远端，分支同步发布用 |
 | `origin` | （未配置 / 备用） |
 
@@ -53,10 +53,11 @@
 
 | 分支 | 角色 | 备注 |
 |------|------|------|
-| `master` | 上游镜像 | 长期与 `upstream/dev-v2` 保持一致 |
-| `branch` | **稳定下游基线** | 从 `staging` 攒批晋升 + 与 `master` 上游同步 |
-| `staging` | **待验证整合区** | 所有 feat / fix 的合并目标；攒批测试通过后晋升至 `branch`（详见 `§2.4`） |
-| `feat/<name>` | 新功能 | 从 `branch` 拉出，合并到 `staging` |
+| `master` | **上游镜像** | 仅 `git fetch upstream && git reset --hard upstream/master-v2`，与上游 `master-v2` 保持一致；**不推送** |
+| `new-branch` | **临时对比分支** | 仅在拉上游时创建：从本地 `master` 拉出（先 `git reset --hard upstream/master-v2` 再 `git branch -f new-branch master`）；用于与 `branch` 对比落后上游多少，用完可删 |
+| `branch` | **稳定下游基线** | 从 `staging` 晋升（`git merge --no-ff staging`）+ 部署 `install/`（`tools/local-install.bat`） |
+| `staging` | **待验证整合区** | 所有 feat / fix 的合并目标；测试通过后晋升至 `branch`（详见 `§2.4`）；部署 `install-staging/` |
+| `feat/<name>` | 新功能 | 从 `staging` 拉出，合并到 `staging` |
 | `fix/<name>` / `fix/<name>/<n>` | 修复分支 | **必须从对应 `feat/<name>` 拉出**（详见 `§3.3`）；合并到 `staging` 或对应 feat |
 
 ### 2.3 已完结 feat 处理
@@ -76,7 +77,7 @@ feat 合并到 `staging` 后：
 #### 拓扑
 
 ```
-master (上游 dev-v2 镜像)
+master (上游 master-v2 镜像)
   │  (rebase / merge 同步节奏不变)
   ▼
 branch (稳定下游基线) ◄──── 用户手动合并 staging
@@ -95,11 +96,11 @@ staging ──── feat/<name>, fix/<name> ← 从 staging 拉出
 | 晋升时机 | `branch` 晋升由用户手动触发；不再自动攒批晋升（变更日 2026-07-30） |
 | 晋升方式 | `staging` → `branch` 由用户执行 `git merge staging --no-ff`；feat/fix → `staging` 自动 `--no-ff` |
 | 出问题回退 | 从远端保留的 `feat/<name>` / `fix/<name>` 重新拉 `fix/<name>/<n>`，仍合并到 `staging` |
-| **上游同步 SOP** | **拉取上游新功能（merge `upstream/dev-v2`）必须按 `WORKFLOW.md` 流程执行**（§5 graft + §6 合并 + §7 replace + §8 编译验证） |
+| **上游同步 SOP** | **拉取上游新功能（merge `upstream/master-v2`）必须按 `WORKFLOW.md` 流程执行**（§5 graft + §6 合并 + §7 replace + §8 编译验证） |
 
 #### 当前待验证内容（截至 2026-08-06 v6.16.5 合入）
 
-`staging` 通过 commit `1abf898ef3` merge `upstream/dev-v2`（v6.16.5），已含：
+`staging` 通过 commit `706f8babf4` merge `upstream/master-v2`（v6.16.5 release），已含：
 - Phase A: 移除 `feat/auto-recruit-3star-to-4star`（commit `3fd8903115`）
 - Phase B: AGENTS/CHANGELOG/csproj/.gitignore 清理（commit `dcb3cc6cb4`）
 - Phase D: 上游 v6.14.0 ~ v6.16.5 共 4467 commit 合入
