@@ -6,6 +6,9 @@
 
 中文叙述为主，分支名 / 命令 / 协议字段等关键术语保留英文原文。无 emoji、无 vuepress 容器，遵循 `LOG.md` 既有的表格驱动风格。
 
+> **重要约束**：拉取上游新功能（merge `upstream/dev-v2`）**必须**按 [`WORKFLOW.md`](./WORKFLOW.md) 流程执行（§5 graft 假历史关联 + §6 合并手解 + §7 转 git replace + §8 编译验证）。该流程基于 2026-08-06 v6.16.5 合入经验总结，绕过 fork root 无父节点导致的 unrelated histories 问题。
+>
+
 
 ## 1. 项目概述
 
@@ -92,6 +95,7 @@ staging ──── feat/<name>, fix/<name> ← 从 staging 拉出
 | 晋升时机 | `branch` 晋升由用户手动触发；不再自动攒批晋升（变更日 2026-07-30） |
 | 晋升方式 | `staging` → `branch` 由用户执行 `git merge staging --no-ff`；feat/fix → `staging` 自动 `--no-ff` |
 | 出问题回退 | 从远端保留的 `feat/<name>` / `fix/<name>` 重新拉 `fix/<name>/<n>`，仍合并到 `staging` |
+| **上游同步 SOP** | **拉取上游新功能（merge `upstream/dev-v2`）必须按 `WORKFLOW.md` 流程执行**（§5 graft + §6 合并 + §7 replace + §8 编译验证） |
 
 #### 当前待验证内容（截至 2026-08-06 v6.16.5 合入）
 
