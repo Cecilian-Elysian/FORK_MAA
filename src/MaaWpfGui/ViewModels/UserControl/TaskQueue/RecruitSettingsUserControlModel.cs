@@ -85,11 +85,6 @@ public class RecruitSettingsUserControlModel : TaskSettingsViewModel, RecruitSet
     /// 启用后,3星组合若有4★潜力(如「费用回复+先锋干员」出桃金娘),按4★路径处理:
     /// 3:50计时 + 联动 ExpediteMode 加急 + 沿用 SelectExtraTags 选 tag。
     /// </summary>
-    public bool AutoUpgrade3StarWith4Star
-    {
-        get => GetTaskConfig<RecruitTask>().AutoUpgrade3StarWith4Star;
-        set => SetTaskConfig<RecruitTask>(t => t.AutoUpgrade3StarWith4Star == value, t => t.AutoUpgrade3StarWith4Star = value);
-    }
 
     public object[] AutoRecruitPreserveTagList
     {
@@ -338,7 +333,6 @@ public class RecruitSettingsUserControlModel : TaskSettingsViewModel, RecruitSet
                 UseExpedited = useExpedited,
                 ExpeditedTimes = recruit.MaxTimes,
                 ExpediteMinLevel = expediteMinLevel,
-                AutoUpgrade3StarWith4Star = recruit.AutoUpgrade3StarWith4Star,
                 SelectExtraTags = recruit.ExtraTagMode,
                 Level3FirstList = firstTags,
                 PreserveTags = preserveTags,

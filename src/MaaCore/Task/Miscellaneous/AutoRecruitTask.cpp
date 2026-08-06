@@ -150,12 +150,6 @@ asst::AutoRecruitTask& asst::AutoRecruitTask::set_expedite_min_level(int level) 
     return *this;
 }
 
-asst::AutoRecruitTask& asst::AutoRecruitTask::set_auto_upgrade_3star_with_4star(bool enable) noexcept
-{
-    m_auto_upgrade_3star_with_4star = enable;
-    return *this;
-}
-
 asst::AutoRecruitTask& asst::AutoRecruitTask::set_select_extra_tags(ExtraTagsMode select_extra_tags_mode) noexcept
 {
     m_select_extra_tags_mode = select_extra_tags_mode;
@@ -382,7 +376,7 @@ asst::AutoRecruitTask::recruit_result asst::AutoRecruitTask::recruit_one(const R
     // confirm() 点击「开始招募」启动 9h 倒计时并返回公招主页,
     // 主页上该 slot 才会出现「立即招 / 立即完成」按钮供 recruit_now() 点击。
     // 原 feat 将 recruit_now() 放在 confirm() 之前, 详情页无此按钮, OCR 必失败。
-    if (m_use_expedited && m_original_min_level >= m_expedite_min_level) {
+    if (m_use_expedited && m_last_confirmed_min_level >= m_expedite_min_level) {
         Log.info(
             "Recruit slot level",
             m_last_confirmed_min_level,
@@ -545,23 +539,6 @@ asst::AutoRecruitTask::calc_task_result_type asst::AutoRecruitTask::recruit_calc
             }
         }
 
-        // 3★ 组合里若能开 4★ 干员（如「费用回复 + 先锋干员」出桃金娘），升级为 4★ 处理路径
-        for (RecruitCombs& rc : result_vec) {
-            if (m_auto_upgrade_3star_with_4star && rc.min_level == 3 && rc.max_level >= 4) {
-                auto first_4 = std::ranges::find_if(rc.opers, [](const Recruitment& op) { return op.level >= 4; });
-                if (first_4 != rc.opers.end()) {
-                    rc.min_level = first_4->level;
-                    rc.avg_level = std::transform_reduce(
-                                       first_4,
-                                       rc.opers.end(),
-                                       0.,
-                                       std::plus<double> {},
-                                       std::mem_fn(&Recruitment::level)) /
-                                   static_cast<double>(std::distance(first_4, rc.opers.end()));
-                }
-            }
-        }
-
         std::ranges::sort(result_vec, [&](const RecruitCombs& lhs, const RecruitCombs& rhs) -> bool {
             // prefer the one with special tag
             // workaround for
@@ -595,25 +572,10 @@ asst::AutoRecruitTask::calc_task_result_type asst::AutoRecruitTask::recruit_calc
         const auto& final_combination = result_vec.front();
         m_last_confirmed_min_level = final_combination.min_level;
 
-        // fix/auto-recruit-expedite-original-level: 保存 3→4 升级前的原始最低星级，
-        // 用于加急判定。扫描 opers 中 ≥3★ 的最低干员等级，
-        // 若组合含 3★ 干员（3→4 升级前为 3★），则原始等级为 3，
-        // 避免「三星词条出四星」场景下误加急浪费许可。
-        m_original_min_level = m_last_confirmed_min_level;
-        if (m_auto_upgrade_3star_with_4star) {
-            auto min_op =
-                std::ranges::find_if(final_combination.opers, [](const Recruitment& op) { return op.level >= 3; });
-            if (min_op != final_combination.opers.end()) {
-                m_original_min_level = (std::min)(m_original_min_level, static_cast<int>(min_op->level));
-            }
-        }
-
         {
             json::object results_json;
             results_json["result"] = json::array();
-            // fix/auto-recruit-expedite-original-level/2: RecruitResult 日志展示升级前的原始星级
-            // 避免 3→4 升级后「4 ★ Tags」误标导致用户以为必出四星
-            results_json["level"] = (std::max)(m_original_min_level, 3);
+            results_json["level"] = final_combination.min_level;
             for (const auto& comb : result_vec) {
                 json::array opers_json;
                 for (const Recruitment& oper_info : comb.opers | std::views::reverse) { // print reversely

@@ -26,7 +26,6 @@ public:
     AutoRecruitTask& set_max_times(int max_times) noexcept;
     AutoRecruitTask& set_use_expedited(bool use_or_not) noexcept;
     AutoRecruitTask& set_expedite_min_level(int level) noexcept;
-    AutoRecruitTask& set_auto_upgrade_3star_with_4star(bool enable) noexcept;
     AutoRecruitTask& set_select_extra_tags(ExtraTagsMode select_extra_tags_mode) noexcept;
     AutoRecruitTask& set_first_tags(std::vector<std::string> first_tags) noexcept;
     AutoRecruitTask& set_preserve_tags(std::vector<RecruitConfig::TagId> skip_tags) noexcept;
@@ -172,8 +171,7 @@ protected:
     bool m_need_refresh = false;
     bool m_use_expedited = false;       // 是否使用加急许可
     int m_expedite_min_level = 0;       // 加急门槛：≥ 此星级才加急，0 = 所有星级均加急
-    int m_last_confirmed_min_level = 0; // 最近一次确认的组合最低星级（含 3→4 升级），供加急判定用
-    int m_original_min_level = 0;       // 3→4 升级前的原始最低星级，供加急判定用
+    int m_last_confirmed_min_level = 0; // 最近一次确认的组合最低星级，供加急判定用
     ExtraTagsMode m_select_extra_tags_mode = ExtraTagsMode::NoExtra;
     std::vector<std::string> m_first_tags;
     std::vector<RecruitConfig::TagId> m_preserve_tags = { "支援机械" };
@@ -182,7 +180,6 @@ protected:
     bool m_has_refresh = true;
     bool m_set_time = true;
     bool m_force_refresh = true;
-    bool m_auto_upgrade_3star_with_4star = true; // 3★ 组合里有 4★ 干员潜力时升级为 4★ 处理
     std::unordered_map<int /*level*/, int /*minutes*/> m_desired_time_map;
 
     int m_slot_fail = 0;

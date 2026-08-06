@@ -268,11 +268,6 @@ Use Expedited Plans only when the minimum rarity of the confirmed recruitment co
 <br>
 0 = unlimited (backward compatible), 4 / 5 / 6 = expedite only for that rarity and above. Default 0  
 :::  
-::: field name="auto_upgrade_3star_with_4star" type="boolean" optional default="true"  
-When a 3★ tag combo can yield a 4★ operator (e.g. Vanguard + DP-Recovery → Myrtle), automatically treat it as a 4★ combo.  
-<br>
-When enabled: use the `"4"` entry of `recruitment_time` as the timer (default 3:50), pick Tags via `extra_tags_mode`, and auto-expedite if the upgraded minimum rarity meets `expedite_min_level`.  
-:::  
 ::: field name="skip_robot" type="boolean" optional default="true"
 Deprecated and kept only for backward compatibility.  
 <br>

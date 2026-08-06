@@ -1368,8 +1368,6 @@ C:\\leidian\\LDPlayer9。\n
     <system:String x:Key="SelectExtraOnlyRareTags">尽可能多地选且只选高星 Tag</system:String>
     <system:String x:Key="AutoRecruitHighPriority">3 星 Tag 时的 Tag 倾向</system:String>
     <system:String x:Key="AutoRecruitHighPriorityTooltip">会尽可能多的选择倾向的 Tag</system:String>
-    <system:String x:Key="AutoUpgrade3StarWith4Star">3星组合自动升级为4星</system:String>
-    <system:String x:Key="AutoUpgrade3StarWith4StarTip">3星Tag组合里若能开4★干员（如「费用回复」先锋干员出桃金娘），自动按4★路径处理：3:50计时 + 联动加急门槛 + 沿用多选Tag策略选tag</system:String>
     <system:String x:Key="NotEnoughStaff">可用{key=Operator}不足</system:String>
     <system:String x:Key="StageInfoError">关卡识别错误</system:String>
     <system:String x:Key="UseFormation">使用编队</system:String>

@@ -257,11 +257,6 @@ v6.8.0부터 폐기됨. 대신 `medicine_expire_days`를 사용하세요.
 <br>
 0 = 무제한(구 동작 호환), 4 / 5 / 6 = 해당 등급 이상에서만 즉시 완료. 기본값 0  
 :::  
-::: field name="auto_upgrade_3star_with_4star" type="boolean" optional default="true"  
-3★ 태그 조합에서 4★ 오퍼레이터를 배출할 수 있는 경우(예: 뱅가드+코스트회복 → 마틀), 자동으로 4★ 조합으로 처리합니다.  
-<br>
-활성화 시: `recruitment_time`의 `"4"` 항목을 타이머로 사용(기본 3:50), `extra_tags_mode`로 태그 선택, 승급 후 최소 등급이 `expedite_min_level` 임계값에 도달하면 자동 즉시 완료를 적용합니다.  
-:::  
 ::: field name="skip_robot" type="boolean" optional default="true"
 폐기 예정이며 구형 파라미터 호환용으로만 유지됩니다.  
 <br>

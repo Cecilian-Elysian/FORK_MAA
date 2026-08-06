@@ -52,7 +52,6 @@ bool asst::RecruitTask::set_params(const json::value& params)
     bool expedite = params.get("expedite", false);
     [[maybe_unused]] int expedite_times = params.get("expedite_times", 0);
     int expedite_min_level = params.get("expedite_min_level", 0);
-    bool auto_upgrade_3star_with_4star = params.get("auto_upgrade_3star_with_4star", true);
     std::vector<RecruitConfig::TagId> preserve_tags;
     std::vector<std::string> first_tags = params.get("first_tags", std::vector<std::string>(0));
 
@@ -86,7 +85,6 @@ bool asst::RecruitTask::set_params(const json::value& params)
         .set_need_refresh(refresh)
         .set_use_expedited(expedite)
         .set_expedite_min_level(expedite_min_level)
-        .set_auto_upgrade_3star_with_4star(auto_upgrade_3star_with_4star)
         .set_select_extra_tags(extra_tags_mode)
         .set_first_tags(first_tags)
         .set_preserve_tags(std::move(preserve_tags))

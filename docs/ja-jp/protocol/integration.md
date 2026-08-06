@@ -268,11 +268,6 @@ Bilibili：`张三`、入力可能：`张三`、`张`、`三`
 <br>
 0 = 無制限（旧仕様と互換）、4 / 5 / 6 = 該当星級以上のときのみ加急。デフォルト 0  
 :::  
-::: field name="auto_upgrade_3star_with_4star" type="boolean" optional default="true"  
-3★タグ組合せから4★オペレーターを排出できる場合（例：先鋒タイプ+コスト回復でアンジェ）、自動的に4★組合せとして処理します。  
-<br>
-有効時：`recruitment_time` の `"4"` エントリをタイマーとして使用（デフォルト 3:50）、`extra_tags_mode` でタグ選択、昇格後の最低星級が `expedite_min_level` に達した場合は自動加急します。  
-:::  
 ::: field name="skip_robot" type="boolean" optional default="true"
 非推奨です。旧パラメータ互換のためにのみ残されています。  
 <br>
