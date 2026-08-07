@@ -168,7 +168,7 @@ bool asst::InfrastReceptionTask::use_clue()
 bool asst::InfrastReceptionTask::remove_clue()
 {
     LogTraceFunction;
-    const static std::vector<std::string> clue_suffix = { "No1", "No2", "No3", "No4", "No5", "No6", "No7" };
+    const static std::vector<std::string> clue_suffix = { "1", "2", "3", "4", "5", "6", "7" };
 
     cv::Mat image = ctrler()->get_image();
 
@@ -252,18 +252,11 @@ bool asst::InfrastReceptionTask::proc_clue_vacancy()
         vacancy_analyzer.analyze();
         const int vacancy_cnt = static_cast<int>(vacancy_analyzer.get_vacancy().size());
 
-        if (vacancy_cnt == 0) {
-            // 没有空位可填，快捷置入路径完成
-            Log.info(__FUNCTION__, "| quick-insert path done, no vacancy");
-            return true;
-        }
-
         const auto confirm_task = Task.get("InfrastClueQuickInsertConfirm");
-        if (confirm_task != nullptr) {
+        if (vacancy_cnt > 0 && confirm_task != nullptr) {
             RegionOCRer ocr_analyzer(image);
             ocr_analyzer.set_task_info(confirm_task);
 
-            bool click_performed = false;
             if (auto ocr_res = ocr_analyzer.analyze()) {
                 int available = 0;
                 if (utils::chars_to_number(ocr_res->text, available)) {
@@ -271,27 +264,11 @@ bool asst::InfrastReceptionTask::proc_clue_vacancy()
                     if (available == vacancy_cnt) {
                         Rect click_rect = confirm_task->roi.move(confirm_task->rect_move);
                         ctrler()->click(click_rect);
-                        click_performed = true;
-                    }
-                    else {
-                        Log.warn(__FUNCTION__, "| quick-insert skipped: available != vacancy_cnt, fallback");
                     }
                 }
-                else {
-                    Log.warn(__FUNCTION__, "| quick-insert skipped: OCR parse failed, fallback");
-                }
-            }
-            else {
-                Log.warn(__FUNCTION__, "| quick-insert skipped: OCR analyze failed, fallback");
             }
 
-            if (click_performed) {
-                return true;
-            }
-            // 点击未真正发生，降级到 legacy 循环补救
-        }
-        else {
-            Log.warn(__FUNCTION__, "| quick-insert skipped: confirm task missing, fallback");
+            return true;
         }
     }
 
@@ -299,9 +276,6 @@ bool asst::InfrastReceptionTask::proc_clue_vacancy()
         if (need_exit()) {
             return false;
         }
-        // 每次迭代前刷新截图，避免分析陈旧图像（fix: continue 前未刷新导致死循环）
-        image = ctrler()->get_image();
-
         // 先识别线索的空位
         InfrastClueVacancyImageAnalyzer vacancy_analyzer(image);
 
@@ -329,15 +303,6 @@ bool asst::InfrastReceptionTask::proc_clue_vacancy()
         ctrler()->click(clue_result_opt->back().rect);
         delay = Task.get("InfrastClue")->post_delay;
         sleep(delay);
-
-        // 放置线索后关闭右侧线索列表面板，避免下一轮迭代在弹窗上误操作
-        image = ctrler()->get_image();
-        Matcher close_check(image);
-        close_check.set_task_info("InfrastReceptionIcon");
-        if (auto close_res = close_check.analyze()) {
-            ctrler()->click(close_res->rect);
-            sleep(500);
-        }
     }
     return true;
 }

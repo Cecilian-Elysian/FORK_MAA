@@ -65,15 +65,19 @@ bool asst::AccountSwitchTask::_run()
 bool asst::AccountSwitchTask::navigate_to_start_page()
 {
     auto task = ProcessTask(*this, { "SwitchAccount@StartUpBegin" });
-    // retry 预算覆盖整个 SwitchAccount@StartUpBegin 链路导航（首步最坏需 ~13 次）;
-    // LoginOther OCR 不匹配时由 AccountManagerPageConfirm 模板兜底, 不再空耗 retry
-    task.set_retry_times(NavigateRetryTimes);
+    task.set_retry_times(30);
     task.run();
     std::string last_name = task.get_last_task_name();
-    Log.info(__FUNCTION__, "last matched task:", last_name);
-    if (last_name == "LoginOther" || last_name == "AccountManagerOfficial"
-        || last_name == "AccountManagerBili" || last_name == "AccountManagerTxwy"
-        || last_name == "AccountManagerPageConfirm") {
+    if (last_name == "LoginOther") {
+        return true;
+    }
+    else if (last_name == "AccountManagerOfficial") {
+        return true;
+    }
+    else if (last_name == "AccountManagerBili") {
+        return true;
+    }
+    else if (last_name == "AccountManagerTxwy") {
         return true;
     }
     return false;
@@ -82,9 +86,7 @@ bool asst::AccountSwitchTask::navigate_to_start_page()
 bool asst::AccountSwitchTask::equal_current_account()
 {
     OCRer ocr(ctrler()->get_image());
-    if (m_client_type == "Official" || m_client_type == "txwy") {
-        ocr.set_use_char_model(true);
-    }
+    ocr.set_task_info("AccountCurrentOCR");
     ocr.set_required({ m_account });
     if (!ocr.analyze()) {
         return false;
@@ -95,9 +97,7 @@ bool asst::AccountSwitchTask::equal_current_account()
 bool asst::AccountSwitchTask::equal_current_account_b()
 {
     OCRer ocr(ctrler()->get_image());
-    if (m_client_type == "Official" || m_client_type == "txwy") {
-        ocr.set_use_char_model(true);
-    }
+    ocr.set_task_info("AccountCurrentOCRBili");
     ocr.set_required({ m_account });
     if (!ocr.analyze()) {
         return false;
@@ -108,7 +108,7 @@ bool asst::AccountSwitchTask::equal_current_account_b()
 bool asst::AccountSwitchTask::click_manager_login_button()
 {
     return ProcessTask(*this, { "AccountManagerLoginButton", "AccountManagerLoginButtonBili" })
-        .set_retry_times(LoginButtonRetryTimes)
+        .set_retry_times(3)
         .run();
 }
 
@@ -130,7 +130,7 @@ bool asst::AccountSwitchTask::swipe_and_select(bool to_top)
         if (click) {
             return click_manager_login_button();
         }
-        if (repeat++ > MaxSwipeAttempts) {
+        if (repeat++ > 20) {
             // 没找到对应账号
             return false;
         }
@@ -148,10 +148,13 @@ bool asst::AccountSwitchTask::select_account()
 {
     LogTraceFunction;
 
-    sleep(SwipeIntervalMs);
+    sleep(200);
+    auto raw_img = ctrler()->get_image();
     OCRer ocr(ctrler()->get_image());
     if (m_client_type == "Official" || m_client_type == "txwy") {
         ocr.set_use_char_model(true);
+    }
+    else if (m_client_type == "Bilibili") {
     }
     ocr.set_required({ m_account });
     if (!ocr.analyze()) {
