@@ -82,7 +82,9 @@ bool asst::AccountSwitchTask::navigate_to_start_page()
 bool asst::AccountSwitchTask::equal_current_account()
 {
     OCRer ocr(ctrler()->get_image());
-    ocr.set_task_info("AccountCurrentOCR");
+    if (m_client_type == "Official" || m_client_type == "txwy") {
+        ocr.set_use_char_model(true);
+    }
     ocr.set_required({ m_account });
     if (!ocr.analyze()) {
         return false;
@@ -93,7 +95,9 @@ bool asst::AccountSwitchTask::equal_current_account()
 bool asst::AccountSwitchTask::equal_current_account_b()
 {
     OCRer ocr(ctrler()->get_image());
-    ocr.set_task_info("AccountCurrentOCRBili");
+    if (m_client_type == "Official" || m_client_type == "txwy") {
+        ocr.set_use_char_model(true);
+    }
     ocr.set_required({ m_account });
     if (!ocr.analyze()) {
         return false;
@@ -147,10 +151,7 @@ bool asst::AccountSwitchTask::select_account()
     sleep(SwipeIntervalMs);
     OCRer ocr(ctrler()->get_image());
     if (m_client_type == "Official" || m_client_type == "txwy") {
-        ocr.set_task_info("AccountListOcr");
-    }
-    else if (m_client_type == "Bilibili") {
-        ocr.set_task_info("AccountListOcrBili");
+        ocr.set_use_char_model(true);
     }
     ocr.set_required({ m_account });
     if (!ocr.analyze()) {
