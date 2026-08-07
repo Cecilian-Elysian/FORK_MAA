@@ -1,6 +1,6 @@
-## v6.14.0-fork.20260806
+## v6.14.0-fork.20260807
 
-基于上游 v6.16.5（dev-v2 `c5d48f4971`），本仓 fork 累积下游增强：
+基于上游 v6.16.5（master-v2 `a02e95a9af`），本仓 fork 累积下游增强：
 
 ### 新增 fork 特性
 
@@ -14,23 +14,24 @@
 - 外部通知服务（Bark / Discord / DingTalk / Gotify / Qmsg / ServerChan / Smtp / Telegram / Custom Webhook）
 - 本地构建脚本 SDK 锁死修复（`tools/local-install*.bat`）
 
-### Fork 修复
+### 2026-08-07 master-v2 基线对齐（fork 私有代码回归）
 
-- 官服账号切换界面识别补全（`fix/account-official-recognize`）
-- 切号时 LoginOther OCR 模板兜底（`fix/account-switch-retry`）
-- 切号时左侧任务面板刷新 + 当前账号 Header（`fix/account_rotation/6`）
-- 多账号轮换账号名 Trim 防御（`fix/trim-account-name`）
-- 资源补图（`fix/account-switch-template-missing`）
-- 立即完成 OCR 别名（`fix/recruit-now-text-aliases`）
-- MissionStart 日志战后理智（`fix/post-battle-sanity-display`）
-- 会客室填充线索空位早返回（`fix/reception-clue-vacancy` cherry-pick）
+- **放弃全部 fork 私有 C++ 修改**回归 master-v2（commit `c951f239c1`）：`src/MaaCore/` 与上游 v6.16.5 一致
+- **tasks.json account-switch 区块回归 master**（commit `c34403ac94`）：删除 fork `AccountManagerPageConfirm` task + 模板（该补丁在 v6.16.5 基线下导致官服切号误匹配失败）
+- **恢复 fork 公招加急阈值 C++**（`3904577917`）：`expedite_min_level` 加急判定（confirm() 后单次 `recruit_now()`，失败回落 9h）对齐 fork WPF UI
+- 保留 WPF 侧账号轮换编排（`AccountCycleOrchestrator` / `AccountCycleStep` / StartUpSettings 配置）
 
-### 删除的不成熟功能（2026-08-06 仓库清理）
+### 已回退 / 已删除（2026-08-07 随 master-v2 基线重建）
 
-- `feat/auto-recruit-3star-to-4star`（3★→4★ 自动升级）：未充分验证
-- `fix/auto-recruit-expedite-original-level`：随上一项删除而冗余
-- `feat/recruit-result-display` 招募结果干员识别：2026-08-02 回退
-- `feat/recruit-history-tab` 公招历史 Tab：依赖已回退的 callback
+| 分支 | 说明 |
+|------|------|
+| `feat/auto-recruit-3star-to-4star` | 3★→4★ 自动升级：未充分验证（2026-08-06 清理） |
+| `fix/auto-recruit-expedite-original-level` | 随上一项删除而冗余（2026-08-06 清理） |
+| `feat/recruit-result-display` | 招募结果干员识别：2026-08-02 回退 |
+| `feat/recruit-history-tab` | 公招历史 Tab：依赖已回退的 callback |
+| `fix/account-official-recognize` | 官服账号界面识别补全：2026-08-07 回归 master |
+| `fix/account-switch-retry` | 切号 LoginOther OCR 模板兜底：2026-08-07 回归 master |
+| `fix/account-switch-template-missing` | 资源补图：2026-08-07 回归 master |
 
 ### 协议字段双轨
 
