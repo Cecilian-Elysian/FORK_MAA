@@ -238,7 +238,7 @@ staging ──── feat/<name>, fix/<name> ← 从 staging 拉出
 
 | 分支 | 角色 | 修复目标 |
 |------|------|----------|
-| `fix/audit-fixes` | 2026-08-07 全仓审计修复 | 资源补图（minitouch x86）+ 子模块元数据清理 + 文档三连刷（AGENTS/CHANGELOG/downstream）；不涉及代码改动 |
+| _无（2026-08-07 fix/audit-fixes 已合入 staging；本节空）_ | | |
 
 
 ## 7. 分支生命周期记录
@@ -349,6 +349,17 @@ staging ──── feat/<name>, fix/<name> ← 从 staging 拉出
 | 保留约定 | AGENTS §2.4 staging 工作流（feat 拉取源 = staging + branch 手动晋升）由本 feat 引入，但已用于其他分支，**保留** |
 | 保留功能 | ~~`fix/auto-recruit-expedite-original-level` 的 `m_original_min_level` 加急判定 + RecruitResult 回调 level 用原始星级~~ —— **已于 2026-08-07 随 C++ 全回归 master（`c951f239c1`）删除**，`3904577917` 恢复 expedite_min_level 时未带回 `m_original_min_level`。当前公招加急判定仅用新恢复的 `m_expedite_min_level`（WPF `expedite_min_level` 字段），无「3→4 升级后原始星级」概念（该上游加急路径在 8/6 已移除） |
 | 作用域 | 仅本仓库 fork 私有代码 + 协议 callback 实现，不推 upstream |
+
+### 7.10 fix/audit-fixes（2026-08-07 已合入 staging）
+
+| 项 | 内容 |
+|----|------|
+| 用途 | 2026-08-07 全仓审计修复：minitouch 补图 + .gitmodules 孤儿条目清理 + 文档三连刷（AGENTS/CHANGELOG/downstream）+ stash×4 清理 |
+| 生命周期 | 2026-08-07 创建（从 staging 拉出） → 2026-08-07 `--no-ff` 合入 `staging`（`cc0e82247d`） |
+| 关键 commit | `bc3f4a2a2a`（minitouch 补图） → `7d16e1f05b`（.gitmodules + LOG 启动） → `077f94970a`（AGENTS.md） → `cda6587d85`（CHANGELOG） → `16a40b0442`（downstream 重生成） → `33d91e9da5`（LOG 实施完成） |
+| 子修复分支 | 无（独立 fix） |
+| 作用域 | 仅文档与资源文件；不涉及 C++ / C# 代码改动（8/7 expedite C++ 恢复由 `3904577917` 单独落地） |
+| 详见 | `LOG.md` 2026-08-07（fix/audit-fixes 启动 / 实施完成 / 合入 staging） |
 
 
 ## 8. 关键参考链接
