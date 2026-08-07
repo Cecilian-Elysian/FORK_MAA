@@ -98,12 +98,13 @@ staging ──── feat/<name>, fix/<name> ← 从 staging 拉出
 | 出问题回退 | 从远端保留的 `feat/<name>` / `fix/<name>` 重新拉 `fix/<name>/<n>`，仍合并到 `staging` |
 | **上游同步 SOP** | **拉取上游新功能（merge `upstream/master-v2`）必须按 `WORKFLOW.md` 流程执行**（§5 graft + §6 合并 + §7 replace + §8 编译验证） |
 
-#### 当前待验证内容（截至 2026-08-06 v6.16.5 合入）
+#### 当前待验证内容（截至 2026-08-07 fix/audit-fixes 收尾）
 
 `staging` 通过 commit `706f8babf4` merge `upstream/master-v2`（v6.16.5 release），已含：
 - Phase A: 移除 `feat/auto-recruit-3star-to-4star`（commit `3fd8903115`）
 - Phase B: AGENTS/CHANGELOG/csproj/.gitignore 清理（commit `dcb3cc6cb4`）
 - Phase D: 上游 v6.14.0 ~ v6.16.5 共 4467 commit 合入
+- 2026-08-07 master-v2 对齐：`c951f239c1` 放弃全部 fork 私有 C++ 回归 master；`c34403ac94` tasks.json account-switch 区块回归 master（删除 fork `AccountManagerPageConfirm` task + 模板）；`3904577917` 仅恢复 expedite_min_level 阈值 C++（对齐 fork WPF UI）
 
 历史假关联：fork base `c8c8e75be5` 无父节点，通过 `git replace --graft` 接 `6147357bd0`（v6.14.0 upstream release），merge-base = `c8c8e75be5` 走 3-way 合并。
 
@@ -175,13 +176,16 @@ staging ──── feat/<name>, fix/<name> ← 从 staging 拉出
 
 ### 4.2 子模块
 
-| 子模块 | 上游 |
-|--------|------|
-| `src/MaaUtils` | `MaaXYZ/MaaUtils` |
-| `3rdparty/EmulatorExtras` | `MaaXYZ/EmulatorExtras` |
+| 子模块 | 上游 | 备注 |
+|--------|------|------|
+| `src/MaaUtils` | `MaaXYZ/MaaUtils` | Windows 主构建依赖（C++ 通用工具） |
+| `3rdparty/EmulatorExtras` | `MaaXYZ/EmulatorExtras` | Windows 主构建依赖（模拟器附加能力） |
+| `src/MaaMacGui` | `MaaAssistantArknights/MaaMacGui.git` | macOS GUI 独立仓库；Windows 主构建不依赖 |
+| `src/maa-cli` | `MaaAssistantArknights/maa-cli.git` | CLI 工具独立仓库；Windows 主构建不依赖 |
 
+- 上游 master-v2 的 `.gitmodules` 含 6 条（多 `test`、`src/MAAUnified`），fork 已于 `fix/audit-fixes` 删除后两条（无 gitlink、Windows 不依赖）
 - 首次 clone：`git clone --recursive`
-- 已 clone 补全：`git submodule update --init --recursive`
+- 已 clone 补全：`git submodule update --init --recursive`（MaaMacGui / maa-cli 在 Windows 上未 checkout 不会阻断构建）
 
 ### 4.3 辅助脚本（`tools/`）
 
@@ -227,14 +231,14 @@ staging ──── feat/<name>, fix/<name> ← 从 staging 拉出
 | WPF 控件 | [HandyControls](https://github.com/ghost1372/HandyControls) |
 | JSON | Newtonsoft.Json + System.Text.Json |
 | 日志 | Serilog |
-| 提交前检查 | `pre-commit run --all-files`：clang-format（仅 C++）/ yaml/json 语法 / `LOG.md` 修改记录 |
+| 提交前检查 | `pre-commit run --all-files`：clang-format（仅 C++）/ oxipng（PNG）/ prettier（yaml/json/docs）/ ruff-format（Python）/ markdownlint（docs）。`LOG.md` 为 UTF-16 LE 二进制，pre-commit 不校验，靠 commit message 与人工维护 |
 
 
 ## 6. 进行中分支速查
 
 | 分支 | 角色 | 修复目标 |
 |------|------|----------|
-| _无（2026-08-06 仓库清理后所有进行中 feat/fix 分支已合入 staging 或撤销；本节空）_ | | |
+| `fix/audit-fixes` | 2026-08-07 全仓审计修复 | 资源补图（minitouch x86）+ 子模块元数据清理 + 文档三连刷（AGENTS/CHANGELOG/downstream）；不涉及代码改动 |
 
 
 ## 7. 分支生命周期记录
@@ -280,7 +284,7 @@ staging ──── feat/<name>, fix/<name> ← 从 staging 拉出
 | 关键 commit | `dc2212d54b`（Merge branch 'feat/account_rotation' into branch） |
 | 详见 | 无 |
 
-### 7.5 fix/account-official-recognize
+### 7.5 fix/account-official-recognize（2026-08-07 已随 master-v2 基线重建回退删除）
 
 | 项 | 内容 |
 |----|------|
@@ -293,7 +297,7 @@ staging ──── feat/<name>, fix/<name> ← 从 staging 拉出
 | 作用域 | 仅本仓库 `branch` 修复，不推 upstream |
 | 详见 | `LOG.md` 2026-07-24 |
 
-### 7.6 fix/account-switch-retry
+### 7.6 fix/account-switch-retry（2026-08-07 已随 master-v2 基线重建回退删除）
 
 | 项 | 内容 |
 |----|------|
@@ -306,7 +310,7 @@ staging ──── feat/<name>, fix/<name> ← 从 staging 拉出
 | 作用域 | 仅本仓库 `branch` 修复，不推 upstream |
 | 详见 | `LOG.md` 2026-07-25（fix/account-switch-retry LoginOther OCR 模板兜底 + retry_times 分析修正） |
 
-### 7.7 fix/account_rotation/6
+### 7.7 fix/account_rotation/6（2026-08-07 已随 master-v2 基线重建部分回退：C++/tasks.json 侧回退，WPF 侧 AccountCycleOrchestrator 保留）
 
 | 项 | 内容 |
 |----|------|
@@ -319,7 +323,7 @@ staging ──── feat/<name>, fix/<name> ← 从 staging 拉出
 | 作用域 | 仅本仓库 `branch` 修复，不推 upstream |
 | 详见 | `LOG.md` 2026-07-25（fix/account_rotation/6 启动 + 实施完成） |
 
-### 7.8 fix/account-switch-template-missing
+### 7.8 fix/account-switch-template-missing（2026-08-07 已随 master-v2 基线重建回退删除）
 
 | 项 | 内容 |
 |----|------|
@@ -343,7 +347,7 @@ staging ──── feat/<name>, fix/<name> ← 从 staging 拉出
 | WPF UI 扩展 | `feat/recruit-history-tab`（`69c5e4f74c`，合并 `c143d8eef9`）— 工具箱「公招历史」Tab UI 依赖本功能 callback，随回退一并删除 |
 | 回退 commit | `fix/remove-recruit-result-display`：删 33 文件 + 回退 14 集成点，47 files +1/-2904，详见 `LOG.md` 2026-08-02 |
 | 保留约定 | AGENTS §2.4 staging 工作流（feat 拉取源 = staging + branch 手动晋升）由本 feat 引入，但已用于其他分支，**保留** |
-| 保留功能 | `fix/auto-recruit-expedite-original-level` 的 `m_original_min_level` 加急判定 + RecruitResult 回调 level 用原始星级（属 `feat/auto-recruit-3star-to-4star` 修复，与本功能无关） |
+| 保留功能 | ~~`fix/auto-recruit-expedite-original-level` 的 `m_original_min_level` 加急判定 + RecruitResult 回调 level 用原始星级~~ —— **已于 2026-08-07 随 C++ 全回归 master（`c951f239c1`）删除**，`3904577917` 恢复 expedite_min_level 时未带回 `m_original_min_level`。当前公招加急判定仅用新恢复的 `m_expedite_min_level`（WPF `expedite_min_level` 字段），无「3→4 升级后原始星级」概念（该上游加急路径在 8/6 已移除） |
 | 作用域 | 仅本仓库 fork 私有代码 + 协议 callback 实现，不推 upstream |
 
 
