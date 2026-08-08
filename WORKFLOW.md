@@ -354,7 +354,7 @@ merge 后验证：`git grep -c "RecruitNow@Slot" resource/tasks/tasks.json` = 4�
 | `"onErrorNext": ["Roguelike@ExitThenAbandon"]` | `base.json` 约 401 行（任务是 `next` 含 `"Roguelike@StartUpThemes#next"` 的关卡选择任务） | fork 兜底：关卡选择失败时退出肉鸽，防卡死 |
 | `"onErrorNext": ["JieGarden@Roguelike@ExitThenAbandon"]` | `JieGarden.json` 约 1211 行（任务 `next` 含 `"JieGarden@Roguelike@Stages_leaveBoskyPassage#next"` 的关卡选择任务） | 同上，JieGarden 主题内层入口 |
 
-merge 后验证：两处 `onErrorNext` 仍存在（`git grep -n '"onErrorNext": \["Roguelike@ExitThenAbandon"\]' base.json` 命中 1；JieGarden 同理）。
+merge 后验证：`git diff master staging -- resource/tasks/Roguelike/base.json resource/tasks/Roguelike/JieGarden.json`，预期其余区块与 master 一致，仅 fork 加固两处（各 `+ "onErrorNext"...`）。注意：`git grep` 带双引号的 JSON 字面量在 PowerShell 5.1 传参会被重包装导致失配，验证一律用 `git diff` 或 `Select-String -SimpleMatch`。
 
 ### §6.5.5 账号轮换外围（WPF）
 
@@ -402,12 +402,13 @@ git grep -c "AdvanceAccountCycle" src/MaaWpfGui/                    # 预期 ≥
 git grep -c "fix/account_rotation" src/MaaWpfGui/                   # 预期 ≥ 5
 # —— 公招加急 ——
 git grep -c "expedite_min_level" src/MaaCore/                       # 预期 ≥ 8
-git grep -c "fix/expedite-threshold\|fix/recruit-expedite-slot-target" src/MaaCore/  # 预期 ≥ 2
+git grep -c "fix/expedite-threshold\|fix/recruit-expedite-slot-target" src/MaaCore/  # 预期 ≥ 2（git grep 默认 BRE，交替须用 \|）
 git grep -c "RecruitNow@Slot" resource/tasks/tasks.json             # 预期 = 4
 （注意：tasks.json 的 account-switch 区块应保持 master 原样）
-# —— Roguelike ——
-git grep -n '"onErrorNext": \["Roguelike@ExitThenAbandon"\]' resource/tasks/Roguelike/base.json     # 预期命中 fork 加固行
-git grep -n '"onErrorNext": \["JieGarden@Roguelike@ExitThenAbandon"\]' resource/tasks/Roguelike/JieGarden.json  # 预期命中
+# —— Roguelike：(注意：JSON 字面量含双引号，PowerShell 5.1 直传 git grep 会失配，
+#    用 git diff 对比 master 验证 fork 两处 onErrorNext 加固) ——
+git diff master -- resource/tasks/Roguelike/base.json               # 预期仅 +onErrorNext 1 处(约 401 行)
+git diff master -- resource/tasks/Roguelike/JieGarden.json          # 预期仅 +onErrorNext 1 处(约 1211 行)
 ```
 
 全部命中才算 merge 完整；任何一项为 0 → 回查对应区块手解遗漏。
