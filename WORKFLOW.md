@@ -303,6 +303,19 @@ git add src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs
 
 **手解**：保留 fork 章节 + 移除冲突标记 + 在后面追加 upstream 章节标题。
 
+### §6.5.1 fork 私有高冲突区域提醒（2026-08-07 更新）
+
+`TaskQueueViewModel.cs` 是 fork 账号轮换功能集中地，除上游自身的改动外，包含以下 **fork-only 逻辑**。merge 时冲突必须手解并保留 fork 侧，否则轮换功能退化：
+
+| fork 私有标记（git grep 可定位） | 位置（行号可能漂移） | 内容 |
+|------|------|------|
+| `fix/account-cycle-start-race` | `AdvanceAccountCycle` 内 `AsstStart()` 调用处（约 2557-2572） | AllTasksCompleted 后 Core 工作线程仍处于 `wait_for(task_delay)` 睡眠窗口（约 500ms），此时 `AsstStart()` 必返回 false；用 `AsstRunning()` 兜底判定 + 失败分支 `AsstStop()` 清队列。**若丢失：每次轮换推进误报「出现未知错误」+ 误停轮换**（详见 `LOG.md` 2026-08-07） |
+| `fix/account_rotation/6` | `AdvanceAccountCycle` 切号前重置 / `SetTaskIds` / `CurrentCycleAccountName` | 切号时左侧任务面板重置 + 当前账号 Header |
+| `fix/account_rotation/修改次数` | `AdvanceAccountCycle` / `SetStopped` | 轮换状态机幂等保护、失败即停轮换 |
+| `[CycleAdv]` / `[LinkStart]` 日志 | `LinkStartWithTasks` / `AdvanceAccountCycle` | 轮换 append 任务诊断日志 |
+
+merge 后验证：`git grep "fix/account-cycle-start-race" src/MaaWpfGui/` 应命中；`TaskQueueViewModel.cs` 应仍含 `AdvanceAccountCycle` 全量 fork 逻辑。
+
 ### §6.6 提交
 
 ```powershell
