@@ -58,7 +58,7 @@ protected:
     bool check_recruit_home_page();
     bool recruit_begin();
     bool check_timer(int);
-    bool recruit_now();
+    bool recruit_now(size_t index);
     bool confirm();
     bool refresh();
     // 检查是否有已完成且未领取的招募，有则领取，无则返回true
