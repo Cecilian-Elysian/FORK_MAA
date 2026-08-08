@@ -45,7 +45,7 @@
 
 | Remote | 用途 |
 |--------|------|
-| `upstream` | 上游 `MaaAssistantArknights/MaaAssistantArknights`，`HEAD` 跟踪 `master-v2`（稳定 release 分支） |
+| `upstream` | 上游 `MaaAssistantArknights/MaaAssistantArknights`，本 fork 以 `master-v2`（稳定 release 分支）为基线跟踪对象（注意：`remotes/upstream/HEAD` 实际指向 `dev-v2`，勿以 HEAD 为准） |
 | `Github` | 个人 fork 远端，分支同步发布用 |
 | `origin` | （未配置 / 备用） |
 
@@ -98,19 +98,22 @@ staging ──── feat/<name>, fix/<name> ← 从 staging 拉出
 | 出问题回退 | 从远端保留的 `feat/<name>` / `fix/<name>` 重新拉 `fix/<name>/<n>`，仍合并到 `staging` |
 | **上游同步 SOP** | **拉取上游新功能（merge `upstream/master-v2`）必须按 `WORKFLOW.md` 流程执行**（§5 graft + §6 合并 + §7 replace + §8 编译验证） |
 
-#### 当前待验证内容（截至 2026-08-07 fix/audit-fixes 收尾）
+#### 当前待验证内容（截至 2026-08-08 fix/recruit-expedite-slot-target 收尾）
 
 `staging` 通过 commit `706f8babf4` merge `upstream/master-v2`（v6.16.5 release），已含：
 - Phase A: 移除 `feat/auto-recruit-3star-to-4star`（commit `3fd8903115`）
 - Phase B: AGENTS/CHANGELOG/csproj/.gitignore 清理（commit `dcb3cc6cb4`）
 - Phase D: 上游 v6.14.0 ~ v6.16.5 共 4467 commit 合入
 - 2026-08-07 master-v2 对齐：`c951f239c1` 放弃全部 fork 私有 C++ 回归 master；`c34403ac94` tasks.json account-switch 区块回归 master（删除 fork `AccountManagerPageConfirm` task + 模板）；`3904577917` 仅恢复 expedite_min_level 阈值 C++（对齐 fork WPF UI）
+- 2026-08-08：`1ea65d0aed` 加急点击按槽位限定 RecruitNow roi（`RecruitNow@Slot0..3` 四变体）；`70b3d63770` fix/account-cycle-start-race 提交落地（AsstStart 竞态 AsstRunning 兜底 + AsstStop 清队列）
 
 历史假关联：fork base `c8c8e75be5` 无父节点，通过 `git replace --graft` 接 `6147357bd0`（v6.14.0 upstream release），merge-base = `c8c8e75be5` 走 3-way 合并。
 
 晋升前需实测验证（仅适用于 `staging → branch` 晋升决策）：
 - 多账号切号（官服 + B 服，含新增繁中服支援）
 - 公招加急门槛（`expedite_min_level` fork 字段 + 上游 `expedite`/`expedite_times` 双轨）
+- 公招加急按槽位定位（四槽位同时进行时加急不串位到左上槽位，`RecruitNow@Slot0..3`）
+- 轮换推进无「出现未知错误」误报（fix/account-cycle-start-race：AsstStart 竞态 AsstRunning 兜底）
 - 招募流程（无 3→4 升级的回归 + 新上游 sortIndex + 库存重构）
 - 刷理智代理倍率 7~10 校验（v6.16.5 新增）
 - LUID GPU OCR + Win32IO 竞态修复（v6.16.5）
@@ -360,6 +363,32 @@ staging ──── feat/<name>, fix/<name> ← 从 staging 拉出
 | 子修复分支 | 无（独立 fix） |
 | 作用域 | 仅文档与资源文件；不涉及 C++ / C# 代码改动（8/7 expedite C++ 恢复由 `3904577917` 单独落地） |
 | 详见 | `LOG.md` 2026-08-07（fix/audit-fixes 启动 / 实施完成 / 合入 staging） |
+
+### 7.11 fix/recruit-expedite-slot-target（2026-08-08 已合入 staging）
+
+| 项 | 内容 |
+|----|------|
+| 用途 | 公招加急点击按槽位限定 RecruitNow roi，修复多槽位同时进行时加急串位到左上槽位 |
+| 根因 | `RecruitNow` 原 roi `[0,300,1280,420]` 覆盖全部 4 槽位，多槽位同时进行时 OCR 多命中「立即招」，ProcessTask 点击第一个命中框（页面最上槽位）；实测 4 槽 rect `[364,366]/[996,368]/[364,645]/[994,645]`，三星被加急、四星留 9h |
+| 修复 | `tasks.json` 追加 `RecruitNow@Slot0..3` 四变体（roi 按 `slot_index_from_rect` 分界线 x=640 / y=450 划分象限，baseTask 继承）；`AutoRecruitTask::recruit_now(slot_index)` 按目标槽位选择任务 |
+| 生命周期 | 2026-08-08 创建 → 2026-08-08 `--no-ff` 合入 `staging`（`d4a763e04d`） |
+| 关键 commit | `1ea65d0aed` |
+| 子修复分支 | 无 |
+| 作用域 | 仅本仓库 fork 私有，不推 upstream |
+| 详见 | `LOG.md` 2026-08-08（fix/recruit-expedite-slot-target 启动） |
+
+### 7.12 fix/account-cycle-start-race（2026-08-08 提交落地）
+
+| 项 | 内容 |
+|----|------|
+| 用途 | 修账号轮换推进时 `AsstStart()` 竞态误报「出现未知错误」+ 误停轮换 |
+| 根因 | `AllTasksCompleted` 回调时 Core 工作线程仍处于 `wait_for(task_delay)` 睡眠窗口（约 500ms），`m_thread_idle=false`，`AsstStart()` 必返回 false |
+| 修复 | `TaskQueueViewModel.cs` `AdvanceAccountCycle`：`startOk = taskRet && (AsstStart() || AsstRunning())` 兜底判定；失败分支 `AsstStop()` 清队列；`WORKFLOW.md` §6.5.1 登记 fork 私有标记 |
+| 生命周期 | 2026-08-07 修复（LOG 记录 + install-staging 实测通过） → 2026-08-08 直接提交 `staging`（`70b3d63770`） |
+| 关键 commit | `70b3d63770` |
+| 子修复分支 | 无（工作区修复直接落地，未走 fix 分支） |
+| 作用域 | 仅本仓库 fork 私有，不推 upstream |
+| 详见 | `LOG.md` 2026-08-07 / 2026-08-08 |
 
 
 ## 8. 关键参考链接

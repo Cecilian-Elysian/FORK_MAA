@@ -18,7 +18,7 @@
 py tools/gen-downstream-changes.py
 ```
 
-共扫描 392 个表格行，聚合出 58 个唯一源文件路径。
+共扫描 403 个表格行，聚合出 59 个唯一源文件路径。
 
 ## 仓库根（2 个文件）
 
@@ -56,7 +56,7 @@ py tools/gen-downstream-changes.py
 |------|------|
 | 双轨字段 | fork `expedite_min_level` 扩展段 + 上游 `expedite`/`expedite_times` |
 
-### [HOT] `docs/downstream-changes.md` (x11)
+### [HOT] `docs/downstream-changes.md` (x12)
 
 | 操作 | 说明 |
 |------|------|
@@ -71,6 +71,7 @@ py tools/gen-downstream-changes.py
 | 查阅 | 确认 `RecruitScreenshotMonitor.{h,cpp}` 是 fork 私有（882d9b64bf 引入） |
 | `py tools/gen-downstream-changes.py` | 自动刷新清单（51 → 51 文件，352 LOG.md 表格行） |
 | `py tools/gen-downstream-changes.py` | 自动刷新清单（51 文件，352 LOG.md 表格行） |
+| 重生成 | `py tools/gen-downstream-changes.py`：366→392 表格行、52→58 文件（commit `16a40b0442`） |
 
 ### [TGT] `docs/en-us/protocol/integration.md` (x2)
 
@@ -108,7 +109,13 @@ py tools/gen-downstream-changes.py
 | 淇敼 | 浜旇鍚屾锛氱箒涓? |
 | 同上（繁体） | 同上 |
 
-## `resource/`（2 个文件）
+## `resource/`（3 个文件）
+
+### [TGT] `resource/minitouch/x86/minitouch` 
+
+| 操作 | 说明 |
+|------|------|
+| 补图 | 34260 B，fork Initial commit 起缺失；`git checkout master --` 恢复（commit `bc3f4a2a2a`） |
 
 ### [HOT] `resource/tasks/tasks.json` (x7)
 
@@ -392,7 +399,7 @@ py tools/gen-downstream-changes.py
 | 淇敼 | 鐗堟湰姣旇緝鏃?`uiVersion` 涔?`TrimStart('v', 'V')`锛屼慨澶?UI 鍜?Core 鐗堟湰鍙蜂竴鑷翠粛寮硅鍛婄殑 bug |
 | 淇敼 | 鐗堟湰姣旇緝蹇界暐 `v` 鍓嶇紑 |
 
-### [HOT] `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs` (x25)
+### [HOT] `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs` (x28)
 
 | 操作 | 说明 |
 |------|------|
@@ -421,6 +428,9 @@ py tools/gen-downstream-changes.py
 | 淇敼 | **#4**: AdvanceAccountCycle 鍒濆鏃ュ織杩藉姞 `idx={CurrentStepIndex}/{CurrentStepCount}` 鏄剧ず姝ラ浣嶇疆 |
 | 修改 | `LinkStartWithTasks` 第一步 + `AdvanceAccountCycle` 步骤：cfg.AccountName / CurrentCycleAccountName Trim，切换日志 Trim，跨账号判定 `prevStep.AccountName?.Trim() != nextStep.AccountName?.Trim()` |
 | 保留 fork import | fork `MaaWpfGui.Services.Notification` |
+| 修改 | `AsstStart()` 失败 + `AsstRunning()` 兜底判定;失败分支加 `AsstStop()`;注释标记 `fix/account-cycle-start-race` |
+| 修改 | 一行式短路实现,保持 append 失败旧语义;注释补充短路说明 |
+| 提交 | `startOk = taskRet && (AsstStart() \|\| AsstRunning())` 兜底判定 + 失败分支 `AsstStop()` 清队列；注释带 `fix/account-cycle-start-race` 标记 |
 
 ### [TGT] `src/MaaWpfGui/ViewModels/UI/ToolboxViewModel.cs` 
 
