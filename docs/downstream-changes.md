@@ -18,7 +18,7 @@
 py tools/gen-downstream-changes.py
 ```
 
-共扫描 403 个表格行，聚合出 59 个唯一源文件路径。
+共扫描 405 个表格行，聚合出 60 个唯一源文件路径。
 
 ## 仓库根（2 个文件）
 
@@ -135,7 +135,7 @@ py tools/gen-downstream-changes.py
 |------|------|
 | 删除 | fork 独有占位模板（AccountManagerListAccount.png 复制品），master 无此文件，已验模板目录与 master 对齐 |
 
-## `src/`（39 个文件）
+## `src/`（40 个文件）
 
 ### [TGT] `src/MaaCore/Assistant.cpp` 
 
@@ -379,6 +379,13 @@ py tools/gen-downstream-changes.py
 | 修改 | 节注释 `<!-- DiagnosticExport -->` → `<!-- DiagnosticReport -->` |
 | 同上（繁体） | 繁体中文 |
 | 保留 fork + 接上游 | 保留 `PasteClipboardCopilotSetTip` 等 fork 字符串 + 上游新 key |
+
+### [TGT] `src/MaaWpfGui/Res/Styles/Basic/Geometries.xaml` (x2)
+
+| 操作 | 说明 |
+|------|------|
+| 修改 | 恢复 `<Geometry x:Key="ClipboardLinkSet20Regular">`（path data 原样复制自 upstream `e9d00b94af`），插入位置对齐 upstream（`ClipboardLink20Regular` 与 `FolderOpen20Regular` 之间） |
+| 6-9 | `265bd875a4` \| 新增 `ClipboardLinkSet20Regular` Geometry（两段 path data：剪贴板 + 链接），1 file +4 |
 
 ### [TGT] `src/MaaWpfGui/Services/RecruitHistoryService.cs` 
 

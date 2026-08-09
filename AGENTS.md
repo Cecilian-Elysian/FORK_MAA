@@ -390,6 +390,19 @@ staging ──── feat/<name>, fix/<name> ← 从 staging 拉出
 | 作用域 | 仅本仓库 fork 私有，不推 upstream |
 | 详见 | `LOG.md` 2026-08-07 / 2026-08-08 |
 
+### 7.13 fix/copilot-view-missing-icon-resource（2026-08-09 已合入 staging）
+
+| 项 | 内容 |
+|----|------|
+| 用途 | 修 MAA 启动后切「自动战斗」Tab 闪退：`XamlParseException` 无法找到名为 `ClipboardLinkSet20Regular` 的资源 |
+| 根因 | 上游 `e9d00b94af` (#14624) 引入 `<Geometry x:Key="ClipboardLinkSet20Regular">` + `CopilotView.xaml` 作业集按钮引用；上游 `be0d9f342d` (2026-07-26 "移除过期格式兼容按钮") 同时删除 Geometry 定义 + XAML 引用。fork `706f8babf4` merge v6.16.5 §6 手解时保留 fork 私有 `PasteClipboardCopilotSet` 按钮 + XAML `{StaticResource ClipboardLinkSet20Regular}` 引用，但 `Geometries.xaml` 资源定义未带过来 → XAML 孤立引用 → 启动闪退 |
+| 修复 | `src/MaaWpfGui/Res/Styles/Basic/Geometries.xaml`：恢复 `ClipboardLinkSet20Regular` Geometry（path data 原样复制自 upstream `e9d00b94af`），插入位置对齐 upstream（`ClipboardLink20Regular` 与 `FolderOpen20Regular` 之间） |
+| 生命周期 | 2026-08-09 创建（从 staging 拉出） → 2026-08-09 `--no-ff` 合入 `staging`（`399b22c617`） |
+| 关键 commit | `265bd875a4` |
+| 子修复分支 | 无（独立 fix） |
+| 作用域 | 仅本仓库 fork 私有，不推 upstream（恢复 upstream `e9d00b94af` 引入、被 `be0d9f342d` 删除的资源定义，供 fork 保留的作业集按钮引用） |
+| 详见 | `LOG.md` 2026-08-09 |
+
 
 ## 8. 关键参考链接
 
