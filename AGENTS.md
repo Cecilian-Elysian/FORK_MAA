@@ -98,7 +98,7 @@ staging ──── feat/<name>, fix/<name> ← 从 staging 拉出
 | 出问题回退 | 从远端保留的 `feat/<name>` / `fix/<name>` 重新拉 `fix/<name>/<n>`，仍合并到 `staging` |
 | **上游同步 SOP** | **拉取上游新功能（merge `upstream/master-v2`）必须按 `WORKFLOW.md` 流程执行**（§5 graft + §6 合并 + §7 replace + §8 编译验证） |
 
-#### 当前待验证内容（截至 2026-08-08 fix/recruit-expedite-slot-target 收尾）
+#### 当前 staging 内容（截至 2026-08-13 staging → branch 晋升完成）
 
 `staging` 通过 commit `706f8babf4` merge `upstream/master-v2`（v6.16.5 release），已含：
 - Phase A: 移除 `feat/auto-recruit-3star-to-4star`（commit `3fd8903115`）
@@ -106,10 +106,18 @@ staging ──── feat/<name>, fix/<name> ← 从 staging 拉出
 - Phase D: 上游 v6.14.0 ~ v6.16.5 共 4467 commit 合入
 - 2026-08-07 master-v2 对齐：`c951f239c1` 放弃全部 fork 私有 C++ 回归 master；`c34403ac94` tasks.json account-switch 区块回归 master（删除 fork `AccountManagerPageConfirm` task + 模板）；`3904577917` 仅恢复 expedite_min_level 阈值 C++（对齐 fork WPF UI）
 - 2026-08-08：`1ea65d0aed` 加急点击按槽位限定 RecruitNow roi（`RecruitNow@Slot0..3` 四变体）；`70b3d63770` fix/account-cycle-start-race 提交落地（AsstStart 竞态 AsstRunning 兜底 + AsstStop 清队列）
+- 2026-08-09：`265bd875a4` 恢复 ClipboardLinkSet20Regular Geometry 资源（修 CopilotView 启动闪退）
 
 历史假关联：fork base `c8c8e75be5` 无父节点，通过 `git replace --graft` 接 `6147357bd0`（v6.14.0 upstream release），merge-base = `c8c8e75be5` 走 3-way 合并。
 
-晋升前需实测验证（仅适用于 `staging → branch` 晋升决策）：
+#### staging → branch 晋升记录
+
+| 日期 | merge commit | 来源 commit 数 | 验证策略 | 备注 |
+|------|--------------|----------------|----------|------|
+| 2026-08-07 | `4d862ec98a` | （master-v2 基线重建首晋升） | 完整实测 | `c951f239c1` 放弃 fork C++ 回归 master |
+| 2026-08-13 | `1774d128a2` | 17 commit（4 修复 + 3 文档 + 10 间接） | trust staging | §7.10/§7.11/§7.12/§7.13 全部 fix 走 staging 验证流程后晋升 |
+
+晋升后实测验证项（仅适用于 `staging → branch` 晋升决策；本次晋升 trust staging）：
 - 多账号切号（官服 + B 服，含新增繁中服支援）
 - 公招加急门槛（`expedite_min_level` fork 字段 + 上游 `expedite`/`expedite_times` 双轨）
 - 公招加急按槽位定位（四槽位同时进行时加急不串位到左上槽位，`RecruitNow@Slot0..3`）
@@ -118,7 +126,7 @@ staging ──── feat/<name>, fix/<name> ← 从 staging 拉出
 - 刷理智代理倍率 7~10 校验（v6.16.5 新增）
 - LUID GPU OCR + Win32IO 竞态修复（v6.16.5）
 - 资源包拖入更新资源版本（v6.16.5 新增）
-- 工具：`tools/local-install-staging.bat` 部署到 `install-staging/`，启动 `MAA.exe` 跑一遍日常
+- 工具：`tools/local-install-staging.bat` 部署到 `install-staging/`，启动 `MAA.exe` 跑一遍日常（晋升前实测通过）
 
 
 ## 3. 工作流与文档规范
@@ -353,7 +361,7 @@ staging ──── feat/<name>, fix/<name> ← 从 staging 拉出
 | 保留功能 | ~~`fix/auto-recruit-expedite-original-level` 的 `m_original_min_level` 加急判定 + RecruitResult 回调 level 用原始星级~~ —— **已于 2026-08-07 随 C++ 全回归 master（`c951f239c1`）删除**，`3904577917` 恢复 expedite_min_level 时未带回 `m_original_min_level`。当前公招加急判定仅用新恢复的 `m_expedite_min_level`（WPF `expedite_min_level` 字段），无「3→4 升级后原始星级」概念（该上游加急路径在 8/6 已移除） |
 | 作用域 | 仅本仓库 fork 私有代码 + 协议 callback 实现，不推 upstream |
 
-### 7.10 fix/audit-fixes（2026-08-07 已合入 staging）
+### 7.10 fix/audit-fixes（2026-08-07 已合入 staging，2026-08-13 晋升 branch）
 
 | 项 | 内容 |
 |----|------|
@@ -364,7 +372,7 @@ staging ──── feat/<name>, fix/<name> ← 从 staging 拉出
 | 作用域 | 仅文档与资源文件；不涉及 C++ / C# 代码改动（8/7 expedite C++ 恢复由 `3904577917` 单独落地） |
 | 详见 | `LOG.md` 2026-08-07（fix/audit-fixes 启动 / 实施完成 / 合入 staging） |
 
-### 7.11 fix/recruit-expedite-slot-target（2026-08-08 已合入 staging）
+### 7.11 fix/recruit-expedite-slot-target（2026-08-08 已合入 staging，2026-08-13 晋升 branch）
 
 | 项 | 内容 |
 |----|------|
@@ -377,7 +385,7 @@ staging ──── feat/<name>, fix/<name> ← 从 staging 拉出
 | 作用域 | 仅本仓库 fork 私有，不推 upstream |
 | 详见 | `LOG.md` 2026-08-08（fix/recruit-expedite-slot-target 启动） |
 
-### 7.12 fix/account-cycle-start-race（2026-08-08 提交落地）
+### 7.12 fix/account-cycle-start-race（2026-08-08 提交落地到 staging，2026-08-13 晋升 branch）
 
 | 项 | 内容 |
 |----|------|
@@ -390,7 +398,7 @@ staging ──── feat/<name>, fix/<name> ← 从 staging 拉出
 | 作用域 | 仅本仓库 fork 私有，不推 upstream |
 | 详见 | `LOG.md` 2026-08-07 / 2026-08-08 |
 
-### 7.13 fix/copilot-view-missing-icon-resource（2026-08-09 已合入 staging）
+### 7.13 fix/copilot-view-missing-icon-resource（2026-08-09 已合入 staging，2026-08-13 晋升 branch）
 
 | 项 | 内容 |
 |----|------|
