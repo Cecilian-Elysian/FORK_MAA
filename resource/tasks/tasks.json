@@ -1757,6 +1757,22 @@
         "roi": [0, 300, 1280, 420],
         "next": ["RecruitNowConfirm"]
     },
+    "RecruitNow@Slot0": {
+        "baseTask": "RecruitNow",
+        "roi": [0, 300, 640, 150]
+    },
+    "RecruitNow@Slot1": {
+        "baseTask": "RecruitNow",
+        "roi": [640, 300, 640, 150]
+    },
+    "RecruitNow@Slot2": {
+        "baseTask": "RecruitNow",
+        "roi": [0, 450, 640, 300]
+    },
+    "RecruitNow@Slot3": {
+        "baseTask": "RecruitNow",
+        "roi": [640, 450, 640, 300]
+    },
     "RecruitNowConfirm": {
         "action": "ClickSelf",
         "roi": [640, 450, 640, 150],

@@ -2554,11 +2554,23 @@ public class TaskQueueViewModel : Screen
 
             _consecutiveEmptySteps = 0;
 
-            if (!taskRet || !Instances.AsstProxy.AsstStart())
+            // fix/account-cycle-start-race: AllTasksCompleted 回调后 Core 工作线程仍处于
+            // wait_for(task_delay) 睡眠窗口(约 500ms), 此时 AsstStart() 必返回 false
+            // (Assistant::start 检查 !m_thread_idle), 但任务已入队、线程醒来会自行消费,
+            // 因此只要 AsstRunning() 为 true 即视为启动成功, 不打断轮换。
+            // 真失败(未连接/handle 失效)时 m_running 必为 false, 判定精确。
+            // 注意: 与上游 merge 时此处可能冲突, 见 WORKFLOW.md §6 冲突手解清单。
+            // 短路语义: taskRet=false(append 失败)时保持旧行为不调用 AsstStart, 直接停轮换。
+            bool startOk = taskRet && (Instances.AsstProxy.AsstStart() || Instances.AsstProxy.AsstRunning());
+
+            if (!taskRet || !startOk)
             {
                 AddLog(LocalizationHelper.GetString("UnknownErrorOccurs"), UiLogColor.Error);
                 StartUpTask.IsCycling = false;
                 CurrentCycleAccountName = string.Empty;
+
+                // 兜底: 清空 Core 队列, 避免真失败时已 append 的任务"幽灵执行"
+                _ = Instances.AsstProxy.AsstStop();
                 SetStopped(runStopScript: false);
             }
         }

@@ -45,7 +45,7 @@
 
 | Remote | 用途 |
 |--------|------|
-| `upstream` | 上游 `MaaAssistantArknights/MaaAssistantArknights`，`HEAD` 跟踪 `master-v2`（稳定 release 分支） |
+| `upstream` | 上游 `MaaAssistantArknights/MaaAssistantArknights`，本 fork 以 `master-v2`（稳定 release 分支）为基线跟踪对象（注意：`remotes/upstream/HEAD` 实际指向 `dev-v2`，勿以 HEAD 为准） |
 | `Github` | 个人 fork 远端，分支同步发布用 |
 | `origin` | （未配置 / 备用） |
 
@@ -98,18 +98,22 @@ staging ──── feat/<name>, fix/<name> ← 从 staging 拉出
 | 出问题回退 | 从远端保留的 `feat/<name>` / `fix/<name>` 重新拉 `fix/<name>/<n>`，仍合并到 `staging` |
 | **上游同步 SOP** | **拉取上游新功能（merge `upstream/master-v2`）必须按 `WORKFLOW.md` 流程执行**（§5 graft + §6 合并 + §7 replace + §8 编译验证） |
 
-#### 当前待验证内容（截至 2026-08-06 v6.16.5 合入）
+#### 当前待验证内容（截至 2026-08-08 fix/recruit-expedite-slot-target 收尾）
 
 `staging` 通过 commit `706f8babf4` merge `upstream/master-v2`（v6.16.5 release），已含：
 - Phase A: 移除 `feat/auto-recruit-3star-to-4star`（commit `3fd8903115`）
 - Phase B: AGENTS/CHANGELOG/csproj/.gitignore 清理（commit `dcb3cc6cb4`）
 - Phase D: 上游 v6.14.0 ~ v6.16.5 共 4467 commit 合入
+- 2026-08-07 master-v2 对齐：`c951f239c1` 放弃全部 fork 私有 C++ 回归 master；`c34403ac94` tasks.json account-switch 区块回归 master（删除 fork `AccountManagerPageConfirm` task + 模板）；`3904577917` 仅恢复 expedite_min_level 阈值 C++（对齐 fork WPF UI）
+- 2026-08-08：`1ea65d0aed` 加急点击按槽位限定 RecruitNow roi（`RecruitNow@Slot0..3` 四变体）；`70b3d63770` fix/account-cycle-start-race 提交落地（AsstStart 竞态 AsstRunning 兜底 + AsstStop 清队列）
 
 历史假关联：fork base `c8c8e75be5` 无父节点，通过 `git replace --graft` 接 `6147357bd0`（v6.14.0 upstream release），merge-base = `c8c8e75be5` 走 3-way 合并。
 
 晋升前需实测验证（仅适用于 `staging → branch` 晋升决策）：
 - 多账号切号（官服 + B 服，含新增繁中服支援）
 - 公招加急门槛（`expedite_min_level` fork 字段 + 上游 `expedite`/`expedite_times` 双轨）
+- 公招加急按槽位定位（四槽位同时进行时加急不串位到左上槽位，`RecruitNow@Slot0..3`）
+- 轮换推进无「出现未知错误」误报（fix/account-cycle-start-race：AsstStart 竞态 AsstRunning 兜底）
 - 招募流程（无 3→4 升级的回归 + 新上游 sortIndex + 库存重构）
 - 刷理智代理倍率 7~10 校验（v6.16.5 新增）
 - LUID GPU OCR + Win32IO 竞态修复（v6.16.5）
@@ -175,13 +179,16 @@ staging ──── feat/<name>, fix/<name> ← 从 staging 拉出
 
 ### 4.2 子模块
 
-| 子模块 | 上游 |
-|--------|------|
-| `src/MaaUtils` | `MaaXYZ/MaaUtils` |
-| `3rdparty/EmulatorExtras` | `MaaXYZ/EmulatorExtras` |
+| 子模块 | 上游 | 备注 |
+|--------|------|------|
+| `src/MaaUtils` | `MaaXYZ/MaaUtils` | Windows 主构建依赖（C++ 通用工具） |
+| `3rdparty/EmulatorExtras` | `MaaXYZ/EmulatorExtras` | Windows 主构建依赖（模拟器附加能力） |
+| `src/MaaMacGui` | `MaaAssistantArknights/MaaMacGui.git` | macOS GUI 独立仓库；Windows 主构建不依赖 |
+| `src/maa-cli` | `MaaAssistantArknights/maa-cli.git` | CLI 工具独立仓库；Windows 主构建不依赖 |
 
+- 上游 master-v2 的 `.gitmodules` 含 6 条（多 `test`、`src/MAAUnified`），fork 已于 `fix/audit-fixes` 删除后两条（无 gitlink、Windows 不依赖）
 - 首次 clone：`git clone --recursive`
-- 已 clone 补全：`git submodule update --init --recursive`
+- 已 clone 补全：`git submodule update --init --recursive`（MaaMacGui / maa-cli 在 Windows 上未 checkout 不会阻断构建）
 
 ### 4.3 辅助脚本（`tools/`）
 
@@ -227,14 +234,14 @@ staging ──── feat/<name>, fix/<name> ← 从 staging 拉出
 | WPF 控件 | [HandyControls](https://github.com/ghost1372/HandyControls) |
 | JSON | Newtonsoft.Json + System.Text.Json |
 | 日志 | Serilog |
-| 提交前检查 | `pre-commit run --all-files`：clang-format（仅 C++）/ yaml/json 语法 / `LOG.md` 修改记录 |
+| 提交前检查 | `pre-commit run --all-files`：clang-format（仅 C++）/ oxipng（PNG）/ prettier（yaml/json/docs）/ ruff-format（Python）/ markdownlint（docs）。`LOG.md` 为 UTF-16 LE 二进制，pre-commit 不校验，靠 commit message 与人工维护 |
 
 
 ## 6. 进行中分支速查
 
 | 分支 | 角色 | 修复目标 |
 |------|------|----------|
-| _无（2026-08-06 仓库清理后所有进行中 feat/fix 分支已合入 staging 或撤销；本节空）_ | | |
+| _无（2026-08-07 fix/audit-fixes 已合入 staging；本节空）_ | | |
 
 
 ## 7. 分支生命周期记录
@@ -280,7 +287,7 @@ staging ──── feat/<name>, fix/<name> ← 从 staging 拉出
 | 关键 commit | `dc2212d54b`（Merge branch 'feat/account_rotation' into branch） |
 | 详见 | 无 |
 
-### 7.5 fix/account-official-recognize
+### 7.5 fix/account-official-recognize（2026-08-07 已随 master-v2 基线重建回退删除）
 
 | 项 | 内容 |
 |----|------|
@@ -293,7 +300,7 @@ staging ──── feat/<name>, fix/<name> ← 从 staging 拉出
 | 作用域 | 仅本仓库 `branch` 修复，不推 upstream |
 | 详见 | `LOG.md` 2026-07-24 |
 
-### 7.6 fix/account-switch-retry
+### 7.6 fix/account-switch-retry（2026-08-07 已随 master-v2 基线重建回退删除）
 
 | 项 | 内容 |
 |----|------|
@@ -306,7 +313,7 @@ staging ──── feat/<name>, fix/<name> ← 从 staging 拉出
 | 作用域 | 仅本仓库 `branch` 修复，不推 upstream |
 | 详见 | `LOG.md` 2026-07-25（fix/account-switch-retry LoginOther OCR 模板兜底 + retry_times 分析修正） |
 
-### 7.7 fix/account_rotation/6
+### 7.7 fix/account_rotation/6（2026-08-07 已随 master-v2 基线重建部分回退：C++/tasks.json 侧回退，WPF 侧 AccountCycleOrchestrator 保留）
 
 | 项 | 内容 |
 |----|------|
@@ -319,7 +326,7 @@ staging ──── feat/<name>, fix/<name> ← 从 staging 拉出
 | 作用域 | 仅本仓库 `branch` 修复，不推 upstream |
 | 详见 | `LOG.md` 2026-07-25（fix/account_rotation/6 启动 + 实施完成） |
 
-### 7.8 fix/account-switch-template-missing
+### 7.8 fix/account-switch-template-missing（2026-08-07 已随 master-v2 基线重建回退删除）
 
 | 项 | 内容 |
 |----|------|
@@ -343,8 +350,58 @@ staging ──── feat/<name>, fix/<name> ← 从 staging 拉出
 | WPF UI 扩展 | `feat/recruit-history-tab`（`69c5e4f74c`，合并 `c143d8eef9`）— 工具箱「公招历史」Tab UI 依赖本功能 callback，随回退一并删除 |
 | 回退 commit | `fix/remove-recruit-result-display`：删 33 文件 + 回退 14 集成点，47 files +1/-2904，详见 `LOG.md` 2026-08-02 |
 | 保留约定 | AGENTS §2.4 staging 工作流（feat 拉取源 = staging + branch 手动晋升）由本 feat 引入，但已用于其他分支，**保留** |
-| 保留功能 | `fix/auto-recruit-expedite-original-level` 的 `m_original_min_level` 加急判定 + RecruitResult 回调 level 用原始星级（属 `feat/auto-recruit-3star-to-4star` 修复，与本功能无关） |
+| 保留功能 | ~~`fix/auto-recruit-expedite-original-level` 的 `m_original_min_level` 加急判定 + RecruitResult 回调 level 用原始星级~~ —— **已于 2026-08-07 随 C++ 全回归 master（`c951f239c1`）删除**，`3904577917` 恢复 expedite_min_level 时未带回 `m_original_min_level`。当前公招加急判定仅用新恢复的 `m_expedite_min_level`（WPF `expedite_min_level` 字段），无「3→4 升级后原始星级」概念（该上游加急路径在 8/6 已移除） |
 | 作用域 | 仅本仓库 fork 私有代码 + 协议 callback 实现，不推 upstream |
+
+### 7.10 fix/audit-fixes（2026-08-07 已合入 staging）
+
+| 项 | 内容 |
+|----|------|
+| 用途 | 2026-08-07 全仓审计修复：minitouch 补图 + .gitmodules 孤儿条目清理 + 文档三连刷（AGENTS/CHANGELOG/downstream）+ stash×4 清理 |
+| 生命周期 | 2026-08-07 创建（从 staging 拉出） → 2026-08-07 `--no-ff` 合入 `staging`（`cc0e82247d`） |
+| 关键 commit | `bc3f4a2a2a`（minitouch 补图） → `7d16e1f05b`（.gitmodules + LOG 启动） → `077f94970a`（AGENTS.md） → `cda6587d85`（CHANGELOG） → `16a40b0442`（downstream 重生成） → `33d91e9da5`（LOG 实施完成） |
+| 子修复分支 | 无（独立 fix） |
+| 作用域 | 仅文档与资源文件；不涉及 C++ / C# 代码改动（8/7 expedite C++ 恢复由 `3904577917` 单独落地） |
+| 详见 | `LOG.md` 2026-08-07（fix/audit-fixes 启动 / 实施完成 / 合入 staging） |
+
+### 7.11 fix/recruit-expedite-slot-target（2026-08-08 已合入 staging）
+
+| 项 | 内容 |
+|----|------|
+| 用途 | 公招加急点击按槽位限定 RecruitNow roi，修复多槽位同时进行时加急串位到左上槽位 |
+| 根因 | `RecruitNow` 原 roi `[0,300,1280,420]` 覆盖全部 4 槽位，多槽位同时进行时 OCR 多命中「立即招」，ProcessTask 点击第一个命中框（页面最上槽位）；实测 4 槽 rect `[364,366]/[996,368]/[364,645]/[994,645]`，三星被加急、四星留 9h |
+| 修复 | `tasks.json` 追加 `RecruitNow@Slot0..3` 四变体（roi 按 `slot_index_from_rect` 分界线 x=640 / y=450 划分象限，baseTask 继承）；`AutoRecruitTask::recruit_now(slot_index)` 按目标槽位选择任务 |
+| 生命周期 | 2026-08-08 创建 → 2026-08-08 `--no-ff` 合入 `staging`（`d4a763e04d`） |
+| 关键 commit | `1ea65d0aed` |
+| 子修复分支 | 无 |
+| 作用域 | 仅本仓库 fork 私有，不推 upstream |
+| 详见 | `LOG.md` 2026-08-08（fix/recruit-expedite-slot-target 启动） |
+
+### 7.12 fix/account-cycle-start-race（2026-08-08 提交落地）
+
+| 项 | 内容 |
+|----|------|
+| 用途 | 修账号轮换推进时 `AsstStart()` 竞态误报「出现未知错误」+ 误停轮换 |
+| 根因 | `AllTasksCompleted` 回调时 Core 工作线程仍处于 `wait_for(task_delay)` 睡眠窗口（约 500ms），`m_thread_idle=false`，`AsstStart()` 必返回 false |
+| 修复 | `TaskQueueViewModel.cs` `AdvanceAccountCycle`：`startOk = taskRet && (AsstStart() || AsstRunning())` 兜底判定；失败分支 `AsstStop()` 清队列；`WORKFLOW.md` §6.5.1 登记 fork 私有标记 |
+| 生命周期 | 2026-08-07 修复（LOG 记录 + install-staging 实测通过） → 2026-08-08 直接提交 `staging`（`70b3d63770`） |
+| 关键 commit | `70b3d63770` |
+| 子修复分支 | 无（工作区修复直接落地，未走 fix 分支） |
+| 作用域 | 仅本仓库 fork 私有，不推 upstream |
+| 详见 | `LOG.md` 2026-08-07 / 2026-08-08 |
+
+### 7.13 fix/copilot-view-missing-icon-resource（2026-08-09 已合入 staging）
+
+| 项 | 内容 |
+|----|------|
+| 用途 | 修 MAA 启动后切「自动战斗」Tab 闪退：`XamlParseException` 无法找到名为 `ClipboardLinkSet20Regular` 的资源 |
+| 根因 | 上游 `e9d00b94af` (#14624) 引入 `<Geometry x:Key="ClipboardLinkSet20Regular">` + `CopilotView.xaml` 作业集按钮引用；上游 `be0d9f342d` (2026-07-26 "移除过期格式兼容按钮") 同时删除 Geometry 定义 + XAML 引用。fork `706f8babf4` merge v6.16.5 §6 手解时保留 fork 私有 `PasteClipboardCopilotSet` 按钮 + XAML `{StaticResource ClipboardLinkSet20Regular}` 引用，但 `Geometries.xaml` 资源定义未带过来 → XAML 孤立引用 → 启动闪退 |
+| 修复 | `src/MaaWpfGui/Res/Styles/Basic/Geometries.xaml`：恢复 `ClipboardLinkSet20Regular` Geometry（path data 原样复制自 upstream `e9d00b94af`），插入位置对齐 upstream（`ClipboardLink20Regular` 与 `FolderOpen20Regular` 之间） |
+| 生命周期 | 2026-08-09 创建（从 staging 拉出） → 2026-08-09 `--no-ff` 合入 `staging`（`399b22c617`） |
+| 关键 commit | `265bd875a4` |
+| 子修复分支 | 无（独立 fix） |
+| 作用域 | 仅本仓库 fork 私有，不推 upstream（恢复 upstream `e9d00b94af` 引入、被 `be0d9f342d` 删除的资源定义，供 fork 保留的作业集按钮引用） |
+| 详见 | `LOG.md` 2026-08-09 |
 
 
 ## 8. 关键参考链接

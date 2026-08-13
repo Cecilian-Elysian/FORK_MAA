@@ -12,6 +12,7 @@
 #include "Vision/OCRer.h"
 
 #include <algorithm>
+#include <array>
 #include <boost/regex.hpp>
 #include <ranges>
 
@@ -383,7 +384,7 @@ asst::AutoRecruitTask::recruit_result asst::AutoRecruitTask::recruit_one(const R
             ">= expedite threshold",
             m_expedite_min_level,
             ", using expedited plan.");
-        if (recruit_now()) {
+        if (recruit_now(slot_index_from_rect(button))) {
             hire_all();
             m_last_confirmed_min_level = 0;
             return recruit_result::confirmed;
@@ -821,9 +822,20 @@ bool asst::AutoRecruitTask::check_recruit_home_page()
     return task.run();
 }
 
-bool asst::AutoRecruitTask::recruit_now()
+bool asst::AutoRecruitTask::recruit_now(slot_index index)
 {
-    ProcessTask task(*this, { "RecruitNow" });
+    // fix/recruit-expedite-slot-target: 加急按钮必须限定在目标槽位内查找。
+    // RecruitNow 原 roi [0,300,1280,420] 覆盖全部 4 槽位, 多槽位同时进行中时
+    // OCR 多命中「立即招」, ProcessTask 点击第一个命中框(页面最靠上的槽位),
+    // 导致加急串位到其他槽位。@Slot0..3 变体按 slot_index_from_rect 分界线
+    // (x=640 / y=450) 划分象限 roi, 保证只点击刚确认的目标槽位。
+    static constexpr std::array<const char*, 4> task_names = {
+        "RecruitNow@Slot0",
+        "RecruitNow@Slot1",
+        "RecruitNow@Slot2",
+        "RecruitNow@Slot3",
+    };
+    ProcessTask task(*this, { task_names.at(index) });
     return task.run();
 }
 

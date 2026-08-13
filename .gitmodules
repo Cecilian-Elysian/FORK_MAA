@@ -1,6 +1,3 @@
-[submodule "test"]
-	path = test
-	url = https://github.com/MaaAssistantArknights/MaaTestSet.git
 [submodule "src/MaaMacGui"]
 	path = src/MaaMacGui
 	url = https://github.com/MaaAssistantArknights/MaaMacGui.git
@@ -13,7 +10,9 @@
 [submodule "src/MaaUtils"]
 	path = src/MaaUtils
 	url = https://github.com/MaaXYZ/MaaUtils
-[submodule "src/MAAUnified"]
-	path = src/MAAUnified
-	url = https://github.com/MaaAssistantArknights/MaaUnified.git
-	branch = main
+
+# 2026-08-07 fix/audit-fixes: 移除无 gitlink 跟踪的孤儿条目
+#   - test (MaaTestSet)：上游 gitlink 在 v6.16.5 合入时被手解删除，fork 不使用
+#   - src/MAAUnified：同上，上游 Windows 主构建不依赖（根 CMakeLists 不引用）
+# 未来若上游新增对它们的 CMakeLists 引用导致编译报错，可在 merge 时恢复
+# `git checkout upstream/master-v2 -- test src/MAAUnified` 加回 gitlink 并 update
