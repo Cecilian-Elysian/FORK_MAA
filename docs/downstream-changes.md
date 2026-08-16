@@ -18,7 +18,7 @@
 py tools/gen-downstream-changes.py
 ```
 
-共扫描 426 个表格行，聚合出 61 个唯一源文件路径。
+共扫描 448 个表格行，聚合出 61 个唯一源文件路径。
 
 ## 仓库根（2 个文件）
 
@@ -300,12 +300,15 @@ py tools/gen-downstream-changes.py
 | 新增 DTO 字段 + `Serialize()` 写入 `auto_upgrade_3star_with_4star` | JSON 序列化 |
 | 接上游 | Phase A 已删 `auto_upgrade_3star_with_4star` |
 
-### [TGT] `src/MaaWpfGui/Models/DiagnosticInfo.cs` (x2)
+### [HOT] `src/MaaWpfGui/Models/DiagnosticInfo.cs` (x5)
 
 | 操作 | 说明 |
 |------|------|
 | 新建 | 系统信息数据模型 + `Collect()` 静态收集方法：OS/.NET 版本/架构、GPU、管理员、Wine、MAA 版本（UI/Core/Resource） |
 | 保留 | 仍被合并后的 `GenerateSupportPayload()` 调用（生成 `diagnostic.json`） |
+| [TGT x2] | 新增 `Parts` 字段 + `PartInfo` 记录类型，分卷元数据写回 `diagnostic.json` |
+| 新增 | `Parts` 属性 (List<PartInfo>) + `PartInfo` record (FileName / UncompressedSizeBytes / FileCount) |
+| 整理 | `DateFilterInfo` / `AppInfo` / `SysInfo` / `GpuInfo` 各字段之间补空行符合 SA1516；`SysInfo.IsWine` / `GpuInfo.Description` 等加空行 |
 
 ### [HOT] `src/MaaWpfGui/Res/Localizations/en-us.xaml` (x11)
 
@@ -455,7 +458,7 @@ py tools/gen-downstream-changes.py
 |------|------|
 | 新增 60+ 行 | `RecruitHistoryEntries` ObservableCollection + `RecruitHistorySearchText` / `RecruitHistoryFilterOcrStatus` 过滤器 + `OpenRecruitScreenshot` / `EditRecruitOperator` / `ExportRecruitHistory` / `ImportRecruitHistory` / `ClearOldRecruitScreenshots` 五个命令 + `LoadRecruitHistory()` 启动入口 |
 
-### [HOT] `src/MaaWpfGui/ViewModels/UserControl/Settings/IssueReportUserControlModel.cs` (x15)
+### [HOT] `src/MaaWpfGui/ViewModels/UserControl/Settings/IssueReportUserControlModel.cs` (x30)
 
 | 操作 | 说明 |
 |------|------|
@@ -474,6 +477,21 @@ py tools/gen-downstream-changes.py
 | 修改 | part01 增加 `Directory.EnumerateFiles(tempPath, "*", SearchOption.TopDirectoryOnly)` 包含 `diagnostic.json` 在分卷中 |
 | 删除 | `ExportDiagnosticPackage()` 方法（约 100 行） |
 | 删除 | `CopyFilteredLog()` 行级日志过滤方法（约 50 行） |
+| [HOT x3] | `GenerateSupportPayload` 拆分为 7 个单一职责方法（TryPrepareExportContext / WriteDiagnosticJson / CopyAll / SplitIntoParts / CreateFullZip / Cleanup / ShowResult）；新增 `ExportContext`/`CopyResult` record；新增 `IsBusy`/`BusyStatusText` 属性；删除自动 `OpenReportsFolder()`；catch IOException/UnauthorizedAccessException 改为 `Log.Warning` + 累计失败列表 |
+| 新增 | `MaxPartSizeBytes = 20L * 1024 * 1024` 常量 + GitHub Issue 附件上限注释 |
+| 修改 | `_dateRangeOptions ??= InitDateRangeOptions()` → `Lazy<List<DateRangeOption>>`（并发安全） |
+| 新增 | `IsBusy` / `IsNotBusy` / `BusyStatusText` 三个 PropertyChangedBase 属性 |
+| 修改 | `ClearImageCache` 加注释解释 `yes=Cancel`/`no=Confirm` 是 HandyControl 自定义按钮文案机制，非 bug |
+| 重写 | `GenerateSupportPayload()` 入口改 async void：判 IsBusy → TryPrepareExportContext (UI 线程) → Task.Run(ExecuteExportPipeline) → ShowGrowlSuccess/Error；finally 中 SafeDelete + 重置 IsBusy |
+| 新增 | `ExecuteExportPipeline(ctx)` 后台流水线：CopyAll → WriteDiagnosticJson → SplitIntoParts → CreateFromDirectory |
+| 新增 | `TryPrepareExportContext()` UI 线程：SaveFileDialog + tempPath 创建；SaveFileDialog 抛异常时也清理 tempPath（try/catch + throw） |
+| 新增 | `WriteDiagnosticJson(ctx, fromDate, toDate)`：`DiagnosticInfo.Collect()` + WriteAllText |
+| 新增 | `CopyAll(ctx, fromDate)` → CopyResult：debug（含日期过滤）→ resource（`_custom.`）→ config → cache；返回 CopyResult 含失败文件列表 |
+| 新增 | `SplitIntoParts(ctx, fromDate)`：统一按 20MB 分卷；按文件名排序保证 part 内容稳定；单文件 >20MB 单独成卷；跳过 diagnostic.json（最后回填）；回填 Parts 字段到 diagnostic.json |
+| 重写 | `CopyDirectoryWithLogging`：debug 根文件始终包含；子目录文件按 fromDate 过滤 LastWriteTime；catch IOException/UnauthorizedAccessException → Log.Warning + 累计到 result.FailedFiles（不再静默吞错） |
+| 新增 | `ShowGrowlSuccess` / `ShowGrowlError` / `ReportBusyStatus` 三个 UI 线程辅助方法（Dispatcher.Invoke 投递） |
+| 新增 | `SafeDelete(path)` 静默删除 tempPath，catch 异常仅 Log.Warning |
+| 新增 | `ExportContext` record (FromDate / ToDate / ReportNameBase / TempPath / FullZipPath / PartsFolder) + `CopyResult` class (CopiedCount / FailedFiles) |
 
 ### [HOT] `src/MaaWpfGui/ViewModels/UserControl/TaskQueue/RecruitSettingsUserControlModel.cs` (x3)
 
@@ -525,13 +543,15 @@ py tools/gen-downstream-changes.py
 |------|------|
 | 新增 TabItem | 过滤栏 + Total TextBlock + DataGrid 9 列 + 3 操作按钮 |
 
-### [HOT] `src/MaaWpfGui/Views/UserControl/Settings/IssueReportUserControl.xaml` (x3)
+### [HOT] `src/MaaWpfGui/Views/UserControl/Settings/IssueReportUserControl.xaml` (x5)
 
 | 操作 | 说明 |
 |------|------|
 | 修改 | IssueReport 页面新增诊断导出区域：日期范围 ComboBox + 3 个 CheckBox + 导出按钮 |
 | 修改 | 右侧 StackPanel 内插入新 UI：日期范围 Grid（ComboBox + TextBlock）+ 3 CheckBox（配置文件/缓存/自定义资源），按钮文案 `GenerateSupportPayload` → `GenerateDiagnosticReport` |
 | 删除 | 独立"导出诊断包" StackPanel + Border（约 60 行） |
+| [HOT x4] | 左右列重新布局：左列加说明 TextBlock；右列 ComboBox 宽度 120→140；3 CheckBox 加 TooltipBlock；按钮 `IsEnabled={Binding IsNotBusy}`；新增 `BusyStatusText` TextBlock |
+| 重写 | 左右列重新布局：左列 `IssueReportLeftTitle` + Help/Issue 超链接 + 分隔线 + `IssueReportLeftHint` 灰色说明；右列 ComboBox 宽度 120→140 + Tooltip，3 CheckBox + TooltipBlock，按钮 `IsEnabled={Binding IsNotBusy}` + BusyStatusText TextBlock |
 
 ### [HOT] `src/MaaWpfGui/Views/UserControl/TaskQueue/RecruitSettingsUserControl.xaml` (x3)
 
