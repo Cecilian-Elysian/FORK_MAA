@@ -12,6 +12,7 @@
 // </copyright>
 
 using System;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using MaaWpfGui.Helper;
 using MaaWpfGui.ViewModels.UI;
@@ -32,9 +33,14 @@ public class DiagnosticInfo
 
     public GpuInfo Gpu { get; set; } = new();
 
+    /// <summary>
+    /// 分卷元数据 — 由 <see cref="IssueReportUserControlModel"/> 在分卷完成后回填，写入 diagnostic.json 供分卷上传时核对。
+    /// </summary>
+    public List<PartInfo> Parts { get; set; } = new();
+
     public static DiagnosticInfo Collect(DateTime fromDate, DateTime toDate)
     {
-        var info = new DiagnosticInfo
+        return new DiagnosticInfo
         {
             DateFilter = new DateFilterInfo
             {
@@ -45,7 +51,6 @@ public class DiagnosticInfo
             SysInfo = CollectSysInfo(),
             Gpu = CollectGpuInfo(),
         };
-        return info;
     }
 
     private static AppInfo CollectAppInfo()
@@ -126,13 +131,30 @@ public class SysInfo
     public string OsArchitecture { get; set; } = string.Empty;
     public string Framework { get; set; } = string.Empty;
     public bool IsAdmin { get; set; }
+
     public bool IsWine { get; set; }
+
     public string? WineVersion { get; set; }
 }
 
 public class GpuInfo
 {
     public string? Description { get; set; }
+
     public string? DriverVersion { get; set; }
+
     public string? DriverDate { get; set; }
+}
+
+/// <summary>
+/// 单个分卷 zip 的元数据，用于回填到 <see cref="DiagnosticInfo.Parts"/>。
+/// <see cref="UncompressedSizeBytes"/> 是分卷内所有文件的未压缩大小累加值（用于核对 GitHub 附件 20MB 上限）。
+/// </summary>
+public class PartInfo
+{
+    public string FileName { get; set; } = string.Empty;
+
+    public long UncompressedSizeBytes { get; set; }
+
+    public int FileCount { get; set; }
 }
