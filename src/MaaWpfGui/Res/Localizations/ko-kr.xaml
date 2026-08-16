@@ -1518,6 +1518,25 @@ DEBUG 디렉토리에 저장된 이미지는 수량 제한이 있으며 초과 �
     <system:String x:Key="ClearImageCacheSuccessful">이미지 캐시 비우기 성공</system:String>
     <system:String x:Key="ClearImageCacheAlreadyEmpty">이미지 캐시가 이미 비어 있음</system:String>
     <system:String x:Key="ClearImageCacheException">이미지 캐시 비우기 중 오류가 발생했습니다:</system:String>
+    <system:String x:Key="IssueReportLeftTitle">문제 제보</system:String>
+    <system:String x:Key="IssueReportLeftHint">오른쪽 버튼을 클릭하여 진단 보고서를 생성하면 로그와 시스템 정보를 함께 첨부할 수 있습니다</system:String>
+    <system:String x:Key="GenerateDiagnosticReport">진단 보고서 생성</system:String>
+    <system:String x:Key="GenerateDiagnosticReportSelectLocation">진단 보고서 저장 위치 선택</system:String>
+    <system:String x:Key="DiagnosticDateRange">로그 기간</system:String>
+    <system:String x:Key="DiagnosticReportTooltipDateRange">이 기간 내에 수정된 debug 하위 디렉터리 파일만 복사합니다 (파일 수정 시간 기준); gui.log / asst.log 등 메인 로그는 항상 포함됩니다.</system:String>
+    <system:String x:Key="DiagnosticIncludeConfig">설정 파일 포함</system:String>
+    <system:String x:Key="DiagnosticIncludeConfigTip">gui.json + gui.bak.json + gui.error.json; 계정 정보가 포함될 수 있습니다 (로컬 경로만, 원격 자격 증명 없음).</system:String>
+    <system:String x:Key="DiagnosticIncludeCache">캐시 포함</system:String>
+    <system:String x:Key="DiagnosticIncludeCacheTip">cache/ 디렉터리 전체 (이미지 캐시 + ETag 메타데이터); 크기는 수백 MB에 이를 수 있습니다.</system:String>
+    <system:String x:Key="DiagnosticIncludeCustomResource">사용자 지정 리소스 포함</system:String>
+    <system:String x:Key="DiagnosticIncludeCustomResourceTip">resource/ 디렉터리에서 파일명에 _custom. 이 포함된 모든 파일 (스테이지 JSON / 오퍼레이터 JSON / 이미지 오버라이드 등).</system:String>
+    <system:String x:Key="DiagnosticLast1Day">최근 1일</system:String>
+    <system:String x:Key="DiagnosticLastNDays">최근 {0}일</system:String>
+    <system:String x:Key="DiagnosticBusyStatus">진단 보고서 생성 중: {0}</system:String>
+    <system:String x:Key="DiagnosticBusyCopyingDebug">로그 및 리소스 복사 중...</system:String>
+    <system:String x:Key="DiagnosticBusyWritingJson">diagnostic.json 쓰는 중...</system:String>
+    <system:String x:Key="DiagnosticBusySplitting">분할 압축 중...</system:String>
+    <system:String x:Key="DiagnosticBusyZippingFull">전체 아카이브 생성 중...</system:String>
     <!--  !Issues  -->
     <!--  AutoRecruitSettings  -->
     <system:String x:Key="AutoRefresh">★3 태그 자동 새로고침</system:String>

@@ -1517,6 +1517,25 @@ DEBUG 目錄下儲存的圖片有數量限制，超出後會自動清理舊圖�
     <system:String x:Key="ClearImageCacheSuccessful">圖片快取已清空</system:String>
     <system:String x:Key="ClearImageCacheAlreadyEmpty">圖片快取為空</system:String>
     <system:String x:Key="ClearImageCacheException">清空圖片快取時發生錯誤：</system:String>
+    <system:String x:Key="IssueReportLeftTitle">問題回饋</system:String>
+    <system:String x:Key="IssueReportLeftHint">點擊右側按鈕生成診斷報告，便於提交回饋時附上記錄和系統資訊</system:String>
+    <system:String x:Key="GenerateDiagnosticReport">產生診斷報告</system:String>
+    <system:String x:Key="GenerateDiagnosticReportSelectLocation">選擇診斷報告儲存位置</system:String>
+    <system:String x:Key="DiagnosticDateRange">記錄時間範圍</system:String>
+    <system:String x:Key="DiagnosticReportTooltipDateRange">僅複製 debug 子目錄中此時間範圍內修改過的檔案（依檔案修改時間）；gui.log / asst.log 等主記錄始終包含</system:String>
+    <system:String x:Key="DiagnosticIncludeConfig">包含設定檔</system:String>
+    <system:String x:Key="DiagnosticIncludeConfigTip">gui.json + gui.bak.json + gui.error.json；可能包含帳號資訊（僅本地路徑，無遠端憑證）</system:String>
+    <system:String x:Key="DiagnosticIncludeCache">包含快取</system:String>
+    <system:String x:Key="DiagnosticIncludeCacheTip">cache/ 全部內容（圖片快取 + ETag 中繼資料），體積可能達數百 MB</system:String>
+    <system:String x:Key="DiagnosticIncludeCustomResource">包含自訂資源</system:String>
+    <system:String x:Key="DiagnosticIncludeCustomResourceTip">resource/ 下檔名包含 _custom. 的所有檔案（如關卡 JSON / 幹員 JSON / 圖片等自訂覆寫）</system:String>
+    <system:String x:Key="DiagnosticLast1Day">最近 1 天</system:String>
+    <system:String x:Key="DiagnosticLastNDays">最近 {0} 天</system:String>
+    <system:String x:Key="DiagnosticBusyStatus">正在產生診斷報告：{0}</system:String>
+    <system:String x:Key="DiagnosticBusyCopyingDebug">正在複製記錄和資源...</system:String>
+    <system:String x:Key="DiagnosticBusyWritingJson">正在寫入 diagnostic.json...</system:String>
+    <system:String x:Key="DiagnosticBusySplitting">正在分卷打包...</system:String>
+    <system:String x:Key="DiagnosticBusyZippingFull">正在產生完整壓縮檔...</system:String>
     <!--  !Issues  -->
     <!--  AutoRecruitSettings  -->
     <system:String x:Key="AutoRefresh">自動刷新 3★ Tags</system:String>

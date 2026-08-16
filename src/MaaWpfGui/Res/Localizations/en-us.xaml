@@ -1516,6 +1516,25 @@ Cache files (such as maps, operator avatars, etc.) need to be regenerated after 
     <system:String x:Key="ClearImageCacheSuccessful">Image cache cleared successfully</system:String>
     <system:String x:Key="ClearImageCacheAlreadyEmpty">Image cache is already empty</system:String>
     <system:String x:Key="ClearImageCacheException">An error occurred while clearing the image cache:</system:String>
+    <system:String x:Key="IssueReportLeftTitle">Issue Report</system:String>
+    <system:String x:Key="IssueReportLeftHint">Click the button on the right to generate a diagnostic report, including logs and system info for easier troubleshooting.</system:String>
+    <system:String x:Key="GenerateDiagnosticReport">Generate Diagnostic Report</system:String>
+    <system:String x:Key="GenerateDiagnosticReportSelectLocation">Select where to save the diagnostic report</system:String>
+    <system:String x:Key="DiagnosticDateRange">Log date range</system:String>
+    <system:String x:Key="DiagnosticReportTooltipDateRange">Only copy debug subdirectory files modified within this date range (by file LastWriteTime); main logs (gui.log / asst.log) are always included.</system:String>
+    <system:String x:Key="DiagnosticIncludeConfig">Include config files</system:String>
+    <system:String x:Key="DiagnosticIncludeConfigTip">gui.json + gui.bak.json + gui.error.json; may contain account information (local paths only, no remote credentials).</system:String>
+    <system:String x:Key="DiagnosticIncludeCache">Include cache</system:String>
+    <system:String x:Key="DiagnosticIncludeCacheTip">Entire cache/ directory (image cache + ETag metadata); size may reach hundreds of MB.</system:String>
+    <system:String x:Key="DiagnosticIncludeCustomResource">Include custom resources</system:String>
+    <system:String x:Key="DiagnosticIncludeCustomResourceTip">All files under resource/ whose name contains _custom. (such as custom stage JSON / operator JSON / image overrides).</system:String>
+    <system:String x:Key="DiagnosticLast1Day">Last 1 day</system:String>
+    <system:String x:Key="DiagnosticLastNDays">Last {0} days</system:String>
+    <system:String x:Key="DiagnosticBusyStatus">Generating diagnostic report: {0}</system:String>
+    <system:String x:Key="DiagnosticBusyCopyingDebug">Copying logs and resources...</system:String>
+    <system:String x:Key="DiagnosticBusyWritingJson">Writing diagnostic.json...</system:String>
+    <system:String x:Key="DiagnosticBusySplitting">Splitting into parts...</system:String>
+    <system:String x:Key="DiagnosticBusyZippingFull">Creating full archive...</system:String>
     <!--  !Issues  -->
     <!--  AutoRecruitSettings  -->
     <system:String x:Key="AutoRefresh">Auto refresh 3★ Tags</system:String>
