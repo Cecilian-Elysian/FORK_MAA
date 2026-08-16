@@ -23,39 +23,15 @@
     <StackPanel>
         <StackPanel d:Visibility="Visible" Visibility="{c:Binding 'ConnectConfig != enums:ConnectConfig.PC', Source={x:Static settings_vms:ConnectSettingsUserControlModel.Instance}}">
             <StackPanel d:Visibility="Visible" Visibility="{c:Binding 'ClientType == enums:ClientType.Official or ClientType == enums:ClientType.Bilibili or ClientType == enums:ClientType.Txwy', Source={x:Static settings_vms:GameSettingsUserControlModel.Instance}}">
+                <!--  Account Cycle Section  -->
+                <!--  fix/account-rotation-supersede-switcher: 吸收 AccountSwitch 生态位, 单账号 section 整段删除;
+                      轮换 CheckBox 加 tooltip 与 + 添加账号按钮共用 AccountCycleTip 提示语义  -->
                 <StackPanel
                     Margin="0,5"
                     HorizontalAlignment="Left"
                     Orientation="Horizontal">
-                    <CheckBox Content="{DynamicResource AccountSwitch}" IsChecked="{Binding AccountSwitchEnabled}" />
-                    <controls:TooltipBlock TooltipText="{DynamicResource AccountSwitchTip}" />
-                </StackPanel>
-                <Grid Margin="0,5" Visibility="{c:Binding 'AccountSwitchEnabled and !AccountCycleEnabled'}">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <TextBox
-                        Grid.Column="0"
-                        hc:BorderElement.CornerRadius="4,0,0,4"
-                        IsReadOnly="{c:Binding !Idle,
-                                               Source={x:Static helper:Instances.SettingsViewModel}}"
-                        Text="{Binding AccountName, UpdateSourceTrigger=PropertyChanged}" />
-                    <Button
-                        Grid.Column="1"
-                        Padding="12,1,12,1"
-                        HorizontalAlignment="Center"
-                        VerticalAlignment="Bottom"
-                        hc:BorderElement.CornerRadius="0,4,4,0"
-                        BorderThickness="0,1,1,1"
-                        Command="{s:Action AccountSwitchManualRun}"
-                        Content="{DynamicResource AccountSwitchManualRun}"
-                        IsEnabled="{c:Binding 'AccountName != &quot;&quot;'}" />
-                </Grid>
-
-                <!--  Account Cycle Section  -->
-                <StackPanel Margin="0,5" HorizontalAlignment="Left" Orientation="Horizontal">
                     <CheckBox Content="{DynamicResource AccountCycle}" IsChecked="{Binding AccountCycleEnabled}" />
+                    <controls:TooltipBlock TooltipText="{DynamicResource AccountCycleTip}" />
                 </StackPanel>
                 <StackPanel Margin="0,5" Visibility="{c:Binding AccountCycleEnabled}">
                     <ItemsControl ItemsSource="{Binding AccountCycleItems}">
@@ -87,21 +63,8 @@
                                             Margin="4,0"
                                             hc:BorderElement.CornerRadius="4"
                                             Text="{Binding AccountName, UpdateSourceTrigger=PropertyChanged}" />
-                                        <Button
-                                            Grid.Column="2"
-                                            Width="20"
-                                            Height="20"
-                                            Padding="0"
-                                            HorizontalAlignment="Center"
-                                            VerticalAlignment="Center"
-                                            Background="Transparent"
-                                            BorderThickness="0"
-                                            Command="{s:Action AddAccountAfter}"
-                                            CommandParameter="{Binding}"
-                                            ToolTip="{DynamicResource AccountCycleAddAccountTip}"
-                                            Visibility="{c:Binding ShowAddMode, Source={x:Static taskQueue_vms:StartUpSettingsUserControlModel.Instance}}">
-                                            <TextBlock Text="+" FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                        </Button>
+                                        <!--  fix/account-rotation-supersede-switcher: [✖] 删除按钮永久可见, 不再依赖 ShowDeleteMode 开关;
+                                              点击弹出 MessageBox 二次确认 (VM RemoveAccount 内), 防误删  -->
                                         <Button
                                             Grid.Column="2"
                                             Width="20"
@@ -113,7 +76,7 @@
                                             BorderThickness="0"
                                             Command="{s:Action RemoveAccount}"
                                             CommandParameter="{Binding}"
-                                            Visibility="{c:Binding ShowDeleteMode, Source={x:Static taskQueue_vms:StartUpSettingsUserControlModel.Instance}}">
+                                            ToolTip="{DynamicResource AccountCycleRemoveTip}">
                                             <TextBlock Text="✖" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                         </Button>
                                     </Grid>
@@ -121,18 +84,14 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
-                    <StackPanel Margin="0,5" HorizontalAlignment="Left" Orientation="Horizontal">
-                        <CheckBox Content="{DynamicResource AccountCycleEditMode}" IsChecked="{Binding ShowEditSection}" />
-                    </StackPanel>
-                    <ComboBox
+                    <!--  fix/account-rotation-supersede-switcher: 末尾 [+ 添加账号] 按钮替代二级「编辑模式」ComboBox;
+                          CommandParameter={x:Null} 走 AddAccountAfter 的 null 分支 (insertIndex = list.Count)  -->
+                    <Button
                         Margin="0,5"
-                        hc:InfoElement.Title="{DynamicResource AccountCycleEditMode}"
-                        SelectedIndex="{Binding AccountCycleMode}"
-                        IsEnabled="{Binding ShowEditSection}">
-                        <ComboBoxItem>无修改</ComboBoxItem>
-                        <ComboBoxItem>添加账号</ComboBoxItem>
-                        <ComboBoxItem>删除账号</ComboBoxItem>
-                    </ComboBox>
+                        HorizontalAlignment="Left"
+                        Command="{s:Action AddAccountAfter}"
+                        CommandParameter="{x:Null}"
+                        Content="{DynamicResource AccountCycleAddNewAccount}" />
 
                     <!--  feat/defer-rogue: Late stage rogue & reclamation  -->
                     <!--  fix/defer-rogue/1: 轮换运行中(IsCycling=true)时禁用此开关,防止运行中切换污染 phase 2 步骤  -->

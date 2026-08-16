@@ -691,15 +691,13 @@ HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Notifications\Settin
     <system:String x:Key="AlwaysAutoDetectConnectionTip" xml:space="preserve">이 옵션은 권장되지 않습니다.
 감지 시 연결할 에뮬레이터만 실행되어 있는지 확인하세요. 여러 에뮬레이터를 동시에 실행하면 잘못된 대상에 연결될 수 있습니다.
 포트가 자주 변경되고 단일 에뮬레이터만 실행 중임을 확인한 경우에만 이 옵션을 활성화하세요.</system:String>
-    <system:String x:Key="AccountSwitch">계정 전환</system:String>
-    <system:String x:Key="AccountSwitchManualRun">수동 스위치</system:String>
-    <system:String x:Key="AccountSwitchTip" xml:space="preserve">전환할 계정을 입력하고, 계정 전환을 비활성화하려면 공백으로 남겨두세요.
-｢123****4567｣ 과 같이 로그인 인터페이스에 표시된 내용을 입력하세요. ｢123****4567｣, ｢4567｣ 또는 ｢23****45｣ 를 입력할 수 있습니다.
-번체 중국어 서버의 계정은 Email 형식입니다(예: ｢ab****01@gmail.com｣). 별표가 없는 평문 부분(예: ｢01@gmail｣) 입력을 권장합니다.
-공식(CN), Bilibili 및 번체 중국어 서버만 지원합니다. 서드파티 로그인 방식은 지원되지 않습니다.</system:String>
     <system:String x:Key="AccountCycle">계정 순환</system:String>
-    <system:String x:Key="AccountCycleEditMode">편집 모드</system:String>
+    <system:String x:Key="AccountCycleTip">체크하면 다중 계정 순환이 활성화됩니다</system:String>
     <system:String x:Key="AccountCycleNewAccountDefaultName">계정</system:String>
+    <system:String x:Key="AccountCycleAddNewAccount">+ 계정 추가</system:String>
+    <system:String x:Key="AccountCycleRemoveTip">이 계정 삭제</system:String>
+    <system:String x:Key="AccountCycleRemoveConfirm">계정 삭제</system:String>
+    <system:String x:Key="AccountCycleRemoveMessage">순환에서 계정 "{0}"을(를) 삭제하시겠습니까?</system:String>
     <system:String x:Key="AccountCycleItemCheckTip">체크하면 이 계정이 순환에 포함됩니다</system:String>
     <system:String x:Key="AccountCycleAddAccountTip">이 계정 뒤에 새 계정 추가</system:String>
     <system:String x:Key="AccountCycleAllDone">모든 계정이 완료되었습니다!</system:String>
