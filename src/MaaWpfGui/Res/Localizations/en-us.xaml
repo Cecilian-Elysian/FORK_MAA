@@ -691,15 +691,13 @@ Please ensure only the target emulator is running during detection. Running mult
     <system:String x:Key="AlwaysAutoDetectConnectionTip" xml:space="preserve">This option is not recommended.
 Please ensure only the target emulator is running during detection. Running multiple emulators simultaneously may result in connecting to the wrong target.
 Only enable this option when the port changes frequently and you are certain only one emulator is running.</system:String>
-    <system:String x:Key="AccountSwitch">Account Switch</system:String>
-    <system:String x:Key="AccountSwitchManualRun">Switch now</system:String>
-    <system:String x:Key="AccountSwitchTip" xml:space="preserve">Fill in the account that needs to be switched to, leave blank to close the account switching.
-Enter the content displayed on the login interface, such as ｢123****4567｣, you can enter ｢123****4567｣, ｢4567｣ or ｢23****45｣
-The Traditional Chinese server uses Email accounts, e.g. ｢ab****01@gmail.com｣. Entering the plain-text portion without asterisks is recommended, e.g. ｢01@gmail｣.
-Only supports Official(CN), Bilibili and Traditional Chinese servers. Third-party login methods are not supported.</system:String>
     <system:String x:Key="AccountCycle">Account Cycle</system:String>
-    <system:String x:Key="AccountCycleEditMode">Edit Mode</system:String>
+    <system:String x:Key="AccountCycleTip">Enable multi-account rotation</system:String>
     <system:String x:Key="AccountCycleNewAccountDefaultName">Account</system:String>
+    <system:String x:Key="AccountCycleAddNewAccount">+ Add account</system:String>
+    <system:String x:Key="AccountCycleRemoveTip">Remove this account</system:String>
+    <system:String x:Key="AccountCycleRemoveConfirm">Remove account</system:String>
+    <system:String x:Key="AccountCycleRemoveMessage">Remove account "{0}" from the cycle?</system:String>
     <system:String x:Key="AccountCycleItemCheckTip">Check to include this account in the cycle</system:String>
     <system:String x:Key="AccountCycleAddAccountTip">Add a new account after this one</system:String>
     <system:String x:Key="AccountCycleAllDone">All accounts completed!</system:String>

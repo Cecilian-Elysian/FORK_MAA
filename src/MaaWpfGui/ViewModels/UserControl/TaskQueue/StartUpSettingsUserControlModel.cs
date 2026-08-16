@@ -16,6 +16,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
+using System.Windows;
 using JetBrains.Annotations;
 using MaaWpfGui.Configuration.Factory;
 using MaaWpfGui.Configuration.Single.MaaTask;
@@ -50,67 +51,11 @@ public class StartUpSettingsUserControlModel : TaskSettingsViewModel, StartUpSet
     private static StartUpTask? CycleConfig =>
         ConfigFactory.CurrentConfig.TaskQueue.OfType<StartUpTask>().FirstOrDefault();
 
-    #region Account Switch (Single)
+#region Account Cycle
 
-    public string AccountName
-    {
-        get => CycleConfig?.AccountName ?? string.Empty;
-        set
-        {
-            if (CycleConfig == null)
-            {
-                return;
-            }
-
-            CycleConfig.AccountName = value.Trim();
-            NotifyOfPropertyChange();
-        }
-    }
-
-    public bool AccountSwitchEnabled
-    {
-        get => CycleConfig?.AccountSwitchEnabled ?? false;
-        set
-        {
-            if (CycleConfig == null)
-            {
-                return;
-            }
-
-            CycleConfig.AccountSwitchEnabled = value;
-            NotifyOfPropertyChange();
-        }
-    }
-
-    [UsedImplicitly]
-    public async void AccountSwitchManualRun()
-    {
-        if (AccountCycleEnabled)
-        {
-            var next = GetCurrentCycleAccount();
-            if (next == null)
-            {
-                Instances.TaskQueueViewModel.AddLog(LocalizationHelper.GetString("AccountCycleAllDone"), UiLogColor.Info);
-                return;
-            }
-
-            var task = new StartUpTask() { AccountSwitchEnabled = true, AccountName = next };
-            await Instances.TaskQueueViewModel.LinkStartWithTasks([task]);
-            return;
-        }
-
-        if (TaskSettingVisibilityInfo.CurrentTask is not StartUpTask startUp)
-        {
-            Instances.TaskQueueViewModel.AddLog("Current task is not StartUpTask", UiLogColor.Error);
-            return;
-        }
-var singleTask = new StartUpTask() { AccountSwitchEnabled = true, AccountName = startUp.AccountName };
-        await Instances.TaskQueueViewModel.LinkStartWithTasks([singleTask]);
-    }
-
-    #endregion
-
-    #region Account Cycle
+    // fix/account-rotation-supersede-switcher: 删除 #region Account Switch (Single) 整段 (AccountName /
+    // AccountSwitchEnabled / AccountSwitchManualRun 共 ~60 行). 账号轮换彻底吸收账号切换的生态位;
+    // StartUpTask.AccountName / AccountSwitchEnabled 字段仍保留 (向后兼容旧 GUI 配置 + 轮换切号仍依赖).
 
     private readonly ObservableCollection<AccountCycleItem> _accountCycleItems = [];
 
@@ -160,37 +105,8 @@ var singleTask = new StartUpTask() { AccountSwitchEnabled = true, AccountName = 
         }
     }
 
-    public bool ShowEditSection
-    {
-        get => _showEditSection;
-        set
-        {
-            SetAndNotify(ref _showEditSection, value);
-            if (!value)
-            {
-                AccountCycleMode = 0;
-            }
-        }
-    }
-
-    private bool _showEditSection;
-
-    public int AccountCycleMode
-    {
-        get => _accountCycleMode;
-        set
-        {
-            SetAndNotify(ref _accountCycleMode, value);
-            NotifyOfPropertyChange(nameof(ShowAddMode));
-            NotifyOfPropertyChange(nameof(ShowDeleteMode));
-        }
-    }
-
-    private int _accountCycleMode;
-
-    public bool ShowAddMode => AccountCycleMode == 1;
-
-    public bool ShowDeleteMode => AccountCycleMode == 2;
+    // fix/account-rotation-supersede-switcher: 删除 ShowEditSection / AccountCycleMode / ShowAddMode / ShowDeleteMode
+    // 共 4 个字段/属性 + 2 个 backing field. UI 改为永久内联, 无需「编辑模式」二级开关.
 
     public ObservableCollection<AccountCycleItem> AccountCycleItems => _accountCycleItems;
 
@@ -282,7 +198,8 @@ var singleTask = new StartUpTask() { AccountSwitchEnabled = true, AccountName = 
             }
         }
 
-        // 从单账号切换复制账号名到轮换列表第一项
+        // fix/account-rotation-supersede-switcher: 向后兼容迁移, 旧 GUI 配置有 AccountName 但 AccountNames 空时
+        // 自动将单账号名复制到轮换列表首项;若无单账号名则至少保留 2 行空项作为占位.
         if (config.AccountNames.Count > 0 && string.IsNullOrEmpty(config.AccountNames[0]) && !string.IsNullOrEmpty(config.AccountName))
         {
             config.AccountNames[0] = config.AccountName;
@@ -380,6 +297,20 @@ var singleTask = new StartUpTask() { AccountSwitchEnabled = true, AccountName = 
     {
         var config = CycleConfig;
         if (config == null)
+        {
+            return;
+        }
+
+        // fix/account-rotation-supersede-switcher: [✖] 按钮永久可见, 点击后弹 MessageBox 二次确认防误删.
+        // 复用 MessageBoxHelper.Show (与 TaskQueueViewModel.RemoveTask:1568-1581 模式一致),
+        // 文案 AccountCycleRemoveMessage 含 {0} 占位符 = 账号名, 标题 AccountCycleRemoveConfirm.
+        var accountName = item.AccountName?.Trim() ?? string.Empty;
+        var confirm = MessageBoxHelper.Show(
+            LocalizationHelper.GetStringFormat("AccountCycleRemoveMessage", accountName),
+            LocalizationHelper.GetString("AccountCycleRemoveConfirm"),
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Question);
+        if (confirm != MessageBoxResult.Yes)
         {
             return;
         }

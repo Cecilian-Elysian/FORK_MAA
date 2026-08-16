@@ -18,7 +18,7 @@
 py tools/gen-downstream-changes.py
 ```
 
-共扫描 405 个表格行，聚合出 60 个唯一源文件路径。
+共扫描 426 个表格行，聚合出 61 个唯一源文件路径。
 
 ## 仓库根（2 个文件）
 
@@ -56,7 +56,7 @@ py tools/gen-downstream-changes.py
 |------|------|
 | 双轨字段 | fork `expedite_min_level` 扩展段 + 上游 `expedite`/`expedite_times` |
 
-### [HOT] `docs/downstream-changes.md` (x12)
+### [HOT] `docs/downstream-changes.md` (x13)
 
 | 操作 | 说明 |
 |------|------|
@@ -72,6 +72,7 @@ py tools/gen-downstream-changes.py
 | `py tools/gen-downstream-changes.py` | 自动刷新清单（51 → 51 文件，352 LOG.md 表格行） |
 | `py tools/gen-downstream-changes.py` | 自动刷新清单（51 文件，352 LOG.md 表格行） |
 | 重生成 | `py tools/gen-downstream-changes.py`：366→392 表格行、52→58 文件（commit `16a40b0442`） |
+| 自动 | gen-downstream-changes.py 重生成 |
 
 ### [TGT] `docs/en-us/protocol/integration.md` (x2)
 
@@ -135,7 +136,7 @@ py tools/gen-downstream-changes.py
 |------|------|
 | 删除 | fork 独有占位模板（AccountManagerListAccount.png 复制品），master 无此文件，已验模板目录与 master 对齐 |
 
-## `src/`（40 个文件）
+## `src/`（41 个文件）
 
 ### [TGT] `src/MaaCore/Assistant.cpp` 
 
@@ -240,12 +241,14 @@ py tools/gen-downstream-changes.py
 | 新增 `AutoUpgrade3StarWith4Star` 字段（默认 `true`） | 配置模型 |
 | 接上游 | 同上 |
 
-### [TGT] `src/MaaWpfGui/Configuration/Single/MaaTask/StartUpTask.cs` (x2)
+### [HOT] `src/MaaWpfGui/Configuration/Single/MaaTask/StartUpTask.cs` (x4)
 
 | 操作 | 说明 |
 |------|------|
 | 淇敼 | 鏂板 `LateStageRogueAndReclamation : bool = false`,榛樿鍏抽棴浠ヤ繚鎸佸悜鍚庡吋瀹? |
 | 淇敼 | 娣诲姞 `AccountCycleEnabled` (bool, 榛樿 true) 鍜?`AccountNames` (List\<string\>, 榛樿 ["", ""]) |
+| [TGT x2] | 不动（保留字段） |
+| **不动** | `AccountName` / `AccountSwitchEnabled` 字段保留, 向后兼容旧 GUI 配置 + 轮换切号仍依赖 |
 
 ### [TGT] `src/MaaWpfGui/Helper/ListToStringConverter.cs` 
 
@@ -304,7 +307,7 @@ py tools/gen-downstream-changes.py
 | 新建 | 系统信息数据模型 + `Collect()` 静态收集方法：OS/.NET 版本/架构、GPU、管理员、Wine、MAA 版本（UI/Core/Resource） |
 | 保留 | 仍被合并后的 `GenerateSupportPayload()` 调用（生成 `diagnostic.json`） |
 
-### [HOT] `src/MaaWpfGui/Res/Localizations/en-us.xaml` (x10)
+### [HOT] `src/MaaWpfGui/Res/Localizations/en-us.xaml` (x11)
 
 | 操作 | 说明 |
 |------|------|
@@ -318,8 +321,9 @@ py tools/gen-downstream-changes.py
 | 修改 | 节注释 `<!-- DiagnosticExport -->` → `<!-- DiagnosticReport -->` |
 | 同上（英文） | English |
 | 保留 fork + 接上游 | 保留 `PasteClipboardCopilotSetTip` 等 fork 字符串 + 上游新 key |
+| 同上 (英文) | 同上 |
 
-### [HOT] `src/MaaWpfGui/Res/Localizations/ja-jp.xaml` (x10)
+### [HOT] `src/MaaWpfGui/Res/Localizations/ja-jp.xaml` (x11)
 
 | 操作 | 说明 |
 |------|------|
@@ -333,8 +337,9 @@ py tools/gen-downstream-changes.py
 | 修改 | 节注释 `<!-- DiagnosticExport -->` → `<!-- DiagnosticReport -->` |
 | 同上（日文） | 日本語 |
 | 保留 fork + 接上游 | 保留 `PasteClipboardCopilotSetTip` 等 fork 字符串 + 上游新 key |
+| 同上 (日文) | 同上 |
 
-### [HOT] `src/MaaWpfGui/Res/Localizations/ko-kr.xaml` (x10)
+### [HOT] `src/MaaWpfGui/Res/Localizations/ko-kr.xaml` (x11)
 
 | 操作 | 说明 |
 |------|------|
@@ -348,8 +353,9 @@ py tools/gen-downstream-changes.py
 | 修改 | 节注释 `<!-- DiagnosticExport -->` → `<!-- DiagnosticReport -->` |
 | 同上（韩文） | 한국어 |
 | 保留 fork + 接上游 | 保留 `PasteClipboardCopilotSetTip` 等 fork 字符串 + 上游新 key |
+| 同上 (韩文) | 同上 |
 
-### [HOT] `src/MaaWpfGui/Res/Localizations/zh-cn.xaml` (x11)
+### [HOT] `src/MaaWpfGui/Res/Localizations/zh-cn.xaml` (x12)
 
 | 操作 | 说明 |
 |------|------|
@@ -364,8 +370,9 @@ py tools/gen-downstream-changes.py
 | 修改 | 节注释 `<!-- DiagnosticExport -->` → `<!-- DiagnosticReport -->` |
 | 新增 `AutoUpgrade3StarWith4Star` / `AutoUpgrade3StarWith4StarTip` 字符串 | 简体中文 |
 | 保留 fork + 接上游 | 保留 `PasteClipboardCopilotSetTip` 等 fork 字符串 + 上游新 key |
+| 修改 | 删 `AccountSwitch` / `AccountSwitchManualRun` / `AccountSwitchTip` / `AccountCycleEditMode` 4 key;新增 `AccountCycleTip` / `AccountCycleAddNewAccount` / `AccountCycleRemoveTip` / `AccountCycleRemoveConfirm` / `AccountCycleRemoveMessage` 5 key (顺序调整) |
 
-### [HOT] `src/MaaWpfGui/Res/Localizations/zh-tw.xaml` (x10)
+### [HOT] `src/MaaWpfGui/Res/Localizations/zh-tw.xaml` (x11)
 
 | 操作 | 说明 |
 |------|------|
@@ -379,6 +386,7 @@ py tools/gen-downstream-changes.py
 | 修改 | 节注释 `<!-- DiagnosticExport -->` → `<!-- DiagnosticReport -->` |
 | 同上（繁体） | 繁体中文 |
 | 保留 fork + 接上游 | 保留 `PasteClipboardCopilotSetTip` 等 fork 字符串 + 上游新 key |
+| 同上 (繁体) | 同上 |
 
 ### [TGT] `src/MaaWpfGui/Res/Styles/Basic/Geometries.xaml` (x2)
 
@@ -406,7 +414,7 @@ py tools/gen-downstream-changes.py
 | 淇敼 | 鐗堟湰姣旇緝鏃?`uiVersion` 涔?`TrimStart('v', 'V')`锛屼慨澶?UI 鍜?Core 鐗堟湰鍙蜂竴鑷翠粛寮硅鍛婄殑 bug |
 | 淇敼 | 鐗堟湰姣旇緝蹇界暐 `v` 鍓嶇紑 |
 
-### [HOT] `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs` (x28)
+### [HOT] `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs` (x30)
 
 | 操作 | 说明 |
 |------|------|
@@ -438,6 +446,8 @@ py tools/gen-downstream-changes.py
 | 修改 | `AsstStart()` 失败 + `AsstRunning()` 兜底判定;失败分支加 `AsstStop()`;注释标记 `fix/account-cycle-start-race` |
 | 修改 | 一行式短路实现,保持 append 失败旧语义;注释补充短路说明 |
 | 提交 | `startOk = taskRet && (AsstStart() \|\| AsstRunning())` 兜底判定 + 失败分支 `AsstStop()` 清队列；注释带 `fix/account-cycle-start-race` 标记 |
+| [HOT x28] | 无逻辑改动 |
+| **不动** | `LinkStart:1931` / `AdvanceAccountCycle:2386` 的 `cfg.AccountSwitchEnabled = true` 保留 (SerializeTask 仍读此字段) |
 
 ### [TGT] `src/MaaWpfGui/ViewModels/UI/ToolboxViewModel.cs` 
 
@@ -473,7 +483,7 @@ py tools/gen-downstream-changes.py
 | +`ExpediteMinLevelList` / `UseExpeditedMinLevel` / `UseExpeditedMinLevelVisible` | ViewModel |
 | 新增 VM 属性 `AutoUpgrade3StarWith4Star` + `SerializeTask()` 写入 | 双向绑定 |
 
-### [HOT] `src/MaaWpfGui/ViewModels/UserControl/TaskQueue/StartUpSettingsUserControlModel.cs` (x7)
+### [HOT] `src/MaaWpfGui/ViewModels/UserControl/TaskQueue/StartUpSettingsUserControlModel.cs` (x13)
 
 | 操作 | 说明 |
 |------|------|
@@ -484,6 +494,12 @@ py tools/gen-downstream-changes.py
 | 淇敼 | **#5**: 鏂板 `CurrentStepIndex` 鍏紑灞炴€ф敮鎸佹棩蹇? |
 | 修改 | `SyncAccountNamesToItems` 入口对 `config.AccountNames[]` / `config.AccountName` 做 Trim，首条受影响打 INFO 日志；下移原「单账号复制到轮换列表第一项」逻辑 |
 | 保留 fork | `using Stylet;` + variable name |
+| [HOT x7] | 删 `#region Account Switch (Single)` + ShowEditSection/AccountCycleMode/ShowAddMode/ShowDeleteMode；RemoveAccount 加 MessageBox |
+| 修改 | 加 `using System.Windows;` (MessageBoxButton/MessageBoxResult) |
+| 修改 | 删 `#region Account Switch (Single)` 整段 (`AccountName` / `AccountSwitchEnabled` 属性 + `AccountSwitchManualRun` 命令, 共 ~60 行);留注释说明字段仍保留 |
+| 修改 | 删 `ShowEditSection` / `_showEditSection` / `AccountCycleMode` / `_accountCycleMode` / `ShowAddMode` / `ShowDeleteMode` 共 4 属性 2 字段, 留注释 |
+| 修改 | `SyncAccountNamesToItems` 迁移注释改为「向后兼容迁移」语义 |
+| 修改 | `RemoveAccount` 加 `MessageBoxHelper.Show` 二次确认 (复用 `TaskQueueViewModel.RemoveTask:1568-1581` 模式); 弹窗文案 `AccountCycleRemoveMessage` 含 `{0}` 占位符 = 账号名 |
 
 ### [TGT] `src/MaaWpfGui/ViewModels/UserControl/TaskQueue/UserDataUpdateSettingsUserControlModel.cs` 
 
@@ -496,6 +512,12 @@ py tools/gen-downstream-changes.py
 | 操作 | 说明 |
 |------|------|
 | 保留 fork UI | `PasteClipboardCopilotSet` 按钮 + 3 个 TooltipBlock |
+
+### [TGT] `src/MaaWpfGui/Views/UI/TaskQueueView.xaml` 
+
+| 操作 | 说明 |
+|------|------|
+| **不动** | 仍引用 `CurrentAccountLabel` (TODO deferred: 5 语 xaml 全缺, 不在本 fix 范围) |
 
 ### [TGT] `src/MaaWpfGui/Views/UI/ToolboxView.xaml` 
 
@@ -519,7 +541,7 @@ py tools/gen-downstream-changes.py
 | +闂ㄦ涓嬫媺妗? | UI |
 | 新增 `StackPanel` 包裹 `CheckBox` + `TooltipBlock`，位于「3星 Tag 时的 Tag 倾向」区域下方 | UI 控件 |
 
-### [HOT] `src/MaaWpfGui/Views/UserControl/TaskQueue/StartUpTaskUserControl.xaml` (x4)
+### [HOT] `src/MaaWpfGui/Views/UserControl/TaskQueue/StartUpTaskUserControl.xaml` (x8)
 
 | 操作 | 说明 |
 |------|------|
@@ -527,6 +549,10 @@ py tools/gen-downstream-changes.py
 | 淇敼 | 娣诲姞/鍒犻櫎鎸夐挳鍥炬爣缁熶竴瀛楀彿鍜屽眳涓? |
 | 淇敼 | 娣诲姞杞崲 CheckBox銆佽处鍙峰垪琛?ItemsControl銆佺紪杈戞ā寮?ComboBox銆両sCompleted 钃濊壊楂樹寒 |
 | 淇敼 | **A7**: `LateStageRogueAndReclamation` CheckBox 鍔?`IsEnabled="{c:Binding '!IsCycling'}"`,Cycle 杩愯涓伆鏄? |
+| [HOT x4] | 删 AccountSwitch section + 编辑模式 ComboBox；重构每项模板；末尾 [+ 添加账号] 按钮 |
+| 修改 | 删单账号 section (原 26-54);轮换 CheckBox 加 `AccountCycleTip` tooltip |
+| 修改 | 每项模板简化: 删 `AddAccountAfter` 按钮 + `ShowAddMode`/`ShowDeleteMode` visibility;`RemoveAccount` 按钮 tooltip 改 `AccountCycleRemoveTip` 并永久可见 |
+| 新增 | 末尾 `[+ 添加账号]` 按钮, `CommandParameter={x:Null}` 走 `AddAccountAfter` null 分支 |
 
 ## `tools/`（7 个文件）
 
