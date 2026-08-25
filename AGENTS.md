@@ -1,4 +1,4 @@
-# AGENTS
+﻿# AGENTS
 
 本文件面向在本仓库协作的 AI 代理与人类贡献者，约定工作流、文档规范与协作约束。
 
@@ -410,6 +410,20 @@ staging ──── feat/<name>, fix/<name> ← 从 staging 拉出
 | 子修复分支 | 无（独立 fix） |
 | 作用域 | 仅本仓库 fork 私有，不推 upstream（恢复 upstream `e9d00b94af` 引入、被 `be0d9f342d` 删除的资源定义，供 fork 保留的作业集按钮引用） |
 | 详见 | `LOG.md` 2026-08-09 |
+
+### 7.14 feat/account-scoped-recognition-data（2026-08-25 已合入 staging）
+
+| 项 | 内容 |
+|----|------|
+| 用途 | 干员/仓库识别数据按账号分桶存储：`data\OperBoxData_<account>.json` / `DepotData_<account>.json`，各账号数据独立保留可查看；修复多账号轮换下 StageDrops 掉落增量以上一账号库存为基数的跨账号数据合并；切号即切桶（清脏数据 + 预载本账号桶）；旧全局单份文件一次性迁移（旧文件转 `.json.bak`） |
+| 关键实现 | `ToolboxViewModel.cs` `#region AccountScopedRecognitionData`（桶路由/切换/迁移/下拉列表/掉落无基线守卫）；`TaskQueueViewModel.cs` `LinkStart` + `AdvanceAccountCycle` 两处 `SwitchDataAccount` 锚定；`ToolboxView.xaml` 两 Tab 账号查看下拉（运行中锁定）；五语 +2 key（`DataAccountLabel`/`DataAccountDefault`）；账号名清洗（非法字符→`_`、截断 48、空→`_default`），JSON 内嵌 `account` 原始名供显示 |
+| 生命周期 | 2026-08-25 创建（从 staging 拉出） → 2026-08-25 `--no-ff` 合入 `staging`（`04217c1fcb`） |
+| 关键 commit | `b5431a1a5f`（实施，10 files +355 -21） → `584fa5b3eb`（downstream 清单） |
+| 子修复分支 | 无 |
+| 验证 | dotnet build 0 错误 / 60 warning（基线一致）；install-staging 实机：启动冒烟通过、首启迁移实测成功（账号 `189****0830` → 桶 `*_189____0830.json` + `.bak`，account 字段嵌入）；完整轮换跑批待用户实测 |
+| 部署备注 | `local-install-staging.bat` 全目标构建触发 §4.1 已知 VS 2026 SDK bug，本次按单目标 + 手工 publish/nbeauty/robocopy 绕行部署 |
+| 作用域 | 仅本仓库 fork 私有，不推 upstream |
+| 详见 | `LOG.md` 2026-08-25（启动 / 实施完成 / 合入 staging 三段） |
 
 
 ## 8. 关键参考链接
