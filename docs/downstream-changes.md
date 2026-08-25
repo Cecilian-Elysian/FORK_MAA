@@ -18,7 +18,7 @@
 py tools/gen-downstream-changes.py
 ```
 
-共扫描 448 个表格行，聚合出 61 个唯一源文件路径。
+共扫描 466 个表格行，聚合出 62 个唯一源文件路径。
 
 ## 仓库根（2 个文件）
 
@@ -136,7 +136,7 @@ py tools/gen-downstream-changes.py
 |------|------|
 | 删除 | fork 独有占位模板（AccountManagerListAccount.png 复制品），master 无此文件，已验模板目录与 master 对齐 |
 
-## `src/`（41 个文件）
+## `src/`（42 个文件）
 
 ### [TGT] `src/MaaCore/Assistant.cpp` 
 
@@ -250,6 +250,13 @@ py tools/gen-downstream-changes.py
 | [TGT x2] | 不动（保留字段） |
 | **不动** | `AccountName` / `AccountSwitchEnabled` 字段保留, 向后兼容旧 GUI 配置 + 轮换切号仍依赖 |
 
+### [TGT] `src/MaaWpfGui/Constants/JsonDataKey.cs` (x2)
+
+| 操作 | 说明 |
+|------|------|
+| 修改 | 新增桶 key 前缀辅助 |
+| 修改 | 新增 `DefaultDataAccount = "_default"` 兜底桶常量 |
+
 ### [TGT] `src/MaaWpfGui/Helper/ListToStringConverter.cs` 
 
 | 操作 | 说明 |
@@ -310,7 +317,7 @@ py tools/gen-downstream-changes.py
 | 新增 | `Parts` 属性 (List<PartInfo>) + `PartInfo` record (FileName / UncompressedSizeBytes / FileCount) |
 | 整理 | `DateFilterInfo` / `AppInfo` / `SysInfo` / `GpuInfo` 各字段之间补空行符合 SA1516；`SysInfo.IsWine` / `GpuInfo.Description` 等加空行 |
 
-### [HOT] `src/MaaWpfGui/Res/Localizations/en-us.xaml` (x11)
+### [HOT] `src/MaaWpfGui/Res/Localizations/en-us.xaml` (x12)
 
 | 操作 | 说明 |
 |------|------|
@@ -325,8 +332,9 @@ py tools/gen-downstream-changes.py
 | 同上（英文） | English |
 | 保留 fork + 接上游 | 保留 `PasteClipboardCopilotSetTip` 等 fork 字符串 + 上游新 key |
 | 同上 (英文) | 同上 |
+| 修改 | 各 +2 key：`DataAccountLabel` / `DataAccountDefault` |
 
-### [HOT] `src/MaaWpfGui/Res/Localizations/ja-jp.xaml` (x11)
+### [HOT] `src/MaaWpfGui/Res/Localizations/ja-jp.xaml` (x12)
 
 | 操作 | 说明 |
 |------|------|
@@ -341,8 +349,9 @@ py tools/gen-downstream-changes.py
 | 同上（日文） | 日本語 |
 | 保留 fork + 接上游 | 保留 `PasteClipboardCopilotSetTip` 等 fork 字符串 + 上游新 key |
 | 同上 (日文) | 同上 |
+| 修改 | 各 +2 key：`DataAccountLabel` / `DataAccountDefault` |
 
-### [HOT] `src/MaaWpfGui/Res/Localizations/ko-kr.xaml` (x11)
+### [HOT] `src/MaaWpfGui/Res/Localizations/ko-kr.xaml` (x12)
 
 | 操作 | 说明 |
 |------|------|
@@ -357,8 +366,9 @@ py tools/gen-downstream-changes.py
 | 同上（韩文） | 한국어 |
 | 保留 fork + 接上游 | 保留 `PasteClipboardCopilotSetTip` 等 fork 字符串 + 上游新 key |
 | 同上 (韩文) | 同上 |
+| 修改 | 各 +2 key：`DataAccountLabel` / `DataAccountDefault` |
 
-### [HOT] `src/MaaWpfGui/Res/Localizations/zh-cn.xaml` (x12)
+### [HOT] `src/MaaWpfGui/Res/Localizations/zh-cn.xaml` (x13)
 
 | 操作 | 说明 |
 |------|------|
@@ -374,8 +384,9 @@ py tools/gen-downstream-changes.py
 | 新增 `AutoUpgrade3StarWith4Star` / `AutoUpgrade3StarWith4StarTip` 字符串 | 简体中文 |
 | 保留 fork + 接上游 | 保留 `PasteClipboardCopilotSetTip` 等 fork 字符串 + 上游新 key |
 | 修改 | 删 `AccountSwitch` / `AccountSwitchManualRun` / `AccountSwitchTip` / `AccountCycleEditMode` 4 key;新增 `AccountCycleTip` / `AccountCycleAddNewAccount` / `AccountCycleRemoveTip` / `AccountCycleRemoveConfirm` / `AccountCycleRemoveMessage` 5 key (顺序调整) |
+| 修改 | 各 +2 key：`DataAccountLabel` / `DataAccountDefault` |
 
-### [HOT] `src/MaaWpfGui/Res/Localizations/zh-tw.xaml` (x11)
+### [HOT] `src/MaaWpfGui/Res/Localizations/zh-tw.xaml` (x12)
 
 | 操作 | 说明 |
 |------|------|
@@ -390,6 +401,7 @@ py tools/gen-downstream-changes.py
 | 同上（繁体） | 繁体中文 |
 | 保留 fork + 接上游 | 保留 `PasteClipboardCopilotSetTip` 等 fork 字符串 + 上游新 key |
 | 同上 (繁体) | 同上 |
+| 修改 | 各 +2 key：`DataAccountLabel` / `DataAccountDefault` |
 
 ### [TGT] `src/MaaWpfGui/Res/Styles/Basic/Geometries.xaml` (x2)
 
@@ -417,7 +429,7 @@ py tools/gen-downstream-changes.py
 | 淇敼 | 鐗堟湰姣旇緝鏃?`uiVersion` 涔?`TrimStart('v', 'V')`锛屼慨澶?UI 鍜?Core 鐗堟湰鍙蜂竴鑷翠粛寮硅鍛婄殑 bug |
 | 淇敼 | 鐗堟湰姣旇緝蹇界暐 `v` 鍓嶇紑 |
 
-### [HOT] `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs` (x30)
+### [HOT] `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs` (x33)
 
 | 操作 | 说明 |
 |------|------|
@@ -451,12 +463,24 @@ py tools/gen-downstream-changes.py
 | 提交 | `startOk = taskRet && (AsstStart() \|\| AsstRunning())` 兜底判定 + 失败分支 `AsstStop()` 清队列；注释带 `fix/account-cycle-start-race` 标记 |
 | [HOT x28] | 无逻辑改动 |
 | **不动** | `LinkStart:1931` / `AdvanceAccountCycle:2386` 的 `cfg.AccountSwitchEnabled = true` 保留 (SerializeTask 仍读此字段) |
+| 修改 | downstream [HOT x30]：该文件曾被 feat/account_rotation / fix/account_rotation/6 / fix/account-cycle-start-race 改动，本次改动原因：LinkStart 与 AdvanceAccountCycle 两处各加一行 SwitchDataAccount 锚定调用 |
+| 修改 | `LinkStart` 运行前锚定（downstream [HOT x30]：曾被 feat/account_rotation、fix/account_rotation/6、fix/account-cycle-start-race 改动；本次仅加锚定调用，不动既有逻辑） |
+| 修改 | `AdvanceAccountCycle` 切号即切桶（同上敏感文件说明） |
 
-### [TGT] `src/MaaWpfGui/ViewModels/UI/ToolboxViewModel.cs` 
+### [HOT] `src/MaaWpfGui/ViewModels/UI/ToolboxViewModel.cs` (x10)
 
 | 操作 | 说明 |
 |------|------|
 | 新增 60+ 行 | `RecruitHistoryEntries` ObservableCollection + `RecruitHistorySearchText` / `RecruitHistoryFilterOcrStatus` 过滤器 + `OpenRecruitScreenshot` / `EditRecruitOperator` / `ExportRecruitHistory` / `ImportRecruitHistory` / `ClearOldRecruitScreenshots` 五个命令 + `LoadRecruitHistory()` 启动入口 |
+| 修改 | downstream: 该文件曾被 feat/recruit-history-tab 改动，本次改动原因：新增账号桶路由/切换/迁移/掉落基线保护 |
+| 修改 | 新增 `using MaaWpfGui.Configuration.Single.MaaTask;`（读 StartUpTask.AccountName） |
+| 修改 | ctor 加 `InitializeAccountScopedData()`（迁移+锚定初始桶）与 `RefreshDataAccountList()`；语言切换回调补 `RefreshDataAccountList()`（显示名本地化） |
+| 新增 | `#region AccountScopedRecognitionData`：`_currentDataAccountKey/_currentDataAccountRaw/_knownDataAccountKeys` + `DataAccountList`/`SelectedDataAccount` + `AccountDataBucketKey`/`SanitizeAccountKey`/`ResolveConfiguredAccountName`/`InitializeAccountScopedData`/`MigrateLegacyRecognitionData`/`SwitchDataAccount`/`RefreshDataAccountList`/`GetDataAccountDisplayName`/`RegisterCurrentBucketIfNew` |
+| 修改 | `SaveDepotDetails` 嵌 `account` 字段 + 按桶保存 + 新桶注册；`LoadDepotDetails` 从 `DepotBucketKey` 加载 |
+| 修改 | `UpdateDepotFromDrops` 无基线守卫（跳过 + 日志） |
+| 修改 | `StartDepot` 手动识别前 `SwitchDataAccount(ResolveConfiguredAccountName())` |
+| 修改 | `SaveOperBoxDetails` 嵌 `account` 字段 + 按桶保存 + 新桶注册；`LoadOperBoxDetails` 从 `OperBoxBucketKey` 加载 |
+| 修改 | `StartOperBox` 手动识别前锚定 |
 
 ### [HOT] `src/MaaWpfGui/ViewModels/UserControl/Settings/IssueReportUserControlModel.cs` (x30)
 
@@ -537,11 +561,14 @@ py tools/gen-downstream-changes.py
 |------|------|
 | **不动** | 仍引用 `CurrentAccountLabel` (TODO deferred: 5 语 xaml 全缺, 不在本 fix 范围) |
 
-### [TGT] `src/MaaWpfGui/Views/UI/ToolboxView.xaml` 
+### [HOT] `src/MaaWpfGui/Views/UI/ToolboxView.xaml` (x4)
 
 | 操作 | 说明 |
 |------|------|
 | 新增 TabItem | 过滤栏 + Total TextBlock + DataGrid 9 列 + 3 操作按钮 |
+| 修改 | downstream: 该文件曾被 feat/recruit-history-tab 改动，本次改动原因：OperBox/Depot 两个 Tab 各加账号查看下拉 |
+| 修改 | OperBox Tab Row0 改横向 StackPanel：同步时间 + 账号下拉（downstream: 曾被 feat/recruit-history-tab 改动，本次仅加查看下拉） |
+| 修改 | Depot Tab 同款账号下拉 |
 
 ### [HOT] `src/MaaWpfGui/Views/UserControl/Settings/IssueReportUserControl.xaml` (x5)
 
