@@ -17,4 +17,9 @@ public static class JsonDataKey
 {
     public const string OperBoxData = "OperBoxData";
     public const string DepotData = "DepotData";
+
+    /// <summary>
+    /// 未配置账号名时的识别数据兜底桶后缀 (feat/account-scoped-recognition-data)。
+    /// </summary>
+    public const string DefaultDataAccount = "_default";
 }

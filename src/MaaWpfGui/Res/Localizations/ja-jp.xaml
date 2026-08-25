@@ -993,6 +993,8 @@ C:\\leidian\\LDPlayer9
     <system:String x:Key="DepotRecognition">倉庫アイテム認識</system:String>
     <system:String x:Key="Depot">{key=DepotRecognition}</system:String>
     <system:String x:Key="LastSyncTime">前回同期時間</system:String>
+    <system:String x:Key="DataAccountLabel">アカウント</system:String>
+    <system:String x:Key="DataAccountDefault">デフォルトアカウント</system:String>
     <system:String x:Key="DepotRecognitionTip">この機能はまだテスト版です。エラーが発生/統計情報に問題があれば、debug/depotフォルダを圧縮し、issueを提出してください~</system:String>
     <system:String x:Key="StartToDepotRecognition">認識開始</system:String>
     <system:String x:Key="ExportToArkplanner">Arkplanner</system:String>

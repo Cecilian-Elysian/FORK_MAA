@@ -1950,6 +1950,10 @@ public class TaskQueueViewModel : Screen
             CurrentCycleAccountName = string.Empty;
         }
 
+        // feat/account-scoped-recognition-data: 运行前锚定干员/仓库识别数据桶到本次账号
+        // (轮换=首账号, 非轮换=配置账号, 无账号名时回落 _default 桶)
+        Instances.ToolboxViewModel.SwitchDataAccount(ConfigFactory.CurrentConfig.TaskQueue.OfType<StartUpTask>().FirstOrDefault()?.AccountName);
+
         await LinkStartWithTasks(ConfigFactory.CurrentConfig.TaskQueue);
         TaskQueueSerializingLock.Release();
     }
@@ -2386,6 +2390,10 @@ public class TaskQueueViewModel : Screen
         cfg.AccountSwitchEnabled = true;
         cfg.AccountName = nextStep.AccountName?.Trim() ?? string.Empty;
         CurrentCycleAccountName = nextStep.AccountName?.Trim() ?? string.Empty;
+
+        // feat/account-scoped-recognition-data: 切号即切换识别数据桶,
+        // 清上一账号脏数据 + 预载本账号桶, 堵住 StageDrops 掉落增量以旧账号库存为基数的合并路径
+        Instances.ToolboxViewModel.SwitchDataAccount(cfg.AccountName);
 
         // 标记前一个步骤所属账号完成 (仅当跨账号或离开 Phase 2 时)
         MarkPreviousStepCompleted(prevStep);

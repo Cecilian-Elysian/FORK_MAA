@@ -263,15 +263,27 @@
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
-                <controls:TextBlock
-                    Grid.Row="0"
-                    HorizontalAlignment="Center"
-                    d:Text="上次同步时间: 2026/1/1 上午00:00:00"
-                    Visibility="{c:Binding 'LastOperBoxSyncTimeText.Length > 0'}">
-                    <Run Text="{DynamicResource LastSyncTime}" />
-                    <Run Text=": " />
-                    <Run Text="{Binding LastOperBoxSyncTimeText, Mode=OneWay, Source={x:Static helper:Instances.ToolboxViewModel}}" />
-                </controls:TextBlock>
+                <!--  feat/account-scoped-recognition-data: 账号数据查看切换  -->
+                <StackPanel Grid.Row="0" HorizontalAlignment="Center" Orientation="Horizontal">
+                    <controls:TextBlock
+                        VerticalAlignment="Center"
+                        d:Text="上次同步时间: 2026/1/1 上午00:00:00"
+                        Visibility="{c:Binding 'LastOperBoxSyncTimeText.Length > 0'}">
+                        <Run Text="{DynamicResource LastSyncTime}" />
+                        <Run Text=": " />
+                        <Run Text="{Binding LastOperBoxSyncTimeText, Mode=OneWay, Source={x:Static helper:Instances.ToolboxViewModel}}" />
+                    </controls:TextBlock>
+                    <ComboBox
+                        MinWidth="140"
+                        Margin="15,0,0,0"
+                        VerticalAlignment="Center"
+                        DisplayMemberPath="Display"
+                        hc:TitleElement.Title="{DynamicResource DataAccountLabel}"
+                        IsEnabled="{c:Binding 'Idle and Inited'}"
+                        ItemsSource="{Binding DataAccountList}"
+                        SelectedValue="{Binding SelectedDataAccount}"
+                        SelectedValuePath="Value" />
+                </StackPanel>
                 <controls:TextBlock
                     Grid.Row="1"
                     Margin="10"
@@ -477,14 +489,27 @@
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
                 <StackPanel>
-                    <controls:TextBlock
-                        HorizontalAlignment="Center"
-                        d:Text="上次同步时间: 2026/1/1 上午00:00:00"
-                        Visibility="{c:Binding 'LastDepotSyncTimeText.Length > 0'}">
-                        <Run Text="{DynamicResource LastSyncTime}" />
-                        <Run Text=": " />
-                        <Run Text="{Binding LastDepotSyncTimeText, Mode=OneWay, Source={x:Static helper:Instances.ToolboxViewModel}}" />
-                    </controls:TextBlock>
+                    <!--  feat/account-scoped-recognition-data: 账号数据查看切换  -->
+                    <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
+                        <controls:TextBlock
+                            VerticalAlignment="Center"
+                            d:Text="上次同步时间: 2026/1/1 上午00:00:00"
+                            Visibility="{c:Binding 'LastDepotSyncTimeText.Length > 0'}">
+                            <Run Text="{DynamicResource LastSyncTime}" />
+                            <Run Text=": " />
+                            <Run Text="{Binding LastDepotSyncTimeText, Mode=OneWay, Source={x:Static helper:Instances.ToolboxViewModel}}" />
+                        </controls:TextBlock>
+                        <ComboBox
+                            MinWidth="140"
+                            Margin="15,0,0,0"
+                            VerticalAlignment="Center"
+                            DisplayMemberPath="Display"
+                            hc:TitleElement.Title="{DynamicResource DataAccountLabel}"
+                            IsEnabled="{c:Binding 'Idle and Inited'}"
+                            ItemsSource="{Binding DataAccountList}"
+                            SelectedValue="{Binding SelectedDataAccount}"
+                            SelectedValuePath="Value" />
+                    </StackPanel>
                     <controls:TextBlock
                         Margin="5"
                         HorizontalAlignment="Center"

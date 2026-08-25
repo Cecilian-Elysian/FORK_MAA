@@ -992,6 +992,8 @@ Right Click: Select Target Process</system:String>
     <system:String x:Key="DepotRecognition">Depot</system:String>
     <system:String x:Key="Depot">{key=DepotRecognition}</system:String>
     <system:String x:Key="LastSyncTime">Last Sync Time</system:String>
+    <system:String x:Key="DataAccountLabel">Account</system:String>
+    <system:String x:Key="DataAccountDefault">Default Account</system:String>
     <system:String x:Key="DepotRecognitionTip">This function is still in testing. If you encounter any unexpected results, please zip the ｢debug/depot｣ folder in the installation path and submit an issue on GitHub</system:String>
     <system:String x:Key="StartToDepotRecognition">Start to Identify</system:String>
     <system:String x:Key="ExportToArkplanner">Arkplanner</system:String>

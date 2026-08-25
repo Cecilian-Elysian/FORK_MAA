@@ -30,6 +30,7 @@ using System.Windows.Threading;
 using HandyControl.Controls;
 using JetBrains.Annotations;
 using MaaWpfGui.Configuration.Factory;
+using MaaWpfGui.Configuration.Single.MaaTask;
 using MaaWpfGui.Constants;
 using MaaWpfGui.Constants.Enums;
 using MaaWpfGui.Extensions;
@@ -86,6 +87,7 @@ public class ToolboxViewModel : Screen
                     LoadDepotDetails();
                     ClearOperBoxRecognitionData();
                     LoadOperBoxDetails();
+                    RefreshDataAccountList();
                 },
                 DispatcherPriority.Loaded);
         };
@@ -97,11 +99,13 @@ public class ToolboxViewModel : Screen
         };
         _peepImageTimer.Interval = 1000d / PeepTargetFps;
         _gachaTimer.Tick += RefreshGachaTip;
+        InitializeAccountScopedData();
         LoadDepotDetails();
         LoadOperBoxDetails();
         InitializeDepotRowPresentation();
         InitializeOperBoxRowPresentation();
         OperBoxSelectedIndex = OperBoxNotHaveList.Count > 0 ? 0 : 1;
+        RefreshDataAccountList();
 
         UpdateMiniGameTaskList();
     }
@@ -132,6 +136,258 @@ public class ToolboxViewModel : Screen
         get => _stopping;
         set => SetAndNotify(ref _stopping, value);
     }
+
+    #region AccountScopedRecognitionData (feat/account-scoped-recognition-data)
+
+    private string _currentDataAccountKey = JsonDataKey.DefaultDataAccount;
+    private string? _currentDataAccountRaw;
+    private readonly HashSet<string> _knownDataAccountKeys = new(StringComparer.OrdinalIgnoreCase);
+
+    private ObservableCollection<GenericCombinedData<string>> _dataAccountList = [];
+
+    /// <summary>
+    /// Gets 账号数据查看下拉的选项列表 (Value = 桶 key, Display = 账号显示名)。
+    /// </summary>
+    public ObservableCollection<GenericCombinedData<string>> DataAccountList
+    {
+        get => _dataAccountList;
+        private set => SetAndNotify(ref _dataAccountList, value);
+    }
+
+    /// <summary>
+    /// Gets or sets 当前查看的账号数据桶 (UI 下拉绑定, 切换即重载对应账号数据)。
+    /// </summary>
+    public string SelectedDataAccount
+    {
+        get => _currentDataAccountKey;
+        set => SwitchDataAccount(value);
+    }
+
+    private string OperBoxBucketKey => AccountDataBucketKey(JsonDataKey.OperBoxData, _currentDataAccountKey);
+
+    private string DepotBucketKey => AccountDataBucketKey(JsonDataKey.DepotData, _currentDataAccountKey);
+
+    private static string AccountDataBucketKey(string baseKey, string accountKey) => $"{baseKey}_{accountKey}";
+
+    /// <summary>
+    /// 账号名 → 安全文件名。非法字符/控制字符替换为 '_'，超长截断，空值回落 _default。
+    /// </summary>
+    private static string SanitizeAccountKey(string? account)
+    {
+        var trimmed = account?.Trim();
+        if (string.IsNullOrEmpty(trimmed))
+        {
+            return JsonDataKey.DefaultDataAccount;
+        }
+
+        var invalid = Path.GetInvalidFileNameChars();
+        var sb = new StringBuilder(trimmed.Length);
+        foreach (var ch in trimmed)
+        {
+            sb.Append(char.IsControl(ch) || invalid.Contains(ch) ? '_' : ch);
+        }
+
+        var result = sb.ToString().Trim();
+        if (string.IsNullOrEmpty(result))
+        {
+            return JsonDataKey.DefaultDataAccount;
+        }
+
+        return result.Length > 48 ? result[..48] : result;
+    }
+
+    private static string? ResolveConfiguredAccountName()
+    {
+        try
+        {
+            return ConfigFactory.CurrentConfig?.TaskQueue?.OfType<StartUpTask>().FirstOrDefault()?.AccountName;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// 启动时初始化: 迁移旧全局单份数据文件 → 当前配置账号桶, 并锚定初始桶。
+    /// </summary>
+    private void InitializeAccountScopedData()
+    {
+        var raw = ResolveConfiguredAccountName();
+        var key = SanitizeAccountKey(raw);
+        MigrateLegacyRecognitionData(key, raw);
+        _currentDataAccountKey = key;
+        _currentDataAccountRaw = string.IsNullOrWhiteSpace(raw) ? null : raw.Trim();
+        _knownDataAccountKeys.Add(key);
+    }
+
+    /// <summary>
+    /// 一次性迁移: data\OperBoxData.json / DepotData.json → data\OperBoxData_&lt;account&gt;.json, 旧文件改名 .bak 保留。
+    /// </summary>
+    private static void MigrateLegacyRecognitionData(string accountKey, string? rawAccountName)
+    {
+        try
+        {
+            foreach (var baseKey in new[] { JsonDataKey.OperBoxData, JsonDataKey.DepotData })
+            {
+                var legacyPath = Path.Combine(PathsHelper.DataDir, $"{baseKey}.json");
+                if (!File.Exists(legacyPath))
+                {
+                    continue;
+                }
+
+                var bucketKey = AccountDataBucketKey(baseKey, accountKey);
+                if (!JsonDataHelper.Exists(bucketKey))
+                {
+                    var content = JObject.Parse(File.ReadAllText(legacyPath));
+                    if (!string.IsNullOrEmpty(rawAccountName) && content.ContainsKey("account") == false)
+                    {
+                        content["account"] = rawAccountName;
+                    }
+
+                    JsonDataHelper.Set(bucketKey, content);
+                    _logger.Information("[DataAccount] migrated legacy {BaseKey} to bucket {Bucket}", baseKey, bucketKey);
+                }
+
+                File.Move(legacyPath, legacyPath + ".bak", true);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex, "[DataAccount] legacy recognition data migration failed");
+        }
+    }
+
+    /// <summary>
+    /// 切换识别数据查看/写入的账号桶: 清内存 → 加载该账号桶数据。同桶时为 no-op。
+    /// </summary>
+    public void SwitchDataAccount(string? account, bool force = false)
+    {
+        var accountKey = SanitizeAccountKey(account);
+        if (!force && accountKey == _currentDataAccountKey)
+        {
+            return;
+        }
+
+        _currentDataAccountKey = accountKey;
+        _currentDataAccountRaw = string.IsNullOrWhiteSpace(account) ? null : account.Trim();
+        ClearOperBoxRecognitionData();
+        DepotResult.Clear();
+        ResetDepotRecognitionState();
+        LoadDepotDetails();
+        LoadOperBoxDetails();
+        OperBoxSelectedIndex = OperBoxNotHaveList.Count > 0 ? 0 : 1;
+        InvalidateDepotCache();
+        Instances.TaskQueueViewModel?.UpdateDatePrompt();
+        RefreshDataAccountList();
+        NotifyOfPropertyChange(nameof(SelectedDataAccount));
+        _logger.Information("[DataAccount] switched recognition data bucket to {Account}", accountKey);
+    }
+
+    /// <summary>
+    /// 刷新账号下拉列表: 扫描 data 目录已有桶 + 轮换账号配置中尚无桶的账号 + 当前桶。
+    /// </summary>
+    public void RefreshDataAccountList()
+    {
+        try
+        {
+            var keys = new SortedSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                JsonDataKey.DefaultDataAccount,
+                _currentDataAccountKey,
+            };
+
+            if (Directory.Exists(PathsHelper.DataDir))
+            {
+                foreach (var baseKey in new[] { JsonDataKey.OperBoxData, JsonDataKey.DepotData })
+                {
+                    var prefix = $"{baseKey}_";
+                    foreach (var file in Directory.EnumerateFiles(PathsHelper.DataDir, $"{prefix}*.json"))
+                    {
+                        var name = Path.GetFileName(file);
+                        if (name.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
+                        {
+                            name = name[..^5];
+                        }
+
+                        if (name.StartsWith(prefix, StringComparison.Ordinal))
+                        {
+                            name = name[prefix.Length..];
+                        }
+
+                        if (!string.IsNullOrEmpty(name))
+                        {
+                            keys.Add(name);
+                        }
+                    }
+                }
+            }
+
+            var configAccounts = ConfigFactory.CurrentConfig?.TaskQueue?.OfType<StartUpTask>()
+                .SelectMany(t => t.AccountNames ?? [])
+                .Where(a => !string.IsNullOrWhiteSpace(a))
+                .Select(SanitizeAccountKey) ?? [];
+            foreach (var key in configAccounts)
+            {
+                keys.Add(key);
+            }
+
+            DataAccountList = [.. keys.Select(k => new GenericCombinedData<string>(GetDataAccountDisplayName(k), k))];
+            foreach (var key in keys)
+            {
+                _knownDataAccountKeys.Add(key);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex, "[DataAccount] failed to refresh data account list");
+        }
+    }
+
+    private string GetDataAccountDisplayName(string accountKey)
+    {
+        if (accountKey == JsonDataKey.DefaultDataAccount)
+        {
+            return LocalizationHelper.GetString("DataAccountDefault");
+        }
+
+        foreach (var baseKey in new[] { JsonDataKey.OperBoxData, JsonDataKey.DepotData })
+        {
+            var json = JsonDataHelper.Get(AccountDataBucketKey(baseKey, accountKey), string.Empty);
+            if (string.IsNullOrWhiteSpace(json))
+            {
+                continue;
+            }
+
+            try
+            {
+                var raw = JObject.Parse(json)["account"]?.ToString();
+                if (!string.IsNullOrWhiteSpace(raw))
+                {
+                    return raw;
+                }
+            }
+            catch
+            {
+                // 桶文件损坏时回落到文件名
+            }
+        }
+
+        return accountKey;
+    }
+
+    /// <summary>
+    /// 保存后若当前桶是新桶则刷新下拉列表。
+    /// </summary>
+    private void RegisterCurrentBucketIfNew()
+    {
+        if (_knownDataAccountKeys.Contains(_currentDataAccountKey) == false)
+        {
+            RefreshDataAccountList();
+        }
+    }
+
+    #endregion AccountScopedRecognitionData (feat/account-scoped-recognition-data)
 
     #region Recruit
 
@@ -616,18 +872,27 @@ public class ToolboxViewModel : Screen
             ["data"] = JObject.FromObject(DepotResult.Where(item => item.Count >= 0).ToDictionary(item => item.Id, item => item.Count)),
         };
 
+        // feat/account-scoped-recognition-data: 记录数据所属账号原始名 (下拉显示用)
+        if (!string.IsNullOrEmpty(_currentDataAccountRaw))
+        {
+            details["account"] = _currentDataAccountRaw;
+        }
+
         // 保存同步时间为 UTC（如果有）
         if (LastDepotSyncTime.HasValue)
         {
             details["syncTime"] = LastDepotSyncTime.Value.ToLocalTime().ToString("o"); // ISO 8601 格式
         }
 
-        JsonDataHelper.Set(JsonDataKey.DepotData, details);
+        // feat/account-scoped-recognition-data: 按当前账号桶保存
+        JsonDataHelper.Set(DepotBucketKey, details);
+        RegisterCurrentBucketIfNew();
     }
 
     private void LoadDepotDetails()
     {
-        var json = JsonDataHelper.Get(JsonDataKey.DepotData, string.Empty);
+        // feat/account-scoped-recognition-data: 从当前账号桶加载
+        var json = JsonDataHelper.Get(DepotBucketKey, string.Empty);
         if (string.IsNullOrWhiteSpace(json))
         {
             return;
@@ -1069,6 +1334,14 @@ public class ToolboxViewModel : Screen
             return;
         }
 
+        // feat/account-scoped-recognition-data: 当前账号桶无基线 (从未仓库识别) 时丢弃掉落增量,
+        // 防止单局掉落被误当库存基数, 以及轮换切号后以上一账号库存为基数的跨账号数据合并
+        if (DepotResult.Count == 0 && LastDepotSyncTime == null)
+        {
+            _logger.Information("Depot drop update skipped: no baseline for account bucket {Account}", _currentDataAccountKey);
+            return;
+        }
+
         bool hasUpdates = false;
 
         foreach (var (itemId, _, total, add) in drops)
@@ -1167,6 +1440,8 @@ public class ToolboxViewModel : Screen
     [UsedImplicitly]
     public async Task StartDepot()
     {
+        // feat/account-scoped-recognition-data: 手动识别前锚定回配置账号桶, 防止写入查看中的其他账号桶
+        SwitchDataAccount(ResolveConfiguredAccountName());
         _runningState.SetIdle(false);
         string errMsg = string.Empty;
         DepotInfo = LocalizationHelper.GetString("ConnectingToEmulator");
@@ -1450,12 +1725,20 @@ public class ToolboxViewModel : Screen
             ["own_opers"] = JArray.FromObject(details),
         };
 
+        // feat/account-scoped-recognition-data: 记录数据所属账号原始名 (下拉显示用)
+        if (!string.IsNullOrEmpty(_currentDataAccountRaw))
+        {
+            data["account"] = _currentDataAccountRaw;
+        }
+
         if (LastOperBoxSyncTime.HasValue)
         {
             data["syncTime"] = LastOperBoxSyncTime.Value.ToLocalTime().ToString("o");
         }
 
-        JsonDataHelper.Set(JsonDataKey.OperBoxData, data);
+        // feat/account-scoped-recognition-data: 按当前账号桶保存
+        JsonDataHelper.Set(OperBoxBucketKey, data);
+        RegisterCurrentBucketIfNew();
     }
 
     private void SortOperBoxLists()
@@ -1484,7 +1767,8 @@ public class ToolboxViewModel : Screen
     {
         // TODO: 删除老数据节省 gui.json 的大小，后续版本可以删除
         // var json = ConfigurationHelper.GetValue(ConfigurationKeys.OperBoxData, string.Empty);
-        var json = JsonDataHelper.Get(JsonDataKey.OperBoxData, string.Empty);
+        // feat/account-scoped-recognition-data: 从当前账号桶加载
+        var json = JsonDataHelper.Get(OperBoxBucketKey, string.Empty);
         if (string.IsNullOrWhiteSpace(json))
         {
             return;
@@ -1683,6 +1967,8 @@ public class ToolboxViewModel : Screen
     [UsedImplicitly]
     public async Task StartOperBox()
     {
+        // feat/account-scoped-recognition-data: 手动识别前锚定回配置账号桶, 防止写入查看中的其他账号桶
+        SwitchDataAccount(ResolveConfiguredAccountName());
         ResetOperBoxRecognitionState();
         _runningState.SetIdle(false);
         string errMsg = string.Empty;
