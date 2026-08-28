@@ -483,6 +483,25 @@ dotnet publish src/MaaWpfGui/MaaWpfGui.csproj -c Release -r win-x64 `
     -o install-staging /p:DisableBeauty=True
 # 预期: "MaaWpfGui -> install-staging/"
 # 注意: 可能存在 StyleCop 警告（不阻断）
+
+# 8.2.1 NetBeauty2 后处理（**关键步骤，不可漏**）
+# 2026-08-26 实测漏跑导致 MAA.exe 闪退:
+#   System.IO.FileNotFoundException: Could not load file or assembly 'libloader, ...'
+# 根因: /p:DisableBeauty=True 跳过 MSBuild 的 NetBeautyOnPublish target,
+#   导致 MAA.runtimeconfig.json 缺少 STARTUP_HOOKS=libloader 配置,
+#   新构建的 MAA.exe/dll 在 .NET 10 严格 startup hook 检查下加载原生 libloader.dll 失败。
+# 修复: 必须显式调用 nbeauty2.exe。
+$netbeauty_bin = "$env:NUGET_PACKAGES\nulastudio.netbeauty\2.1.5\tools\win-x64\nbeauty2.exe"
+if (Test-Path $netbeauty_bin) {
+    & $netbeauty_bin --usepatch "$PWD\install-staging\." "./externals"
+} else {
+    # 回退: win-x86 版本 (兼容性更好)
+    $netbeauty_bin = "$env:USERPROFILE\.nuget\packages\nulastudio.netbeauty\2.1.5\tools\win-x64\nbeauty2.exe"
+    if (Test-Path $netbeauty_bin) { & $netbeauty_bin --usepatch "$PWD\install-staging\." "./externals" }
+    else { Write-Warning "nbeauty2.exe not found, MAA.exe will fail to start (see §8.2.1)" }
+}
+# 预期: MAA.runtimeconfig.json 包含 STARTUP_HOOKS=libloader 配置
+Get-Content install-staging/MAA.runtimeconfig.json | Select-String "STARTUP_HOOKS"
 ```
 
 ### §8.3 启动验证
