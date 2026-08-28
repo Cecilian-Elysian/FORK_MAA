@@ -273,16 +273,21 @@
                         <Run Text=": " />
                         <Run Text="{Binding LastOperBoxSyncTimeText, Mode=OneWay, Source={x:Static helper:Instances.ToolboxViewModel}}" />
                     </controls:TextBlock>
+                    <controls:TextBlock
+                        Margin="20,0,0,0"
+                        VerticalAlignment="Center"
+                        FontWeight="Bold"
+                        Foreground="{DynamicResource PrimaryBrush}"
+                        Text="{Binding CurrentDataAccountDisplayName, Mode=OneWay, Source={x:Static helper:Instances.ToolboxViewModel}}" />
                     <ComboBox
                         MinWidth="140"
-                        Margin="15,0,0,0"
+                        Margin="6,0,0,0"
                         VerticalAlignment="Center"
                         DisplayMemberPath="Display"
                         hc:TitleElement.Title="{DynamicResource DataAccountLabel}"
                         IsEnabled="{c:Binding 'Idle and Inited'}"
                         ItemsSource="{Binding DataAccountList}"
-                        SelectedValue="{Binding SelectedDataAccount}"
-                        SelectedValuePath="Value" />
+                        SelectedItem="{Binding SelectedDataAccountOption}" />
                 </StackPanel>
                 <controls:TextBlock
                     Grid.Row="1"
@@ -499,16 +504,21 @@
                             <Run Text=": " />
                             <Run Text="{Binding LastDepotSyncTimeText, Mode=OneWay, Source={x:Static helper:Instances.ToolboxViewModel}}" />
                         </controls:TextBlock>
+                        <controls:TextBlock
+                            Margin="20,0,0,0"
+                            VerticalAlignment="Center"
+                            FontWeight="Bold"
+                            Foreground="{DynamicResource PrimaryBrush}"
+                            Text="{Binding CurrentDataAccountDisplayName, Mode=OneWay, Source={x:Static helper:Instances.ToolboxViewModel}}" />
                         <ComboBox
                             MinWidth="140"
-                            Margin="15,0,0,0"
+                            Margin="6,0,0,0"
                             VerticalAlignment="Center"
                             DisplayMemberPath="Display"
                             hc:TitleElement.Title="{DynamicResource DataAccountLabel}"
                             IsEnabled="{c:Binding 'Idle and Inited'}"
                             ItemsSource="{Binding DataAccountList}"
-                            SelectedValue="{Binding SelectedDataAccount}"
-                            SelectedValuePath="Value" />
+                            SelectedItem="{Binding SelectedDataAccountOption}" />
                     </StackPanel>
                     <controls:TextBlock
                         Margin="5"

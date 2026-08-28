@@ -163,6 +163,41 @@ public class ToolboxViewModel : Screen
         set => SwitchDataAccount(value);
     }
 
+    private GenericCombinedData<string>? _currentDataAccountOption;
+
+    /// <summary>
+    /// Gets or sets 当前账号选项 (ComboBox.SelectedItem 双向绑定, 集合替换后通过重新解析保证选中项可见)。
+    /// </summary>
+    public GenericCombinedData<string>? SelectedDataAccountOption
+    {
+        get => _currentDataAccountOption;
+        set
+        {
+            if (value is null || ReferenceEquals(value, _currentDataAccountOption))
+            {
+                return;
+            }
+
+            SwitchDataAccount(value.Value);
+        }
+    }
+
+    /// <summary>
+    /// Gets 当前查看账号的显示名 (用于在 ComboBox 旁明示当前选中, 不依赖 ComboBox 渲染状态)。
+    /// </summary>
+    public string CurrentDataAccountDisplayName
+    {
+        get
+        {
+            if (_currentDataAccountKey == JsonDataKey.DefaultDataAccount)
+            {
+                return LocalizationHelper.GetString("DataAccountDefault");
+            }
+
+            return _currentDataAccountRaw ?? GetDataAccountDisplayName(_currentDataAccountKey);
+        }
+    }
+
     private string OperBoxBucketKey => AccountDataBucketKey(JsonDataKey.OperBoxData, _currentDataAccountKey);
 
     private string DepotBucketKey => AccountDataBucketKey(JsonDataKey.DepotData, _currentDataAccountKey);
@@ -281,6 +316,7 @@ public class ToolboxViewModel : Screen
         Instances.TaskQueueViewModel?.UpdateDatePrompt();
         RefreshDataAccountList();
         NotifyOfPropertyChange(nameof(SelectedDataAccount));
+        NotifyOfPropertyChange(nameof(CurrentDataAccountDisplayName));
         _logger.Information("[DataAccount] switched recognition data bucket to {Account}", accountKey);
     }
 
@@ -337,6 +373,11 @@ public class ToolboxViewModel : Screen
             {
                 _knownDataAccountKeys.Add(key);
             }
+
+            // 集合替换后重新解析当前选项引用, 保证 ComboBox.SelectedItem 在新集合中命中
+            _currentDataAccountOption = _dataAccountList.FirstOrDefault(i => i.Value == _currentDataAccountKey);
+            NotifyOfPropertyChange(nameof(SelectedDataAccountOption));
+            NotifyOfPropertyChange(nameof(CurrentDataAccountDisplayName));
         }
         catch (Exception ex)
         {
