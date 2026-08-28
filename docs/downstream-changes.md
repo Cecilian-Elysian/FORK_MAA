@@ -18,7 +18,7 @@
 py tools/gen-downstream-changes.py
 ```
 
-共扫描 466 个表格行，聚合出 62 个唯一源文件路径。
+共扫描 470 个表格行，聚合出 62 个唯一源文件路径。
 
 ## 仓库根（2 个文件）
 
@@ -144,11 +144,13 @@ py tools/gen-downstream-changes.py
 |------|------|
 | 淇敼 | `AllTasksCompleted` 鍚庣珛鍗宠 `m_thread_idle=true`锛屼慨澶嶇浜岃疆 `AsstStart` 鍥犵珵鎬佽繑鍥?false 鐨?bug |
 
-### [TGT] `src/MaaCore/Task/Infrast/InfrastReceptionTask.cpp` 
+### [HOT] `src/MaaCore/Task/Infrast/InfrastReceptionTask.cpp` (x3)
 
 | 操作 | 说明 |
 |------|------|
 | 接上游 + cherry-pick | 上游已含 No1..No7（#16054）；保留 fork `vacancy_cnt==0` 早返回 |
+| 修改 | `proc_clue_vacancy` 控制流改造 — `vacancy_cnt==0` 提前 `return true`；`confirm_task != nullptr` 单独判断；引入 `click_performed` 仅真实点击时 `return true`；OCR analyze 失败 / `chars_to_number` 解析失败 / `available != vacancy_cnt` / `confirm_task` 缺失各打 `Log.warn` + fallback 到 legacy 循环 |
+| legacy 循环强化 | 迭代顶部加 `image = ctrler()->get_image()` 防陈旧截图；放置线索后 `Matcher(InfrastReceptionIcon)` 检测关闭右侧面板 |
 
 ### [HOT] `src/MaaCore/Task/Interface/RecruitTask.cpp` (x7)
 
