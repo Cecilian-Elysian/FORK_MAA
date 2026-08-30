@@ -1,4 +1,4 @@
-# AGENTS
+﻿# AGENTS
 
 本文件面向在本仓库协作的 AI 代理与人类贡献者，约定工作流、文档规范与协作约束。
 
@@ -116,6 +116,7 @@ staging ──── feat/<name>, fix/<name> ← 从 staging 拉出
 |------|--------------|----------------|----------|------|
 | 2026-08-07 | `4d862ec98a` | （master-v2 基线重建首晋升） | 完整实测 | `c951f239c1` 放弃 fork C++ 回归 master |
 | 2026-08-13 | `1774d128a2` | 17 commit（4 修复 + 3 文档 + 10 间接） | trust staging | §7.10/§7.11/§7.12/§7.13 全部 fix 走 staging 验证流程后晋升 |
+| 2026-08-30 | `pending` | 20 commit（2 修复 + 1 feat + 3 工具/重构 + 14 间接） | trust staging | §7.14/§7.15/§7.16/§7.17 全部 fix/feat 走 staging 验证流程后晋升；install-staging 2026-08-28 09:28 内核指纹覆盖全部变更 |
 
 晋升后实测验证项（仅适用于 `staging → branch` 晋升决策；本次晋升 trust staging）：
 - 多账号切号（官服 + B 服，含新增繁中服支援）
@@ -182,8 +183,35 @@ staging ──── feat/<name>, fix/<name> ← 从 staging 拉出
 | C++ 配置 | `cmake --preset windows-publish-x64` | 平台预设 |
 | C++ 构建 | `cmake --build build --target MaaCore` | **推荐单目标**，绕开 cmake 触发 WPF MSBuild 评估时的 VS 2026 SDK 路径 bug（见 `LOG.md` 2026-07-14「实际跑通 release-zip + 4 个 bug 修复」第 1 条） |
 | C++ 安装 | `cmake --install build` | 部署到 `install/` |
-| WPF | `dotnet publish src/MaaWpfGui/MaaWpfGui.csproj -c Release -p:Platform=x64` | `global.json` 写 `10.0.100` + `rollForward:latestFeature`，本机 10.0.300 自动启用 |
-| 本地一键 | `tools/local-install.bat` | cmake 装 C++ + dotnet publish WPF 双轨；启动 `install/MAA.exe` |
+| WPF | `dotnet publish src/MaaWpfGui/MaaWpfGui.csproj -c Release -r win-x64 -o install-staging /p:DisableBeauty=True` | `global.json` 写 `10.0.100` + `rollForward:latestFeature`，本机 10.0.300 自动启用 |
+| **WPF 后处理** | **& "$env:USERPROFILE\.nuget\packages\nulastudio.netbeauty\2.1.5\tools\win-x64\nbeauty2.exe" --usepatch "$PWD\install-staging/." "./externals"** | **⚠️ 不可漏！漏跑会导致 `MAA.exe` 启动闪退报 `Could not load file or assembly 'libloader'`。详见 §4.1.1** |
+| 本地一键 | `tools/local-install-staging.bat` | cmake 装 C++ + dotnet publish WPF + nbeauty2 后处理；启动 `install-staging/MAA.exe` |
+
+#### 4.1.1 NetBeauty2 后处理（**必读踩坑**）
+
+**问题**：`dotnet publish /p:DisableBeauty=True` 跳过 MSBuild 的 `NetBeautyOnPublish` target。
+后果：`MAA.runtimeconfig.json` **不会**写入 `STARTUP_HOOKS=libloader` + `NetBeautyLibsDir` 配置。
+新构建的 `MAA.exe` 在 .NET 10 严格 startup hook 检查下，加载原生 `libloader.dll` 失败 → **闪退无错误**。
+**报错**（命令行启动可见）：
+```
+Unhandled exception. System.ArgumentException: Startup hook assembly 'libloader' failed to load.
+ ---> System.IO.FileNotFoundException: Could not load file or assembly 'libloader, ...'
+```
+
+**修复**：必须显式调用 `nbeauty2.exe` 对输出目录做后处理。
+
+```powershell
+# 必须步骤：手动运行 NetBeauty2 后处理
+$nbeauty = "$env:USERPROFILE\.nuget\packages\nulastudio.netbeauty\2.1.5\tools\win-x64\nbeauty2.exe"
+& $nbeauty --usepatch "$PWD\install-staging/." "./externals"
+
+# 验证：runtimeconfig.json 应包含 STARTUP_HOOKS
+Select-String -Path install-staging/MAA.runtimeconfig.json -Pattern "STARTUP_HOOKS"
+```
+
+**检测脚本**：`tools/post-merge-validate.ps1` 第 [7] 项已加入 NetBeauty 配置检查。
+
+**参考**：`tools/local-install-staging.bat` 第 27-28 行是正确两步流程的范例。
 
 ### 4.2 子模块
 
@@ -249,7 +277,7 @@ staging ──── feat/<name>, fix/<name> ← 从 staging 拉出
 
 | 分支 | 角色 | 修复目标 |
 |------|------|----------|
-| _无（2026-08-07 fix/audit-fixes 已合入 staging；本节空）_ | | |
+| _无（2026-08-30 §7.14/§7.15/§7.16/§7.17 已晋升 branch；本节空）_ | | |
 
 
 ## 7. 分支生命周期记录
@@ -410,6 +438,68 @@ staging ──── feat/<name>, fix/<name> ← 从 staging 拉出
 | 子修复分支 | 无（独立 fix） |
 | 作用域 | 仅本仓库 fork 私有，不推 upstream（恢复 upstream `e9d00b94af` 引入、被 `be0d9f342d` 删除的资源定义，供 fork 保留的作业集按钮引用） |
 | 详见 | `LOG.md` 2026-08-09 |
+
+### 7.14 feat/account-scoped-recognition-data（2026-08-25 已合入 staging，2026-08-30 晋升 branch）
+
+| 项 | 内容 |
+|----|------|
+| 用途 | 干员/仓库识别数据按账号分桶存储：`data\OperBoxData_<account>.json` / `DepotData_<account>.json`，各账号数据独立保留可查看；修复多账号轮换下 StageDrops 掉落增量以上一账号库存为基数的跨账号数据合并；切号即切桶（清脏数据 + 预载本账号桶）；旧全局单份文件一次性迁移（旧文件转 `.json.bak`） |
+| 关键实现 | `ToolboxViewModel.cs` `#region AccountScopedRecognitionData`（桶路由/切换/迁移/下拉列表/掉落无基线守卫）；`TaskQueueViewModel.cs` `LinkStart` + `AdvanceAccountCycle` 两处 `SwitchDataAccount` 锚定；`ToolboxView.xaml` 两 Tab 账号查看下拉（运行中锁定）；五语 +2 key（`DataAccountLabel`/`DataAccountDefault`）；账号名清洗（非法字符→`_`、截断 48、空→`_default`），JSON 内嵌 `account` 原始名供显示 |
+| 生命周期 | 2026-08-25 创建（从 staging 拉出） → 2026-08-25 `--no-ff` 合入 `staging`（`04217c1fcb`） |
+| 关键 commit | `b5431a1a5f`（实施，10 files +355 -21） → `584fa5b3eb`（downstream 清单） |
+| 子修复分支 | 无 |
+| 验证 | dotnet build 0 错误 / 60 warning（基线一致）；install-staging 实机：启动冒烟通过、首启迁移实测成功（账号 `189****0830` → 桶 `*_189____0830.json` + `.bak`，account 字段嵌入）；完整轮换跑批待用户实测 |
+| 部署备注 | `local-install-staging.bat` 全目标构建触发 §4.1 已知 VS 2026 SDK bug，本次按单目标 + 手工 publish/nbeauty/robocopy 绕行部署 |
+| 作用域 | 仅本仓库 fork 私有，不推 upstream |
+| 详见 | `LOG.md` 2026-08-25（启动 / 实施完成 / 合入 staging 三段） |
+
+### 7.15 fix/reception-clue-restore（2026-08-28 已合入 staging，2026-08-30 晋升 branch）
+
+| 项 | 内容 |
+|----|------|
+| 用途 | 修复「无法添加线索 / 不会自动填充线索」：官服会客室"快捷置入"分支 OCR 徽标数字（`InfrastClueQuickInsertConfirm`，roi `[1250,615,28,28]`）失败 / `available != vacancy_cnt` / `confirm_task` 缺失时无条件 `return true`，跳过下方 legacy 逐位放置循环 → 步骤报成功但一条线索都没放。对应上游 issue #16165（closed as not planned，至 v6.16.8 仍未修，dev-v2/master-v2 该文件均无差异） |
+| 根因 | `proc_clue_vacancy()`（`InfrastReceptionTask.cpp:255-273` 原版）快捷置入路径控制流缺陷：4 类失败均 fallback 到 `return true` 而非 legacy 循环。fork 旧修复 `ad725916b4`（2026-07-27）已根治，但 `c951f239c1`（2026-08-07 master-v2 基线重建）整体回退 fork 私有 C++，带回了上游缺陷 |
+| 关键实现 | `src/MaaCore/Task/Infrast/InfrastReceptionTask.cpp:255-340`：`vacancy_cnt==0` 显式提前 return；`confirm_task != nullptr` 单独判断；引入 `click_performed` 仅真实点击时 `return true`；OCR analyze 失败 / `chars_to_number` 解析失败 / `available != vacancy_cnt` / `confirm_task` 缺失各打 `Log.warn(..., "fallback")` 不 return，落入 legacy 循环；legacy 迭代顶部刷新 `image` 防陈旧截图；放置线索后 `Matcher(InfrastReceptionIcon)` 检测关闭右侧面板（与 `remove_clue` 同款模式） |
+| 生命周期 | 2026-08-28 创建（从 staging 拉出） → 2026-08-28 `--no-ff` 合入 `staging`（`4590789380`） |
+| 关键 commit | `1eea6807b8`（fix(reception-clue): 修复「无法添加线索」快捷置入 OCR 失败跳过 legacy 循环，2 files +38 -3） |
+| 子修复分支 | 无（独立 fix） |
+| **取舍说明** | 不照搬 fork 旧修复 5 处全文，仅恢复 1+3+4 三点。**不恢复 `remove_clue` suffix**（`{1..7}`→`{No1..No7}`）：当前 master `#16054`（`af783dd558`，2026-04-21）已引入 `ClueVacancy1..7.png` 彩色模板（饱和度 0.127 = 已放置线索），`remove_clue` 用 `{1..7}` 匹配彩色 = 正确；`ClueVacancyNo1..7.png` 灰（饱和度 0.015）= 空位模板。fork 旧 base 无 #16054 模板时方向相反，当前基线恢复会破坏 remove。**不恢复 `tasks.json UnlockClues.next` 去除 `InfrastBottomLeftTab`**：与本 bug 无关，用户确认保留上游兜底 |
+| 模板语义附录 | `ClueVacancy*.png`（彩色 0.127）= 已放置线索；`ClueVacancyNo*.png`（灰 0.015）= 空位；`ClueVacancyPin.png`（饱和度 0）= 移除按钮。三者由饱和度区分：饱和度越高 = 已放置 |
+| 文档附录 | `docs/downstream-changes.md:151`「保留 fork `vacancy_cnt==0` 早返回」描述已过时（实际未保留），本次恢复才补回；下下游清单下次刷新对齐 |
+| 验证 | C++ 单目标 `cmake --build build --target MaaCore --config RelWithDebInfo` 0 错误 / 1 已知 LNK4075 warning（pre-existing，与本次无关）；`cmake --install build --prefix install-staging` 落地 MaaCore.dll 4243968 字节（2026-08-28 09:08:01）；install-staging/MAA.exe 冒烟 8s `AsstLoadResource ret: true` 无闪退；官服实机复现「快捷置入 + OCR 失败/数字不匹配」场景待用户实测 |
+| 部署备注 | 仅 C++ 改动，WPF 未变，无 nbeauty2 重跑；先 `Stop-Process MAA.exe` 解 `Permission denied` 再 `cmake --install` |
+| 作用域 | 仅本仓库 fork 私有，不推 upstream |
+| 详见 | `LOG.md` 2026-08-28（fix/reception-clue-restore 启动 / 实施完成 / 合入 staging 三段） |
+
+### 7.16 fix/account-rotation-supersede-switcher（2026-08-16 已合入 staging，2026-08-30 晋升 branch）
+
+| 项 | 内容 |
+|----|------|
+| 用途 | 账号轮换彻底吸收账号切换的生态位：永久内联方案（删除原 AccountSwitch 单账号 section + 编辑模式 ComboBox + AddAccountAfter 按钮 + ShowEditSection/ShowAddMode/ShowDeleteMode 属性；保留 StartUpTask.AccountName/AccountSwitchEnabled 字段向后兼容旧 GUI 配置）；删除旧 4 个 localization key（5 语同步）；新增 5 个轮换相关 key（AccountCycleTip / AccountCycleAddNewAccount / AccountCycleRemoveTip / AccountCycleRemoveConfirm / AccountCycleRemoveMessage）；删除按钮加 MessageBox 二次确认（复用 `MessageBoxHelper.Show`，对齐 `TaskQueueViewModel.RemoveTask` 模式） |
+| 关键实现 | `src/MaaWpfGui/Views/UserControl/TaskQueue/StartUpTaskUserControl.xaml:26-94`（删单账号 section + 编辑模式 ComboBox + 末尾 [+ 添加账号] 按钮）；`src/MaaWpfGui/ViewModels/UserControl/TaskQueue/StartUpSettingsUserControlModel.cs:53-58/107-110/200-210/294-318`（删 #region Account Switch (Single) 整段 + 4 个 Show* 属性 + `RemoveAccount` 加 MessageBox）；5 语 `Res/Localizations/*.xaml:694-700`（删 4 key + 加 5 key） |
+| 生命周期 | 2026-08-16 创建（从 staging 拉出） → 2026-08-16 `--no-ff` 合入 `staging`（`9a46d7b4ce`） |
+| 关键 commit | `fa99387755`（fix(cycle): supersede single-account switcher with cycle，9 文件 +100 -194） |
+| 子修复分支 | 无 |
+| **已知 TODO**（不在本 fix 范围） | `CurrentAccountLabel` 在 `TaskQueueView.xaml:102` 引用但 5 语 xaml 全缺，Header 前缀空白。需 5 语 × 1 行 = 5 行修复，待后续 fix 单独处理 |
+| 验证 | install-staging 部署（`MAA.exe` 2026/8/16 18:28，`MaaCore.dll` 4241920 B 与合并前一致因 C++ 无改动）；编译 0 错误 / 32 StyleCop warning（不阻断）；信任 staging 验证（无实测跑日常），因改动纯 UI 重构 + localization 字符串调整 |
+| 部署备注 | `tools/local-install-staging.bat` 触发 §4.1 已知 VS 2026 SDK bug，本次绕行（`MSBuildSDKsPath=C:\Program Files\dotnet\sdk\10.0.300\Sdks` + 单 `cmake --build --target MaaCore`） |
+| 作用域 | 仅本仓库 fork 私有，不推 upstream |
+| 详见 | `LOG.md` 2026-08-16（fix/account-rotation-supersede-switcher 启动 / 实施完成 / 合入 staging 三段） |
+
+### 7.17 fix/diagnostic-export-refactor（2026-08-16 已合入 staging，2026-08-30 晋升 branch）
+
+| 项 | 内容 |
+|----|------|
+| 用途 | 「生成诊断报告」按钮 `GenerateSupportPayload()` 重构：170+ 行单一方法拆分为 7 个单一职责方法（TryPrepareExportContext / WriteDiagnosticJson / CopyAll / SplitIntoParts / CreateFullZip / Cleanup / ShowResult）；分卷策略从「区分 part01 含 gui.log/asst.log+根文件 vs part02+ 含 debug 子目录」改为「按 20MB 单卷上限统一大小分卷」；改 `async void` + `IsBusy` 绑定按钮 IsEnabled；删除自动 `OpenReportsFolder()` 调用（Growl 中改为纯文字提示路径）；`CopyDirectoryIfExists` 静默 catch 改为 `Log.Warning` + 累计失败文件列表；XAML 左右列重新布局（左列加说明 TextBlock + 超链接 + 分隔线 + 灰色 hint，右列加 TooltipBlock + BusyStatusText）；恢复 commit `faee6a9333` 漏删的 8 个 `Diagnostic*`/`GenerateDiagnosticReport*` localization key（5 语 xaml 同步）+ 新增 11 个 tooltip/busy key；`DiagnosticInfo.cs` 扩展 `Parts` 字段 + `PartInfo` record（FileName / UncompressedSizeBytes / FileCount），向后兼容 |
+| 关键实现 | `src/MaaWpfGui/Models/DiagnosticInfo.cs:31-33/117-155`（新增 Parts + PartInfo record + 字段间空行 SA1516）；`src/MaaWpfGui/ViewModels/UserControl/Settings/IssueReportUserControlModel.cs:49/58-62/96-124/163-178/222-617`（MaxPartSizeBytes 常量 + Lazy<List<DateRangeOption>> + IsBusy/IsNotBusy/BusyStatusText 三属性 + ClearImageCache 加注释 + GenerateSupportPayload 入口改 async void + 7 个拆分方法 + ExportContext/CopyResult record + catch IOException/UnauthorizedAccessException 不静默 + ShowGrowl* + ReportBusyStatus + SafeDelete）；`src/MaaWpfGui/Views/UserControl/Settings/IssueReportUserControl.xaml:46-130`（左右列重新布局 + TooltipBlock + BusyStatusText TextBlock）；5 语 `Res/Localizations/*.xaml`（恢复 8 个 key + 新增 11 个 key） |
+| 生命周期 | 2026-08-16 创建（从 staging 拉出） → 2026-08-16 `--no-ff` 合入 `staging`（`97f66604dc`） |
+| 关键 commit | `e2f00a360a`（fix(diagnostic-export): 重构日志导出 - 拆分方法 + 异步执行 + 统一分卷 + UX 增强，9 文件 +580 -217） |
+| 子修复分支 | 无（独立 fix） |
+| **关键发现** | staging 当前 5 语 xaml 缺失 8 个 `Diagnostic*` / `GenerateDiagnosticReport*` key，原因为 commit `faee6a9333`「fix(localization): 重建 5 语 xaml」时以 branch 干净版为基底，仅 cherry-pick 了 166ad9b5ae 和 94d1b16579 两个 hunks，**遗漏**了 25e201b4ad 的 hunks。运行时表现：当前 staging 部署的 MAA.exe 在「设置 → 问题反馈」页，「生成诊断报告」按钮等控件显示成 key 名（DynamicResource 解析失败）。本 fix 同步追加 19 个 key 修复 |
+| **已知 TODO**（不在本 fix 范围） | SA1402（File may only contain a single type）：`DiagnosticInfo.cs` 含 6 个 type，原文件已违反 SA1402（DateFilterInfo/AppInfo/SysInfo/GpuInfo）；CS8632 nullable 注解：`DiagnosticInfo.cs` 未启用 `#nullable enable`；`ClearImageCache` 的 MessageBox `yes=Cancel`/`no=Confirm` 反向语义：保留行为，仅加注释（按方案决策避免引入回归） |
+| 验证 | install-staging 部署（`MAA.exe` 时间戳与合并前一致因仅 C# / XAML 改动）；`dotnet build` 0 错误 / 60 warning（8 新增 CS8632 ×4 nullable 注解 + SA1516 ×4 + SA1512 ×2，52 预存 warning pre-existing）；信任 staging 验证（修改纯 WPF C# + XAML + 5 语 localization + DiagnosticInfo.cs 数据模型），后续 staging → branch 晋升需实测：启动不闪退 + 设置页问题反馈 Tab 渲染正常 + 点击生成诊断报告异步执行 + 大报告按大小统一切分 + 5 语 xaml 文案正确 |
+| 作用域 | 仅本仓库 fork 私有，不推 upstream |
+| 详见 | `LOG.md` 2026-08-16（fix/diagnostic-export-refactor 启动 / 实施完成 / 合入 staging 三段） |
 
 
 ## 8. 关键参考链接

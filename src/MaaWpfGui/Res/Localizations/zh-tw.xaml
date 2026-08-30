@@ -691,15 +691,13 @@ HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Notifications\Settin
     <system:String x:Key="AlwaysAutoDetectConnectionTip" xml:space="preserve">不推薦勾選此選項。
 偵測時請確保只開啟需要連線的模擬器，同時開啟多個模擬器可能會導致連線到錯誤的目標。
 僅當通訊埠經常發生變化且確認只執行單個模擬器時才建議勾選。</system:String>
-    <system:String x:Key="AccountSwitch">帳號切換</system:String>
-    <system:String x:Key="AccountSwitchManualRun">立即切換</system:String>
-    <system:String x:Key="AccountSwitchTip" xml:space="preserve">需要切換到的帳號，留空以停用。
-輸入登入介面顯示的內容，如 ｢123****4567｣，可輸入 ｢123****4567｣、｢4567｣ 或 ｢23****45｣
-繁中服帳號為 Email，如 ｢ab****01@gmail.com｣，建議填不含星號的明文片段，如 ｢01@gmail｣。
-僅支援官服、B服及繁中服，不支援第三方登入方式。</system:String>
     <system:String x:Key="AccountCycle">帳號輪換</system:String>
-    <system:String x:Key="AccountCycleEditMode">編輯模式</system:String>
+    <system:String x:Key="AccountCycleTip">勾選後啟用多帳號輪換</system:String>
     <system:String x:Key="AccountCycleNewAccountDefaultName">帳號</system:String>
+    <system:String x:Key="AccountCycleAddNewAccount">+ 添加帳號</system:String>
+    <system:String x:Key="AccountCycleRemoveTip">刪除此帳號</system:String>
+    <system:String x:Key="AccountCycleRemoveConfirm">刪除帳號</system:String>
+    <system:String x:Key="AccountCycleRemoveMessage">確定要從輪換中刪除帳號「{0}」嗎？</system:String>
     <system:String x:Key="AccountCycleItemCheckTip">勾選後該帳號將參與輪換</system:String>
     <system:String x:Key="AccountCycleAddAccountTip">在該帳號後添加新帳號</system:String>
     <system:String x:Key="AccountCycleAllDone">所有帳號已完成！</system:String>
@@ -995,6 +993,8 @@ C:\\leidian\\LDPlayer9
     <system:String x:Key="DepotRecognition">倉庫辨識</system:String>
     <system:String x:Key="Depot">{key=DepotRecognition}</system:String>
     <system:String x:Key="LastSyncTime">上次同步時間</system:String>
+    <system:String x:Key="DataAccountLabel">帳號</system:String>
+    <system:String x:Key="DataAccountDefault">預設帳號</system:String>
     <system:String x:Key="DepotRecognitionTip">該功能尚處於測試階段，請檢查結果是否準確再行使用。若有誤，歡迎打包 debug/depot 資料夾後向我們提交 issue ~</system:String>
     <system:String x:Key="StartToDepotRecognition">開始辨識</system:String>
     <system:String x:Key="ExportToArkplanner">企鵝物流刷圖規劃</system:String>
@@ -1519,6 +1519,25 @@ DEBUG 目錄下儲存的圖片有數量限制，超出後會自動清理舊圖�
     <system:String x:Key="ClearImageCacheSuccessful">圖片快取已清空</system:String>
     <system:String x:Key="ClearImageCacheAlreadyEmpty">圖片快取為空</system:String>
     <system:String x:Key="ClearImageCacheException">清空圖片快取時發生錯誤：</system:String>
+    <system:String x:Key="IssueReportLeftTitle">問題回饋</system:String>
+    <system:String x:Key="IssueReportLeftHint">點擊右側按鈕生成診斷報告，便於提交回饋時附上記錄和系統資訊</system:String>
+    <system:String x:Key="GenerateDiagnosticReport">產生診斷報告</system:String>
+    <system:String x:Key="GenerateDiagnosticReportSelectLocation">選擇診斷報告儲存位置</system:String>
+    <system:String x:Key="DiagnosticDateRange">記錄時間範圍</system:String>
+    <system:String x:Key="DiagnosticReportTooltipDateRange">僅複製 debug 子目錄中此時間範圍內修改過的檔案（依檔案修改時間）；gui.log / asst.log 等主記錄始終包含</system:String>
+    <system:String x:Key="DiagnosticIncludeConfig">包含設定檔</system:String>
+    <system:String x:Key="DiagnosticIncludeConfigTip">gui.json + gui.bak.json + gui.error.json；可能包含帳號資訊（僅本地路徑，無遠端憑證）</system:String>
+    <system:String x:Key="DiagnosticIncludeCache">包含快取</system:String>
+    <system:String x:Key="DiagnosticIncludeCacheTip">cache/ 全部內容（圖片快取 + ETag 中繼資料），體積可能達數百 MB</system:String>
+    <system:String x:Key="DiagnosticIncludeCustomResource">包含自訂資源</system:String>
+    <system:String x:Key="DiagnosticIncludeCustomResourceTip">resource/ 下檔名包含 _custom. 的所有檔案（如關卡 JSON / 幹員 JSON / 圖片等自訂覆寫）</system:String>
+    <system:String x:Key="DiagnosticLast1Day">最近 1 天</system:String>
+    <system:String x:Key="DiagnosticLastNDays">最近 {0} 天</system:String>
+    <system:String x:Key="DiagnosticBusyStatus">正在產生診斷報告：{0}</system:String>
+    <system:String x:Key="DiagnosticBusyCopyingDebug">正在複製記錄和資源...</system:String>
+    <system:String x:Key="DiagnosticBusyWritingJson">正在寫入 diagnostic.json...</system:String>
+    <system:String x:Key="DiagnosticBusySplitting">正在分卷打包...</system:String>
+    <system:String x:Key="DiagnosticBusyZippingFull">正在產生完整壓縮檔...</system:String>
     <!--  !Issues  -->
     <!--  AutoRecruitSettings  -->
     <system:String x:Key="AutoRefresh">自動刷新 3★ Tags</system:String>

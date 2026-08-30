@@ -691,15 +691,13 @@ Please ensure only the target emulator is running during detection. Running mult
     <system:String x:Key="AlwaysAutoDetectConnectionTip" xml:space="preserve">This option is not recommended.
 Please ensure only the target emulator is running during detection. Running multiple emulators simultaneously may result in connecting to the wrong target.
 Only enable this option when the port changes frequently and you are certain only one emulator is running.</system:String>
-    <system:String x:Key="AccountSwitch">Account Switch</system:String>
-    <system:String x:Key="AccountSwitchManualRun">Switch now</system:String>
-    <system:String x:Key="AccountSwitchTip" xml:space="preserve">Fill in the account that needs to be switched to, leave blank to close the account switching.
-Enter the content displayed on the login interface, such as ｢123****4567｣, you can enter ｢123****4567｣, ｢4567｣ or ｢23****45｣
-The Traditional Chinese server uses Email accounts, e.g. ｢ab****01@gmail.com｣. Entering the plain-text portion without asterisks is recommended, e.g. ｢01@gmail｣.
-Only supports Official(CN), Bilibili and Traditional Chinese servers. Third-party login methods are not supported.</system:String>
     <system:String x:Key="AccountCycle">Account Cycle</system:String>
-    <system:String x:Key="AccountCycleEditMode">Edit Mode</system:String>
+    <system:String x:Key="AccountCycleTip">Enable multi-account rotation</system:String>
     <system:String x:Key="AccountCycleNewAccountDefaultName">Account</system:String>
+    <system:String x:Key="AccountCycleAddNewAccount">+ Add account</system:String>
+    <system:String x:Key="AccountCycleRemoveTip">Remove this account</system:String>
+    <system:String x:Key="AccountCycleRemoveConfirm">Remove account</system:String>
+    <system:String x:Key="AccountCycleRemoveMessage">Remove account "{0}" from the cycle?</system:String>
     <system:String x:Key="AccountCycleItemCheckTip">Check to include this account in the cycle</system:String>
     <system:String x:Key="AccountCycleAddAccountTip">Add a new account after this one</system:String>
     <system:String x:Key="AccountCycleAllDone">All accounts completed!</system:String>
@@ -994,6 +992,8 @@ Right Click: Select Target Process</system:String>
     <system:String x:Key="DepotRecognition">Depot</system:String>
     <system:String x:Key="Depot">{key=DepotRecognition}</system:String>
     <system:String x:Key="LastSyncTime">Last Sync Time</system:String>
+    <system:String x:Key="DataAccountLabel">Account</system:String>
+    <system:String x:Key="DataAccountDefault">Default Account</system:String>
     <system:String x:Key="DepotRecognitionTip">This function is still in testing. If you encounter any unexpected results, please zip the ｢debug/depot｣ folder in the installation path and submit an issue on GitHub</system:String>
     <system:String x:Key="StartToDepotRecognition">Start to Identify</system:String>
     <system:String x:Key="ExportToArkplanner">Arkplanner</system:String>
@@ -1518,6 +1518,25 @@ Cache files (such as maps, operator avatars, etc.) need to be regenerated after 
     <system:String x:Key="ClearImageCacheSuccessful">Image cache cleared successfully</system:String>
     <system:String x:Key="ClearImageCacheAlreadyEmpty">Image cache is already empty</system:String>
     <system:String x:Key="ClearImageCacheException">An error occurred while clearing the image cache:</system:String>
+    <system:String x:Key="IssueReportLeftTitle">Issue Report</system:String>
+    <system:String x:Key="IssueReportLeftHint">Click the button on the right to generate a diagnostic report, including logs and system info for easier troubleshooting.</system:String>
+    <system:String x:Key="GenerateDiagnosticReport">Generate Diagnostic Report</system:String>
+    <system:String x:Key="GenerateDiagnosticReportSelectLocation">Select where to save the diagnostic report</system:String>
+    <system:String x:Key="DiagnosticDateRange">Log date range</system:String>
+    <system:String x:Key="DiagnosticReportTooltipDateRange">Only copy debug subdirectory files modified within this date range (by file LastWriteTime); main logs (gui.log / asst.log) are always included.</system:String>
+    <system:String x:Key="DiagnosticIncludeConfig">Include config files</system:String>
+    <system:String x:Key="DiagnosticIncludeConfigTip">gui.json + gui.bak.json + gui.error.json; may contain account information (local paths only, no remote credentials).</system:String>
+    <system:String x:Key="DiagnosticIncludeCache">Include cache</system:String>
+    <system:String x:Key="DiagnosticIncludeCacheTip">Entire cache/ directory (image cache + ETag metadata); size may reach hundreds of MB.</system:String>
+    <system:String x:Key="DiagnosticIncludeCustomResource">Include custom resources</system:String>
+    <system:String x:Key="DiagnosticIncludeCustomResourceTip">All files under resource/ whose name contains _custom. (such as custom stage JSON / operator JSON / image overrides).</system:String>
+    <system:String x:Key="DiagnosticLast1Day">Last 1 day</system:String>
+    <system:String x:Key="DiagnosticLastNDays">Last {0} days</system:String>
+    <system:String x:Key="DiagnosticBusyStatus">Generating diagnostic report: {0}</system:String>
+    <system:String x:Key="DiagnosticBusyCopyingDebug">Copying logs and resources...</system:String>
+    <system:String x:Key="DiagnosticBusyWritingJson">Writing diagnostic.json...</system:String>
+    <system:String x:Key="DiagnosticBusySplitting">Splitting into parts...</system:String>
+    <system:String x:Key="DiagnosticBusyZippingFull">Creating full archive...</system:String>
     <!--  !Issues  -->
     <!--  AutoRecruitSettings  -->
     <system:String x:Key="AutoRefresh">Auto refresh 3★ Tags</system:String>

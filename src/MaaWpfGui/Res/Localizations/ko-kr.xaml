@@ -691,15 +691,13 @@ HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Notifications\Settin
     <system:String x:Key="AlwaysAutoDetectConnectionTip" xml:space="preserve">이 옵션은 권장되지 않습니다.
 감지 시 연결할 에뮬레이터만 실행되어 있는지 확인하세요. 여러 에뮬레이터를 동시에 실행하면 잘못된 대상에 연결될 수 있습니다.
 포트가 자주 변경되고 단일 에뮬레이터만 실행 중임을 확인한 경우에만 이 옵션을 활성화하세요.</system:String>
-    <system:String x:Key="AccountSwitch">계정 전환</system:String>
-    <system:String x:Key="AccountSwitchManualRun">수동 스위치</system:String>
-    <system:String x:Key="AccountSwitchTip" xml:space="preserve">전환할 계정을 입력하고, 계정 전환을 비활성화하려면 공백으로 남겨두세요.
-｢123****4567｣ 과 같이 로그인 인터페이스에 표시된 내용을 입력하세요. ｢123****4567｣, ｢4567｣ 또는 ｢23****45｣ 를 입력할 수 있습니다.
-번체 중국어 서버의 계정은 Email 형식입니다(예: ｢ab****01@gmail.com｣). 별표가 없는 평문 부분(예: ｢01@gmail｣) 입력을 권장합니다.
-공식(CN), Bilibili 및 번체 중국어 서버만 지원합니다. 서드파티 로그인 방식은 지원되지 않습니다.</system:String>
     <system:String x:Key="AccountCycle">계정 순환</system:String>
-    <system:String x:Key="AccountCycleEditMode">편집 모드</system:String>
+    <system:String x:Key="AccountCycleTip">체크하면 다중 계정 순환이 활성화됩니다</system:String>
     <system:String x:Key="AccountCycleNewAccountDefaultName">계정</system:String>
+    <system:String x:Key="AccountCycleAddNewAccount">+ 계정 추가</system:String>
+    <system:String x:Key="AccountCycleRemoveTip">이 계정 삭제</system:String>
+    <system:String x:Key="AccountCycleRemoveConfirm">계정 삭제</system:String>
+    <system:String x:Key="AccountCycleRemoveMessage">순환에서 계정 "{0}"을(를) 삭제하시겠습니까?</system:String>
     <system:String x:Key="AccountCycleItemCheckTip">체크하면 이 계정이 순환에 포함됩니다</system:String>
     <system:String x:Key="AccountCycleAddAccountTip">이 계정 뒤에 새 계정 추가</system:String>
     <system:String x:Key="AccountCycleAllDone">모든 계정이 완료되었습니다!</system:String>
@@ -996,6 +994,8 @@ C:\\leidian\\LDPlayer9
     <system:String x:Key="DepotRecognition">창고 인식</system:String>
     <system:String x:Key="Depot">{key=DepotRecognition}</system:String>
     <system:String x:Key="LastSyncTime">마지막 동기화 시간</system:String>
+    <system:String x:Key="DataAccountLabel">계정</system:String>
+    <system:String x:Key="DataAccountDefault">기본 계정</system:String>
     <system:String x:Key="DepotRecognitionTip">이 기능은 현재 테스트 중입니다. 내보내기 전 인식 결과가 맞는지 확인 후 사용하세요\n만약 오류가 있다면 MAA 경로 내 debug 폴더 안의 depot 폴더 전체를 압축해서 Github의 issue로 올려주세요</system:String>
     <system:String x:Key="StartToDepotRecognition">인식 시작</system:String>
     <system:String x:Key="ExportToArkplanner">Arkplanner</system:String>
@@ -1520,6 +1520,25 @@ DEBUG 디렉토리에 저장된 이미지는 수량 제한이 있으며 초과 �
     <system:String x:Key="ClearImageCacheSuccessful">이미지 캐시 비우기 성공</system:String>
     <system:String x:Key="ClearImageCacheAlreadyEmpty">이미지 캐시가 이미 비어 있음</system:String>
     <system:String x:Key="ClearImageCacheException">이미지 캐시 비우기 중 오류가 발생했습니다:</system:String>
+    <system:String x:Key="IssueReportLeftTitle">문제 제보</system:String>
+    <system:String x:Key="IssueReportLeftHint">오른쪽 버튼을 클릭하여 진단 보고서를 생성하면 로그와 시스템 정보를 함께 첨부할 수 있습니다</system:String>
+    <system:String x:Key="GenerateDiagnosticReport">진단 보고서 생성</system:String>
+    <system:String x:Key="GenerateDiagnosticReportSelectLocation">진단 보고서 저장 위치 선택</system:String>
+    <system:String x:Key="DiagnosticDateRange">로그 기간</system:String>
+    <system:String x:Key="DiagnosticReportTooltipDateRange">이 기간 내에 수정된 debug 하위 디렉터리 파일만 복사합니다 (파일 수정 시간 기준); gui.log / asst.log 등 메인 로그는 항상 포함됩니다.</system:String>
+    <system:String x:Key="DiagnosticIncludeConfig">설정 파일 포함</system:String>
+    <system:String x:Key="DiagnosticIncludeConfigTip">gui.json + gui.bak.json + gui.error.json; 계정 정보가 포함될 수 있습니다 (로컬 경로만, 원격 자격 증명 없음).</system:String>
+    <system:String x:Key="DiagnosticIncludeCache">캐시 포함</system:String>
+    <system:String x:Key="DiagnosticIncludeCacheTip">cache/ 디렉터리 전체 (이미지 캐시 + ETag 메타데이터); 크기는 수백 MB에 이를 수 있습니다.</system:String>
+    <system:String x:Key="DiagnosticIncludeCustomResource">사용자 지정 리소스 포함</system:String>
+    <system:String x:Key="DiagnosticIncludeCustomResourceTip">resource/ 디렉터리에서 파일명에 _custom. 이 포함된 모든 파일 (스테이지 JSON / 오퍼레이터 JSON / 이미지 오버라이드 등).</system:String>
+    <system:String x:Key="DiagnosticLast1Day">최근 1일</system:String>
+    <system:String x:Key="DiagnosticLastNDays">최근 {0}일</system:String>
+    <system:String x:Key="DiagnosticBusyStatus">진단 보고서 생성 중: {0}</system:String>
+    <system:String x:Key="DiagnosticBusyCopyingDebug">로그 및 리소스 복사 중...</system:String>
+    <system:String x:Key="DiagnosticBusyWritingJson">diagnostic.json 쓰는 중...</system:String>
+    <system:String x:Key="DiagnosticBusySplitting">분할 압축 중...</system:String>
+    <system:String x:Key="DiagnosticBusyZippingFull">전체 아카이브 생성 중...</system:String>
     <!--  !Issues  -->
     <!--  AutoRecruitSettings  -->
     <system:String x:Key="AutoRefresh">★3 태그 자동 새로고침</system:String>

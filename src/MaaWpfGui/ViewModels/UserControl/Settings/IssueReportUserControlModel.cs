@@ -19,6 +19,8 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using HandyControl.Controls;
 using HandyControl.Data;
@@ -45,6 +47,11 @@ public class IssueReportUserControlModel : PropertyChangedBase
 
     public static IssueReportUserControlModel Instance { get; }
 
+    /// <summary>
+    /// 单个分卷 zip 未压缩字节上限 = GitHub Issue 附件 20MB 上限。压缩后实际 zip 体积会显著小于此值。
+    /// </summary>
+    private const long MaxPartSizeBytes = 20L * 1024 * 1024;
+
     // ===== Diagnostic Report Properties (used by GenerateSupportPayload) =====
 
     private int _diagnosticDateRange = 7;
@@ -55,9 +62,9 @@ public class IssueReportUserControlModel : PropertyChangedBase
         set => SetAndNotify(ref _diagnosticDateRange, value);
     }
 
-    private List<DateRangeOption>? _dateRangeOptions;
+    private Lazy<List<DateRangeOption>> _dateRangeOptions = new(InitDateRangeOptions);
 
-    public List<DateRangeOption> DateRangeOptions => _dateRangeOptions ??= InitDateRangeOptions();
+    public List<DateRangeOption> DateRangeOptions => _dateRangeOptions.Value;
 
     private static List<DateRangeOption> InitDateRangeOptions()
     {
@@ -97,7 +104,37 @@ public class IssueReportUserControlModel : PropertyChangedBase
         set => SetAndNotify(ref _includeCustomResource, value);
     }
 
-    // ===== End Diagnostic Export Properties =====
+    private bool _isBusy;
+
+    /// <summary>
+    /// 「生成诊断报告」执行期间为 true，绑定按钮 IsEnabled 防止重复点击。
+    /// </summary>
+    public bool IsBusy
+    {
+        get => _isBusy;
+        set
+        {
+            if (SetAndNotify(ref _isBusy, value))
+            {
+                NotifyOfPropertyChange(nameof(IsNotBusy));
+            }
+        }
+    }
+
+    public bool IsNotBusy => !_isBusy;
+
+    private string _busyStatusText = string.Empty;
+
+    /// <summary>
+    /// 异步执行时显示给用户的进度文字（如"正在复制 debug 日志..."），由后台线程通过 Dispatcher 投回 UI 线程更新。
+    /// </summary>
+    public string BusyStatusText
+    {
+        get => _busyStatusText;
+        set => SetAndNotify(ref _busyStatusText, value);
+    }
+
+    // ===== End Diagnostic Report Properties =====
 
     public void OpenDebugFolder()
     {
@@ -137,7 +174,9 @@ public class IssueReportUserControlModel : PropertyChangedBase
     }
 
     /// <summary>
-    /// 清空图片缓存 仅删除 cache 目录和 debug 目录中的图片文件，保留文件夹结构
+    /// 清空图片缓存 仅删除 cache 目录和 debug 目录中的图片文件，保留文件夹结构。
+    /// 注：下方 MessageBoxHelper.Show 调用 HandyControl 自定义按钮文案机制 — <c>yes:</c> 参数对应 MessageBoxResult.Yes 按钮文案、<c>no:</c> 对应 No 按钮文案。
+    /// 当前 yes=Cancel / no=Confirm 是有意为之（用户习惯「确认删除」放主按钮位即 No 位），改回 yes=Confirm/no=Cancel 会导致用户点击主按钮反而放弃删除，引入回归风险。
     /// </summary>
     public static void ClearImageCache()
     {
@@ -215,24 +254,92 @@ public class IssueReportUserControlModel : PropertyChangedBase
     }
 
     /// <summary>
-    /// 生成诊断报告 — 合并原「生成日志压缩包」+「导出诊断包」：SaveFileDialog 选位置 + 日志按日期范围过滤 + diagnostic.json 系统信息 + 可选配置/缓存/自定义资源
+    /// 生成诊断报告 — WPF action 入口。串行编排：准备上下文 → 写 diagnostic.json → 复制目录（带失败收集）→ 统一按大小分卷 → 生成完整 zip → 清理临时目录。
+    /// 全程 <c>Task.Run</c> 包 IO，避免 UI 线程卡顿；通过 <see cref="ReportBusyStatus"/> 向 UI 线程回传进度文字。
     /// </summary>
-    public void GenerateSupportPayload()
+    public async void GenerateSupportPayload()
     {
+        if (IsBusy)
+        {
+            return;
+        }
+
+        IsBusy = true;
+        BusyStatusText = string.Empty;
+        ExportContext? ctx = null;
         try
         {
-            const int PartSize = 20 * 1024 * 1024; // 20 MB
-
-            if (!Directory.Exists(PathsHelper.ReportsDir))
+            ctx = TryPrepareExportContext();
+            if (ctx == null)
             {
-                Directory.CreateDirectory(PathsHelper.ReportsDir);
+                return;
             }
 
-            string reportNameBase = $"report_{DateTimeOffset.Now:MM-dd_HH-mm-ss}";
-            string tempPath = Path.Combine(PathsHelper.ReportsDir, $"maa-report-{Guid.NewGuid()}");
-            Directory.CreateDirectory(tempPath);
+            await Task.Run(() => ExecuteExportPipeline(ctx));
 
-            // 弹保存对话框选保存位置
+            ShowGrowlSuccess(ctx);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Failed to create support payload");
+            ShowGrowlError(ex);
+        }
+        finally
+        {
+            if (ctx != null)
+            {
+                SafeDelete(ctx.TempPath);
+            }
+
+            BusyStatusText = string.Empty;
+            IsBusy = false;
+        }
+    }
+
+    /// <summary>
+    /// 后台线程执行的导出流水线。调用方需在 UI 线程先获取 <see cref="ExportContext"/>，本方法不再触发对话框。
+    /// </summary>
+    private void ExecuteExportPipeline(ExportContext ctx)
+    {
+        var toDate = DateTime.Now.Date;
+        var fromDate = toDate.AddDays(-_diagnosticDateRange);
+
+        ReportBusyStatus(LocalizationHelper.GetStringFormat("DiagnosticBusyStatus", LocalizationHelper.GetString("DiagnosticBusyCopyingDebug")));
+        var copyResults = CopyAll(ctx, fromDate);
+
+        ReportBusyStatus(LocalizationHelper.GetStringFormat("DiagnosticBusyStatus", LocalizationHelper.GetString("DiagnosticBusyWritingJson")));
+        WriteDiagnosticJson(ctx, fromDate, toDate);
+
+        ReportBusyStatus(LocalizationHelper.GetStringFormat("DiagnosticBusyStatus", LocalizationHelper.GetString("DiagnosticBusySplitting")));
+        SplitIntoParts(ctx, fromDate);
+
+        ReportBusyStatus(LocalizationHelper.GetStringFormat("DiagnosticBusyStatus", LocalizationHelper.GetString("DiagnosticBusyZippingFull")));
+        ZipFile.CreateFromDirectory(ctx.TempPath, ctx.FullZipPath, CompressionLevel.Optimal, includeBaseDirectory: false);
+
+        if (copyResults.FailedFiles.Count > 0)
+        {
+            Log.Warning("Diagnostic report copied {Copied} files; skipped {Skipped} due to IO/permission errors: {Files}",
+                copyResults.CopiedCount, copyResults.FailedFiles.Count, string.Join(", ", copyResults.FailedFiles));
+        }
+    }
+
+    /// <summary>
+    /// 弹保存对话框选保存位置 + 创建 tempPath。返回 null 表示用户取消或异常。
+    /// </summary>
+    private ExportContext? TryPrepareExportContext()
+    {
+        if (!Directory.Exists(PathsHelper.ReportsDir))
+        {
+            Directory.CreateDirectory(PathsHelper.ReportsDir);
+        }
+
+        string reportNameBase = $"report_{DateTimeOffset.Now:MM-dd_HH-mm-ss}";
+        string tempPath = Path.Combine(PathsHelper.ReportsDir, $"maa-report-{Guid.NewGuid()}");
+        Directory.CreateDirectory(tempPath);
+
+        string? fullZipPath;
+        try
+        {
             var saveDialog = new SaveFileDialog
             {
                 Title = LocalizationHelper.GetString("GenerateDiagnosticReportSelectLocation"),
@@ -245,177 +352,196 @@ public class IssueReportUserControlModel : PropertyChangedBase
             };
             if (saveDialog.ShowDialog() != true)
             {
-                Directory.Delete(tempPath, recursive: true);
+                return null;
+            }
+
+            fullZipPath = saveDialog.FileName;
+        }
+        catch
+        {
+            // SaveFileDialog 异常时也要清理已创建的 tempPath
+            SafeDelete(tempPath);
+            throw;
+        }
+
+        string userChosenDir = Path.GetDirectoryName(fullZipPath) ?? PathsHelper.ReportsDir;
+        string partsFolder = Path.Combine(userChosenDir, $"{reportNameBase}_parts");
+
+        return new ExportContext(
+            FromDate: DateTime.Now.Date.AddDays(-_diagnosticDateRange),
+            ToDate: DateTime.Now.Date,
+            ReportNameBase: reportNameBase,
+            TempPath: tempPath,
+            FullZipPath: fullZipPath,
+            PartsFolder: partsFolder);
+    }
+
+    private void WriteDiagnosticJson(ExportContext ctx, DateTime fromDate, DateTime toDate)
+    {
+        var info = DiagnosticInfo.Collect(fromDate, toDate);
+        string json = JsonSerializer.Serialize(info, new JsonSerializerOptions { WriteIndented = true });
+        File.WriteAllText(Path.Combine(ctx.TempPath, "diagnostic.json"), json);
+    }
+
+    /// <summary>
+    /// 顺序复制 debug（含日期过滤）→ 自定义资源 → 配置 → 缓存。debug 子目录文件按 <paramref name="fromDate"/> 截日过滤（LastWriteTime &lt; fromDate 跳过）；
+    /// debug 根目录文件（gui.log / asst.log / gui.bak.log 等主日志）始终包含。
+    /// </summary>
+    private CopyResult CopyAll(ExportContext ctx, DateTime fromDate)
+    {
+        var result = new CopyResult();
+
+        CopyDirectoryWithLogging(
+            PathsHelper.DebugDir,
+            Path.Combine(ctx.TempPath, "debug"),
+            sourceRoot: PathsHelper.DebugDir,
+            fromDate: fromDate,
+            filter: f => !Path.GetFileName(f).StartsWith("report", StringComparison.OrdinalIgnoreCase),
+            result: result);
+
+        if (_includeCustomResource)
+        {
+            CopyDirectoryWithLogging(
+                PathsHelper.ResourceDir,
+                Path.Combine(ctx.TempPath, "resource"),
+                sourceRoot: PathsHelper.ResourceDir,
+                fromDate: null,
+                filter: f => Path.GetFileName(f).Contains("_custom.", StringComparison.OrdinalIgnoreCase),
+                result: result);
+        }
+
+        if (_includeConfig)
+        {
+            CopyDirectoryWithLogging(
+                PathsHelper.ConfigDir,
+                Path.Combine(ctx.TempPath, "config"),
+                sourceRoot: PathsHelper.ConfigDir,
+                fromDate: null,
+                filter: null,
+                result: result);
+        }
+
+        if (_includeCache)
+        {
+            CopyDirectoryWithLogging(
+                PathsHelper.CacheDir,
+                Path.Combine(ctx.TempPath, "cache"),
+                sourceRoot: PathsHelper.CacheDir,
+                fromDate: null,
+                filter: null,
+                result: result);
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// 按未压缩字节大小统一分卷 — 不再区分 part01（debug 根文件）与 part02+（debug 子目录）。
+    /// 先收集所有 tempPath 下文件 → 按文件名排序（保证 part 内容稳定可复现）→ 累加大小超过 <see cref="MaxPartSizeBytes"/> 时关闭当前 zip 开启下一个。
+    /// 分卷元数据回填到 <see cref="DiagnosticInfo.Parts"/> 并重新写入 diagnostic.json，最终进入完整 zip。
+    /// </summary>
+    private void SplitIntoParts(ExportContext ctx, DateTime fromDate)
+    {
+        if (!Directory.Exists(ctx.PartsFolder))
+        {
+            Directory.CreateDirectory(ctx.PartsFolder);
+        }
+
+        var allFiles = Directory.EnumerateFiles(ctx.TempPath, "*", SearchOption.AllDirectories)
+            .Select(f => new FileInfo(f))
+            .OrderBy(fi => fi.FullName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var partMetas = new List<PartInfo>();
+        var currentFiles = new List<FileInfo>();
+        long currentSize = 0;
+        int partNumber = 1;
+
+        void FlushCurrent()
+        {
+            if (currentFiles.Count == 0)
+            {
                 return;
             }
 
-            string userChosenDir = Path.GetDirectoryName(saveDialog.FileName) ?? PathsHelper.ReportsDir;
-
-            // 收集系统信息并写入 diagnostic.json
-            var toDate = DateTime.Now.Date;
-            var fromDate = toDate.AddDays(-_diagnosticDateRange);
-            var diagInfo = DiagnosticInfo.Collect(fromDate, toDate);
-            string diagJson = JsonSerializer.Serialize(diagInfo, new JsonSerializerOptions { WriteIndented = true });
-            File.WriteAllText(Path.Combine(tempPath, "diagnostic.json"), diagJson);
-
-            // 复制 debug/（rotated logs 由 LastWriteTime 在后续 part02+ 阶段过滤）
-            CopyDirectoryIfExists(PathsHelper.DebugDir, Path.Combine(tempPath, "debug"),
-                f => !Path.GetFileName(f).StartsWith("report", StringComparison.OrdinalIgnoreCase));
-
-            // 可选目录
-            if (_includeCustomResource)
+            string partFileName = $"{ctx.ReportNameBase}_part{partNumber:D2}.zip";
+            string partPath = Path.Combine(ctx.PartsFolder, partFileName);
+            using (var fs = new FileStream(partPath, FileMode.Create))
+            using (var archive = new ZipArchive(fs, ZipArchiveMode.Create))
             {
-                CopyDirectoryIfExists(PathsHelper.ResourceDir, Path.Combine(tempPath, "resource"),
-                    f => Path.GetFileName(f).Contains("_custom.", StringComparison.OrdinalIgnoreCase));
-            }
-
-            if (_includeConfig)
-            {
-                CopyDirectoryIfExists(PathsHelper.ConfigDir, Path.Combine(tempPath, "config"));
-            }
-
-            if (_includeCache)
-            {
-                CopyDirectoryIfExists(PathsHelper.CacheDir, Path.Combine(tempPath, "cache"));
-            }
-
-            // 分卷输出目录紧贴用户选定的 zip 路径所在目录
-            string partsFolder = Path.Combine(userChosenDir, $"{reportNameBase}_parts");
-            if (!Directory.Exists(partsFolder))
-            {
-                Directory.CreateDirectory(partsFolder);
-            }
-
-            // ====== part01：tempPath 根文件 + config + resource + cache + debug 根目录文件 ======
-            List<string> part01Files = [];
-
-            part01Files.AddRange(Directory.EnumerateFiles(tempPath, "*", SearchOption.TopDirectoryOnly));
-
-            string[] categories = ["config", "resource", "cache"];
-            foreach (string category in categories)
-            {
-                string categoryPath = Path.Combine(tempPath, category);
-                if (Directory.Exists(categoryPath))
+                foreach (var file in currentFiles)
                 {
-                    part01Files.AddRange(Directory.EnumerateFiles(categoryPath, "*", SearchOption.AllDirectories));
-                }
-            }
-
-            string debugPath = Path.Combine(tempPath, "debug");
-            if (Directory.Exists(debugPath))
-            {
-                var debugRootFiles = Directory.EnumerateFiles(debugPath, "*", SearchOption.TopDirectoryOnly).ToList();
-                part01Files.AddRange(debugRootFiles);
-            }
-
-            if (part01Files.Count > 0)
-            {
-                string part01Path = Path.Combine(partsFolder, $"{reportNameBase}_part01.zip");
-                using var fs = new FileStream(part01Path, FileMode.Create);
-                using var archive = new ZipArchive(fs, ZipArchiveMode.Create);
-                foreach (var file in part01Files)
-                {
-                    string entryName = Path.GetRelativePath(tempPath, file).Replace("\\", "/");
-                    var entry = archive.CreateEntry(entryName, CompressionLevel.SmallestSize);
-
+                    string entryName = Path.GetRelativePath(ctx.TempPath, file.FullName).Replace("\\", "/");
+                    var entry = archive.CreateEntry(entryName, CompressionLevel.Optimal);
                     using var entryStream = entry.Open();
-                    using var fileStream = File.OpenRead(file);
+                    using var fileStream = File.OpenRead(file.FullName);
                     fileStream.CopyTo(entryStream);
                 }
             }
 
-            // ====== part02+：debug 子目录文件按日期范围 + PartSize 分卷 ======
-            var cutoffTime = DateTime.Now.AddDays(-_diagnosticDateRange);
-            var debugSubFiles = Directory.EnumerateFiles(debugPath, "*", SearchOption.AllDirectories)
-                .Where(f => Path.GetDirectoryName(f) != debugPath)
-                .Where(f => new FileInfo(f).LastWriteTime >= cutoffTime)
-                .ToList();
-
-            int partNumber = 2;
-            while (debugSubFiles.Count > 0)
+            partMetas.Add(new PartInfo
             {
-                string partFileName = $"{reportNameBase}_part{partNumber:D2}.zip";
-                string partPath = Path.Combine(partsFolder, partFileName);
+                FileName = partFileName,
+                UncompressedSizeBytes = currentSize,
+                FileCount = currentFiles.Count,
+            });
 
-                using (var fs = new FileStream(partPath, FileMode.Create))
-                {
-                    using var archive = new ZipArchive(fs, ZipArchiveMode.Create);
-                    long currentSize = 0;
-                    List<string> processedFiles = [];
-
-                    foreach (var file in debugSubFiles.ToList())
-                    {
-                        var fileInfo = new FileInfo(file);
-
-                        if (currentSize + fileInfo.Length > PartSize && currentSize > 0)
-                        {
-                            break;
-                        }
-
-                        string entryName = Path.GetRelativePath(tempPath, file).Replace("\\", "/");
-                        var entry = archive.CreateEntry(entryName, CompressionLevel.SmallestSize);
-
-                        using (var entryStream = entry.Open())
-                        {
-                            using var fileStream = File.OpenRead(file);
-                            fileStream.CopyTo(entryStream);
-                        }
-
-                        currentSize += fileInfo.Length;
-                        processedFiles.Add(file);
-                    }
-
-                    debugSubFiles.RemoveAll(f => processedFiles.Contains(f));
-                }
-
-                partNumber++;
-            }
-
-            // ====== 生成完整压缩包（用户选定路径） ======
-            string fullZipPath = saveDialog.FileName;
-            ZipFile.CreateFromDirectory(tempPath, fullZipPath, CompressionLevel.SmallestSize, includeBaseDirectory: false);
-
-            // 清理临时目录
-            Directory.Delete(tempPath, recursive: true);
-
-            ShowGrowl($"{LocalizationHelper.GetString("GenerateSupportPayloadSuccessful")}\n{fullZipPath}");
-            OpenReportsFolder();
+            currentFiles.Clear();
+            currentSize = 0;
+            partNumber++;
         }
-        catch (Exception ex)
-        {
-            ShowGrowl($"{LocalizationHelper.GetString("GenerateSupportPayloadException")}\n{ex.Message}");
-            Log.Error(ex, "Failed to create support payload");
-        }
-    }
 
-    /*
-    /// <summary>
-    /// 删除目录下的所有文件和子目录，排除指定的文件名。
-    /// </summary>
-    private static void DeleteDirectoryContentsExcept(string dir, IEnumerable<string> excludeFileNames)
-    {
-        var excludeSet = excludeFileNames.ToHashSet(StringComparer.OrdinalIgnoreCase);
-        foreach (var file in Directory.EnumerateFiles(dir))
+        foreach (var fi in allFiles)
         {
-            if (excludeSet.Contains(Path.GetFileName(file)))
+            // 跳过 diagnostic.json — 它包含 Parts 字段，分卷生成期间还是空的；最终由 CreateFromDirectory 直接打包完整 tempPath
+            if (string.Equals(fi.Name, "diagnostic.json", StringComparison.OrdinalIgnoreCase))
             {
                 continue;
             }
 
-            File.Delete(file);
+            long size = fi.Length;
+
+            // 当前文件单个就超阈值 — 直接开新卷装它（无法拆分单文件）
+            if (size > MaxPartSizeBytes && currentFiles.Count == 0)
+            {
+                currentFiles.Add(fi);
+                FlushCurrent();
+                continue;
+            }
+
+            if (currentSize + size > MaxPartSizeBytes && currentFiles.Count > 0)
+            {
+                FlushCurrent();
+            }
+
+            currentFiles.Add(fi);
+            currentSize += size;
         }
 
-        foreach (var subDir in Directory.EnumerateDirectories(dir))
+        FlushCurrent();
+
+        // 回填 diagnostic.json — 读已有内容、覆盖 Parts 字段、重写；最终 ZipFile.CreateFromDirectory 会把更新后的 diagnostic.json 打入完整 zip
+        string diagJsonPath = Path.Combine(ctx.TempPath, "diagnostic.json");
+        if (File.Exists(diagJsonPath))
         {
-            Directory.Delete(subDir, recursive: true);
+            var json = File.ReadAllText(diagJsonPath);
+            var info = JsonSerializer.Deserialize<DiagnosticInfo>(json) ?? new DiagnosticInfo();
+            info.Parts = partMetas;
+            File.WriteAllText(diagJsonPath, JsonSerializer.Serialize(info, new JsonSerializerOptions { WriteIndented = true }));
         }
     }
-    */
 
     /// <summary>
-    /// 从 sourceDir 复制文件到 targetDir，支持过滤。
+    /// 从 sourceDir 复制文件到 targetDir，支持按 <paramref name="fromDate"/> 过滤（仅对子目录文件生效，根目录文件始终包含）。
+    /// 文件复制失败（IOException / UnauthorizedAccessException）记录到 <paramref name="result"/>.FailedFiles 而非静默吞错。
     /// </summary>
-    private static void CopyDirectoryIfExists(string? sourceDir, string targetDir, Func<string, bool>? filter = null)
+    private static void CopyDirectoryWithLogging(
+        string? sourceDir,
+        string targetDir,
+        string sourceRoot,
+        DateTime? fromDate,
+        Func<string, bool>? filter,
+        CopyResult result)
     {
         if (string.IsNullOrWhiteSpace(sourceDir) || !Directory.Exists(sourceDir))
         {
@@ -429,21 +555,80 @@ public class IssueReportUserControlModel : PropertyChangedBase
                 continue;
             }
 
+            // debug 根目录文件始终包含；仅子目录文件按 fromDate 过滤 LastWriteTime
+            if (fromDate.HasValue)
+            {
+                bool isRootFile = string.Equals(
+                    Path.GetDirectoryName(file),
+                    sourceRoot,
+                    StringComparison.OrdinalIgnoreCase);
+                if (!isRootFile && File.GetLastWriteTime(file) < fromDate.Value)
+                {
+                    continue;
+                }
+            }
+
             string relative = Path.GetRelativePath(sourceDir, file);
             string dest = Path.Combine(targetDir, relative);
-            Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
+            string? destDir = Path.GetDirectoryName(dest);
+            if (!string.IsNullOrEmpty(destDir))
+            {
+                Directory.CreateDirectory(destDir);
+            }
+
             try
             {
                 File.Copy(file, dest, true);
+                result.CopiedCount++;
             }
-            catch (IOException)
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
-                // 某些文件可能被占用，忽略复制失败
+                result.FailedFiles.Add(file);
+                Log.Warning(ex, "Failed to copy diagnostic file: {File}", file);
             }
-            catch (UnauthorizedAccessException)
+        }
+    }
+
+    private void ShowGrowlSuccess(ExportContext ctx)
+    {
+        string message = LocalizationHelper.GetString("GenerateSupportPayloadSuccessful") + "\n" + ctx.FullZipPath;
+        Application.Current.Dispatcher.Invoke(() => ShowGrowl(message));
+    }
+
+    private void ShowGrowlError(Exception ex)
+    {
+        string message = LocalizationHelper.GetString("GenerateSupportPayloadException") + "\n" + ex.Message;
+        Application.Current.Dispatcher.Invoke(() => ShowGrowl(message));
+    }
+
+    /// <summary>
+    /// 把进度文字投回 UI 线程更新（后台线程直接 SetAndNotify 会触发跨线程异常）。
+    /// </summary>
+    private void ReportBusyStatus(string status)
+    {
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher == null || dispatcher.CheckAccess())
+        {
+            BusyStatusText = status;
+        }
+        else
+        {
+            dispatcher.Invoke(() => BusyStatusText = status);
+        }
+    }
+
+    private static void SafeDelete(string path)
+    {
+        try
+        {
+            if (Directory.Exists(path))
             {
-                // 也忽略权限问题
+                Directory.Delete(path, recursive: true);
             }
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Failed to delete temp directory: {Path}", path);
         }
     }
 
@@ -458,12 +643,31 @@ public class IssueReportUserControlModel : PropertyChangedBase
 
     private static void ShowGrowl(string message)
     {
-        var growlInfo = new GrowlInfo {
+        var growlInfo = new GrowlInfo
+        {
             IsCustom = true,
             Message = message,
             IconKey = "HangoverGeometry",
             IconBrushKey = "PallasBrush",
         };
         Growl.Info(growlInfo);
+    }
+
+    /// <summary>
+    /// 导出上下文 — 持有单次「生成诊断报告」所需的全部中间状态，由 <see cref="TryPrepareExportContext"/> 在 UI 线程构造后传给后台流水线。
+    /// </summary>
+    private sealed record ExportContext(
+        DateTime FromDate,
+        DateTime ToDate,
+        string ReportNameBase,
+        string TempPath,
+        string FullZipPath,
+        string PartsFolder);
+
+    private sealed class CopyResult
+    {
+        public int CopiedCount { get; set; }
+
+        public List<string> FailedFiles { get; } = new();
     }
 }
