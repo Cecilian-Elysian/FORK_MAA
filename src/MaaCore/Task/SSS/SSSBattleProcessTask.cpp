@@ -197,8 +197,6 @@ bool asst::SSSBattleProcessTask::check_and_do_strategy(const cv::Mat& reusable)
         }
         else if (oper.is_usual_location && !m_all_action_opers.contains(oper.name)) {
             tool_men.emplace_back(oper);
-            // 工具人的技能一概好了就用
-            m_skill_usage.try_emplace(oper.name, SkillUsage::Possibly);
         }
     }
 
@@ -266,7 +264,7 @@ bool asst::SSSBattleProcessTask::check_and_do_strategy(const cv::Mat& reusable)
                 m_all_cores.erase(it);
             }
             else {
-                Log.error(__FUNCTION__, "| Core", core.name, " in strategy, but not found in all_cores");
+                LogError << __FUNCTION__ << "| Core" << core.name << " in strategy, but not found in all_cores";
             }
 
             return deploy_oper(core.name, strategy.location, strategy.direction) && update_deployment();
@@ -293,9 +291,21 @@ bool asst::SSSBattleProcessTask::check_and_do_strategy(const cv::Mat& reusable)
                 strategy.all_deployed = true;
             }
             Log.info(__FUNCTION__, "| Deploy tool_man", available_iter->name, "at", strategy.location);
+            // 工具人的技能一概好了就用
+            auto skill_it = m_skill_usage.find({ available_iter->role, available_iter->name });
+            if (skill_it == m_skill_usage.end()) {
+                skill_it = m_skill_usage.find({ battle::Role::Unknown, available_iter->name });
+            }
+            if (skill_it != m_skill_usage.end()) {
+                skill_it->second = SkillUsage::Possibly;
+            }
+            else {
+                m_skill_usage.try_emplace({ available_iter->role, available_iter->name }, SkillUsage::Possibly);
+            }
 
             // 部署完，画面会发生变化，所以直接返回，后续逻辑交给下次循环处理
-            return deploy_oper(available_iter->name, strategy.location, strategy.direction) && update_deployment();
+            return deploy_oper(available_iter->role, available_iter->name, strategy.location, strategy.direction) &&
+                   update_deployment();
         }
 
         if (std::ranges::any_of(tool_men, [&](const auto& oper) {
@@ -329,7 +339,10 @@ bool asst::SSSBattleProcessTask::check_if_start_over(const battle::copilot::Acti
 
     if (!action.name.empty() &&
         !std::ranges::any_of(m_cur_deployment_opers, [&](const auto& oper) { return oper.name == action.name; }) &&
-        !m_battlefield_opers.contains(action.name)) {
+        !std::ranges::any_of(m_battlefield_opers, [&](const auto& pair) {
+            return (action.role == battle::Role::Unknown || pair.first.role == action.role) &&
+                   pair.first.name == action.name;
+        })) {
         to_abandon = true;
     }
     else if (!action.role_counts.empty()) {

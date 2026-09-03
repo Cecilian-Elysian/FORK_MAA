@@ -39,7 +39,7 @@ icon: iconoir:developer
 
 1. 이전에 fork 한 기록이 있다면 저장소 Settings 맨 아래에서 삭제
 2. [MAA 메인 저장소](https://github.com/MaaAssistantArknights/MaaAssistantArknights)에서 Fork → Create fork 클릭
-3. 본인 저장소의 dev 브랜치를 서브모듈 포함 클론:
+3. 본인 저장소의 dev-v2 브랜치를 서브모듈 포함 클론:
 
    ```bash
    git clone --recurse-submodules <저장소 git 링크> -b dev-v2 --single-branch
@@ -83,9 +83,9 @@ icon: iconoir:developer
    - F5 키를 눌러 실행
 
    ::: tip
-   Win32Controller(Windows 창 제어) / MaaFwAdbController(MaaFramework 터치 수행 방식) 관련 기능을 실행하려면 [MaaFramework Releases](https://github.com/MaaXYZ/MaaFramework/releases)에서 해당 플랫폼 압축 파일을 다운로드하고, `bin` 디렉토리의 `MaaWin32ControlUnit.dll` / `MaaAdbControlUnit.dll`을 MAA DLL과 같은 디렉토리(예: `build/bin/Debug`)에 배치해야 합니다. 자동 다운로드 스크립트 PR 환영!
+   Win32Controller(Windows 창 제어) / MaaFwAdbController(MaaFramework 터치 수행 방식) 관련 기능을 실행하려면 `python tools/maafw-control-unit-download.py`를 실행하면 해당 플랫폼의 `MaaWin32ControlUnit.dll` / `MaaAdbControlUnit.dll`을 빌드 출력 디렉터리(기본값: `build/bin` 아래 최신 디렉터리, `--output-dir`로 지정 가능)에 자동으로 배치합니다.
 
-   若需调试相关功能，则需要自行编译 MaaFramework 的 Debug 版本，使用对应的 DLL 文件，否则在断点调试时会神秘闪退。
+   관련 기능을 디버깅하려면 [MaaFramework의 Debug 버전을 직접 컴파일](https://maafw.com/docs/4.1-BuildGuide)하여 해당 DLL 파일을 사용해야 합니다. 그렇지 않으면 중단점 디버깅 시 원인을 알 수 없는 크래시가 발생합니다.
    :::
 
 9. 이제 자유롭게 ~~개조~~ 개발 시작!
@@ -105,7 +105,7 @@ icon: iconoir:developer
     git push origin dev-v2
     ```
 
-12. [MAA 메인 저장소](https://github.com/MaaAssistantArknights/MaaAssistantArknights)에서 Pull Request 제출 (master 대신 dev 브랜치 지정 필수)
+12. [MAA 메인 저장소](https://github.com/MaaAssistantArknights/MaaAssistantArknights)에서 Pull Request 제출 (master-v2 대신 dev-v2 브랜치 지정 필수)
 13. 업스트림 저장소 변경사항 동기화 방법:
     1. 업스트림 저장소 추가:
 
@@ -184,7 +184,7 @@ clangd 사용 시 C/C++ 확장의 IntelliSense를 비활성화(`C_Cpp.intelliSen
 
    :::
 
-4. **디버깅**: 프로젝트에 `.vscode/launch.json`이 포함되어 MaaWpfGui 또는 Debug Demo를 바로 실행 가능
+4. **디버깅**: `.vscode/launch.json`은 직접 생성해야 하며, 구성하면 MaaWpfGui 또는 Debug Demo를 실행하여 디버깅할 수 있습니다
 
 ### 빌드 및 디버깅 단축키
 
@@ -204,6 +204,8 @@ MAA는 리포지토리의 코드 및 리소스 파일들을 아름답고 일관�
 | C++       | [clang-format](https://clang.llvm.org/docs/ClangFormat.html)    |
 | JSON/YAML | [Prettier](https://prettier.io/)                                |
 | Markdown  | [markdownlint](https://github.com/DavidAnson/markdownlint-cli2) |
+| Python    | [ruff-format](https://docs.astral.sh/ruff/formatter/)           |
+| PNG       | [oxipng](https://github.com/oxipng/oxipng)                      |
 
 ### Pre-commit Hooks를 사용하여 자동 포매팅을 활성화
 

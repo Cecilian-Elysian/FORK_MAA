@@ -39,7 +39,7 @@ MAA 的意思是 MAA Assistant Arknights
 ## 亮点功能
 
 - 理智作战，掉落识别及上传 [企鹅物流](https://penguin-stats.cn/)，[一图流](https://ark.yituliu.cn/)
-- 智能基建换班，自动计算干员效率，单设施内最优解；同时也支持 [自定义排班](./protocol/base-scheduling-schema.md)
+- 智能基建换班，自动计算干员效率，支持跨设施组合；同时也支持 [自定义排班](./protocol/base-scheduling-schema.md)
 - 自动公招，可选使用加急许可，一次全部刷完！公招数据自动上传 [企鹅物流](https://penguin-stats.cn/result/stage/recruit/recruit)，[一图流](https://ark.yituliu.cn/survey/maarecruitdata)
 - 支持手动识别公招界面，方便对高星公招做出选择 ~~（你的这个高资回费出的是推王呢还是推王呢）~~
 - 支持识别干员列表，统计已有和未有干员及潜能，并在公招识别显示
@@ -107,11 +107,11 @@ MAA 以中文（简体）为第一语言，翻译词条均以中文（简体）�
 
 - [C 接口](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/include/AsstCaller.h)：[集成示例](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Cpp/main.cpp)
 - [Python 接口](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Python/asst/asst.py)：[集成示例](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Python/sample.py)
-- [Golang 接口](https://github.com/MaaAssistantArknights/MaaAssistantArknights/tree/dev/src/Golang)：[集成示例](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Golang/maa/maa.go)
-- [Dart 接口](https://github.com/MaaAssistantArknights/MaaAssistantArknights/tree/dev/src/Dart)
+- [Golang 接口](https://github.com/MaaAssistantArknights/MaaAssistantArknights/tree/dev-v2/src/Golang)：[集成示例](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Golang/maa/maa.go)
+- [Dart 接口](https://github.com/MaaAssistantArknights/MaaAssistantArknights/tree/dev-v2/src/Dart)
 - [Java 接口](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Java/src/main/java/com/iguigui/maaj/easySample/MaaCore.java)：[集成示例](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Java/src/main/java/com/iguigui/maaj/easySample/MaaJavaSample.java)
 - [Java HTTP 接口](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Java/Readme.md)
-- [Rust 接口](https://github.com/MaaAssistantArknights/MaaAssistantArknights/tree/dev/src/Rust/src/maa_sys)：[HTTP 接口](https://github.com/MaaAssistantArknights/MaaAssistantArknights/tree/dev/src/Rust)
+- [Rust 接口](https://github.com/MaaAssistantArknights/MaaAssistantArknights/tree/dev-v2/src/Rust/src/maa_sys)：[HTTP 接口](https://github.com/MaaAssistantArknights/MaaAssistantArknights/tree/dev-v2/src/Rust)
 - [TypeScript 接口](https://github.com/MaaAssistantArknights/MaaX/tree/main/packages/main/coreLoader)
 - [Woolang 接口](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Woolang/maa.wo)：[集成示例](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Woolang/demo.wo)
 - [集成文档](./protocol/integration.md)

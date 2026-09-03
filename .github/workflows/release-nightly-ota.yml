@@ -47,6 +47,9 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 250
 
+      - name: Check stub localization
+        run: python3 tools/CheckStubLocalization.py
+
       - name: Fetch tags
         run: |
           git fetch --depth=250 --tags
@@ -192,19 +195,18 @@ jobs:
           cmake --install build --config RelWithDebInfo
 
       - name: Download MaaFramework
-        if: matrix.arch == 'x64'
         uses: robinraju/release-downloader@v1
         with:
           repository: MaaXYZ/MaaFramework
           tag: v5.9.2
-          fileName: "*win-x86_64*.zip"
+          fileName: ${{ matrix.arch == 'arm64' && '*win-aarch64*.zip' || '*win-x86_64*.zip' }}
           extract: true
           out-file-path: MaaFramework-temp
 
-      - name: Copy MaaWin32ControlUnit
-        if: matrix.arch == 'x64'
+      - name: Copy ControlUnits
         run: |
           cp MaaFramework-temp/bin/*Win32ControlUnit* install/
+          cp MaaFramework-temp/bin/*AdbControlUnit* install/
 
       - name: Generate global.json
         shell: bash
@@ -271,8 +273,22 @@ jobs:
           rm -rf install/*.pdb
           rm -rf install/msvc-debug
           rm -rf install/*.h
+          rm -rf install/*.bak
+
+          # 用原生启动器替换 SDK apphost：MAA.exe 被单独拖出文件夹时给出错误提示
+          # MAA.dll 缺失可能来自 continue-on-error 的 publish，静默保留 apphost；stub 缺失属于构建异常，直接失败
+          if [ ! -f build/bin/RelWithDebInfo/MaaAppHostStub.exe ]; then
+              echo "::error::MaaAppHostStub.exe missing from build output"
+              exit 1
+          fi
+          if [ -f install/MAA.dll ]; then
+              cp build/bin/RelWithDebInfo/MaaAppHostStub.exe install/MAA.exe
+          fi
 
           cp tools/DependencySetup_依赖库安装.bat install
+
+      - name: Generate file list
+        run: pwsh tools/GenerateFileList.ps1 -InstallDir install
 
       - name: Upload MAA to GitHub
         uses: actions/upload-artifact@v7

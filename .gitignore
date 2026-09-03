@@ -527,3 +527,9 @@ fix*.md
 
 # Build log (captured during tools/release-zip.ps1 run; not part of repo)
 /installer-build.log
+
+# zcode
+/.zcode
+
+# mimosa security scan plugin
+/.mimosa

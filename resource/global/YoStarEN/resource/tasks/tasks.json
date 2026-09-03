@@ -542,7 +542,7 @@
             ["Spare Timber", "备用木材"],
             ["Shabby Fence", "破旧的木篱"],
             ["Steam Soda Bottle", "水汽汽水瓶"],
-            ["Eyjaf?ja?ll?a the Hv.t Aska?", "纯烬艾雅法拉"],
+            ["Eyjaf?j.?ll?a the Hv.t Aska?", "纯烬艾雅法拉"],
             ["Decorative Geyser", "景观喷泉"],
             ["Swire the Elegant Wit", "琳琅诗怀雅"],
             ["Bryophyta", "苍苔"],
@@ -1113,7 +1113,20 @@
             ["Broken", "断"],
             ["Friend'", "友字"],
             ["Food'", "食字"],
-            ["Ch'en the Dawnstreak", "赤刃明霄陈"]
+            ["Ch'en the Dawnstreak", "赤刃明霄陈"],
+            ["Bond", "牵绊"],
+            ["Bellone", "贝洛内"],
+            ["Ripresa", "复奏"],
+            ["Siracusan Formalwear", "叙拉古正装"],
+            ["Pegasian Helm", "天马之盔"],
+            ["Pegasian Lance", "天马之枪"],
+            ["Identification Device", "随身身份牌"],
+            ["Kazimierz Knightclub Pennant", "卡西米尔竞技旗"],
+            ["Famiglia Insignia", "家族徽章"],
+            ["Simple Communicator", "简易通讯机"],
+            ["Knightly Savings", "骑士储蓄罐"],
+            ["Chivalric Commandments", "骑士戒律"],
+            ["Emergency Dispatch Ticket", "紧急调度券"]
         ]
     },
     "GameStartCheckResourceOCR": {
@@ -1151,10 +1164,11 @@
         "templThreshold": 0.7
     },
     "FightSeries-Opened": {
+        "maskRange": [1, 255],
+        "templThreshold": 0.9,
         "template": "FightSeries-Indicator.png",
         "roi": [940, 190, 80, 380],
-        "templThreshold": 0.9,
-        "maskRange": [1, 255]
+        "method": "Ccoeff"
     },
     "FightSeries-Close": {
         "baseTask": "FightSeries-Icon",

@@ -39,7 +39,7 @@ Please read the [documentation](./manual/newbie.md) and then visit the [official
 ## Key Features
 
 - Auto-farming sanity, drop item recognition and auto-uploading to [Penguin Stats](https://penguin-stats.io/), [Yituliu](https://ark.yituliu.cn/).
-- Intelligent base shift management, auto-calculating operator efficiency for optimal solutions within facilities; also supports [customized scheduling](./protocol/base-scheduling-schema.md).
+- Intelligent base shift management, auto-calculating operator efficiency with support for cross-facility combinations; also supports [customized scheduling](./protocol/base-scheduling-schema.md).
 - Auto-recruitment with option to use expedited plans, clearing all at once! Auto-uploading recruitment data to [Penguin Stats](https://penguin-stats.io/result/stage/recruit/recruit), [Yituliu](https://ark.yituliu.cn/survey/maarecruitdata).
 - Manual recruitment tag identification for better high-star recruitment decisions ~~(Will that Senior Operator tag give you SilverAsh or SilverAsh?)~~
 - Operator list recognition, counting owned and missing operators and their potentials, displayed during recruitment identification.
@@ -111,11 +111,11 @@ Please refer to the [Development Guide](./develop/development.md).
 
 - [C interface](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/include/AsstCaller.h): [Integration Example](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Cpp/main.cpp)
 - [Python interface](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Python/asst/asst.py): [Integration Example](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Python/sample.py)
-- [Golang interface](https://github.com/MaaAssistantArknights/MaaAssistantArknights/tree/dev/src/Golang): [Integration Example](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Golang/maa/maa.go)
-- [Dart interface](https://github.com/MaaAssistantArknights/MaaAssistantArknights/tree/dev/src/Dart)
+- [Golang interface](https://github.com/MaaAssistantArknights/MaaAssistantArknights/tree/dev-v2/src/Golang): [Integration Example](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Golang/maa/maa.go)
+- [Dart interface](https://github.com/MaaAssistantArknights/MaaAssistantArknights/tree/dev-v2/src/Dart)
 - [Java interface](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Java/src/main/java/com/iguigui/maaj/easySample/MaaCore.java): [Integration Example](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Java/src/main/java/com/iguigui/maaj/easySample/MaaJavaSample.java)
 - [Java HTTP interface](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Java/Readme.md)
-- [Rust interface](https://github.com/MaaAssistantArknights/MaaAssistantArknights/tree/dev/src/Rust/src/maa_sys): [HTTP interface](https://github.com/MaaAssistantArknights/MaaAssistantArknights/tree/dev/src/Rust)
+- [Rust interface](https://github.com/MaaAssistantArknights/MaaAssistantArknights/tree/dev-v2/src/Rust/src/maa_sys): [HTTP interface](https://github.com/MaaAssistantArknights/MaaAssistantArknights/tree/dev-v2/src/Rust)
 - [TypeScript interface](https://github.com/MaaAssistantArknights/MaaX/tree/main/packages/main/coreLoader)
 - [Woolang interface](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Woolang/maa.wo): [Integration Example](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Woolang/demo.wo)
 - [Integration Documentation](./protocol/integration.md)

@@ -77,7 +77,7 @@ bool asst::CopilotTask::set_params(const json::value& params)
     auto filename_opt = params.find<std::string>("filename");
     auto multi_tasks_opt = params.find<json::array>("copilot_list"); // 多任务列表
     if (!filename_opt && !multi_tasks_opt) {
-        Log.error("CopilotTask set_params failed, stage_name or filename not found");
+        LogError << __FUNCTION__ << "CopilotTask set_params failed, stage_name or filename not found";
         return false;
     }
 
@@ -85,6 +85,9 @@ bool asst::CopilotTask::set_params(const json::value& params)
         m_multi_copilot_plugin_ptr->set_enable(false);
         m_battle_task_ptr->set_wait_until_end(false);
         auto copilot_opt = parse_copilot_filename(*filename_opt);
+        if (!copilot_opt) {
+            return false;
+        }
         m_stage_name = Copilot.get_stage_name();
         if (!m_battle_task_ptr->set_stage_name(m_stage_name)) {
             Log.error("Not support stage");
@@ -96,18 +99,25 @@ bool asst::CopilotTask::set_params(const json::value& params)
         m_battle_task_ptr->set_wait_until_end(true);
         auto configs = static_cast<std::vector<MultiCopilotConfig>>(*multi_tasks_opt);
         std::vector<MultiCopilotTaskPlugin::MultiCopilotConfig> configs_cvt;
-        for (const auto& [id, filename, stage_name, is_raid] : configs) {
+        for (const auto& [id, filename, nav_name, is_raid] : configs) {
             MultiCopilotTaskPlugin::MultiCopilotConfig config_cvt;
             auto copilot_opt = parse_copilot_filename(filename);
             if (!copilot_opt) {
                 return false;
             }
-            m_stage_name = Copilot.get_stage_name();
-            if (auto result = Tile.find(m_stage_name); !result || !json::open(result->second)) {
+            const auto& stage_name = Copilot.get_stage_name();
+            const auto& map_data = Tile.find(stage_name);
+            if (!map_data || !json::open(map_data->second)) {
                 return false;
             }
+            if (!nav_name) {
+                config_cvt.nav_name = map_data->first.code;
+            }
+            else {
+                LogInfo << __FUNCTION__ << " | navigation name override: " << *nav_name;
+                config_cvt.nav_name = *nav_name;
+            }
             config_cvt.copilot_file = *copilot_opt;
-            config_cvt.nav_name = stage_name;
             config_cvt.is_raid = is_raid;
             config_cvt.id = id; // ID 从0开始
             configs_cvt.emplace_back(std::move(config_cvt));
@@ -151,8 +161,8 @@ bool asst::CopilotTask::set_params(const json::value& params)
             if (name.empty()) {
                 continue;
             }
-            if (BattleData.is_name_invalid(name)) {
-                Log.error(__FUNCTION__, "| User additional oper", name, "is invalid");
+            if (BattleData.is_name_invalid(battle::Role::Unknown, name)) {
+                LogError << __FUNCTION__ << "| User additional oper" << name << "is invalid";
                 json::value info = basic_info_with_what("UserAdditionalOperInvalid");
                 info["details"]["name"] = name;
                 callback(AsstMsg::SubTaskError, info);

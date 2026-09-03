@@ -39,7 +39,7 @@ MAA는 MAA Assistant Arknights의 약자입니다
 ## 주요 기능
 
 - 이성을 사용하고, 아이템 드랍을 인식해 자동으로 통계 사이트에 업로드 합니다. [펭귄 물류](https://penguin-stats.io/), [Yituliu](https://ark.yituliu.cn/)
-- 자동으로 오퍼레이터 효율을 고려해 기반시설 교대를 하며, 동시에 사용자 커스텀 교대 기능도 지원합니다. [기반시설 스케줄링 프로토콜](./protocol/base-scheduling-schema.md)
+- 자동으로 오퍼레이터 효율을 고려해 기반시설 교대를 하며, 시설 간 조합을 지원합니다. 동시에 사용자 커스텀 교대 기능도 지원합니다. [기반시설 스케줄링 프로토콜](./protocol/base-scheduling-schema.md)
 - 자동으로 공개모집 및 즉시 모집을 선택할 수 있으며, 자동으로 통계 사이트에 업로드 합니다. [펭귄 물류](https://penguin-stats.io/result/stage/recruit/recruit), [Yituliu](https://ark.yituliu.cn/survey/maarecruitdata)
 - 공개 모집 화면에서 태그 인식을 할 수 있습니다.
 - 오퍼레이터 목록을 인식해, 보유중인 오퍼레이터들 및 잠재를 통계화하여 공개모집 태그 인식 시 표시합니다.
@@ -112,11 +112,11 @@ MAA는 중국어(간체)를 기본 언어로 하며, 번역 단어는 중국어(
 
 - [C 인터페이스](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/include/AsstCaller.h)：[예제](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Cpp/main.cpp)
 - [Python 인터페이스](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Python/asst/asst.py)：[예제](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Python/sample.py)
-- [Golang 인터페이스](https://github.com/MaaAssistantArknights/MaaAssistantArknights/tree/dev/src/Golang)：[예제](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Golang/maa/maa.go)
-- [Dart 인터페이스](https://github.com/MaaAssistantArknights/MaaAssistantArknights/tree/dev/src/Dart)
+- [Golang 인터페이스](https://github.com/MaaAssistantArknights/MaaAssistantArknights/tree/dev-v2/src/Golang)：[예제](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Golang/maa/maa.go)
+- [Dart 인터페이스](https://github.com/MaaAssistantArknights/MaaAssistantArknights/tree/dev-v2/src/Dart)
 - [Java 인터페이스](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Java/src/main/java/com/iguigui/maaj/easySample/MaaCore.java)：[예제](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Java/src/main/java/com/iguigui/maaj/easySample/MaaJavaSample.java)
 - [Java HTTP 인터페이스](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Java/Readme.md)
-- [Rust 인터페이스](https://github.com/MaaAssistantArknights/MaaAssistantArknights/tree/dev/src/Rust/src/maa_sys)：[HTTP 인터페이스](https://github.com/MaaAssistantArknights/MaaAssistantArknights/tree/dev/src/Rust)
+- [Rust 인터페이스](https://github.com/MaaAssistantArknights/MaaAssistantArknights/tree/dev-v2/src/Rust/src/maa_sys)：[HTTP 인터페이스](https://github.com/MaaAssistantArknights/MaaAssistantArknights/tree/dev-v2/src/Rust)
 - [TypeScript 인터페이스](https://github.com/MaaAssistantArknights/MaaX/tree/main/packages/main/coreLoader)
 - [Woolang 인터페이스](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Woolang/maa.wo)：[예제](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Woolang/demo.wo)
 - [통합문서](./protocol/integration.md)

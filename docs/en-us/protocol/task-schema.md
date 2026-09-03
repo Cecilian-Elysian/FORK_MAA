@@ -130,6 +130,10 @@ Please note that JSON files do not support comments. The comments in this docume
                                             // Suitable for scenarios where color features are distinct but template matching performs poorly
                                             // When using this option, it is recommended to correspondingly increase the templThreshold
 
+        "nmsDistance": 0,                   // Optional, deduplication radius for multiple template matching results, in pixels, default 0
+                                            // When both horizontal and vertical coordinate differences of two hits are less than this value, only the highest-scoring one is kept
+                                            // 0 or unset means half of the shorter side of the template
+
         "method": "Ccoeff",                 // Optional, template matching algorithm, can be list
                                             // Default is Ccoeff when not specified
                                             //      - Ccoeff:       Color-insensitive template matching, corresponds to cv::TM_CCOEFF_NORMED
@@ -151,6 +155,9 @@ Please note that JSON files do not support comments. The comments in this docume
         "fullMatch": false,                 // Optional, whether text recognition requires exact match (no extra characters), default false
                                             // When false, substring is sufficient: e.g., text: [ "开始" ], recognized "开始行动" is success
                                             // When true, must recognize exactly "开始", not one character more
+
+        "replaceFull": false,               // Optional, whether ocrReplace replaces the entire recognized text on match, default false
+                                            // When false, only the matched substring is replaced; when true, if the entire text matches any replacement rule, the whole text is replaced with that rule's replacement value
 
         "isAscii": false,                   // Optional, whether text content is ASCII characters
                                             // Default false

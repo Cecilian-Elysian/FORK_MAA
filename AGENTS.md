@@ -277,7 +277,7 @@ Select-String -Path install-staging/MAA.runtimeconfig.json -Pattern "STARTUP_HOO
 
 | 分支 | 角色 | 修复目标 |
 |------|------|----------|
-| _无（2026-08-30 §7.14/§7.15/§7.16/§7.17 已晋升 branch；本节空）_ | | |
+| `feat/upstream-v617-sync` | 上游同步基线 | v6.17.0 三方合并；仅解决基线冲突，后续 Fork 适配从该分支拆出 |
 
 
 ## 7. 分支生命周期记录

@@ -41,7 +41,7 @@ icon: material-symbols:task
 
         "sub": ["SubTaskName1", "SubTaskName2"],
                                             // 選填，子任務，不推薦使用。會在執行完目前任務後，依序執行每一個子任務
-                                            // 可以套娃，子任務再套子任務。但要注意不要寫出死循環
+                                            // 可以套娃，子任務再套子任務。但要注意不要寫出無窮迴圈
 
         "subErrorIgnored": true,            // 選填，是否忽略子任務的錯誤。
                                             // 不填寫預設為 false
@@ -129,6 +129,10 @@ icon: material-symbols:task
                                             // 適用於顏色特徵明顯但範本比對效果不佳的場景
                                             // 使用此選項時建議相應提高 templThreshold 門檻值
 
+        "nmsDistance": 0,                   // 選填，範本比對多結果的重複排除半徑，單位為像素，預設為 0
+                                            // 兩個命中位置的橫縱座標差都小於該值時，只保留得分最高的一個
+                                            // 不填或 0 時按範本短邊的一半取值
+
         "method": "Ccoeff",                 // 選填，範本比對演算法，可以是列表
                                             // 不填寫時預設為 Ccoeff
                                             //      - Ccoeff:       對顏色不敏感的範本比對演算法，對應 cv::TM_CCOEFF_NORMED
@@ -150,6 +154,9 @@ icon: material-symbols:task
         "fullMatch": false,                 // 選填，文字辨識是否需要全字比對（不能多字），預設為 false
                                             // false 時只要是子字串即可：例如 text: [ "開始" ]，實際辨識到了 "開始行動"，也算辨識成功；
                                             // true 時則必須辨識到了 "開始"，多一個字都不行
+
+        "replaceFull": false,               // 選填，ocrReplace 命中時是否替換整段辨識文字，預設為 false
+                                            // false 時僅替換命中的子字串；true 時只要整段文字命中任一替換規則，就將整段文字替換為該規則的替換值
 
         "isAscii": false,                   // 選填，要辨識的文字內容是否為 ASCII 碼字元
                                             // 不填寫預設為 false

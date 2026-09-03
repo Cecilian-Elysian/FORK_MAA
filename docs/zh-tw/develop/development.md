@@ -39,7 +39,7 @@ icon: iconoir:developer
 
 1. 如果很久以前 Fork 過，先在自己倉庫的 `Settings` 裡，翻到最下面，將其刪除。
 2. 打開 [MAA 主倉庫](https://github.com/MaaAssistantArknights/MaaAssistantArknights)，點擊 `Fork`，繼續點擊 `Create fork`。
-3. 複製（Clone）您自己倉庫下的 dev 分支到在地，並拉取子模組（Submodules）。
+3. 複製（Clone）您自己倉庫下的 dev-v2 分支到在地，並拉取子模組（Submodules）。
 
    ```bash
    git clone --recurse-submodules <您的倉庫 git 連結> -b dev-v2 --single-branch
@@ -78,9 +78,9 @@ icon: iconoir:developer
    - 按 F5 執行。
 
    ::: tip
-   若需執行 Win32Controller（Windows 視窗控制）/ MaaFwAdbController（MaaFramework 觸控模式）相關功能，需要自行從 [MaaFramework Releases](https://github.com/MaaModular/MaaFramework/releases) 下載對應平台的壓縮檔案，將 `bin` 目錄中的 `MaaWin32ControlUnit.dll` / `MaaAdbControlUnit.dll` 放到 MAA 的 DLL 同目錄下（例如 `build/bin/Debug`）。歡迎 PR 一個自動下載腳本！
+   若需執行 Win32Controller（Windows 視窗控制）/ MaaFwAdbController（MaaFramework 觸控模式）相關功能，執行 `python tools/maafw-control-unit-download.py` 即可自動下載對應平台的 `MaaWin32ControlUnit.dll` / `MaaAdbControlUnit.dll` 到建置輸出目錄（預設取 `build/bin` 下最新產生的目錄，也可用 `--output-dir` 指定）。
 
-   若需針對相關功能進行除錯，則需要自行編譯 MaaFramework 的 Debug 版本，使用對應的 DLL 檔案，否則在斷點除錯時會神秘閃退。
+   若需針對相關功能進行除錯，則需要[自行編譯 MaaFramework](https://maafw.com/docs/4.1-BuildGuide) 的 Debug 版本，使用對應的 DLL 檔案，否則在斷點除錯時會神秘閃退。
    :::
 
 9. 到這裡，你就可以愉快地 ~~瞎雞巴改~~ 發電了
@@ -100,7 +100,7 @@ icon: iconoir:developer
     git push origin dev-v2
     ```
 
-12. 打開 [MAA 主倉庫](https://github.com/MaaAssistantArknights/MaaAssistantArknights)。提交一個 Pull Request，等待管理員通過。別忘了您是在 dev 分支上修改，別提交到 master 分支去了。
+12. 打開 [MAA 主倉庫](https://github.com/MaaAssistantArknights/MaaAssistantArknights)。提交一個 Pull Request，等待管理員通過。別忘了您是在 dev-v2 分支上修改，別提交到 master-v2 分支去了。
 
 13. 當 MAA 原倉庫出現更改（他人貢獻）時，您可能需要把這些更改同步到您的分支：
     1. 關聯 MAA 原倉庫
@@ -167,7 +167,7 @@ icon: iconoir:developer
    - 在 VS Installer 中勾選安裝 **用於 Windows 的 C++ Clang 編譯器**（clang-cl）
    - 需切換為 `windows-x64-clang` 執行一次 Configure 以在 `build/` 下生成 `compile_commands.json`，此後 clangd 即可使用
    - **該 preset 使用 clang-cl 而非 MSVC，無法直接編譯出可用產物**，實際建置時必須切回 `windows-x64`
-   - clangd 基於 clang-cl 的編譯資訊進行分析，部分程式碼（如 MSVC 特有擴充）可能仍會顯示報錯，可忽略，不影響實際 MSVC 編譯
+   - clangd 基於 clang-cl 的編譯資訊進行分析，部分程式碼（如 MSVC 特有擴充）可能仍會顯示錯誤，可忽略，不影響實際 MSVC 編譯
 
    **命令列切換 preset 範例**（在專案根目錄執行）：
 
@@ -182,7 +182,7 @@ icon: iconoir:developer
 
    :::
 
-4. **除錯**：專案已包含 `.vscode/launch.json`，可直接啟動 MaaWpfGui 或 Debug Demo 進行除錯
+4. **除錯**：需自行建立 `.vscode/launch.json`，配置後可啟動 MaaWpfGui 或 Debug Demo 進行除錯
 
 ### 快速建置與除錯
 
@@ -202,6 +202,8 @@ MAA 使用一系列的格式化工具來確保倉庫中的程式碼和資源檔�
 | C++       | [clang-format](https://clang.llvm.org/docs/ClangFormat.html)    |
 | JSON/YAML | [Prettier](https://prettier.io/)                                |
 | Markdown  | [markdownlint](https://github.com/DavidAnson/markdownlint-cli2) |
+| Python    | [ruff-format](https://docs.astral.sh/ruff/formatter/)           |
+| PNG       | [oxipng](https://github.com/oxipng/oxipng)                      |
 
 ### 利用 Pre-commit Hooks 自動進行程式碼格式化
 
@@ -214,7 +216,7 @@ MAA 使用一系列的格式化工具來確保倉庫中的程式碼和資源檔�
    pre-commit install
    ```
 
-如果 pip 安裝後依然無法執行 pre-commit，請確認 pip 安裝路徑已被添加到 PATH。
+如果 pip 安裝後依然無法執行 pre-commit，請確認 pip 安裝路徑已被新增到 PATH。
 
 接下來，每次提交時都將會自動執行格式化工具，以確保您的程式碼格式符合規範。
 
@@ -230,7 +232,7 @@ MAA 使用一系列的格式化工具來確保倉庫中的程式碼和資源檔�
 
 3. 在 Visual Studio `工具-選項` 中搜尋 `clang-format`
 
-4. 點擊 `啟用 ClangFormat 支援`，然後選擇下方的 `使用自定義 clang-format.exe 檔案`，選擇第 2 步找到的 `clang-format.exe`
+4. 點擊 `啟用 ClangFormat 支援`，然後選擇下方的 `使用自訂 clang-format.exe 檔案`，選擇第 2 步找到的 `clang-format.exe`
 
 ![Visual Studio 設定 clang-format](/images/zh-cn/development-enable-vs-clang-format.png)
 

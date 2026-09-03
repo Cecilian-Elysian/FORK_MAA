@@ -58,7 +58,7 @@ enum class TouchMode
     MacPlayTools = 3,
     MaaFwAdb = 4,
     Android = 5,
-    MumuExtras = 6, // MuMu external renderer IPC，不可用时自动降级为 Maatouch
+    MumuExtras = 6, // MuMu external renderer IPC，不可用时自动降级为 Minitouch
 };
 
 #ifdef _WIN32
@@ -729,6 +729,7 @@ struct MatchTaskInfo : public TaskInfo
     Ranges color_scales;                  // 数色掩码范围
     bool color_close = true;              // 数色时是否使用闭运算处理
     bool pure_color = false;              // 数色时是否忽略模板匹配结果
+    int nms_distance = 0;                 // 多匹配去重半径，0 时按模板短边的一半取值
 };
 
 using MatchTaskPtr = std::shared_ptr<MatchTaskInfo>;
