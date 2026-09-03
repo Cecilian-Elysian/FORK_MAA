@@ -5,8 +5,8 @@ config:
   - type: doc-hero
     hero:
       name: MAA
-      text: 文档站 | Documentation
-      tagline: 选择语言 | Select Language
+      text: Cecilian-Elysian Fork 文档 | Documentation
+      tagline: 基于 MAA 上游 master-v2 的本地增强分叉 | Local enhancement fork based on MAA master-v2
       image: /images/maa-logo_512x512.png
       actions:
         - theme: brand

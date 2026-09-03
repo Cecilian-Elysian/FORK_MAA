@@ -13,18 +13,18 @@ dir:
 
 ![MAA Logo =256x256](/images/maa-logo_512x512.png)
 
-# MAA
+# MAA Assistant Arknights · Cecilian-Elysian Fork
 
 ![C++](https://img.shields.io/badge/C++-20-%2300599C?logo=cplusplus)  
 ![platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-blueviolet)  
-![license](https://img.shields.io/github/license/MaaAssistantArknights/MaaAssistantArknights) ![commit](https://img.shields.io/github/commit-activity/m/MaaAssistantArknights/MaaAssistantArknights?color=%23ff69b4)  
-![stars](https://img.shields.io/github/stars/MaaAssistantArknights/MaaAssistantArknights?style=social) ![GitHub all releases](https://img.shields.io/github/downloads/MaaAssistantArknights/MaaAssistantArknights/total?style=social)  
-<a href="https://deepwiki.com/MaaAssistantArknights/MaaAssistantArknights"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>  
-<a href="https://trendshift.io/repositories/979" target="_blank"><img src="https://trendshift.io/api/badge/repositories/979" alt="MaaAssistantArknights%2FMaaAssistantArknights | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
+![license](https://img.shields.io/github/license/Cecilian-Elysian/FORK_MAA) ![upstream](https://img.shields.io/badge/upstream-MaaAssistantArknights%2FMaaAssistantArknights-181717?logo=github)
+![stars](https://img.shields.io/github/stars/Cecilian-Elysian/FORK_MAA?style=social) ![commit](https://img.shields.io/github/commit-activity/m/Cecilian-Elysian/FORK_MAA?color=%23ff69b4)
+<a href="https://github.com/Cecilian-Elysian/FORK_MAA/commits/feat/upstream-v617-sync"><img src="https://img.shields.io/badge/sync-v6.17.0-blue?logo=git" alt="sync v6.17.0"></a>
 
 MAA 的意思是 MAA Assistant Arknights
 
-一款明日方舟游戏小助手
+本仓库是 [MaaAssistantArknights/MaaAssistantArknights](https://github.com/MaaAssistantArknights/MaaAssistantArknights) 的**个人增强型本地分叉**。
+关注多账号轮换、上游基线跟进、本地化构建与验证，不接受上游直接合并；Fork 私有功能在 `feat/<name>` / `fix/<name>` 分支逐项演进，由 `staging` → `branch` 流程整合。
 
 基于图像识别技术，一键完成全部日常任务！
 
@@ -32,9 +32,23 @@ MAA 的意思是 MAA Assistant Arknights
 
 :::
 
+## 关于本 Fork
+
+| 项 | 说明 |
+|----|------|
+| 上游 | [MaaAssistantArknights/MaaAssistantArknights](https://github.com/MaaAssistantArknights/MaaAssistantArknights) `master-v2`（稳定 release 分支） |
+| 镜像 | 本地 `master` 始终指向 `upstream/master-v2`，通过 `tools/update-upstream.ps1` 同步 |
+| 同步 | 每次上游发布版本（如 v6.17.0），先创建 `feat/upstream-<version>-sync` 解决基线冲突，再派生子分支落地 Fork 改造 |
+| Fork 私有功能 | 账号轮换、账号数据分桶、公招加急门槛、会客室线索回退、诊断报告、`expedite_min_level` 协议扩展等，全部来自 `branch` 分支的本地改造 |
+| 文档 | 仓库根 [README](../../README.md) + [AGENTS.md](../../AGENTS.md) + [WORKFLOW.md](../../WORKFLOW.md) + [LOG.md](../../LOG.md) |
+
+> 不要将 `upstream/master-v2` 直接合并到 `staging` 或 `branch`。Fork 流程细节请参考 [WORKFLOW.md](../../WORKFLOW.md) §5（假历史关联）和 §6（合并手解）。
+
 ## 下载与安装
 
 请阅读 [文档](./manual/newbie.md) 后前往 [官网](https://maa.plus) 或 [Releases](https://github.com/MaaAssistantArknights/MaaAssistantArknights/releases) 下载，并参考 [新手上路](./manual/newbie.md) 进行安装。
+
+本 Fork 与上游安装方式完全一致；如果 `branch` 与上游版本差异较大，请优先使用上游预编译产物，再按 [WORKFLOW.md](../../WORKFLOW.md) 自建本地版本。
 
 ## 亮点功能
 
@@ -48,6 +62,25 @@ MAA 的意思是 MAA Assistant Arknights
 - 肉鸽全自动刷源石锭和等级，自动烧水和凹直升，智能识别干员及练度
 - 选择作业 JSON 文件，自动抄作业， [视频演示](https://www.bilibili.com/video/BV1H841177Fk/)
 - 支持 C, Python, Java, Rust, Golang, Java HTTP, Rust HTTP 等多种接口，方便集成调用，自定义你的 MAA！
+
+### Fork 专属增强
+
+- **多账号自动轮换**（`feat/account_rotation`）：日常任务按账号序列全自动执行；肉鸽与生息演算延后到最后（`feat/defer-rogue`）
+- **干员 / 仓库识别数据按账号分桶**（`feat/account-scoped-recognition-data`）：切号即切桶，不会出现跨账号库存合并
+- **公招加急门槛**（`feat/expedite-threshold`）：Fork 协议字段 `expedite_min_level`，仅在确认最低招募星级 ≥ 阈值（4 / 5 / 6）时使用加急许可
+- **公招加急按目标槽位点击**（`fix/recruit-expedite-slot-target`）：多槽位同时进行时不会串位
+- **「生成诊断报告」重构**（`fix/diagnostic-export-refactor`）：分卷导出、系统信息收集、异步执行
+- **会客室线索快捷置入失败回退**（`fix/reception-clue-restore`）：修复上游 issue #16165
+- **本地构建工具链增强**：`tools/local-install-staging.bat`、VS 2022 BuildTools 兼容路径、NetBeauty2 后处理
+
+### Fork 私有功能的关键文件清单
+
+- `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.AccountCycle.cs`：账号轮换编排
+- `src/MaaWpfGui/ViewModels/Orchestration/AccountCycleOrchestrator.cs`：编排者
+- `src/MaaWpfGui/ViewModels/UI/ToolboxViewModel.cs` 的 `#region AccountScopedRecognitionData`：账号数据分桶
+- `src/MaaWpfGui/Models/DiagnosticInfo.cs`：诊断报告模型
+- `src/MaaCore/Task/Infrast/InfrastReceptionTask.cpp` 的 `proc_clue_vacancy`：会客室线索快捷置入回退
+- `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.{h,cpp}` 与 `src/MaaCore/Task/Interface/RecruitTask.cpp`：`expedite_min_level` 阈值判定
 
 话不多说，看图！
 
@@ -79,7 +112,7 @@ MAA 的意思是 MAA Assistant Arknights
 ### 外服支持
 
 目前国际服（美服）、日服、韩服、繁中服的绝大部分功能均已支持。但由于外服用户较少及项目人手不足，很多功能并没有进行全面的测试，所以请自行体验。  
-若您遇到了 Bug，或对某个功能有强需求，欢迎在 [Issues](https://github.com/MaaAssistantArknights/MaaAssistantArknights/issues) 和 [讨论区](https://github.com/MaaAssistantArknights/MaaAssistantArknights/discussions) 催更；或加入我们一起建设 MAA！请参阅 [外服适配教程](#外服适配)
+若您遇到了 Bug，或对某个功能有强需求，欢迎在 [上游 Issues](https://github.com/MaaAssistantArknights/MaaAssistantArknights/issues) 和 [讨论区](https://github.com/MaaAssistantArknights/MaaAssistantArknights/discussions) 催更；或加入我们一起建设 MAA！请参阅 [外服适配教程](#外服适配)
 
 ### CLI 支持
 
@@ -94,6 +127,7 @@ MAA 支持命令行界面（CLI）操作，支持 Linux，macOS 和 Windows，�
 - [作业站](https://prts.plus) 后端：[ZootPlusBackend](https://github.com/ZOOT-Plus/ZootPlusBackend)
 - [官网](https://maa.plus)：[前端](https://github.com/MaaAssistantArknights/maa-website)
 - 深度学习：[MaaAI](https://github.com/MaaAssistantArknights/MaaAI)
+- 本 Fork 仓库：[Cecilian-Elysian/FORK_MAA](https://github.com/Cecilian-Elysian/FORK_MAA)
 
 ### 多语言 (i18n)
 
@@ -101,19 +135,23 @@ MAA 以中文（简体）为第一语言，翻译词条均以中文（简体）�
 
 ### 参与开发
 
-请参阅 [开发指南](./develop/development.md)。
+请参阅 [开发指南](./develop/development.md) 与仓库根 [AGENTS.md](../../AGENTS.md) / [WORKFLOW.md](../../WORKFLOW.md)。本 Fork 流程关键点：
+
+- 修改前查阅 [`docs/downstream-changes.md`](../../docs/downstream-changes.md) 确认 Fork 改动清单
+- 每个新功能用独立 `feat/<name>` / `fix/<name>` 分支，避免跨域改动混在同一冲突集
+- Fork 私有功能集中放在 `src/MaaWpfGui/Models`、`TaskQueueViewModel.AccountCycle.cs`、`ToolboxViewModel.cs` 与 `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.*` 等热点文件
 
 ### API
 
-- [C 接口](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/include/AsstCaller.h)：[集成示例](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Cpp/main.cpp)
-- [Python 接口](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Python/asst/asst.py)：[集成示例](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Python/sample.py)
-- [Golang 接口](https://github.com/MaaAssistantArknights/MaaAssistantArknights/tree/dev-v2/src/Golang)：[集成示例](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Golang/maa/maa.go)
-- [Dart 接口](https://github.com/MaaAssistantArknights/MaaAssistantArknights/tree/dev-v2/src/Dart)
-- [Java 接口](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Java/src/main/java/com/iguigui/maaj/easySample/MaaCore.java)：[集成示例](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Java/src/main/java/com/iguigui/maaj/easySample/MaaJavaSample.java)
-- [Java HTTP 接口](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Java/Readme.md)
-- [Rust 接口](https://github.com/MaaAssistantArknights/MaaAssistantArknights/tree/dev-v2/src/Rust/src/maa_sys)：[HTTP 接口](https://github.com/MaaAssistantArknights/MaaAssistantArknights/tree/dev-v2/src/Rust)
+- [C 接口](../../include/AsstCaller.h)：[集成示例](../../src/Cpp/main.cpp)
+- [Python 接口](../../src/Python/asst/asst.py)：[集成示例](../../src/Python/sample.py)
+- [Golang 接口](../../src/Golang)：[集成示例](../../src/Golang/maa/maa.go)
+- [Dart 接口](../../src/Dart)
+- [Java 接口](../../src/Java/src/main/java/com/iguigui/maaj/easySample/MaaCore.java)：[集成示例](../../src/Java/src/main/java/com/iguigui/maaj/easySample/MaaJavaSample.java)
+- [Java HTTP 接口](../../src/Java/Readme.md)
+- [Rust 接口](../../src/Rust/src/maa_sys)：[HTTP 接口](../../src/Rust)
 - [TypeScript 接口](https://github.com/MaaAssistantArknights/MaaX/tree/main/packages/main/coreLoader)
-- [Woolang 接口](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Woolang/maa.wo)：[集成示例](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Woolang/demo.wo)
+- [Woolang 接口](../../src/Woolang/maa.wo)：[集成示例](../../src/Woolang/demo.wo)
 - [集成文档](./protocol/integration.md)
 - [回调消息协议](./protocol/callback-schema.md)
 - [任务流程协议](./protocol/task-schema.md)
@@ -163,11 +201,12 @@ MAA 以中文（简体）为第一语言，翻译词条均以中文（简体）�
 
 感谢所有参与到开发/测试中的朋友们，是大家的帮助让 MAA 越来越好！ (\*´▽｀)ノノ
 
-[![Contributors](https://contributors-img.web.app/image?repo=MaaAssistantArknights/MaaAssistantArknights&max=105&columns=15)](https://github.com/MaaAssistantArknights/MaaAssistantArknights/graphs/contributors)
+[![Contributors](https://contributors-img.web.app/image?repo=Cecilian-Elysian/FORK_MAA&max=105&columns=15)](https://github.com/Cecilian-Elysian/FORK_MAA/graphs/contributors)<br>
+[上游贡献者](https://github.com/MaaAssistantArknights/MaaAssistantArknights/graphs/contributors)
 
 ## 声明
 
-- 本软件使用 [GNU Affero General Public License v3.0 only](https://spdx.org/licenses/AGPL-3.0-only.html) 开源，并附带额外 [用户协议](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/terms-of-service.md)。
+- 本 Fork 继承 [GNU Affero General Public License v3.0 only](https://spdx.org/licenses/AGPL-3.0-only.html) 与上游 [用户协议](../../terms-of-service.md)。
 - 本软件 logo 并非使用 AGPL 3.0 协议开源，[耗毛](https://weibo.com/u/3251357314)、vie 两位画师及软件全体开发者保留所有权利。不得以 AGPL 3.0 协议已授权为由在未经授权的情况下使用本软件 logo，不得在未经授权的情况下将本软件 logo 用于任何商业用途。
 - 本软件开源、免费，仅供学习交流使用。若您遇到商家使用本软件进行代练并收费，可能是设备与时间等费用，产生的问题及后果与本软件无关。
 

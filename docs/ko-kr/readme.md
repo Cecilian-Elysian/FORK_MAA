@@ -13,16 +13,18 @@ dir:
 
 ![MAA Logo =256x256](/images/maa-logo_512x512.png)
 
-# MAA
+# MAA Assistant Arknights · Cecilian-Elysian Fork
 
 ![C++](https://img.shields.io/badge/C++-20-%2300599C?logo=cplusplus)  
 ![platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-blueviolet)  
-![license](https://img.shields.io/github/license/MaaAssistantArknights/MaaAssistantArknights) ![commit](https://img.shields.io/github/commit-activity/m/MaaAssistantArknights/MaaAssistantArknights?color=%23ff69b4)  
-![stars](https://img.shields.io/github/stars/MaaAssistantArknights/MaaAssistantArknights?style=social) ![GitHub all releases](https://img.shields.io/github/downloads/MaaAssistantArknights/MaaAssistantArknights/total?style=social)  
-<a href="https://deepwiki.com/MaaAssistantArknights/MaaAssistantArknights"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>  
-<a href="https://trendshift.io/repositories/979" target="_blank"><img src="https://trendshift.io/api/badge/repositories/979" alt="MaaAssistantArknights%2FMaaAssistantArknights | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
+![license](https://img.shields.io/github/license/Cecilian-Elysian/FORK_MAA) ![upstream](https://img.shields.io/badge/upstream-MaaAssistantArknights%2FMaaAssistantArknights-181717?logo=github)
+![stars](https://img.shields.io/github/stars/Cecilian-Elysian/FORK_MAA?style=social) ![commit](https://img.shields.io/github/commit-activity/m/Cecilian-Elysian/FORK_MAA?color=%23ff69b4)
+<a href="https://github.com/Cecilian-Elysian/FORK_MAA/commits/feat/upstream-v617-sync"><img src="https://img.shields.io/badge/sync-v6.17.0-blue?logo=git" alt="sync v6.17.0"></a>
 
 MAA는 MAA Assistant Arknights의 약자입니다
+
+본 저장소는 [MaaAssistantArknights/MaaAssistantArknights](https://github.com/MaaAssistantArknights/MaaAssistantArknights)의 **개인 강화형 로컬 포크**입니다.
+다중 계정 로테이션, 업스트림 베이스라인 추적, 로컬 빌드/검증을 중심으로 하며 업스트림을 직접 머지하지 않습니다. Fork 전용 기능은 `feat/<name>` / `fix/<name>` 브랜치에서 점진적으로 발전하고 `staging` → `branch` 플로우로 통합됩니다.
 
 명일방주 어시스턴트
 
@@ -32,9 +34,23 @@ MAA는 MAA Assistant Arknights의 약자입니다
 
 :::
 
+## 본 포크 소개
+
+| 항목 | 설명 |
+|------|------|
+| 업스트림 | [MaaAssistantArknights/MaaAssistantArknights](https://github.com/MaaAssistantArknights/MaaAssistantArknights) `master-v2` (안정 릴리스 브랜치) |
+| 미러 | 로컬 `master`는 `upstream/master-v2`를 가리키며 `tools/update-upstream.ps1`로 동기화 |
+| 동기화 | 업스트림 릴리스마다 (예: v6.17.0) `feat/upstream-<version>-sync`에서 베이스라인 충돌을 해결한 뒤 주제별 브랜치를 파생하여 Fork 변경을 구현 |
+| Fork 전용 기능 | 계정 로테이션, 계정별 데이터 버킷, 지원 가속 임계값, 응접실 단서 폴백, 진단 보고서, `expedite_min_level` 프로토콜 확장 등 모두 `branch`의 로컬 작업에서 파생 |
+| 문서 | 저장소 루트의 [README](../../README.md) + [AGENTS.md](../../AGENTS.md) + [WORKFLOW.md](../../WORKFLOW.md) + [LOG.md](../../LOG.md) |
+
+> `upstream/master-v2`를 `staging` 또는 `branch`로 직접 머지하지 마세요. Fork 흐름 세부사항은 [WORKFLOW.md](../../WORKFLOW.md) §5 (역사 接목) 및 §6 (수동 충돌 해결)을 참조하세요.
+
 ## 다운로드 및 설치
 
 [문서](./manual/newbie.md) 를 읽은 후 [공식 웹사이트](https://maa.plus) 또는 [Releases](https://github.com/MaaAssistantArknights/MaaAssistantArknights/releases) 에서 다운로드하세요. [초보자 가이드](./manual/newbie.md) 를 참고하여 설치하세요.
+
+본 포크의 설치 절차는 업스트림과 완전히 동일합니다. `branch`가 업스트림보다 뒤처져 있다면 업스트림의 빌드된 릴리스를 우선 사용하고, 로컬 빌드는 [WORKFLOW.md](../../WORKFLOW.md)에 따라 진행하세요.
 
 ## 주요 기능
 
@@ -50,6 +66,25 @@ MAA는 MAA Assistant Arknights의 약자입니다
 - 통합 전략에서 자동으로 오퍼레이터 레벨을 인식하며, 오리지늄 각뿔 획득 및 노드 개방과 레벨을 올려줍니다.
 - Copliot 파일을 통한 자동 지휘가 가능합니다. [영상 설명](https://www.bilibili.com/video/BV1H841177Fk/)
 - C, Python, Java, Rust, Golang, Java HTTP, Rust HTTP 다음과 같은 다양한 환경에서 MAA를 사용할 수 있습니다!
+
+### Fork 전용 강화
+
+- **다중 계정 자동 로테이션**(`feat/account_rotation`): 일상 임무가 구성된 계정 순서로 자동 실행. 마지막까지 로그라이크/생식 연산 연기 (`feat/defer-rogue`)
+- **오퍼레이터/창고 인식 데이터를 계정별 버킷화**(`feat/account-scoped-recognition-data`): 계정 전환 시 재고가 섞이지 않음
+- **지원 가속 임계값**(`feat/expedite-threshold`): Fork 프로토콜 필드 `expedite_min_level`는 확인된 최소 레어도 ≥ 임계값 (4/5/6)일 때만 긴급 소집권 사용
+- **지원 가속 슬롯별 클릭**(`fix/recruit-expedite-slot-target`): 다중 슬롯 동시 실행 시 잘못된 가속 방지
+- **진단 보고서 재구성**(`fix/diagnostic-export-refactor`): 크기별 분할 패키징, 시스템 정보 수집, 비동기 실행
+- **응접실 단서 빠른 투입 폴백**(`fix/reception-clue-restore`): 업스트림 issue #16165 수정
+- **로컬 빌드 체인 강화**: `tools/local-install-staging.bat`, VS 2022 BuildTools 호환 경로, NetBeauty2 후처리
+
+### Fork 전용 기능 핵심 파일
+
+- `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.AccountCycle.cs`: 계정 로테이션 오케스트레이션
+- `src/MaaWpfGui/ViewModels/Orchestration/AccountCycleOrchestrator.cs`: 오케스트레이터
+- `src/MaaWpfGui/ViewModels/UI/ToolboxViewModel.cs`의 `#region AccountScopedRecognitionData`: 계정별 데이터 버킷
+- `src/MaaWpfGui/Models/DiagnosticInfo.cs`: 진단 보고서 모델
+- `src/MaaCore/Task/Infrast/InfrastReceptionTask.cpp`의 `proc_clue_vacancy`: 응접실 단서 빠른 투입 폴백
+- `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.{h,cpp}`와 `src/MaaCore/Task/Interface/RecruitTask.cpp`: `expedite_min_level` 임계값 판정
 
 말로만 설명하기보다는 사진으로 보여드리겠습니다!
 
@@ -99,6 +134,7 @@ MAA는 명령줄 인터페이스(CLI)를 지원하며, Linux,macOS 및 Window에
 - [전략 파일 저장소](https://prts.plus): Backend [ZootPlusBackend](https://github.com/ZOOT-Plus/ZootPlusBackend)
 - [공식 웹사이트](https://maa.plus): [frontend](https://github.com/MaaAssistantArknights/maa-website)
 - Deep Learning: [MaaAI](https://github.com/MaaAssistantArknights/MaaAI)
+- 본 포크: [Cecilian-Elysian/FORK_MAA](https://github.com/Cecilian-Elysian/FORK_MAA)
 
 ### 다국어 지원 (i18n)
 
@@ -106,19 +142,23 @@ MAA는 중국어(간체)를 기본 언어로 하며, 번역 단어는 중국어(
 
 ### 개발 참여 및 기여
 
-[개발 가이드](./develop/development.md)을 참조하세요.
+[개발 가이드](./develop/development.md)와 저장소 루트의 [AGENTS.md](../../AGENTS.md) / [WORKFLOW.md](../../WORKFLOW.md)를 참조하세요. 본 포크 요점:
+
+- 편집 전에 [`docs/downstream-changes.md`](../../docs/downstream-changes.md)에서 과거 Fork 변경 확인
+- 새 기능은 독립적인 `feat/<name>` / `fix/<name>` 브랜치에서 작업하여 교차 도메인 변경이 동일 충돌 세트에 섞이지 않도록 함
+- Fork 전용 로직은 `src/MaaWpfGui/Models`, `TaskQueueViewModel.AccountCycle.cs`, `ToolboxViewModel.cs`, `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.*` 같은 핫스팟에 집중
 
 ### API
 
-- [C 인터페이스](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/include/AsstCaller.h)：[예제](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Cpp/main.cpp)
-- [Python 인터페이스](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Python/asst/asst.py)：[예제](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Python/sample.py)
-- [Golang 인터페이스](https://github.com/MaaAssistantArknights/MaaAssistantArknights/tree/dev-v2/src/Golang)：[예제](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Golang/maa/maa.go)
-- [Dart 인터페이스](https://github.com/MaaAssistantArknights/MaaAssistantArknights/tree/dev-v2/src/Dart)
-- [Java 인터페이스](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Java/src/main/java/com/iguigui/maaj/easySample/MaaCore.java)：[예제](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Java/src/main/java/com/iguigui/maaj/easySample/MaaJavaSample.java)
-- [Java HTTP 인터페이스](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Java/Readme.md)
-- [Rust 인터페이스](https://github.com/MaaAssistantArknights/MaaAssistantArknights/tree/dev-v2/src/Rust/src/maa_sys)：[HTTP 인터페이스](https://github.com/MaaAssistantArknights/MaaAssistantArknights/tree/dev-v2/src/Rust)
+- [C 인터페이스](../../include/AsstCaller.h)：[예제](../../src/Cpp/main.cpp)
+- [Python 인터페이스](../../src/Python/asst/asst.py)：[예제](../../src/Python/sample.py)
+- [Golang 인터페이스](../../src/Golang)：[예제](../../src/Golang/maa/maa.go)
+- [Dart 인터페이스](../../src/Dart)
+- [Java 인터페이스](../../src/Java/src/main/java/com/iguigui/maaj/easySample/MaaCore.java)：[예제](../../src/Java/src/main/java/com/iguigui/maaj/easySample/MaaJavaSample.java)
+- [Java HTTP 인터페이스](../../src/Java/Readme.md)
+- [Rust 인터페이스](../../src/Rust/src/maa_sys)：[HTTP 인터페이스](../../src/Rust)
 - [TypeScript 인터페이스](https://github.com/MaaAssistantArknights/MaaX/tree/main/packages/main/coreLoader)
-- [Woolang 인터페이스](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Woolang/maa.wo)：[예제](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Woolang/demo.wo)
+- [Woolang 인터페이스](../../src/Woolang/maa.wo)：[예제](../../src/Woolang/demo.wo)
 - [통합문서](./protocol/integration.md)
 - [콜백 프로토콜](./protocol/callback-schema.md)
 - [작업 프로토콜](./protocol/task-schema.md)
@@ -168,7 +208,8 @@ MAA는 중국어(간체)를 기본 언어로 하며, 번역 단어는 중국어(
 
 MAA의 개선을 위한 개발/테스트에 기여해준 모든 친구들에게 감사드립니다! (\*´▽｀)ノノ
 
-[![Contributors](https://contributors-img.web.app/image?repo=MaaAssistantArknights/MaaAssistantArknights&max=105&columns=15)](https://github.com/MaaAssistantArknights/MaaAssistantArknights/graphs/contributors)
+[![Contributors](https://contributors-img.web.app/image?repo=Cecilian-Elysian/FORK_MAA&max=105&columns=15)](https://github.com/Cecilian-Elysian/FORK_MAA/graphs/contributors)<br>
+[업스트림 기여자](https://github.com/MaaAssistantArknights/MaaAssistantArknights/graphs/contributors)
 
 ## 주의사항
 

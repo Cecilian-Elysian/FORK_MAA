@@ -1,10 +1,20 @@
 ## v6.17.0
 
-### Fork Additions
+> 本仓库为 [`MaaAssistantArknights/MaaAssistantArknights`](https://github.com/MaaAssistantArknights/MaaAssistantArknights) 的本地增强型分叉，跟随上游 `master-v2`。
+> 与上游 v6.17.0 的同步已在 `a92a8a9124` 完成，Fork 私有功能保持兼容。
+> 详细工作流与差异说明见 [`README.md`](./README.md)、[`AGENTS.md`](./AGENTS.md) 和 [`WORKFLOW.md`](./WORKFLOW.md)。
 
-- Account-cycle orchestration, late-stage roguelike/reclamation scheduling, and account-scoped depot/operator recognition data remain fork-specific features.
-- `expedite_min_level` remains a fork extension alongside upstream recruitment parameters.
-- Fork-specific reception-clue fallback, diagnostic report export, and local build/validation tooling are retained.
+### Fork 增量（持续累积）
+
+- 多账号自动轮换日常任务（`feat/account_rotation`），肉鸽与生息演算延后到最后（`feat/defer-rogue`）
+- 公招加急门槛（`feat/expedite-threshold`）：`expedite_min_level` Fork 协议字段，与上游 `expedite` / `expedite_times` 并存
+- 公招加急按目标槽位点击（`fix/recruit-expedite-slot-target`），避免多槽位串位
+- 干员 / 仓库识别数据按账号分桶（`feat/account-scoped-recognition-data`），切号即切桶
+- 「生成诊断报告」重构（`fix/diagnostic-export-refactor`）：分卷导出 + 系统信息收集
+- 会客室线索快捷置入失败回退 legacy 循环（`fix/reception-clue-restore`）：修复上游 issue #16165
+- 账号轮换 UI 整理与启动竞态保护（`fix/account-rotation-supersede-switcher`、`fix/account-cycle-start-race`）
+- 账号切号异步丢失保护（`fix/account-switch-retry`），增量本地构建与 NetBeauty2 文档补齐
+- 本地构建脚本强化、`tools/local-install-staging.bat` 与 VS 2022 BuildTools 兼容路径
 
 ### Highlights
 

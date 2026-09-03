@@ -13,16 +13,18 @@ dir:
 
 ![MAA Logo =256x256](/images/maa-logo_512x512.png)
 
-# MAA
+# MAA Assistant Arknights · Cecilian-Elysian Fork
 
 ![C++](https://img.shields.io/badge/C++-20-%2300599C?logo=cplusplus)  
 ![platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-blueviolet)  
-![license](https://img.shields.io/github/license/MaaAssistantArknights/MaaAssistantArknights) ![commit](https://img.shields.io/github/commit-activity/m/MaaAssistantArknights/MaaAssistantArknights?color=%23ff69b4)  
-![stars](https://img.shields.io/github/stars/MaaAssistantArknights/MaaAssistantArknights?style=social) ![GitHub all releases](https://img.shields.io/github/downloads/MaaAssistantArknights/MaaAssistantArknights/total?style=social)  
-<a href="https://deepwiki.com/MaaAssistantArknights/MaaAssistantArknights"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>  
-<a href="https://trendshift.io/repositories/979" target="_blank"><img src="https://trendshift.io/api/badge/repositories/979" alt="MaaAssistantArknights%2FMaaAssistantArknights | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
+![license](https://img.shields.io/github/license/Cecilian-Elysian/FORK_MAA) ![upstream](https://img.shields.io/badge/upstream-MaaAssistantArknights%2FMaaAssistantArknights-181717?logo=github)
+![stars](https://img.shields.io/github/stars/Cecilian-Elysian/FORK_MAA?style=social) ![commit](https://img.shields.io/github/commit-activity/m/Cecilian-Elysian/FORK_MAA?color=%23ff69b4)
+<a href="https://github.com/Cecilian-Elysian/FORK_MAA/commits/feat/upstream-v617-sync"><img src="https://img.shields.io/badge/sync-v6.17.0-blue?logo=git" alt="sync v6.17.0"></a>
 
 MAAは、MAA Assistant Arknightsです。
+
+本リポジトリは [MaaAssistantArknights/MaaAssistantArknights](https://github.com/MaaAssistantArknights/MaaAssistantArknights) の**個人拡張フォーク**です。
+複数アカウント巡回、上流ベースライン追従、ローカルビルド/検証に焦点を当て、上流を直接マージしません。Fork 独自機能は `feat/<name>` / `fix/<name>` 単位で順次進化し、`staging` → `branch` で統合します。
 
 アークナイツゲームアシスタント
 
@@ -32,9 +34,23 @@ MAAは、MAA Assistant Arknightsです。
 
 :::
 
+## 本フォークについて
+
+| 項目 | 説明 |
+|------|------|
+| 上流 | [MaaAssistantArknights/MaaAssistantArknights](https://github.com/MaaAssistantArknights/MaaAssistantArknights) `master-v2`（安定リリースブランチ） |
+| ミラー | ローカル `master` は `upstream/master-v2` を指し、`tools/update-upstream.ps1` で同期 |
+| 同期 | 上流リリースごとに（例 v6.17.0）`feat/upstream-<version>-sync` でベースライン競合を処理し、その後トピックブランチを派生して Fork 改造を実装 |
+| Fork 独自機能 | アカウント巡回、アカウント別データバケット、求人加速閾値、応接室線索フォールバック、診断レポート、`expedite_min_level` プロトコル拡張など、すべて `branch` のローカル作業から派生 |
+| ドキュメント | リポジトリルートの [README](../../README.md) + [AGENTS.md](../../AGENTS.md) + [WORKFLOW.md](../../WORKFLOW.md) + [LOG.md](../../LOG.md) |
+
+> `upstream/master-v2` を `staging` や `branch` に直接マージしないでください。Fork フローの詳細は [WORKFLOW.md](../../WORKFLOW.md) §5（履歴接ぎ木）と §6（手動コンフリクト解消）を参照。
+
 ## ダウンロードとインストール
 
 [ドキュメント](./manual/newbie.md) を読んでから、[公式サイト](https://maa.plus) または [リリース](https://github.com/MaaAssistantArknights/MaaAssistantArknights/releases) にアクセスしてダウンロードしてください。[新規ユーザーガイド](./manual/newbie.md) を参考にインストールを行ってください。
+
+本フォークのインストールは上流と完全に同じです。`branch` が上流から大きく遅れている場合は上流のビルド済みリリースを優先し、ローカルビルドは [WORKFLOW.md](../../WORKFLOW.md) で行ってください。
 
 ## 機能一覧
 
@@ -48,6 +64,25 @@ MAAは、MAA Assistant Arknightsです。
 - 統合戦略全自動で源石錐とレベルをファーム、自動で電気ケトルを取得とオペレーター直接アップグレード、オペレーターとレベルを自動認識します。
 - 作業JSONファイルをインポートし、自動操作も可能！ [ビデオデモ](https://www.bilibili.com/video/BV1H841177Fk/)（中文）
 - C、Python、Java、Rust、Golang、Java HTTP、Rust HTTPなどの多種多様なインターフェースに対応、統合や呼び出しが簡単で、自分好みにMAAをカスタマイズできます!
+
+### Fork 専用拡張
+
+- **複数アカウント自動巡回**（`feat/account_rotation`）：デイリータスクを設定アカウント順に自動実行。最後までローグライクと凋集成演算を後回し（`feat/defer-rogue`）
+- **オペレーター/倉庫認識データのアカウント別バケット化**（`feat/account-scoped-recognition-data`）：アカウント切替で在庫が混ざらない
+- **求人加速閾値**（`feat/expedite-threshold`）：Fork プロトコル `expedite_min_level` で確定最低レアリティが閾値（4 / 5 / 6）以上のときのみ緊急招集票を使用
+- **求人加速のスロット別クリック**（`fix/recruit-expedite-slot-target`）：複数スロット同時実行時の誤加速を防止
+- **診断レポート再構成**（`fix/diagnostic-export-refactor`）：サイズ分巻、システム情報収集、非同期実行
+- **応接室線索クイック投入フォールバック**（`fix/reception-clue-restore`）：上流 issue #16165 を修正
+- **ローカルビルドチェーン強化**：`tools/local-install-staging.bat`、VS 2022 BuildTools 互換パス、NetBeauty2 後処理
+
+### Fork 独自機能の主要ファイル
+
+- `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.AccountCycle.cs`：アカウント巡回オーケストレーション
+- `src/MaaWpfGui/ViewModels/Orchestration/AccountCycleOrchestrator.cs`：オーケストレータ
+- `src/MaaWpfGui/ViewModels/UI/ToolboxViewModel.cs` の `#region AccountScopedRecognitionData`：アカウント別データバケット
+- `src/MaaWpfGui/Models/DiagnosticInfo.cs`：診断レポートモデル
+- `src/MaaCore/Task/Infrast/InfrastReceptionTask.cpp` の `proc_clue_vacancy`：応接室線索クイック投入フォールバック
+- `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.{h,cpp}` と `src/MaaCore/Task/Interface/RecruitTask.cpp`：`expedite_min_level` 閾値判定
 
 UIを見れば使い方もすぐ分かる！
 
@@ -86,6 +121,7 @@ MAA はコマンドラインインタフェース（CLI）操作をサポート�
 - バックエンド：[ZootPlusBackend](https://github.com/ZOOT-Plus/ZootPlusBackend)
 - [公式ウェブサイト](https://maa.plus): [フロントエンド](https://github.com/MaaAssistantArknights/maa-website)
 - Deep Learning: [MaaAI](https://github.com/MaaAssistantArknights/MaaAI)
+- 本フォーク：[Cecilian-Elysian/FORK_MAA](https://github.com/Cecilian-Elysian/FORK_MAA)
 
 ### 多言語 (i18n)
 
@@ -93,19 +129,23 @@ MAA は中国語（簡体字）を第一言語とし、翻訳見出しはすべ�
 
 ### 開発への参加
 
-[開発ガイド](./develop/development.md)を参照してください。
+[開発ガイド](./develop/development.md) とリポジトリルートの [AGENTS.md](../../AGENTS.md) / [WORKFLOW.md](../../WORKFLOW.md) を参照してください。本フォークのポイント：
+
+- 編集前に [`docs/downstream-changes.md`](../../docs/downstream-changes.md) で過去の Fork 改変を確認
+- 新しい機能は独立した `feat/<name>` / `fix/<name>` ブランチで作業し、クロスドメインの変更が同一コンフリクトセットに混入しないようにする
+- Fork 独自ロジックは `src/MaaWpfGui/Models`、`TaskQueueViewModel.AccountCycle.cs`、`ToolboxViewModel.cs`、`src/MaaCore/Task/Miscellaneous/AutoRecruitTask.*` などのホットスポットに集中させる
 
 ### API
 
-- [Cインターフェース](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/include/AsstCaller.h)：[統合例](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Cpp/main.cpp)
-- [Pythonインターフェース](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Python/asst/asst.py)：[統合例](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Python/sample.py)
-- [Golangインターフェース](https://github.com/MaaAssistantArknights/MaaAssistantArknights/tree/dev-v2/src/Golang)：[統合例](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Golang/maa/maa.go)
-- [Dartインターフェース](https://github.com/MaaAssistantArknights/MaaAssistantArknights/tree/dev-v2/src/Dart)
-- [Javaインターフェース](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Java/src/main/java/com/iguigui/maaj/easySample/MaaCore.java)：[統合例](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Java/src/main/java/com/iguigui/maaj/easySample/MaaJavaSample.java)
-- [Java HTTPインターフェース](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Java/Readme.md)
-- [Rustインターフェース](https://github.com/MaaAssistantArknights/MaaAssistantArknights/tree/dev-v2/src/Rust/src/maa_sys)：[HTTPインターフェース](https://github.com/MaaAssistantArknights/MaaAssistantArknights/tree/dev-v2/src/Rust)
+- [Cインターフェース](../../include/AsstCaller.h)：[統合例](../../src/Cpp/main.cpp)
+- [Pythonインターフェース](../../src/Python/asst/asst.py)：[統合例](../../src/Python/sample.py)
+- [Golangインターフェース](../../src/Golang)：[統合例](../../src/Golang/maa/maa.go)
+- [Dartインターフェース](../../src/Dart)
+- [Javaインターフェース](../../src/Java/src/main/java/com/iguigui/maaj/easySample/MaaCore.java)：[統合例](../../src/Java/src/main/java/com/iguigui/maaj/easySample/MaaJavaSample.java)
+- [Java HTTPインターフェース](../../src/Java/Readme.md)
+- [Rustインターフェース](../../src/Rust/src/maa_sys)：[HTTPインターフェース](../../src/Rust)
 - [TypeScriptインターフェース](https://github.com/MaaAssistantArknights/MaaX/tree/main/packages/main/coreLoader)
-- [Woolangインターフェース](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Woolang/maa.wo)：[統合例](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Woolang/demo.wo)
+- [Woolangインターフェース](../../src/Woolang/maa.wo)：[統合例](../../src/Woolang/demo.wo)
 - [統合ドキュメント](./protocol/integration.md)
 - [コールバックメッセージプロトコル](./protocol/callback-schema.md)
 - [タスクワークフロープロトコル](./protocol/task-schema.md)
@@ -154,7 +194,8 @@ MAA は中国語（簡体字）を第一言語とし、翻訳見出しはすべ�
 
 MAAをより良くするために開発・テストに貢献してくれたすべての方々に感謝します！ (\*´▽｀)ノノ
 
-[![Contributors](https://contributors-img.web.app/image?repo=MaaAssistantArknights/MaaAssistantArknights&max=105&columns=15)](https://github.com/MaaAssistantArknights/MaaAssistantArknights/graphs/contributors)
+[![Contributors](https://contributors-img.web.app/image?repo=Cecilian-Elysian/FORK_MAA&max=105&columns=15)](https://github.com/Cecilian-Elysian/FORK_MAA/graphs/contributors)<br>
+[上流コントリビューター](https://github.com/MaaAssistantArknights/MaaAssistantArknights/graphs/contributors)
 
 ## 免責事項
 
