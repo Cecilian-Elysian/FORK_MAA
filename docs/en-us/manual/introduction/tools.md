@@ -1,5 +1,5 @@
 ---
-order: 10
+order: 12
 icon: octicon:tools-16
 ---
 
@@ -67,4 +67,4 @@ Built-in features include:
 - Green ticket shop exchange
 - Yellow ticket shop exchange
 - Reclamation Algorithm shop exchange
-- Secret Front (supports selecting endings and event branches)
+- Hidden Front (supports selecting endings and event branches)

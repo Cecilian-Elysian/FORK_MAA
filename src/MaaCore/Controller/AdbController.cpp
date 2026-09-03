@@ -459,7 +459,10 @@ bool asst::AdbController::click(const Point& p)
 
     std::string cur_cmd =
         utils::string_replace_all(m_adb.click, { { "[x]", std::to_string(p.x) }, { "[y]", std::to_string(p.y) } });
-    return call_command(cur_cmd).has_value();
+    bool ret = call_command(cur_cmd).has_value();
+    // adb click 没有内置间隔，与 minitouch/maatouch 的 DefaultClickDelay 对齐，避免高频连点丢点
+    sleep(50);
+    return ret;
 }
 
 bool asst::AdbController::input(const std::string& text)
@@ -534,6 +537,84 @@ std::pair<int, int> asst::AdbController::get_screen_res() const noexcept
     return m_screen_size;
 }
 
+void asst::AdbController::invalidate_connection(std::string_view reason, int width, int height)
+{
+    // 分辨率被外部修改后，触控倍率与截图校验等整套映射全部过期。
+    // 不做原地修补：标记连接失效让任务快速失败，由上层走整体重连，
+    // 重连时会重新探测分辨率并重建全部输入映射
+    if (m_inited) {
+        m_inited = false;
+        m_connection_expired = true;
+        Log.warn("Resolution changed, connection invalidated.", reason, "width", width, "height", height);
+        json::value info = json::object {
+            { "uuid", m_uuid },
+            { "what", "ResolutionChanged" },
+            { "why", std::string(reason) },
+            { "details",
+              json::object {
+                  { "width", width },
+                  { "height", height },
+              } },
+        };
+        callback(AsstMsg::ConnectionInfo, info);
+    }
+}
+
+bool asst::AdbController::reprobe_screen_size()
+{
+    // 连接时执行 display 命令探测分辨率并刷新成员；
+    // 解析失败时保留旧值，避免把已知错误写入后续所有换算
+    const auto& adb_cfg = m_conn_ctx.adb_cfg;
+    auto display_ret = call_command(m_conn_ctx.replace_cmd(adb_cfg.display));
+    auto make_info = [&]() -> json::value {
+        return json::object {
+            { "uuid", m_uuid },
+            { "details",
+              json::object {
+                  { "adb", m_conn_ctx.adb_path },
+                  { "address", m_conn_ctx.address },
+              } },
+        };
+    };
+    if (!display_ret) {
+        json::value info = make_info() | json::object {
+            { "what", "ResolutionError" },
+            { "why", "Display command failed to exec" },
+        };
+        callback(AsstMsg::ConnectionInfo, info);
+        return false;
+    }
+    std::stringstream display_ss(display_ret.value());
+    int size_value1 = 0;
+    int size_value2 = 0;
+    display_ss >> size_value1 >> size_value2;
+    const int width = (std::max)(size_value1, size_value2);
+    const int height = (std::min)(size_value1, size_value2);
+    if (width == 0 || height == 0) {
+        json::value info = make_info() | json::object {
+            { "what", "ResolutionError" },
+            { "why", "Get resolution failed" },
+        };
+        callback(AsstMsg::ConnectionInfo, info);
+        return false;
+    }
+
+    m_width = width;
+    m_height = height;
+    m_screen_size = { m_width, m_height };
+
+    json::value info = make_info() | json::object {
+        { "what", "ResolutionGot" },
+        { "why", "" },
+    };
+    info["details"] |= json::object {
+        { "width", m_width },
+        { "height", m_height },
+    };
+    callback(AsstMsg::ConnectionInfo, info);
+    return true;
+}
+
 void asst::AdbController::release()
 {
     close_socket();
@@ -584,6 +665,11 @@ bool asst::AdbController::convert_lf(std::string& data)
 
 bool asst::AdbController::screencap(cv::Mat& image_payload, bool allow_reconnect)
 {
+    if (m_connection_expired) {
+        // 分辨率已被外部修改，等待上层整体重连，不再产出画面
+        return false;
+    }
+
     using namespace std::chrono;
     DecodeFunc decode_raw = [&](const std::string& data) -> bool {
         if (data.size() < 8) {
@@ -598,18 +684,26 @@ bool asst::AdbController::screencap(cv::Mat& image_payload, bool allow_reconnect
                      static_cast<uint32_t>(static_cast<unsigned char>(data[5])) << 8 |
                      static_cast<uint32_t>(static_cast<unsigned char>(data[6])) << 16 |
                      static_cast<uint32_t>(static_cast<unsigned char>(data[7])) << 24;
-        if (int(w) != m_width || int(h) != m_height) {
-            Log.error("Size from image header", w, h, "does not match the size of screen", m_width, m_height);
+        // 归一化后与 m_width/m_height（同为 reprobe 的 max/min 归一化产物）同口径比较，
+        // 显示方向旋转不影响判定
+        const int norm_w = (std::max)(int(w), int(h));
+        const int norm_h = (std::min)(int(w), int(h));
+        if (norm_w != m_width || norm_h != m_height) {
+            // 截图头与已知分辨率不符，通常为运行中模拟器分辨率被外部修改。
+            // 分辨率变化后触控倍率等整套映射全部过期，原地修补无法覆盖所有层，
+            // 标记连接失效并通知上层走整体重连，本帧按失败处理
+            invalidate_connection("Size from image header", norm_w, norm_h);
             return false;
         }
-        size_t std_size = 4ULL * m_width * m_height;
+        size_t std_size = 4ULL * w * h;
         if (data.size() < std_size) {
             return false;
         }
         const size_t header_size = data.size() - std_size; // 12 or 16. ref:
         // https://android.googlesource.com/platform/frameworks/base/+/26a2b97dbe48ee45e9ae70110714048f2f360f97%5E%21/cmds/screencap/screencap.cpp
         auto img_data_beg = data.cbegin() + header_size;
-        cv::Mat temp(m_height, m_width, CV_8UC4, const_cast<char*>(&*img_data_beg));
+        // 旋转帧宽高与成员互换，按协议头实际方向构造
+        cv::Mat temp(int(h), int(w), CV_8UC4, const_cast<char*>(&*img_data_beg));
         if (temp.empty()) {
             return false;
         }
@@ -639,6 +733,7 @@ bool asst::AdbController::screencap(cv::Mat& image_payload, bool allow_reconnect
     image_payload = cv::Mat(); // 清空缓存
     if (m_adb.screencap_method == AdbProperty::ScreencapMethod::UnknownYet) {
         std::vector<std::pair<AdbProperty::ScreencapMethod, std::string>> all_methods_cost;
+        auto fastest_method = AdbProperty::ScreencapMethod::UnknownYet;
 
         Log.info("Try to find the fastest way to screencap");
         auto min_cost = milliseconds(LLONG_MAX);
@@ -646,10 +741,10 @@ bool asst::AdbController::screencap(cv::Mat& image_payload, bool allow_reconnect
 
         auto start_time = steady_clock::now();
         if (m_support_socket && m_server_started &&
-            screencap(m_adb.screencap_raw_by_nc, decode_raw, allow_reconnect, true, 5000)) {
+            screencap(m_adb.screencap_raw_by_nc, decode_raw, allow_reconnect, true, 5000) == ScreencapResult::Success) {
             auto duration = duration_cast<milliseconds>(steady_clock::now() - start_time);
             if (duration < min_cost) {
-                m_adb.screencap_method = AdbProperty::ScreencapMethod::RawByNc;
+                fastest_method = AdbProperty::ScreencapMethod::RawByNc;
                 m_inited = true;
                 min_cost = duration;
             }
@@ -663,10 +758,11 @@ bool asst::AdbController::screencap(cv::Mat& image_payload, bool allow_reconnect
         clear_lf_info();
 
         start_time = steady_clock::now();
-        if (screencap(m_adb.screencap_raw_with_gzip, decode_raw_with_gzip, allow_reconnect)) {
+        if (screencap(m_adb.screencap_raw_with_gzip, decode_raw_with_gzip, allow_reconnect) ==
+            ScreencapResult::Success) {
             auto duration = duration_cast<milliseconds>(steady_clock::now() - start_time);
             if (duration < min_cost) {
-                m_adb.screencap_method = AdbProperty::ScreencapMethod::RawWithGzip;
+                fastest_method = AdbProperty::ScreencapMethod::RawWithGzip;
                 m_inited = true;
                 min_cost = duration;
             }
@@ -680,10 +776,10 @@ bool asst::AdbController::screencap(cv::Mat& image_payload, bool allow_reconnect
         clear_lf_info();
 
         start_time = steady_clock::now();
-        if (screencap(m_adb.screencap_encode, decode_encode, allow_reconnect)) {
+        if (screencap(m_adb.screencap_encode, decode_encode, allow_reconnect) == ScreencapResult::Success) {
             auto duration = duration_cast<milliseconds>(steady_clock::now() - start_time);
             if (duration < min_cost) {
-                m_adb.screencap_method = AdbProperty::ScreencapMethod::Encode;
+                fastest_method = AdbProperty::ScreencapMethod::Encode;
                 m_inited = true;
                 min_cost = duration;
             }
@@ -701,7 +797,7 @@ bool asst::AdbController::screencap(cv::Mat& image_payload, bool allow_reconnect
             if (m_mumu_extras.screencap()) {
                 auto duration = duration_cast<milliseconds>(steady_clock::now() - start_time);
                 if (duration < min_cost) {
-                    m_adb.screencap_method = AdbProperty::ScreencapMethod::MumuExtras;
+                    fastest_method = AdbProperty::ScreencapMethod::MumuExtras;
                     m_inited = true;
                     min_cost = duration;
                 }
@@ -720,7 +816,7 @@ bool asst::AdbController::screencap(cv::Mat& image_payload, bool allow_reconnect
             if (m_ld_extras.screencap()) {
                 auto duration = duration_cast<milliseconds>(steady_clock::now() - start_time);
                 if (duration < min_cost) {
-                    m_adb.screencap_method = AdbProperty::ScreencapMethod::LDExtras;
+                    fastest_method = AdbProperty::ScreencapMethod::LDExtras;
                     m_inited = true;
                     min_cost = duration;
                 }
@@ -733,6 +829,8 @@ bool asst::AdbController::screencap(cv::Mat& image_payload, bool allow_reconnect
             }
         }
 #endif
+
+        m_adb.screencap_method = fastest_method;
 
         static const std::unordered_map<AdbProperty::ScreencapMethod, std::string> MethodName = {
             { AdbProperty::ScreencapMethod::UnknownYet, "UnknownYet" },
@@ -769,49 +867,53 @@ bool asst::AdbController::screencap(cv::Mat& image_payload, bool allow_reconnect
     }
     else {
         auto start_time = high_resolution_clock::now();
-        bool screencap_ret = false;
+        ScreencapResult screencap_result = ScreencapResult::Failed;
         switch (m_adb.screencap_method) {
         case AdbProperty::ScreencapMethod::RawByNc:
-            screencap_ret = screencap(m_adb.screencap_raw_by_nc, decode_raw, allow_reconnect, true);
+            screencap_result = screencap(m_adb.screencap_raw_by_nc, decode_raw, allow_reconnect, true);
             break;
         case AdbProperty::ScreencapMethod::RawWithGzip:
-            screencap_ret = screencap(m_adb.screencap_raw_with_gzip, decode_raw_with_gzip, allow_reconnect);
+            screencap_result = screencap(m_adb.screencap_raw_with_gzip, decode_raw_with_gzip, allow_reconnect);
             break;
         case AdbProperty::ScreencapMethod::Encode:
-            screencap_ret = screencap(m_adb.screencap_encode, decode_encode, allow_reconnect);
+            screencap_result = screencap(m_adb.screencap_encode, decode_encode, allow_reconnect);
             break;
 #if ASST_WITH_EMULATOR_EXTRAS
         case AdbProperty::ScreencapMethod::MumuExtras: {
             auto img_opt = m_mumu_extras.screencap();
-            screencap_ret = img_opt.has_value();
+            screencap_result = img_opt.has_value() ? ScreencapResult::Success : ScreencapResult::Reprobe;
 
-            if (!screencap_ret && allow_reconnect) {
+            if (screencap_result != ScreencapResult::Success && allow_reconnect) {
                 m_mumu_extras.reload();
                 img_opt = m_mumu_extras.screencap();
-                screencap_ret = img_opt.has_value();
+                screencap_result = img_opt.has_value() ? ScreencapResult::Success : ScreencapResult::Reprobe;
             }
 
-            if (screencap_ret) {
+            if (screencap_result == ScreencapResult::Success) {
                 image_payload = img_opt.value();
             }
         } break;
         case AdbProperty::ScreencapMethod::LDExtras: {
             auto img_opt = m_ld_extras.screencap();
-            screencap_ret = img_opt.has_value();
+            screencap_result = img_opt.has_value() ? ScreencapResult::Success : ScreencapResult::Reprobe;
 
-            if (!screencap_ret && allow_reconnect) {
+            if (screencap_result != ScreencapResult::Success && allow_reconnect) {
                 m_ld_extras.reload();
                 img_opt = m_ld_extras.screencap();
-                screencap_ret = img_opt.has_value();
+                screencap_result = img_opt.has_value() ? ScreencapResult::Success : ScreencapResult::Reprobe;
             }
 
-            if (screencap_ret) {
+            if (screencap_result == ScreencapResult::Success) {
                 image_payload = img_opt.value();
             }
         } break;
 #endif
         default:
             break;
+        }
+        const bool screencap_ret = screencap_result == ScreencapResult::Success;
+        if (screencap_result == ScreencapResult::Reprobe) {
+            m_adb.screencap_method = AdbProperty::ScreencapMethod::UnknownYet;
         }
         auto duration = duration_cast<milliseconds>(high_resolution_clock::now() - start_time);
         // 记录截图耗时，每10次截图回传一次最值+平均值
@@ -852,76 +954,120 @@ bool asst::AdbController::screencap(cv::Mat& image_payload, bool allow_reconnect
         // 每 1 分钟检测一次模拟器帧率
         check_fps();
 
+        if (screencap_ret &&
+            (image_payload.cols != m_last_screencap_size.first || image_payload.rows != m_last_screencap_size.second)) {
+            // 截图尺寸发生帧间变化：模拟器分辨率可能被外部修改（MumuExtras/LDExtras
+            // 输出原生分辨率且无协议头校验点，Encode 路径同理，统一在此检测）。
+            // 宽高互换为显示方向旋转而非分辨率修改，只更新基准、不触发连接失效。
+            // 以图像自身历史尺寸为基准，连接初期 fallback 桌面等持续性差异不会误触发；
+            // 首帧不触发。分辨率变化后触控倍率等整套映射全部过期，标记连接失效，
+            // 通知上层走整体重连，本帧画面有效照常返回
+            bool rotated =
+                image_payload.cols == m_last_screencap_size.second && image_payload.rows == m_last_screencap_size.first;
+            if (m_last_screencap_size.first != 0) {
+                if (!rotated) {
+                    invalidate_connection("Screencap size changed", image_payload.cols, image_payload.rows);
+                }
+                else {
+                    on_display_rotated();
+                }
+            }
+            m_last_screencap_size = { image_payload.cols, image_payload.rows };
+        }
+
         return screencap_ret;
     }
 }
 
-bool asst::AdbController::screencap(
+asst::AdbController::ScreencapResult asst::AdbController::screencap(
     const std::string& cmd,
     const DecodeFunc& decode_func,
     bool allow_reconnect,
     bool by_socket,
     int timeout)
 {
-    if ((!m_support_socket || !m_server_started) && by_socket) [[unlikely]] {
-        return false;
-    }
-    auto ret = call_command(cmd, timeout, allow_reconnect, by_socket);
-
-    if (!ret || ret.value().empty()) [[unlikely]] {
-        Log.warn("data is empty!");
-        return false;
-    }
-    auto& data = ret.value();
-
-    bool tried_conversion = false;
-    if (m_adb.screencap_end_of_line == AdbProperty::ScreencapEndOfLine::CRLF) {
-        tried_conversion = true;
-        if (!convert_lf(data)) [[unlikely]] { // 没找到 "\r\n"
-            Log.info("screencap_end_of_line is set to CRLF but no `\\r\\n` found, set it to LF");
-            m_adb.screencap_end_of_line = AdbProperty::ScreencapEndOfLine::LF;
+    try {
+        if ((!m_support_socket || !m_server_started) && by_socket) [[unlikely]] {
+            return ScreencapResult::Failed;
         }
-    }
+        auto ret = call_command(cmd, timeout, allow_reconnect, by_socket);
 
-    if (decode_func(data)) [[likely]] {
-        if (m_adb.screencap_end_of_line == AdbProperty::ScreencapEndOfLine::UnknownYet) [[unlikely]] {
-            Log.info("screencap_end_of_line is LF");
-            m_adb.screencap_end_of_line = AdbProperty::ScreencapEndOfLine::LF;
+        if (!ret || ret.value().empty()) [[unlikely]] {
+            Log.warn("data is empty!");
+            return ScreencapResult::Failed;
         }
-    }
-    else {
-        Log.info("data is not empty, but image is empty");
+        auto& data = ret.value();
 
-        if (tried_conversion) { // 已经转换过行尾，再次转换 data 不会变化，不必重试
-            Log.error("skip retry decoding and decode failed!");
-            return false;
+        bool tried_conversion = false;
+        if (m_adb.screencap_end_of_line == AdbProperty::ScreencapEndOfLine::CRLF) {
+            tried_conversion = true;
+            if (!convert_lf(data)) [[unlikely]] { // 没找到 "\r\n"
+                Log.info("screencap_end_of_line is set to CRLF but no `\\r\\n` found, set it to LF");
+                m_adb.screencap_end_of_line = AdbProperty::ScreencapEndOfLine::LF;
+            }
         }
 
-        Log.info("try to cvt lf");
-        if (!convert_lf(data)) { // 没找到 "\r\n"，data 没有变化，不必重试
-            Log.error("no `\\r\\n` found, skip retry decode");
-            return false;
-        }
-        if (!decode_func(data)) {
-            Log.error("convert lf and retry decode failed!");
-            return false;
-        }
-
-        if (m_adb.screencap_end_of_line == AdbProperty::ScreencapEndOfLine::UnknownYet) {
-            Log.info("screencap_end_of_line is CRLF");
+        if (decode_func(data)) [[likely]] {
+            if (m_adb.screencap_end_of_line == AdbProperty::ScreencapEndOfLine::UnknownYet) [[unlikely]] {
+                Log.info("screencap_end_of_line is LF");
+                m_adb.screencap_end_of_line = AdbProperty::ScreencapEndOfLine::LF;
+            }
         }
         else {
-            Log.info("screencap_end_of_line is changed to CRLF");
+            Log.info("data is not empty, but image is empty");
+
+            if (tried_conversion) { // 已经转换过行尾，再次转换 data 不会变化，不必重试
+                Log.error("skip retry decoding and decode failed!");
+                return ScreencapResult::Reprobe;
+            }
+
+            Log.info("try to cvt lf");
+            if (!convert_lf(data)) { // 没找到 "\r\n"，data 没有变化，不必重试
+                Log.error("no `\\r\\n` found, skip retry decode");
+                return ScreencapResult::Reprobe;
+            }
+            if (!decode_func(data)) {
+                Log.error("convert lf and retry decode failed!");
+                return ScreencapResult::Reprobe;
+            }
+
+            if (m_adb.screencap_end_of_line == AdbProperty::ScreencapEndOfLine::UnknownYet) {
+                Log.info("screencap_end_of_line is CRLF");
+            }
+            else {
+                Log.info("screencap_end_of_line is changed to CRLF");
+            }
+            m_adb.screencap_end_of_line = AdbProperty::ScreencapEndOfLine::CRLF;
         }
-        m_adb.screencap_end_of_line = AdbProperty::ScreencapEndOfLine::CRLF;
+        return ScreencapResult::Success;
     }
-    return true;
+    catch (const cv::Exception& e) {
+        if (e.code == cv::Error::StsNoMem) {
+            throw;
+        }
+        try {
+            Log.error(
+                "ADB screencap decode OpenCV exception",
+                e.what(),
+                "code",
+                e.code,
+                "file",
+                e.file,
+                "line",
+                e.line);
+        }
+        catch (...) {
+        }
+        return ScreencapResult::Reprobe;
+    }
 }
 
 bool asst::AdbController::connect(const std::string& adb_path, const std::string& address, const std::string& config)
 {
     LogTraceFunction;
 
+    // 重连即全新探测，清除上一次连接期间因分辨率变化而置位的过期标记
+    m_connection_expired = false;
     clear_info();
 
 #ifdef ASST_DEBUG
@@ -1161,43 +1307,13 @@ bool asst::AdbController::connect(const std::string& adb_path, const std::string
     }
 
     /* display */
-    {
-        auto display_ret = call_command(m_conn_ctx.replace_cmd(adb_cfg.display));
-        if (!display_ret) {
-            json::value info = get_info_json() | json::object {
-                { "what", "ConnectFailed" },
-                { "why", "Display command failed to exec" },
-            };
-            callback(AsstMsg::ConnectionInfo, info);
-            return false;
-        }
-        std::stringstream display_ss(display_ret.value());
-        int size_value1 = 0;
-        int size_value2 = 0;
-        display_ss >> size_value1 >> size_value2;
-
-        m_width = (std::max)(size_value1, size_value2);
-        m_height = (std::min)(size_value1, size_value2);
-
+    if (!reprobe_screen_size()) {
         json::value info = get_info_json() | json::object {
-            { "what", "ResolutionGot" },
-            { "why", "" },
+            { "what", "ConnectFailed" },
+            { "why", "Display command failed to exec" },
         };
-
-        info["details"] |= json::object {
-            { "width", m_width },
-            { "height", m_height },
-        };
-
         callback(AsstMsg::ConnectionInfo, info);
-
-        if (m_width == 0 || m_height == 0) {
-            info["what"] = "ResolutionError";
-            info["why"] = "Get resolution failed";
-            callback(AsstMsg::ConnectionInfo, info);
-            return false;
-        }
-        m_screen_size = { m_width, m_height };
+        return false;
     }
 
     if (need_exit()) {

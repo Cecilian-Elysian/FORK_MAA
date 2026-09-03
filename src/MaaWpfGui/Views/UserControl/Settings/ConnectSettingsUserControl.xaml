@@ -11,6 +11,7 @@
     xmlns:hc="https://handyorg.github.io/handycontrol"
     xmlns:helper="clr-namespace:MaaWpfGui.Helper"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:properties="clr-namespace:MaaWpfGui.Styles.Properties"
     xmlns:s="https://github.com/canton7/Stylet"
     xmlns:settings_vms="clr-namespace:MaaWpfGui.ViewModels.UserControl.Settings"
     d:Background="White"
@@ -71,15 +72,22 @@
             <StackPanel
                 Grid.Row="0"
                 HorizontalAlignment="Center"
-                VerticalAlignment="Center">
+                VerticalAlignment="Center"
+                d:Visibility="Visible"
+                Visibility="{c:Binding 'ConnectConfig == enums:ConnectConfig.PC'}">
                 <TextBlock
                     Margin="5,0"
-                    HorizontalAlignment="Center"
-                    d:Visibility="Visible"
-                    Foreground="Red"
+                    HorizontalAlignment="Left"
+                    Foreground="{DynamicResource ErrorLogBrush}"
                     Text="{DynamicResource UseAttachWindowWarning}"
-                    TextWrapping="Wrap"
-                    Visibility="{c:Binding 'ConnectConfig == enums:ConnectConfig.PC'}" />
+                    TextWrapping="Wrap" />
+                <TextBlock
+                    Margin="5,0"
+                    HorizontalAlignment="Left"
+                    properties:RainbowAnimationBehavior.IsActive="True"
+                    Foreground="{DynamicResource RainbowFlowBrush}"
+                    Text="{DynamicResource UseAttachWindowWarningRecommendation}"
+                    TextWrapping="Wrap" />
             </StackPanel>
 
             <!--  ADB 连接配置区域  -->
@@ -186,7 +194,7 @@
                                         Width="420"
                                         Height="30"
                                         Margin="5"
-                                        hc:InfoElement.Placeholder="Example: C:\Program Files\Netease\MuMuPlayer"
+                                        hc:InfoElement.Placeholder="{DynamicResource MuMu12EmulatorPathPlaceholder}"
                                         hc:TitleElement.Title="{DynamicResource MuMu12EmulatorPath}"
                                         hc:TitleElement.TitlePlacement="Left"
                                         Text="{Binding EmulatorPath}" />
@@ -222,7 +230,7 @@
                                         Width="420"
                                         Height="30"
                                         Margin="5"
-                                        hc:InfoElement.Placeholder="Example: C:\leidian\LDPlayer9"
+                                        hc:InfoElement.Placeholder="{DynamicResource LdEmulatorPathPlaceholder}"
                                         hc:TitleElement.Title="{DynamicResource LdEmulatorPath}"
                                         hc:TitleElement.TitlePlacement="Left"
                                         Text="{Binding EmulatorPath}" />
@@ -260,7 +268,18 @@
                                         DisplayMemberPath="Display"
                                         ItemsSource="{Binding ScreencapMethodList}"
                                         SelectedValue="{Binding ScreencapMethod}"
-                                        SelectedValuePath="Value" />
+                                        SelectedValuePath="Value">
+                                        <hc:ComboBox.ItemContainerStyle>
+                                            <Style BasedOn="{StaticResource ComboBoxItemBaseStyle}" TargetType="{x:Type ComboBoxItem}">
+                                                <Setter Property="IsEnabled" Value="{Binding IsEnabled}" />
+                                                <Style.Triggers>
+                                                    <Trigger Property="IsEnabled" Value="False">
+                                                        <Setter Property="Opacity" Value="0.4" />
+                                                    </Trigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </hc:ComboBox.ItemContainerStyle>
+                                    </hc:ComboBox>
                                 </StackPanel>
 
                                 <StackPanel
@@ -275,7 +294,18 @@
                                         DisplayMemberPath="Display"
                                         ItemsSource="{Binding MouseMethodList}"
                                         SelectedValue="{Binding MouseMethod}"
-                                        SelectedValuePath="Value" />
+                                        SelectedValuePath="Value">
+                                        <hc:ComboBox.ItemContainerStyle>
+                                            <Style BasedOn="{StaticResource ComboBoxItemBaseStyle}" TargetType="{x:Type ComboBoxItem}">
+                                                <Setter Property="IsEnabled" Value="{Binding IsEnabled}" />
+                                                <Style.Triggers>
+                                                    <Trigger Property="IsEnabled" Value="False">
+                                                        <Setter Property="Opacity" Value="0.4" />
+                                                    </Trigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </hc:ComboBox.ItemContainerStyle>
+                                    </hc:ComboBox>
                                 </StackPanel>
 
                                 <StackPanel
@@ -303,12 +333,23 @@
             Grid.Row="3"
             HorizontalAlignment="Center"
             Orientation="Vertical">
-            <Button
-                Height="30"
-                Margin="5"
+            <StackPanel
                 HorizontalAlignment="Center"
-                Command="{s:Action TestLinkAndGetImage}"
-                Content="{DynamicResource ScreenshotTest}" />
+                Orientation="Horizontal">
+                <Button
+                    Height="30"
+                    Margin="5"
+                    HorizontalAlignment="Center"
+                    Command="{s:Action TestLinkAndGetImage}"
+                    Content="{DynamicResource ScreenshotTest}" />
+                <Button
+                    Height="30"
+                    Margin="5"
+                    HorizontalAlignment="Center"
+                    Command="{s:Action RestoreGameWindowPosition, Target={x:Static helper:Instances.AsstProxy}}"
+                    Content="{DynamicResource WindowRestore}"
+                    Visibility="{c:Binding ShowWindowRestoreButton}" />
+            </StackPanel>
             <controls:TextBlock
                 Margin="5"
                 HorizontalAlignment="Center"

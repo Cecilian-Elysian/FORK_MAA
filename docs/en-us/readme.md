@@ -13,16 +13,18 @@ dir:
 
 ![MAA Logo =256x256](/images/maa-logo_512x512.png)
 
-# MAA
+# MAA Assistant Arknights · Cecilian-Elysian Fork
 
 ![C++](https://img.shields.io/badge/C++-20-%2300599C?logo=cplusplus)  
 ![platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-blueviolet)  
-![license](https://img.shields.io/github/license/MaaAssistantArknights/MaaAssistantArknights) ![commit](https://img.shields.io/github/commit-activity/m/MaaAssistantArknights/MaaAssistantArknights?color=%23ff69b4)  
-![stars](https://img.shields.io/github/stars/MaaAssistantArknights/MaaAssistantArknights?style=social) ![GitHub all releases](https://img.shields.io/github/downloads/MaaAssistantArknights/MaaAssistantArknights/total?style=social)  
-<a href="https://deepwiki.com/MaaAssistantArknights/MaaAssistantArknights"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>  
-<a href="https://trendshift.io/repositories/979" target="_blank"><img src="https://trendshift.io/api/badge/repositories/979" alt="MaaAssistantArknights%2FMaaAssistantArknights | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
+![license](https://img.shields.io/github/license/Cecilian-Elysian/FORK_MAA) ![upstream](https://img.shields.io/badge/upstream-MaaAssistantArknights%2FMaaAssistantArknights-181717?logo=github)
+![stars](https://img.shields.io/github/stars/Cecilian-Elysian/FORK_MAA?style=social) ![commit](https://img.shields.io/github/commit-activity/m/Cecilian-Elysian/FORK_MAA?color=%23ff69b4)
+<a href="https://github.com/Cecilian-Elysian/FORK_MAA/commits/feat/upstream-v617-sync"><img src="https://img.shields.io/badge/sync-v6.17.0-blue?logo=git" alt="sync v6.17.0"></a>
 
 MAA stands for MAA Assistant Arknights
+
+This repository is a **personal enhancement fork** of [MaaAssistantArknights/MaaAssistantArknights](https://github.com/MaaAssistantArknights/MaaAssistantArknights).
+The fork focuses on multi-account cycling, upstream baseline tracking, localized build/verification, and does not accept upstream merges directly. Fork-private features evolve branch-by-branch under `feat/<name>` / `fix/<name>`, then integrated via `staging` → `branch`.
 
 An Arknights assistant
 
@@ -32,14 +34,28 @@ Development actively in progress ✿✿ヽ(°▽°)ノ✿
 
 :::
 
+## About this Fork
+
+| Item | Description |
+|------|-------------|
+| Upstream | [MaaAssistantArknights/MaaAssistantArknights](https://github.com/MaaAssistantArknights/MaaAssistantArknights) `master-v2` (stable release branch) |
+| Mirror | Local `master` always points to `upstream/master-v2`, synced via `tools/update-upstream.ps1` |
+| Sync | For each upstream release (e.g. v6.17.0), first create `feat/upstream-<version>-sync` to resolve baseline conflicts, then derive topic branches to land Fork-specific changes |
+| Fork-private features | Account cycling, account-scoped data, recruitment expedite threshold, reception-clue fallback, diagnostic export, `expedite_min_level` protocol extension, etc., all come from local work on `branch` |
+| Docs | Repo root [README.md](../../README.md), [AGENTS.md](../../AGENTS.md), [WORKFLOW.md](../../WORKFLOW.md) and [LOG.md](../../LOG.md) |
+
+> Do not merge `upstream/master-v2` directly into `staging` or `branch`. See [WORKFLOW.md](../../WORKFLOW.md) §5 (graft history) and §6 (manual conflict resolution) for fork flow details.
+
 ## Download and Installation
 
 Please read the [documentation](./manual/newbie.md) and then visit the [official website](https://maa.plus) or [Releases](https://github.com/MaaAssistantArknights/MaaAssistantArknights/releases) to download. Refer to [Getting Started](./manual/newbie.md) for installation instructions.
 
+This Fork installs identically to upstream; if `branch` lags behind upstream, prefer the prebuilt upstream release and build locally only via [WORKFLOW.md](../../WORKFLOW.md).
+
 ## Key Features
 
 - Auto-farming sanity, drop item recognition and auto-uploading to [Penguin Stats](https://penguin-stats.io/), [Yituliu](https://ark.yituliu.cn/).
-- Intelligent base shift management, auto-calculating operator efficiency for optimal solutions within facilities; also supports [customized scheduling](./protocol/base-scheduling-schema.md).
+- Intelligent base shift management, auto-calculating operator efficiency with support for cross-facility combinations; also supports [customized scheduling](./protocol/base-scheduling-schema.md).
 - Auto-recruitment with option to use expedited plans, clearing all at once! Auto-uploading recruitment data to [Penguin Stats](https://penguin-stats.io/result/stage/recruit/recruit), [Yituliu](https://ark.yituliu.cn/survey/maarecruitdata).
 - Manual recruitment tag identification for better high-star recruitment decisions ~~(Will that Senior Operator tag give you SilverAsh or SilverAsh?)~~
 - Operator list recognition, counting owned and missing operators and their potentials, displayed during recruitment identification.
@@ -48,6 +64,25 @@ Please read the [documentation](./manual/newbie.md) and then visit the [official
 - Fully automatic Integrated Strategy (IS) for farming Originium Ingots and levels, auto-farming and direct upgrades, smart operator recognition.
 - Select JSON copilot files for automatic stage clearing, [Video demonstration](https://www.bilibili.com/video/BV1H841177Fk/).
 - Support for C, Python, Java, Rust, Golang, Java HTTP, Rust HTTP and other interfaces, easy integration and customization for your MAA!
+
+### Fork-specific Enhancements
+
+- **Multi-account cycling** (`feat/account_rotation`): daily tasks run automatically across configured accounts; roguelike and reclamation are deferred to the end (`feat/defer-rogue`).
+- **Account-scoped operator / depot data** (`feat/account-scoped-recognition-data`): data is split per account so switching accounts never merges inventories.
+- **Recruitment expedite threshold** (`feat/expedite-threshold`): Fork protocol field `expedite_min_level` only uses Expedited Plans when the confirmed minimum rarity is at least 4 / 5 / 6.
+- **Recruitment expedite per-slot click** (`fix/recruit-expedite-slot-target`): avoids cross-slot mis-expediting when multiple slots run in parallel.
+- **Diagnostic report rewrite** (`fix/diagnostic-export-refactor`): split-by-size packaging, system info collection, async execution.
+- **Reception-clue quick insert fallback** (`fix/reception-clue-restore`): fixes upstream issue #16165.
+- **Local build chain improvements**: `tools/local-install-staging.bat`, VS 2022 BuildTools-friendly paths, NetBeauty2 post-processing.
+
+### Hotspot files for Fork-private functionality
+
+- `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.AccountCycle.cs`: account-cycle orchestration.
+- `src/MaaWpfGui/ViewModels/Orchestration/AccountCycleOrchestrator.cs`: orchestrator.
+- `src/MaaWpfGui/ViewModels/UI/ToolboxViewModel.cs` `#region AccountScopedRecognitionData`: account-scoped data buckets.
+- `src/MaaWpfGui/Models/DiagnosticInfo.cs`: diagnostic report model.
+- `src/MaaCore/Task/Infrast/InfrastReceptionTask.cpp` `proc_clue_vacancy`: reception-clue fallback.
+- `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.{h,cpp}` plus `src/MaaCore/Task/Interface/RecruitTask.cpp`: `expedite_min_level` threshold.
 
 See it in action!
 
@@ -98,6 +133,7 @@ MAA supports command-line interface (CLI) operation on Linux, macOS, and Windows
 - [Copilot Site](https://prts.plus) Backend: [ZootPlusBackend](https://github.com/ZOOT-Plus/ZootPlusBackend)
 - [Official Website](https://maa.plus): [Frontend](https://github.com/MaaAssistantArknights/maa-website)
 - Deep Learning: [MaaAI](https://github.com/MaaAssistantArknights/MaaAI)
+- This fork: [Cecilian-Elysian/FORK_MAA](https://github.com/Cecilian-Elysian/FORK_MAA)
 
 ### Multilingual Support (i18n)
 
@@ -105,19 +141,23 @@ MAA uses Chinese (Simplified) as its primary language, and all translation entri
 
 ### Development Participation
 
-Please refer to the [Development Guide](./develop/development.md).
+Please refer to the [Development Guide](./develop/development.md) together with the repo root [AGENTS.md](../../AGENTS.md) and [WORKFLOW.md](../../WORKFLOW.md). Key points for this fork:
+
+- Before editing, check [`docs/downstream-changes.md`](../../docs/downstream-changes.md) for prior Fork modifications.
+- Keep every feature in its own `feat/<name>` / `fix/<name>` branch to avoid cross-domain conflict bundles.
+- Fork-private logic lives in `src/MaaWpfGui/Models`, `TaskQueueViewModel.AccountCycle.cs`, `ToolboxViewModel.cs`, and `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.*`.
 
 ### API
 
-- [C interface](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/include/AsstCaller.h): [Integration Example](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Cpp/main.cpp)
-- [Python interface](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Python/asst/asst.py): [Integration Example](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Python/sample.py)
-- [Golang interface](https://github.com/MaaAssistantArknights/MaaAssistantArknights/tree/dev/src/Golang): [Integration Example](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Golang/maa/maa.go)
-- [Dart interface](https://github.com/MaaAssistantArknights/MaaAssistantArknights/tree/dev/src/Dart)
-- [Java interface](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Java/src/main/java/com/iguigui/maaj/easySample/MaaCore.java): [Integration Example](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Java/src/main/java/com/iguigui/maaj/easySample/MaaJavaSample.java)
-- [Java HTTP interface](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Java/Readme.md)
-- [Rust interface](https://github.com/MaaAssistantArknights/MaaAssistantArknights/tree/dev/src/Rust/src/maa_sys): [HTTP interface](https://github.com/MaaAssistantArknights/MaaAssistantArknights/tree/dev/src/Rust)
+- [C interface](../../include/AsstCaller.h): [Integration Example](../../src/Cpp/main.cpp)
+- [Python interface](../../src/Python/asst/asst.py): [Integration Example](../../src/Python/sample.py)
+- [Golang interface](../../src/Golang): [Integration Example](../../src/Golang/maa/maa.go)
+- [Dart interface](../../src/Dart)
+- [Java interface](../../src/Java/src/main/java/com/iguigui/maaj/easySample/MaaCore.java): [Integration Example](../../src/Java/src/main/java/com/iguigui/maaj/easySample/MaaJavaSample.java)
+- [Java HTTP interface](../../src/Java/Readme.md)
+- [Rust interface](../../src/Rust/src/maa_sys): [HTTP interface](../../src/Rust)
 - [TypeScript interface](https://github.com/MaaAssistantArknights/MaaX/tree/main/packages/main/coreLoader)
-- [Woolang interface](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Woolang/maa.wo): [Integration Example](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/src/Woolang/demo.wo)
+- [Woolang interface](../../src/Woolang/maa.wo): [Integration Example](../../src/Woolang/demo.wo)
 - [Integration Documentation](./protocol/integration.md)
 - [Callback Message Protocol](./protocol/callback-schema.md)
 - [Task Workflow Protocol](./protocol/task-schema.md)
@@ -167,7 +207,8 @@ Please refer to the [Issue Bot Usage Guide](./develop/issue-bot-usage.md)
 
 Thanks to all friends who have participated in development and testing - your help makes MAA better and better! (\*´▽｀)ノノ
 
-[![Contributors](https://contributors-img.web.app/image?repo=MaaAssistantArknights/MaaAssistantArknights&max=105&columns=15)](https://github.com/MaaAssistantArknights/MaaAssistantArknights/graphs/contributors)
+[![Contributors](https://contributors-img.web.app/image?repo=Cecilian-Elysian/FORK_MAA&max=105&columns=15)](https://github.com/Cecilian-Elysian/FORK_MAA/graphs/contributors)<br>
+[Upstream contributors](https://github.com/MaaAssistantArknights/MaaAssistantArknights/graphs/contributors)
 
 ## Disclaimer
 

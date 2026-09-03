@@ -20,6 +20,7 @@ icon: ph:sword-bold
         // 指定幹員
         {
             "name": "重岳", // 幹員名稱
+            "role": "guard", // 幹員職業。選填，用於區分同名幹員，中英文職業名均可，大小寫不限
             "skill": 3, // 技能序號。選填，預設為 0，取值範圍 [0, 3]
             "skill_usage": 2, // 技能用法。選填，預設為 0
             // 0 - 不自動使用（依賴 "actions" 欄位）
@@ -29,13 +30,13 @@ icon: ph:sword-bold
             // 如果是全自動的技能，填 0
             "skill_times": 5, // 技能使用次數。選填，預設為 1
             "requirements": {
-                // 練度要求。保留介面，暫未實作。選填，預設為空
-                "elite": 2, // 精英化等級。選填，預設為 0, 不要求精英化等級
+                // 練度要求，自動編隊時驗證。選填，預設為空
+                "elite": 2, // 精英化等級。選填，預設為 0，不要求精英化等級
                 "level": 90, // 幹員等級。選填，預設為 0
                 "skill_level": 10, // 技能等級。選填，預設為 0
                 "module": 1, // 模組編號。選填，預設為 0
-                "module_level": 3, // 模組等級，選填，預設為 0
-                "potential": 1 // 潛能要求。選填，預設為 0
+                "module_level": 3, // 模組等級。暫不支援
+                "potential": 1 // 潛能要求。暫不支援
             }
         }
     ],
@@ -65,8 +66,8 @@ icon: ph:sword-bold
             // "Deploy" | "Skill" | "Retreat" | "SpeedUp" | "BulletTime" | "SkillUsage" | "Output" | "SkillDaemon" | "MoveCamera" | "ResetStopwatch"
             // "部署"    |  "技能"  |  "撤退"    | "二倍速"   |  "子彈時間"  |  "技能用法"   | "列印"  |  "擺完掛機" | "移動鏡頭" | "重置全域計時器"
             // 中英文皆可，效果相同
-            // 若為 "部署", 當費用不夠時，會一直等待到費用夠（除非 timeout）
-            // 若為 "技能", 當技能 CD 沒轉好時，一直等待到技能 CD 好（除非 timeout）
+            // 若為 "部署"，當費用不夠時，會一直等待到費用夠（除非 timeout）
+            // 若為 "技能"，當技能 CD 沒轉好時，一直等待到技能 CD 好（除非 timeout）
             // "二倍速" 是可切換的，即使用一次變成二倍速，再次使用又變回一倍速
             // "子彈時間" 即點擊任意幹員後的 1/5 速度，再進行任意 action 會恢復正常速度
             //      "name" 或 "location" 必填一項，即點哪個幹員進入子彈時間，戰場上的幹員或待部署區的幹員均可（會自動判斷）
@@ -75,7 +76,7 @@ icon: ph:sword-bold
             // "列印" 介面不顯示這條步驟，僅用於輸出 doc 裡的內容（用來做字幕之類的）
             // "擺完掛機" 僅使用 "好了就用" 的技能，其他什麼都不做，直到戰鬥結束
             // "移動鏡頭" 用於「引航者試煉」模式，還需要填寫 distance 欄位
-            // "重置全域計時器" 重置全域計時器，請參考「time_elapsed」條件
+            // "重置全域計時器" 重置全域計時器，請參考「elapsed_time」條件
             // 目前下面五個條件是且的關係，即 &&
             "kills": 0, // 擊殺數條件，如果沒達到就一直等待。選填，預設為 0，直接執行
             "costs": 50, // 費用條件，如果沒達到就一直等待。選填，預設為 0，直接執行
@@ -87,13 +88,14 @@ icon: ph:sword-bold
             // 支援負數，即費用變少了（例如「孑」等吸費幹員使得費用變少了）
             // 另外僅在費用是兩位數的時候辨識得比較準，三位數的費用可能會辨識錯，不推薦使用
             "cooling": 2, // CD 中幹員數量條件，如果沒達到就一直等待。選填，預設為 -1，不辨識
-            "time_elapsed": 1000, // 以毫秒為單位全域計時條件，如果沒達到就一直等待。選填，預設為 0，直接執行
+            "elapsed_time": 1000, // 以毫秒為單位全域計時條件，如果沒達到就一直等待。選填，預設為 0，直接執行
             // 注意是從上一次執行 type:ResetStopwatch 的 action 開始計算的
             // 使用前必須執行過 type:ResetStopwatch 的 action 重置計時器，不然會卡住
             // TODO: 其他條件
             // TODO: "condition_type": 0,    // 執行條件間的關係，選填，預設為 0
             //                         // 0 - 且； 1 - 或
             "name": "棘刺", // 幹員名稱 或 群組名稱， type 為 "部署" 時必填，為 "技能" | "撤退" 時選填
+            "role": "guard", // 幹員職業。選填，用於區分同名幹員，中英文職業名均可，大小寫不限
             "location": [
                 5,
                 5
@@ -101,25 +103,23 @@ icon: ph:sword-bold
             // type 為 "部署" 時必填。
             // type 為 "技能" | "撤退" 時選填，
             // "技能"：僅推薦場地上自動的裝置等，不填寫 name，並使用 location 開啟技能。正常部署的幹員推薦使用 name 開啟技能
-            // "撤退"：僅推薦有多個同名召喚物時，不填寫 name, 並使用 location 進行撤退。正常部署的幹員推薦 name 進行撤退
+            // "撤退"：僅推薦有多個同名召喚物時，不填寫 name，並使用 location 進行撤退。正常部署的幹員推薦 name 進行撤退
             // 座標資訊可在 [https://map.ark-nights.com/areas](https://map.ark-nights.com/areas) 中查看，在設定中將「座標展示」選為「MAA」即為 MAA 使用的座標
             "direction": "左", // 部署幹員的幹員朝向。 type 為 "部署" 時必填
             // "Left" | "Right" | "Up" | "Down" | "None"
             // "左"   |  "右"   | "上"  | "下"   |  "無"
             // 中英文皆可，效果相同
-            "skip_if_not_ready": false, // 僅在 type 為 "技能" 時有效, 允許在技能不可用時跳過目前行動，主要用於關閉未打完的彈藥技能。選填，預設為 false
+            // "skip_if_not_ready": false，已棄用。請改用 "timeout": 0。
             "skill_usage": 1, // 修改技能用法。當 type 為 "技能用法" 時必填
             // 舉例：剛下桃金娘需要她幫忙打幾個怪，不能自動開技能，中後期平穩了需要她自動開技能
             // 則可以在對應時刻設定為 1
             "skill_times": 5, // 技能使用次數。選填，預設為 1
-            "pre_delay": 0, // 前置延時。選填，預設為 0, 單位毫秒
+            "pre_delay": 0, // 前置延時。選填，預設為 0，單位毫秒
             // 目前 action 的所有條件參數全部滿足後開始計時，計時結束後執行 type 對應動作
-            "post_delay": 0, // 後置延時。選填，預設為 0, 單位毫秒
+            "post_delay": 0, // 後置延時。選填，預設為 0，單位毫秒
             // 目前 action 的 type 對應動作執行完成後開始計時，計時結束後開始下一個 action
-            //
-            // "timeout": 999999999,   // 保留欄位，暫未實作。
-            // 超時時間。當 type 為 "部署" | "技能" 時選填。預設 INT_MAX, 單位毫秒
-            // 等待超時則放棄目前動作, 轉而執行下一個動作
+            "timeout": 999999999, // 超時時間。當 type 為 "技能" 時選填。預設 -1，即不限制，單位毫秒
+            // 當完成條件和 pre_delay 後開始計時，等待超時則放棄目前動作，轉而執行下一個動作；值為 0 時只檢查一次
             "distance": [
                 4.5,
                 0
@@ -173,4 +173,4 @@ icon: ph:sword-bold
 
 ## 舉例
 
-[OF-1](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/master/resource/copilot/OF-1_credit_fight.json)
+[OF-1](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/resource/copilot/OF-1_credit_fight.json)

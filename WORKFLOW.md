@@ -203,6 +203,10 @@ git switch staging
 git merge --no-commit --no-ff upstream/master-v2
 ```
 
+#### §6.1.1 冲突隔离
+
+上游同步分支只处理上游基线与已有 Fork 行为的兼容，不在该分支新增或重构 Fork 功能。完成编译和 Fork 标记验证后，按领域从同步分支再创建 `fix/upstream-<version>/<topic>` 或 `feat/upstream-<version>/<topic>`：账号轮换、账号数据、公招、基建和肉鸽分别处理。这样每个后续分支只面对已同步后的一个领域，避免重复解决同一批上游冲突。
+
 ### §6.2 真实 conflict 输出示例（2026-08-06 v6.16.5 合入，实际数据）
 
 ```

@@ -554,7 +554,7 @@ public class Bootstrapper : Bootstrapper<RootViewModel>
         {
             _logger.Error("Delegated pending update failed. Reason: {Reason}", delegatedUpdateFailureReason);
             ShowPendingUpdateRecoveryDialog();
-            Shutdown();
+            FlushLogAndExit();
             return;
         }
 
@@ -570,7 +570,7 @@ public class Bootstrapper : Bootstrapper<RootViewModel>
                 LocalizationHelper.GetString("Error"),
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
-            Shutdown();
+            FlushLogAndExit();
             return;
         }
 
@@ -581,7 +581,7 @@ public class Bootstrapper : Bootstrapper<RootViewModel>
             if (pendingUpdateResult.Delegated)
             {
                 _logger.Information("Pending update package handed off to external updater, exiting current process");
-                Shutdown();
+                FlushLogAndExit();
                 return;
             }
 
@@ -595,7 +595,7 @@ public class Bootstrapper : Bootstrapper<RootViewModel>
             {
                 _logger.Error("Pending update package could not be delegated because MAA.Updater.exe is missing. Reason: {Reason}", pendingUpdateResult.FailureReason);
                 ShowPendingUpdateMissingUpdaterDialog();
-                Shutdown();
+                FlushLogAndExit();
                 return;
             }
 
@@ -603,7 +603,7 @@ public class Bootstrapper : Bootstrapper<RootViewModel>
             {
                 _logger.Error("Pending update package left the installation in an incomplete state. Reason: {Reason}", pendingUpdateResult.FailureReason);
                 ShowPendingUpdateRecoveryDialog();
-                Shutdown();
+                FlushLogAndExit();
                 return;
             }
 
@@ -643,7 +643,7 @@ public class Bootstrapper : Bootstrapper<RootViewModel>
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
                 _logger.Fatal("Unknown DLL(s) detected: {UnknownDlls}", string.Join(", ", unknownDlls));
-                Shutdown();
+                FlushLogAndExit();
                 return;
             }
         }
@@ -668,13 +668,13 @@ public class Bootstrapper : Bootstrapper<RootViewModel>
                 Process.Start(startInfo);
             }
 
-            Shutdown();
+            FlushLogAndExit();
             return;
         }
 
         if (!HandleMultipleInstances())
         {
-            Shutdown();
+            FlushLogAndExit();
             return;
         }
 
@@ -1083,7 +1083,7 @@ public class Bootstrapper : Bootstrapper<RootViewModel>
             Process.Start(startInfo);
         }
 
-        Environment.Exit(0);
+        FlushLogAndExit();
     }
 
     /// <summary>
@@ -1118,9 +1118,9 @@ public class Bootstrapper : Bootstrapper<RootViewModel>
     private static void ShowPendingUpdateMissingUpdaterDialog()
     {
         MessageBoxHelper.Show(
-        LocalizationHelper.GetString("UpdateApplyMissingUpdater"),
-        LocalizationHelper.GetString("Error"),
-        icon: MessageBoxImage.Error);
+            LocalizationHelper.GetString("UpdateApplyMissingUpdater"),
+            LocalizationHelper.GetString("Error"),
+            icon: MessageBoxImage.Error);
     }
 
     /// <summary>
@@ -1186,6 +1186,17 @@ public class Bootstrapper : Bootstrapper<RootViewModel>
     {
         _logger.Information("Shutdown called by `{Caller}`", caller);
         Execute.OnUIThread(Application.Current.Shutdown);
+    }
+
+    /// <summary>
+    /// 落盘日志后立即结束进程，供启动中止分支使用。
+    /// 仅限 OnStart 早期调用：此时互斥量与主窗口尚未创建，<see cref="OnExit"/> 的清理流程不适用。
+    /// </summary>
+    private static void FlushLogAndExit()
+    {
+        // Environment.Exit 不经过 WPF 关闭流程，日志需先显式落盘
+        Log.CloseAndFlush();
+        Environment.Exit(0);
     }
 
     /// <summary>

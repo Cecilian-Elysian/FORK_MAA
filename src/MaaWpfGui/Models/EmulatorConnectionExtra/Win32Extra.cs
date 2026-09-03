@@ -11,141 +11,127 @@
 // but WITHOUT ANY WARRANTY
 // </copyright>
 #nullable enable
-using System.Collections.Generic;
-using System.Text.Json.Serialization;
+using MaaWpfGui.Configuration.Factory;
+using MaaWpfGui.Constants.Enums.Core;
 using MaaWpfGui.Helper;
 using MaaWpfGui.Utilities.ValueType;
-using Serilog;
 
 namespace MaaWpfGui.Models.EmulatorConnectionExtra;
 
-public class Win32Extra() : ExtraConfig
+public class Win32Extra : ExtraConfig
 {
-    private static readonly ILogger _logger = Log.ForContext<Win32Extra>();
-
-    #region Enums
-#pragma warning disable SA1602 // Enumeration items should be documented
-    // 遵循 AsstCaller.h 中的定义，确保与 AsstCaller.h 中的枚举值对应
-    public enum AsstWin32ScreencapMethod
-    {
-        FramePool = 2,
-        PrintWindow = 16,
-        ScreenDC = 32,
-        DesktopDupWindow = 8,
-    }
-
-    public enum AsstWin32InputMethod
-    {
-        Seize = 1,
-        SendMessageWithCursorPos = 32,
-        SendMessageWithWindowPos = 128,
-    }
-
-    public enum AsstWin32KeyboardInputMethod
-    {
-        Seize = 1,
-        SendMessage = 2,
-        PostMessage = 4,
-    }
-#pragma warning restore SA1602 // Enumeration items should be documented
-    #endregion Enums
-
-    public Win32Extra(AsstWin32ScreencapMethod screencapMethod, AsstWin32InputMethod inputMethod, AsstWin32KeyboardInputMethod keyboardInputMethod)
-        : this()
-    {
-        _screencapMethod = screencapMethod;
-        _mouseMethod = inputMethod;
-        _KeyboardMethod = keyboardInputMethod;
-    }
-
     /// <summary>
-    /// Gets win32 截图方式枚举（与 AsstCaller.h 中 AsstWin32ScreencapMethodEnum 对应）
+    /// Win32 截图方式列表（与 AsstCaller.h 中 AsstWin32ScreencapMethodEnum 对应）
     /// </summary>
-    private static readonly List<GenericCombinedData<AsstWin32ScreencapMethod>> _screencapMethodList =
-    [
-        new(LocalizationHelper.GetString("AttachWindowScreencapFramePool"),  AsstWin32ScreencapMethod.FramePool),
-        new(LocalizationHelper.GetString("AttachWindowScreencapPrintWindow"),  AsstWin32ScreencapMethod.PrintWindow),
-        new(LocalizationHelper.GetString("AttachWindowScreencapScreenDC"),  AsstWin32ScreencapMethod.ScreenDC),
-        new(LocalizationHelper.GetString("AttachWindowScreencapDesktopDupWindow"),  AsstWin32ScreencapMethod.DesktopDupWindow),
-    ];
+    private static readonly LocalizedObservableList<AsstWin32ScreencapMethod> _screencapMethodList =
+        new(
+            (AsstWin32ScreencapMethod.FramePool, "AttachWindowScreencapFramePool"),
+            (AsstWin32ScreencapMethod.PrintWindow, "AttachWindowScreencapPrintWindow"),
+            (AsstWin32ScreencapMethod.ScreenDC, "AttachWindowScreencapScreenDC"),
+            (AsstWin32ScreencapMethod.DesktopDupWindow, "AttachWindowScreencapDesktopDupWindow"));
 
-    [JsonIgnore]
-    public List<GenericCombinedData<AsstWin32ScreencapMethod>> ScreencapMethodList => _screencapMethodList;
-
-    [JsonInclude]
-    [JsonPropertyName("ScreencapMethod")]
-    private AsstWin32ScreencapMethod _screencapMethod = AsstWin32ScreencapMethod.FramePool; // 默认 FramePool
+    public LocalizedObservableList<AsstWin32ScreencapMethod> ScreencapMethodList => _screencapMethodList;
 
     /// <summary>
     /// Gets or sets the screencap method for AttachWindow mode.
     /// </summary>
-    [JsonIgnore]
     public AsstWin32ScreencapMethod ScreencapMethod
     {
-        get => _screencapMethod;
-        set {
+        get; set {
+            // 鼠标输入方式为 SendMessageWithWindowPos 时，截图方式仅支持 PrintWindow
+            if (MouseMethod == AsstWin32InputMethod.SendMessageWithWindowPos)
+            {
+                value = AsstWin32ScreencapMethod.PrintWindow;
+            }
+
             Instances.AsstProxy.Connected = false;
-            SetAndNotify(ref _screencapMethod, value);
+            SetAndNotify(ref field, value);
+            ConfigFactory.CurrentConfig.Gui.ConnectSettings.Extras.Win32Extra.ScreencapMethod = value;
         }
-    }
+    } = ConfigFactory.CurrentConfig.Gui.ConnectSettings.Extras.Win32Extra.ScreencapMethod;
 
     /// <summary>
-    /// Win32 鼠标输入方式枚举（与 AsstCaller.h 中 AsstWin32InputMethodEnum 对应）
+    /// Win32 鼠标输入方式列表（与 AsstCaller.h 中 AsstWin32InputMethodEnum 对应，按枚举值排序）
     /// </summary>
-    private static readonly List<GenericCombinedData<AsstWin32InputMethod>> _mouseMethodList =
-    [
-        new(LocalizationHelper.GetString("AttachWindowInputSeize"),  AsstWin32InputMethod.Seize),
-        new(LocalizationHelper.GetString("AttachWindowInputSendWithCursor"),  AsstWin32InputMethod.SendMessageWithCursorPos),
-        new(LocalizationHelper.GetString("AttachWindowInputSendWithWindowPos"),  AsstWin32InputMethod.SendMessageWithWindowPos),
-    ];
+    /// <remarks>
+    /// 纯 SendMsg / PostMsg 仅列出作展示：明日方舟 PC 端按真实光标位置取坐标、不读取消息中的坐标，
+    /// 纯消息点击会落点无效（原神等游戏读取消息坐标，故同类工具纯后台可用），因此永久禁用，
+    /// 界面中以置灰选项呈现。
+    /// </remarks>
+    private static readonly LocalizedObservableList<AsstWin32InputMethod> _mouseMethodList =
+        new(
+            (AsstWin32InputMethod.Seize, "AttachWindowInputSeize", true),
+            (AsstWin32InputMethod.SendMessage, "AttachWindowInputSendMsgDisabled", false),
+            (AsstWin32InputMethod.PostMessage, "AttachWindowInputPostMsgDisabled", false),
+            (AsstWin32InputMethod.SendMessageWithCursorPos, "AttachWindowInputSendWithCursor", true),
+            (AsstWin32InputMethod.SendMessageWithWindowPos, "AttachWindowInputSendWithWindowPos", true));
 
-    [JsonIgnore]
-    public List<GenericCombinedData<AsstWin32InputMethod>> MouseMethodList => _mouseMethodList;
+    public LocalizedObservableList<AsstWin32InputMethod> MouseMethodList => _mouseMethodList;
 
-    [JsonInclude]
-    [JsonPropertyName("MouseMethod")]
-    private AsstWin32InputMethod _mouseMethod = AsstWin32InputMethod.SendMessageWithCursorPos; // 默认 SendMessageWithCursor
+    static Win32Extra()
+    {
+        // 列表为 static，静态构造订阅一次即可
+        LocalizationHelper.LanguageChanged += RefreshListsLocalization;
+    }
+
+    private static void RefreshListsLocalization()
+    {
+        _screencapMethodList.RefreshLocalization();
+        _mouseMethodList.RefreshLocalization();
+        _keyboardMethodList.RefreshLocalization();
+    }
 
     /// <summary>
     /// Gets or sets the mouse input method for AttachWindow mode.
     /// </summary>
-    [JsonIgnore]
     public AsstWin32InputMethod MouseMethod
     {
-        get => _mouseMethod;
-        set {
+        get; set {
             Instances.AsstProxy.Connected = false;
-            SetAndNotify(ref _mouseMethod, value);
+            SetAndNotify(ref field, value);
+
+            // 鼠标输入方式为 SendMessageWithWindowPos 时，截图方式仅支持 PrintWindow
+            if (value == AsstWin32InputMethod.SendMessageWithWindowPos)
+            {
+                ScreencapMethod = AsstWin32ScreencapMethod.PrintWindow;
+            }
+
+            UpdateScreencapMethodAvailability();
+            ConfigFactory.CurrentConfig.Gui.ConnectSettings.Extras.Win32Extra.MouseMethod = value;
+        }
+    } = ConfigFactory.CurrentConfig.Gui.ConnectSettings.Extras.Win32Extra.MouseMethod;
+
+    /// <summary>
+    /// 根据当前鼠标输入方式刷新截图方式选项的可用状态
+    /// </summary>
+    public void UpdateScreencapMethodAvailability()
+    {
+        foreach (var item in _screencapMethodList.Items)
+        {
+            item.IsEnabled = MouseMethod != AsstWin32InputMethod.SendMessageWithWindowPos || item.Value == AsstWin32ScreencapMethod.PrintWindow;
         }
     }
 
     /// <summary>
-    /// Win32 键盘输入方式枚举（与 AsstCaller.h 中 AsstWin32InputMethodEnum 对应）
+    /// Win32 键盘输入方式列表（与 AsstCaller.h 中 AsstWin32InputMethodEnum 对应）
     /// </summary>
-    private static readonly List<GenericCombinedData<AsstWin32KeyboardInputMethod>> _KeyboardMethodList =
-    [
-        new(LocalizationHelper.GetString("AttachWindowInputSeize"),  AsstWin32KeyboardInputMethod.Seize),
-        new(LocalizationHelper.GetString("AttachWindowInputSendMsg"),  AsstWin32KeyboardInputMethod.SendMessage),
-        new(LocalizationHelper.GetString("AttachWindowInputPostMsg"),  AsstWin32KeyboardInputMethod.PostMessage),
-    ];
+    private static readonly LocalizedObservableList<AsstWin32KeyboardInputMethod> _keyboardMethodList =
+        new(
+            (AsstWin32KeyboardInputMethod.Seize, "AttachWindowInputSeize"),
+            (AsstWin32KeyboardInputMethod.SendMessage, "AttachWindowInputSendMsg"),
+            (AsstWin32KeyboardInputMethod.PostMessage, "AttachWindowInputPostMsg"));
 
-    [JsonIgnore]
-    public List<GenericCombinedData<AsstWin32KeyboardInputMethod>> KeyboardMethodList => _KeyboardMethodList;
-
-    [JsonInclude]
-    [JsonPropertyName("KeyboardMethod")]
-    private AsstWin32KeyboardInputMethod _KeyboardMethod = AsstWin32KeyboardInputMethod.SendMessage; // 默认 SendMessage
+    public LocalizedObservableList<AsstWin32KeyboardInputMethod> KeyboardMethodList => _keyboardMethodList;
 
     /// <summary>
     /// Gets or sets the keyboard input method for AttachWindow mode.
     /// </summary>
-    [JsonIgnore]
     public AsstWin32KeyboardInputMethod KeyboardMethod
     {
-        get => _KeyboardMethod;
-        set {
+        get; set {
             Instances.AsstProxy.Connected = false;
-            SetAndNotify(ref _KeyboardMethod, value);
+            SetAndNotify(ref field, value);
+            ConfigFactory.CurrentConfig.Gui.ConnectSettings.Extras.Win32Extra.KeyboardMethod = value;
         }
-    }
+    } = ConfigFactory.CurrentConfig.Gui.ConnectSettings.Extras.Win32Extra.KeyboardMethod;
 }

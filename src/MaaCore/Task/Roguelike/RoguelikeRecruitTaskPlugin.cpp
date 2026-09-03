@@ -1,6 +1,5 @@
 #include "RoguelikeRecruitTaskPlugin.h"
 
-#include "Config/Miscellaneous/BattleDataConfig.h"
 #include "Config/TaskData.h"
 #include "Controller/Controller.h"
 #include "Task/ProcessTask.h"
@@ -42,19 +41,10 @@ bool asst::RoguelikeRecruitTaskPlugin::verify(AsstMsg msg, const json::value& de
     }
 }
 
-asst::battle::Role asst::RoguelikeRecruitTaskPlugin::get_oper_role(const std::string& name)
+bool asst::RoguelikeRecruitTaskPlugin::load_params(const json::value& params)
 {
-    return BattleData.get_role(name);
-}
-
-bool asst::RoguelikeRecruitTaskPlugin::is_oper_melee(const std::string& name)
-{
-    const auto role = get_oper_role(name);
-    if (role != battle::Role::Pioneer && role != battle::Role::Tank && role != battle::Role::Warrior) {
-        return false;
-    }
-    const auto loc = BattleData.get_location_type(name);
-    return loc == battle::LocationType::Melee;
+    m_start_roles = params.get("roles", std::string());
+    return true;
 }
 
 std::unordered_set<std::string> asst::RoguelikeRecruitTaskPlugin::calculate_condition_oper(
@@ -90,6 +80,15 @@ bool asst::RoguelikeRecruitTaskPlugin::_run()
             lazy_recruit();
             return true;
         }
+    }
+
+    // 精二机械师保证了结构性原理，整局都不必打架，多招干员只会拖慢开局
+    if (theme == RoguelikeTheme::BlackFlow && m_initail_recruit && m_recruit_count > 1 &&
+        (mode == RoguelikeMode::Exp || mode == RoguelikeMode::Investment) && m_config->get_core_char() == "机械师" &&
+        (squad == "特勤分队" || squad == "堡垒战术分队") &&
+        (m_start_roles == "稳扎稳打" || m_start_roles == "坚不可摧")) {
+        ProcessTask(*this, { "BlackFlow@RoguelikeRecruit-GiveUp" }).run();
+        return true;
     }
 
     // 时光之末的特殊用法
@@ -146,20 +145,6 @@ bool asst::RoguelikeRecruitTaskPlugin::_run()
 
     // 编队信息 (已有角色)
     const auto& chars_map = m_config->status().opers;
-
-    // __________________will-be-removed-begin__________________
-    std::unordered_map<battle::Role, int> team_roles;
-    int offset_melee_num = 0;
-    for (const auto& [name, oper] : chars_map) {
-        if (name.starts_with("预备干员")) {
-            continue;
-        }
-        team_roles[battle::get_role_type(name)]++;
-        if (is_oper_melee(name)) {
-            offset_melee_num++;
-        }
-    }
-    // __________________will-be-removed-end__________________
 
     if (!m_starts_complete) {
         for (const auto& oper : chars_map) {
@@ -336,24 +321,6 @@ bool asst::RoguelikeRecruitTaskPlugin::_run()
                 }
 
                 if (!recruit_info.is_alternate) {
-                    // __________________will-be-removed-begin__________________
-                    const battle::Role oper_role = get_oper_role(oper_info.name);
-                    int role_num = recruit_info.offset_melee ? offset_melee_num : team_roles[oper_role];
-                    for (const auto& offset_pair : std::ranges::reverse_view(recruit_info.recruit_priority_offset)) {
-                        if (role_num >= offset_pair.first) {
-                            priority += offset_pair.second;
-                            break;
-                        }
-                    }
-                    // role_num = team_roles[oper_role];
-                    // const auto role_info = RoguelikeRecruit.get_role_info(rogue_theme, oper_role);
-                    // for (const auto& offset_pair : std::ranges::reverse_view(role_info)) {
-                    //     if (role_num >= offset_pair.first) {
-                    //         priority += offset_pair.second;
-                    //         break;
-                    //     }
-                    // }
-                    //  __________________will-be-removed-end__________________
                     for (const auto& priority_offset : recruit_info.recruit_priority_offsets) {
                         std::unordered_set<std::string> opers = // 符合这个策略组的干员
                             calculate_condition_oper(priority_offset, chars_map);

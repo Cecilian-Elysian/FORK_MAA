@@ -224,7 +224,7 @@ condition = { type = "DateTime", start = "2023-08-01T16:00:00", end = "2023-08-2
 如果没有变体被匹配，那么任务将不会被执行，这可以用于只在特定的条件下运行子任务：
 
 ```toml
-# 只在在18:00:00之后进行信用商店相关的操作
+# 只在18:00:00之后进行信用商店相关的操作
 [[tasks]]
 type = "Mall"
 
@@ -316,7 +316,7 @@ kill_adb_on_exit = false
 ```toml
 [connection]
 adb_path = "adb" # adb 可执行文件的路径，默认值为 "adb"，这意味着 adb 可执行文件在环境变量 PATH 中
-address = = "emulator-5554" # 连接地址，比如 "emulator-5554" 或者 "127.0.0.1:5555"
+address = "emulator-5554" # 连接地址，比如 "emulator-5554" 或者 "127.0.0.1:5555"
 config = "General" # 连接配置，通常不需要修改
 ```
 

@@ -1879,6 +1879,14 @@
         "sortId": -10000,
         "usage": "Credits derived from total resources, which can be used to obtain rewards from Closure."
     },
+    "act20mini_token_cork": {
+        "classifyType": "NONE",
+        "description": "The big prizes demand far too many corks in exchange. The vast majority will trade in for a few mismatched tasting wineglasses at best. It is a blatantly Kazimierzian marketing ploy, but that has not deterred Golden Prairie from relying on it to open up the Nuova Volsiniese market.",
+        "icon": "act20mini_token_cork.png",
+        "name": "Cork Stopper",
+        "sortId": -10000,
+        "usage": "The cork stoppers Golden Prairie uses for red wine intended for the Nuova Volsiniese market, with a special seal stuck on top. Collect enough and exchange them at the Red Wine Championship Commission reception counter for prizes (such as tickets to watch the championship)."
+    },
     "act20side_token_book": {
         "classifyType": "NONE",
         "description": "The pages retain handwriting of all shapes and sizes, the amount even serving to tell you how often the magazine's changed hands. Most of it is meaningless scrawls, but flashes of wisdom are scattered throughout.",
@@ -2046,6 +2054,14 @@
         "name": "Die Klänge von den Erinnerungen",
         "sortId": -10000,
         "usage": "Leaves that fall on the streets of Zwillingstürme. Missing phrases of music can be found on them from time to time. Give them to tune seekers at concerts and be rewarded with the gift of music."
+    },
+    "act2autochess_token_chess": {
+        "classifyType": "NONE",
+        "description": "Medals prepared by Rhodes Island's workshop for operators participating in Stronghold Protocol. Magnetic. Apparently, if you gather enough of them, you can make a fortress out of chess pieces.",
+        "icon": "act2autochess_token_chess.png",
+        "name": "Stronghold Credits",
+        "sortId": -10000,
+        "usage": "Can be exchanged for all sorts of supplies in Stronghold Protocol."
     },
     "act2bossrush_milestone_point": {
         "classifyType": "NONE",

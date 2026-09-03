@@ -116,6 +116,17 @@ public:
     virtual void back_to_home() noexcept override;
 
 protected:
+    // 重新执行 display 命令探测分辨率并刷新 m_width/m_height/m_screen_size；
+    // 连接时首次探测使用
+    bool reprobe_screen_size();
+
+    // 检测到分辨率被外部修改时调用：标记连接失效并通知上层，
+    // 任务失败后由上层整体重连（重连时重新探测并重建全部输入映射）
+    void invalidate_connection(std::string_view reason, int width, int height);
+
+    // 显示方向旋转（截图宽高互换）时回调，方向相关的输入子类重写以重建映射
+    virtual void on_display_rotated() {}
+
     std::optional<std::string> call_command(
         const std::string& cmd,
         int64_t timeout = 20000,
@@ -129,8 +140,15 @@ protected:
     void close_socket() noexcept;
     std::optional<unsigned short> init_socket(const std::string& local_address);
 
+    enum class ScreencapResult
+    {
+        Failed,
+        Success,
+        Reprobe,
+    };
+
     using DecodeFunc = std::function<bool(const std::string&)>;
-    bool screencap(
+    ScreencapResult screencap(
         const std::string& cmd,
         const DecodeFunc& decode_func,
         bool allow_reconnect = false,
@@ -217,6 +235,10 @@ protected:
     std::pair<int, int> m_screen_size = { 0, 0 };
     int m_width = 0;
     int m_height = 0;
+    // 最近一次成功截图的实际尺寸，用于帧间对比发现分辨率被外部修改
+    std::pair<int, int> m_last_screencap_size = { 0, 0 };
+    // 分辨率被外部修改后置位：此后截图一律快速失败，任务随即停止，等待上层整体重连
+    bool m_connection_expired = false;
     bool m_support_socket = false;
     bool m_server_started = false;
     bool m_inited = false;

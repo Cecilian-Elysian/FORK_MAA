@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <memory>
 #include <optional>
 #include <random>
@@ -46,6 +47,7 @@ public:
         Win32ScreencapMethod screencap_method,
         Win32InputMethod mouse_method,
         Win32InputMethod keyboard_method);
+    void restore_window_position();
 #endif
     bool inited() noexcept;
     void set_touch_mode(const TouchMode& mode) noexcept;
@@ -112,12 +114,17 @@ private:
     void clear_info() noexcept;
     void callback(AsstMsg msg, const json::value& details);
     void sync_params();
+    bool resolve_swipe_with_pause(bool with_pause) const noexcept;
 
     AsstCallback m_callback = nullptr;
 
     PlatformType m_platform_type = PlatformType::Native;
 
     ControllerType m_controller_type = ControllerType::Minitouch;
+
+    // 最近一次下发的触控模式；attach_window 会将 m_controller_type 置为 Win32，
+    // 每次 connect 前据此重新派生 m_controller_type，避免残留 Win32 导致创建错误的控制器
+    TouchMode m_touch_mode = TouchMode::Minitouch;
 
     std::shared_ptr<ControllerAPI> m_controller = nullptr;
 
@@ -127,7 +134,7 @@ private:
 
     std::pair<int, int> m_scale_size = { WindowWidthDefault, WindowHeightDefault };
 
-    bool m_swipe_with_pause = false;
+    std::atomic_bool m_swipe_with_pause = false;
     bool m_kill_adb_on_exit = false;
     std::string m_client_type;
 

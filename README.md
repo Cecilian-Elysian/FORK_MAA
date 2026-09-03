@@ -4,7 +4,7 @@
 
 <img alt="LOGO" src="./docs/.vuepress/public/images/maa-logo_512x512.png" width="256" height="256" />
 
-# MAA
+# MAA Assistant Arknights · Cecilian-Elysian Fork
 
 <br>
 <div>
@@ -12,191 +12,188 @@
     <img alt="platform" src="https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-blueviolet">
 </div>
 <div>
-    <img alt="license" src="https://img.shields.io/github/license/MaaAssistantArknights/MaaAssistantArknights">
-    <img alt="commit" src="https://img.shields.io/github/commit-activity/m/MaaAssistantArknights/MaaAssistantArknights?color=%23ff69b4">
+    <img alt="license" src="https://img.shields.io/github/license/Cecilian-Elysian/FORK_MAA">
+    <img alt="upstream" src="https://img.shields.io/badge/upstream-MaaAssistantArknights%2FMaaAssistantArknights-181717?logo=github">
 </div>
 <div>
-    <img alt="stars" src="https://img.shields.io/github/stars/MaaAssistantArknights/MaaAssistantArknights?style=social">
-    <img alt="GitHub all releases" src="https://img.shields.io/github/downloads/MaaAssistantArknights/MaaAssistantArknights/total?style=social">
+    <a href="https://github.com/Cecilian-Elysian/FORK_MAA/stargazers"><img src="https://img.shields.io/github/stars/Cecilian-Elysian/FORK_MAA?style=social"></a>
+    <a href="https://github.com/Cecilian-Elysian/FORK_MAA/commits"><img src="https://img.shields.io/github/commit-activity/m/Cecilian-Elysian/FORK_MAA?color=%23ff69b4"></a>
 </div>
-<div>
-    <a href="https://deepwiki.com/MaaAssistantArknights/MaaAssistantArknights"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
-</div>
-    <a href="https://trendshift.io/repositories/979" target="_blank"><img src="https://trendshift.io/api/badge/repositories/979" alt="MaaAssistantArknights%2FMaaAssistantArknights | Trendshift" width="250" height="55" style="width: 250px; height: 55px;" /></a>
-<div>
-</div>
-<br>
-
-<!-- markdownlint-restore -->
 
 [简体中文](https://docs.maa.plus/zh-cn/) | [繁體中文](https://docs.maa.plus/zh-tw/) | [English](https://docs.maa.plus/en-us/) | [日本語](https://docs.maa.plus/ja-jp/) | [한국어](https://docs.maa.plus/ko-kr/)
 
-MAA 的意思是 MAA Assistant Arknights
-
-一款明日方舟游戏小助手
-
-基于图像识别技术，一键完成全部日常任务！
-
-绝赞更新中 ✿✿ヽ(°▽°)ノ✿
+> **MAA = MAA Assistant Arknights**
+>
+> 本仓库是 [`MaaAssistantArknights/MaaAssistantArknights`](https://github.com/MaaAssistantArknights/MaaAssistantArknights) 的**个人增强型本地分叉**。
+>
+> Fork 关注多账号轮换、上游基线跟进、本地化构建与验证，不接受上游直接合并。Fork 私有功能在 `feat/<name>` / `fix/<name>` 分支逐项演进，由 `staging` → `branch` 流程整合，详见 [`AGENTS.md`](./AGENTS.md) 和 [`WORKFLOW.md`](./WORKFLOW.md)。
 
 </div>
 
-## 下载与安装
+## 1. 与上游的关系
 
-请阅读 [文档](https://docs.maa.plus/zh-cn/manual/newbie.html) 后前往 [官网](https://maa.plus) 或 [Releases](https://github.com/MaaAssistantArknights/MaaAssistantArknights/releases) 下载，并参考 [新手上路](https://docs.maa.plus/zh-cn/manual/newbie.html) 进行安装。
+| 项 | 说明 |
+|----|------|
+| 上游 | [`MaaAssistantArknights/MaaAssistantArknights`](https://github.com/MaaAssistantArknights/MaaAssistantArknights) `master-v2`（稳定 release 分支） |
+| 镜像 | 本地 `master` 始终指向 `upstream/master-v2`，通过 `tools/update-upstream.ps1` 同步 |
+| 同步 | 每次上游发布版本（如 v6.17.0），先创建 `feat/upstream-<version>-sync` 解决基线冲突，再派生子分支落地 Fork 改造 |
+| Fork 私有功能 | 账号轮换、账号数据分桶、公招加急门槛、会客室线索回退、诊断报告、`expedite_min_level` 协议扩展等，全部来自 `branch` 分支的本地改造 |
 
-## 亮点功能
+> 不要将 `upstream/master-v2` 直接合并到 `staging` 或 `branch`。Fork 流程细节请参考 [`WORKFLOW.md`](./WORKFLOW.md) §5（假历史关联）和 §6（合并手解）。
 
-- 理智作战，掉落识别及上传 [企鹅物流](https://penguin-stats.cn/)，[一图流](https://ark.yituliu.cn/)
-- 智能基建换班，自动计算干员效率，单设施内最优解；同时也支持 [自定义排班](https://docs.maa.plus/zh-cn/protocol/base-scheduling-schema.html)
-- 自动公招，可选使用加急许可，一次全部刷完！公招数据自动上传 [企鹅物流](https://penguin-stats.cn/result/stage/recruit/recruit)，[一图流](https://ark.yituliu.cn/survey/maarecruitdata)
-- 支持手动识别公招界面，方便对高星公招做出选择 ~~（你的这个高资回费出的是推王呢还是推王呢）~~
-- 支持识别干员列表，统计已有和未有干员及潜能，并在公招识别显示
-- 支持识别养成材料，并导出至 [企鹅物流刷图规划](https://penguin-stats.cn/planner)、[明日方舟工具箱](https://arkntools.app/#/material)、[ARK-NIGHTS 干员培养表](https://ark-nights.com/settings)
-- 访问好友、收取信用及购物、领取日常奖励等，一键全日常自动长草
-- 肉鸽全自动刷源石锭和等级，自动烧水和凹直升，智能识别干员及练度
-- 选择作业 JSON 文件，自动抄作业， [视频演示](https://www.bilibili.com/video/BV1H841177Fk/)
-- 支持 C, Python, Java, Rust, Golang, Java HTTP, Rust HTTP 等多种接口，方便集成调用，自定义你的 MAA！
+## 2. 安装与下载
 
-<!-- markdownlint-disable -->
+请参考上游用户文档完成安装：
 
-<details><summary>话不多说，看图！</summary>
+- [新手上路](https://docs.maa.plus/zh-cn/manual/newbie.html)
+- [官网下载](https://maa.plus)
+- [GitHub Releases](https://github.com/MaaAssistantArknights/MaaAssistantArknights/releases)
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="./docs/.vuepress/public/images/zh-cn/readme/1-dark.png">
-  <img alt="zh1" src="./docs/.vuepress/public/images/zh-cn/readme/1-light.png">
-</picture>
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="./docs/.vuepress/public/images/zh-cn/readme/2-dark.png">
-  <img alt="zh2" src="./docs/.vuepress/public/images/zh-cn/readme/2-light.png">
-</picture>
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="./docs/.vuepress/public/images/zh-cn/readme/3-dark.png">
-  <img alt="zh3" src="./docs/.vuepress/public/images/zh-cn/readme/3-light.png">
-</picture>
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="./docs/.vuepress/public/images/zh-cn/readme/4-dark.png">
-  <img alt="zh4" src="./docs/.vuepress/public/images/zh-cn/readme/4-light.png">
-</picture>
+本 Fork 与上游安装方式完全一致；如果当前 `branch` 与上游版本差异较大，请优先使用上游预编译产物，再按本仓库 `WORKFLOW.md` 自建本地版本。
 
-</details>
+## 3. 本地构建
 
-<!-- markdownlint-restore -->
+`AGENTS.md` §4 与 `WORKFLOW.md` §8 列出完整命令，本机环境如使用 Visual Studio 2022 BuildTools（避开 Visual Studio 18 2026 的 CMake 预设），可直接复用仓库自带的 `tools/local-install-staging.bat` 或手工拼接构建步骤。
 
-## 使用说明
+最小化的本地构建示例（仅供参考）：
 
-### 功能介绍
+```powershell
+# 1) 同步 master 到上游 master-v2（仅当需要把 master 拉新时）
+powershell -ExecutionPolicy Bypass -File tools\update-upstream.ps1
 
-请参阅 [用户手册](https://docs.maa.plus/zh-cn/manual/)。
+# 2) 在临时目录配置 VS 2022 BuildTools 兼容的 CMake 构建
+cmake -G "Visual Studio 17 2022" -A x64 -S . `
+    -B "$env:TEMP\maa-build" `
+    -DMAADEPS_TRIPLET=maa-x64-windows `
+    -DBUILD_WPF_GUI=ON -DBUILD_DEBUG_DEMO=OFF -DBUILD_RESOURCE_UPDATER=ON `
+    -DINSTALL_RESOURCE=OFF -DINSTALL_PYTHON=OFF
 
-### 外服支持
+# 3) 构建 C++ / 更新器并安装到 install-staging/
+cmake --build "$env:TEMP\maa-build" --target MaaCore MAA.Updater res_updater --config RelWithDebInfo
+cmake --install "$env:TEMP\maa-build" --config RelWithDebInfo --prefix install-staging
 
-目前国际服（美服）、日服、韩服、繁中服的绝大部分功能均已支持。但由于外服用户较少及项目人手不足，很多功能并没有进行全面的测试，所以请自行体验。  
-若您遇到了 Bug，或对某个功能有强需求，欢迎在 [Issues](https://github.com/MaaAssistantArknights/MaaAssistantArknights/issues) 和 [讨论区](https://github.com/MaaAssistantArknights/MaaAssistantArknights/discussions) 催更；或加入我们一起建设 MAA！请参阅 [外服适配教程](https://docs.maa.plus/zh-cn/develop/overseas-client-adaptation.html)
+# 4) 发布 WPF（使用仓库自带的 global.json 锁版本 10.0.100 + rollForward latestFeature）
+dotnet restore src/MaaWpfGui/MaaWpfGui.csproj
+dotnet publish src/MaaWpfGui/MaaWpfGui.csproj -c Release -r win-x64 -o install-staging /p:DisableBeauty=True
 
-### CLI 支持
+# 5) NetBeauty2 后处理（漏跑会导致 libloader 启动闪退，详见 AGENTS §4.1.1）
+& "$env:USERPROFILE\.nuget\packages\nulastudio.netbeauty\2.1.5\tools\win-x86\nbeauty2.exe" --usepatch "$PWD\install-staging\." .\externals
 
-MAA 支持命令行界面（CLI）操作，支持 Linux，macOS 和 Windows，可用于自动化脚本或在无图形界面的服务器上使用。请参阅 [CLI 使用指南](https://docs.maa.plus/zh-cn/manual/cli/)
+# 6) 同步资源
+robocopy .\resource .\install-staging\resource /MIR /MT:8
+```
 
-## 加入我们
+如果仅需增量构建，可以跳过 CMake configure 直接执行 `cmake --build`。
 
-### 主要关联项目
+## 4. 项目结构
 
-- 全新框架：[MaaFramework](https://github.com/MaaXYZ/MaaFramework)
-- [作业站](https://prts.plus) 前端：[zoot-plus-frontend](https://github.com/ZOOT-Plus/zoot-plus-frontend)
-- [作业站](https://prts.plus) 后端：[ZootPlusBackend](https://github.com/ZOOT-Plus/ZootPlusBackend)
-- [官网](https://maa.plus)：[前端](https://github.com/MaaAssistantArknights/maa-website)
-- 深度学习：[MaaAI](https://github.com/MaaAssistantArknights/MaaAI)
+| 目录 | 内容 | 说明 |
+|------|------|------|
+| `src/MaaCore/` | C++20 核心 | 任务、识别、接口、回调 |
+| `src/MaaWpfGui/` | C# / .NET 10 WPF | UI + VM + 五语本地化 + 配置 |
+| `src/MaaUpdater/` | C++ / Win32 | 启动/更新协调器 |
+| `src/MaaUtils/` | C++ 通用工具（[MaaXYZ/MaaUtils](https://github.com/MaaXYZ/MaaUtils)） | Windows 主构建依赖 |
+| `src/maa-cli/` | CLI 子项目（上游） | 命令行调用入口 |
+| `src/MaaMacGui/` | macOS GUI 子项目（上游） | macOS 端 UI |
+| `3rdparty/EmulatorExtras/` | 模拟器附加能力 | LDPlayer / MuMu12 增强 |
+| `resource/` | 任务流 JSON、模板图片、活动资源 | 同步对象随上游版本更新 |
+| `docs/` | vuepress 文档源 | 跟随上游 docs.maa.plus 同步 |
+| `tools/` | 维护与构建脚本 | 构建与验证说明见 `AGENTS.md` §4 |
 
-### 多语言 (i18n)
+Fork 私有扩展主要在：
 
-MAA 以中文（简体）为第一语言，翻译词条均以中文（简体）为准。
+- `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.AccountCycle.cs`（账号轮换编排）
+- `src/MaaWpfGui/ViewModels/Orchestration/AccountCycleOrchestrator.cs`（编排者）
+- `src/MaaWpfGui/ViewModels/UI/ToolboxViewModel.cs` 的 `#region AccountScopedRecognitionData`（账号数据分桶）
+- `src/MaaWpfGui/Models/DiagnosticInfo.cs`（诊断报告模型）
+- `src/MaaCore/Task/Infrast/InfrastReceptionTask.cpp` 的 `proc_clue_vacancy`（会客室线索快捷置入回退）
+- `src/MaaCore/Task/Miscellaneous/AutoRecruitTask.{h,cpp}` 与 `src/MaaCore/Task/Interface/RecruitTask.cpp`（`expedite_min_level` 阈值判定）
 
-### 参与开发
+## 5. Fork 私有功能速览
 
-请参阅 [开发指南](https://docs.maa.plus/zh-cn/develop/development.html)。
+### 5.1 多账号自动轮换（`feat/account_rotation` + 后续 fix）
 
-### API
+- 全部账号跑完基础任务后再依次执行肉鸽与生息演算（`feat/defer-rogue`）
+- 切号即切桶：干员/仓库识别数据按账号分桶存放（`feat/account-scoped-recognition-data`）
+- 修复切号 UI 残留、任务面板不刷新与「未知错误」误报（`fix/account_rotation/6`、`fix/account-cycle-start-race`）
+- 单账号 section 已被账号轮换吸收，UI 永久可见的删除按钮带二次确认（`fix/account-rotation-supersede-switcher`）
 
-- [C 接口](include/AsstCaller.h)：[集成示例](src/Cpp/main.cpp)
-- [Python 接口](src/Python/asst/asst.py)：[集成示例](src/Python/sample.py)
-- [Golang 接口](src/Golang)：[集成示例](src/Golang/maa/maa.go)
-- [Dart 接口](src/Dart)
-- [Java 接口](src/Java/src/main/java/com/iguigui/maaj/easySample/MaaCore.java)：[集成示例](src/Java/src/main/java/com/iguigui/maaj/easySample/MaaJavaSample.java)
-- [Java HTTP 接口](src/Java/Readme.md)
-- [Rust 接口](src/Rust/src/maa_sys)：[HTTP 接口](src/Rust)
-- [TypeScript 接口](https://github.com/MaaAssistantArknights/MaaX/tree/main/packages/main/coreLoader)
-- [Woolang 接口](src/Woolang/maa.wo)：[集成示例](src/Woolang/demo.wo)
-- [集成文档](https://docs.maa.plus/zh-cn/protocol/integration.html)
-- [回调消息协议](https://docs.maa.plus/zh-cn/protocol/callback-schema.html)
-- [任务流程协议](https://docs.maa.plus/zh-cn/protocol/task-schema.html)
-- [自动战斗协议](https://docs.maa.plus/zh-cn/protocol/copilot-schema.html)
+### 5.2 公招加急门槛与按槽位点击（`feat/expedite-threshold` + `fix/recruit-expedite-slot-target`）
 
-### 外服适配
+- `expedite_min_level` Fork 协议字段：仅在确认最低招募星级 ≥ 阈值（4 / 5 / 6）时使用加急许可
+- 多槽位同时进行时，按目标槽位点击避免「三星加急、四星留 9h」
 
-请参阅 [外服适配教程](https://docs.maa.plus/zh-cn/develop/overseas-client-adaptation.html)，对于国服已支持的功能，绝大部分的外服适配工作仅需要截图 + 简单的 JSON 修改即可。
+### 5.3 诊断报告（`feat/diagnostic-export`）
 
-### Issue bot
+- `IssueReportUserControlModel.cs` 中的 `GenerateSupportPayload()` 重构：单一职责拆分 + 异步执行 + 20 MB 单卷分卷
+- `DiagnosticInfo.cs`：诊断报告模型，包含 `Parts` 字段与 `PartInfo` record（FileName / UncompressedSizeBytes / FileCount）
 
-请参阅 [Issue Bot 使用方法](https://docs.maa.plus/zh-cn/develop/issue-bot-usage.html)
+### 5.4 会客室线索修复（`fix/reception-clue-restore`）
 
-## 致谢
+- `proc_clue_vacancy` 在快捷置入失败时不再直接 `return true`，而是回退至 legacy 逐位放置流程
+- 上游 issue #16165（`closed as not planned`）至 v6.16.8 仍未修；本修复保留为 Fork  侧修复
 
-### 开源库
+详细维护历史与重要 commit 列表见 [`AGENTS.md`](./AGENTS.md) §6/§7。
 
-- 图像识别库：[opencv](https://github.com/opencv/opencv.git)
-- ~~文字识别库：[chineseocr_lite](https://github.com/DayBreak-u/chineseocr_lite.git)~~
-- 文字识别库：[PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR)
-- 深度学习部署库：[FastDeploy](https://github.com/PaddlePaddle/FastDeploy)
-- 机器学习加速器：[onnxruntime](https://github.com/microsoft/onnxruntime)
-- ~~关卡掉落识别：[企鹅物流识别](https://github.com/penguin-statistics/recognizer)~~
-- 地图格子识别：[Arknights-Tile-Pos](https://github.com/yuanyan3060/Arknights-Tile-Pos)
-- C++ JSON 库：[meojson](https://github.com/MistEO/meojson.git)
-- C++ 运算符解析器：[calculator](https://github.com/kimwalisch/calculator)
-- ~~C++ base64 编解码：[cpp-base64](https://github.com/ReneNyffenegger/cpp-base64)~~
-- C++ 解压压缩库：[zlib](https://github.com/madler/zlib)
-- C++ Gzip 封装：[gzip-hpp](https://github.com/mapbox/gzip-hpp)
-- 安卓触控事件器：[Minitouch](https://github.com/DeviceFarmer/minitouch)
-- 安卓触控事件器：[MaaTouch](https://github.com/MaaAssistantArknights/MaaTouch)
-- WPF MVVM 框架：[Stylet](https://github.com/canton7/Stylet)
-- WPF 控件库：[HandyControl](https://github.com/HandyOrg/HandyControl) -> [HandyControls](https://github.com/ghost1372/HandyControls)
-- C# 日志：[Serilog](https://github.com/serilog/serilog)
-- C# JSON 库：[Newtonsoft.Json](https://github.com/JamesNK/Newtonsoft.Json) & [System.Text.Json](https://github.com/dotnet/runtime)
-- ~~下载器：[aria2](https://github.com/aria2/aria2)~~
+## 6. 分支模型与贡献
 
-### 数据源
+| 分支 | 角色 | 规则 |
+|------|------|------|
+| `master` | 上游镜像 | 仅 `git fetch upstream` + `git reset --hard upstream/master-v2`，不推送 |
+| `feat/upstream-<v>-sync` | 上游同步基线 | 仅解决基线冲突，改造工作按领域拆子分支 |
+| `branch` | 下游稳定基线 | 接受 `staging` 的晋升，构建产物写入 `install/` |
+| `staging` | 待验证整合区 | 所有 `feat/*`、`fix/*` 合入此处，构建到 `install-staging/` |
+| `feat/<name>` | 新功能 | 从 `staging` 拉出，合入 `staging` |
+| `fix/<name>` / `fix/<name>/<n>` | 修复分支 | 必须从对应 `feat/<name>` 拉出（详见 `WORKFLOW.md`） |
 
-- ~~公开招募数据：[明日方舟工具箱](https://www.bigfun.cn/tools/aktools/hr)~~
-- ~~干员及基建数据：[PRTS Wiki](http://prts.wiki/)~~
-- 关卡数据：[企鹅物流数据统计](https://penguin-stats.cn/)
-- 游戏数据及资源：[明日方舟客户端素材](https://github.com/yuanyan3060/ArknightsGameResource)
-- 游戏数据：[《明日方舟》Yostar游戏数据](https://github.com/ArknightsAssets/ArknightsGamedata)
+> **不要把 `master` 直接合并到 `staging` 或 `branch`。**
+> 所有变更通过 commit message + [`LOG.md`](./LOG.md) + [`AGENTS.md`](./AGENTS.md) §7 跟踪；本仓库不使用 `feat_<name>.md` / `fix_<name>[_<n>].md` 工作笔记。
 
-### 贡献/参与者
+贡献流程参考 [`WORKFLOW.md`](./WORKFLOW.md) §6 / §7 / §8。修改高敏感文件前请查阅 [`docs/downstream-changes.md`](./docs/downstream-changes.md)。
 
-感谢所有参与到开发/测试中的朋友们，是大家的帮助让 MAA 越来越好！ (\*´▽｀)ノノ
+## 7. 文档与协议
 
-[![Contributors](https://contributors-img.web.app/image?repo=MaaAssistantArknights/MaaAssistantArknights&max=105&columns=15)](https://github.com/MaaAssistantArknights/MaaAssistantArknights/graphs/contributors)
+| 文档 | 位置 |
+|------|------|
+| 任务流程协议 | [`docs/zh-cn/protocol/task-schema.md`](./docs/zh-cn/protocol/task-schema.md)（五语均在 `docs/{lang}/protocol/`） |
+| 回调消息协议 | [`docs/zh-cn/protocol/callback-schema.md`](./docs/zh-cn/protocol/callback-schema.md) |
+| 自动战斗协议 | [`docs/zh-cn/protocol/copilot-schema.md`](./docs/zh-cn/protocol/copilot-schema.md) |
+| 集成协议 | [`docs/zh-cn/protocol/integration.md`](./docs/zh-cn/protocol/integration.md) |
+| 五语入口 | [`docs/zh-cn/`](./docs/zh-cn/)、[`docs/zh-tw/`](./docs/zh-tw/)、[`docs/en-us/`](./docs/en-us/)、[`docs/ja-jp/`](./docs/ja-jp/)、[`docs/ko-kr/`](./docs/ko-kr/) |
+| 上游站点 | [docs.maa.plus](https://docs.maa.plus/) |
 
-## 声明
+Fork 协议字段 `expedite_min_level` 与上游 `expedite` / `expedite_times` 并存，五语 `integration.md` 同时呈现。
 
-- 本软件使用 [GNU Affero General Public License v3.0 only](https://spdx.org/licenses/AGPL-3.0-only.html) 开源，并附带额外 [用户协议](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/terms-of-service.md)。
-- 本软件 logo 并非使用 AGPL 3.0 协议开源，[耗毛](https://weibo.com/u/3251357314)、vie 两位画师及软件全体开发者保留所有权利。不得以 AGPL 3.0 协议已授权为由在未经授权的情况下使用本软件 logo，不得在未经授权的情况下将本软件 logo 用于任何商业用途。
-- 本软件开源、免费，仅供学习交流使用。若您遇到商家使用本软件进行代练并收费，可能是设备与时间等费用，产生的问题及后果与本软件无关。
+## 8. 测试与验证
 
-### DirectML 支持说明
+每次上游同步后必跑：
 
-本软件支持 GPU 加速功能，其在 Windows 平台上依赖于 Microsoft 提供的独立组件 [DirectML](https://learn.microsoft.com/en-us/windows/ai/directml/)。DirectML 并非本项目的开源部分，也不受 AGPL 3.0 的约束。为方便用户，我们随安装包附带了一个未经修改的 DirectML.dll 文件。如果您无需 GPU 加速功能，可安全删除该 DLL 文件，软件的核心功能仍可正常运行。
+```powershell
+# 1) 资源与模板结构
+py -m json.tool resource\tasks\tasks.json > $null
+py -m json.tool resource\global\YoStarKR\resource\tasks\tasks.json > $null
 
-## 广告
+# 2) Fork 标记与保护校验
+powershell -ExecutionPolicy Bypass -File tools\post-merge-validate.ps1
 
-用户交流 QQ 群：[MAA 使用 & 粥游交流 QQ 群](https://api.maa.plus/MaaAssistantArknights/api/qqgroup/index.html)  
-Discord 服务器: [邀请链接](https://discord.gg/23DfZ9uA4V)  
-用户交流 TG 群：[Telegram 群](https://t.me/+Mgc2Zngr-hs3ZjU1)  
-自动战斗 JSON 作业分享：[prts.plus](https://prts.plus)  
-Bilibili 直播间：[MrEO 直播间](https://live.bilibili.com/2808861) 直播敲代码 & [MAA-Official 直播间](https://live.bilibili.com/27548877) 游戏/杂谈
+# 3) 构建并冒烟
+Get-Process MAA -ErrorAction SilentlyContinue | Stop-Process -Force
+& .\install-staging\MAA.exe
+```
 
-技术群（舟无关、禁水）：[内卷地狱！(QQ 群)](https://jq.qq.com/?_wv=1027&k=ypbzXcA2)  
-开发者群：[QQ 群](https://jq.qq.com/?_wv=1027&k=JM9oCk3C)
+冒烟通过项参考 `AGENTS.md` §2.4 与 `LOG.md` 历次晋升记录。
 
-如果觉得软件对你有帮助，帮忙点个 Star 吧！~（网页最上方右上角的小星星），这就是对我们最大的支持了！
+## 9. 致谢
+
+- 上游项目：[MaaAssistantArknights/MaaAssistantArknights](https://github.com/MaaAssistantArknights/MaaAssistantArknights) 与其贡献者
+- 框架：[MaaXYZ/MaaFramework](https://github.com/MaaXYZ/MaaFramework)
+- 作业站：[prts.plus](https://prts.plus)（[frontend](https://github.com/ZOOT-Plus/zoot-plus-frontend) / [backend](https://github.com/ZOOT-Plus/ZootPlusBackend)）
+- 训练数据：[明日方舟工具箱](https://arkntools.app/)、[企鹅物流](https://penguin-stats.cn/)、[一图流](https://ark.yituliu.cn/)
+- Fork 私有逻辑实现与适配：见 [`AGENTS.md`](./AGENTS.md) §7 与 [`LOG.md`](./LOG.md)
+
+## 10. 声明
+
+- 本 Fork 继承上游 [GNU Affero General Public License v3.0 only](https://spdx.org/licenses/AGPL-3.0-only.html) 及附加 [用户协议](./terms-of-service.md)。
+- 软件 logo 不受 AGPL 3.0 授权；[耗毛](https://weibo.com/u/3251357314)、vie 两位画师及软件全体开发者保留所有权利。未经许可，不得用于商业用途。
+- 软件仅供学习交流使用。若您遇到商家使用本软件进行代练并收费，可能涉及设备与时间等费用，产生的问题及后果与本软件无关。
+- DirectML 并非本项目的开源部分，也不受 AGPL 3.0 约束。安装包附带的 `DirectML.dll` 为方便用户附带，并非本项目代码；无需 GPU 加速可安全删除。
