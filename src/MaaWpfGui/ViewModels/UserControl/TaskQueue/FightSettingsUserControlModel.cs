@@ -197,7 +197,7 @@ public class FightSettingsUserControlModel : TaskSettingsViewModel, FightSetting
     private void OnDepotResultCollectionChanged(in NotifyCollectionChangedEventArgs<ToolboxViewModel.DepotResultDate> e)
     {
         _ = e;
-        if (!_runningState.Idle)
+        if (!_runningState.GetIdle())
         {
             return;
         }
@@ -479,7 +479,7 @@ public class FightSettingsUserControlModel : TaskSettingsViewModel, FightSetting
     {
         get => GetTaskConfig<FightTask>().IsInventoryTarget;
         set {
-            if (!_runningState.Idle)
+            if (!_runningState.GetIdle())
             {
                 return;
             }
@@ -494,7 +494,7 @@ public class FightSettingsUserControlModel : TaskSettingsViewModel, FightSetting
         }
     }
 
-    public bool IsSpecifiedInventoryLocked => UseInventoryTarget && !_runningState.Idle;
+    public bool IsSpecifiedInventoryLocked => UseInventoryTarget && !_runningState.GetIdle();
 
     public bool UseDropQuantityMode
     {

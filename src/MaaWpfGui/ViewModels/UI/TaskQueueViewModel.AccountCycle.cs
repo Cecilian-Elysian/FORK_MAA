@@ -254,7 +254,7 @@ public partial class TaskQueueViewModel
                     AddLog("[Cycle] Too many consecutive empty steps, stop cycle.", UiLogColor.Error);
                     StartUpTask.IsCycling = false;
                     _consecutiveEmptySteps = 0;
-                    SetStopped(runStopScript: false);
+                    SetStopped();
                     return;
                 }
 
@@ -282,7 +282,7 @@ public partial class TaskQueueViewModel
 
                 // 兜底: 清空 Core 队列, 避免真失败时已 append 的任务"幽灵执行"
                 _ = Instances.AsstProxy.AsstStop();
-                SetStopped(runStopScript: false);
+                SetStopped();
             }
         }
         catch (Exception ex)
@@ -399,8 +399,9 @@ public partial class TaskQueueViewModel
     /// 把 <see cref="TaskQueueViewModel.SetStopped"/> 中插入的轮换状态保护 ~18 行下沉到 partial。
     /// 返回 false 表示轮换继续(SetStopped 应早退);返回 true 表示已清理轮换,SetStopped 应继续原逻辑。
     /// 末尾的 CurrentCycleAccountName 清空也由本方法处理(原位 SetStopped 末尾)。
+    /// v6.18: 上游 SetStopped 移除 runStopScript 参数,手动停止由 Stop() 先 SetStopping(true) 区分。
     /// </summary>
-    public bool HandleStopping(bool runStopScript)
+    public bool HandleStopping()
     {
         if (StartUpTask.IsCycling)
         {
@@ -408,7 +409,7 @@ public partial class TaskQueueViewModel
             {
                 StartUpTask.IsCycling = false;
             }
-            else if (runStopScript && _runningState.GetStopping())
+            else if (_runningState.GetStopping())
             {
                 StartUpTask.IsCycling = false;
             }

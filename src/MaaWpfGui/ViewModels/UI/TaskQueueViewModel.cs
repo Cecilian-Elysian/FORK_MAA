@@ -2123,7 +2123,7 @@ public partial class TaskQueueViewModel : Screen
 
     public async Task LinkStartWithTasks(IEnumerable<BaseTask> tasks)
     {
-        if (!_runningState.Idle)
+        if (!_runningState.GetIdle())
         {
             _logger.Information("Not idle, return.");
             return;
@@ -2219,7 +2219,10 @@ public partial class TaskQueueViewModel : Screen
 
         // 直接遍历TaskItemViewModels里面的内容，是排序后的
         int count = 0;
-List<int> coreTaskIds = [];
+        List<int> coreTaskIds = [];
+        // feat/defer-rogue: 按阶段过滤钩子下沉到 partial class (lateStageOn=false 时 no-op)
+        bool lateStageOn = StartUpTask.LateStageRogueAndReclamation;
+        int currentPhase = StartUpTask.CurrentPhase;
         bool serializeFailed = false;
         foreach (var item in tasks)
         {
@@ -2517,7 +2520,7 @@ var idsList = taskIds as IList<int> ?? taskIds.ToList();
     {
         // fix/account_rotation/修改次数 + fix/account_rotation/6:
         // 轮换状态保护下沉到 AccountCycle.HandleStopping (返回 false 表示轮换继续早退)。
-        if (!HandleStopping(runStopScript))
+        if (!HandleStopping())
         {
             return true;
         }
