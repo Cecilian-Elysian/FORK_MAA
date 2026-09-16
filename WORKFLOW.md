@@ -417,6 +417,125 @@ git diff master -- resource/tasks/Roguelike/JieGarden.json          # 预期仅 
 
 全部命中才算 merge 完整；任何一项为 0 → 回查对应区块手解遗漏。
 
+### §6.5.9 v6.18 新增冲突区（2026-09-16 实例）
+
+| 文件 | 区块 | fork 取 | upstream 取 | 原因 |
+|------|------|----------|------------|------|
+| `resource/tasks/tasks.json` | Swipe ×8（`Fight@StageNavigation` 下 8 条 Swipe 任务） | `[200,1,2,0]`（fork 保留的上游更旧参数） | `[200,1,37,1]` | 上游斜率参数重校准（37 = 拟合实际拖动比），fork 旧值已废弃 |
+| `resource/tasks/tasks.json` | SwipeToThe* ×4（`Fight@StageNavigationEntry` 4 方向） | `[150,0,1,1]` | `[150]` | 上游精简格式（时长参数独立字段） |
+| `resource/tasks/tasks.json` | `CharsNameOcrReplace` | fork 零私有改动 | upstream | 取上游，fork 无干预 |
+| `resource/tasks/tasks.json` | `StartButton1` | fork 零私有改动 | upstream（preDelay 已移除） | 取上游；preDelay 改动已迁入全局任务模型 |
+| `resource/tasks/tasks.json` | `InfrastSmiley` | fork 零私有改动 | upstream（3 模板 → 1） | 取上游合并版 |
+| `resource/tasks/tasks.json` | `BattleSelectFormation` | fork 零私有改动 | upstream（width 10→5） | 取上游点击精度提升 |
+| `resource/tasks/tasks.json` | `BattleAvatarDialog` | fork 零私有改动 | upstream（roi `[70,30,120,30]` → `[70,30,150,500]`） | 取上游 roi 扩展 |
+| `resource/tasks/tasks.json` | 仓库 tab（DepotAllTab / DepotMaterialTab / DepotMaterialTabClicked） | fork §7.18 9/7 摘取的 dev-v2 `da5ccfe4ed` | upstream master-v2 已自然收敛 | 双方一致（fork 早于 release 摘取） |
+| `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs` | 3 处冲突 | `TaskQueueViewModel.AccountCycle.cs` partial 私有代码 | 上游 v6.18 重构后骨架 | 保留 partial，handle 后重构 |
+| `src/MaaWpfGui/ViewModels/UserControl/Settings/ToolboxViewModel.cs` | 5 处冲突（v6.18 Yituliu API 接入） | `SwitchDataAccount`（fork §7.14 数据分桶前置） | 上游 `TryGetTaskBlockReason`/`BeginRun` | 混合方案：fork 前置 + 上游 API 触发 |
+| `src/MaaWpfGui/ViewModels/UserControl/Settings/IssueReportUserControlModel.cs` | fork §7.17 分卷重写 | `SplitIntoParts`/`MaxPartSizeBytes`/`Parts` 字段 | 上游新版（同步保留 SplitIntoParts） | 一致，merge 自然收敛 |
+| `src/MaaWpfGui/ViewModels/UserControl/Settings/UserDataUpdateSettingsUserControlModel.cs` | v6.18 改用 Serilog | fork 保留 theirs（Serilog using） | upstream | 取 upstream |
+| 5 语 `Res/Localizations/*.xaml` | 多处新增 key | fork §7.14-§7.17 累计 key（DataAccountLabel/PasteClipboardCopilotSetTip 等） | upstream v6.18 新 key（YituliuOpenApi 等） | 双侧叠加保留 |
+
+**实战经验**：实际冲突 12 文件，比预估 30-50 少得多；fork partial class 隔离策略（§7.20 feat/sync-isolation）使 C# 冲突面最小化。**future self 注意**：v6.18 上游把 `Configuration/Single/MaaTask/RecruitTask.cs` 重组到 `Models/AsstTasks/AsstRecruitTask.cs`，fork 的 `RecruitTask.Expedite.cs` partial 路径需同步更新（已记录）。
+
+### §6.5.10 C# API 迁移区（v6.18 沉淀）
+
+**触发条件**：merge commit 之后发现大量编译错误集中在某几个 API，错误形如：
+- `'HandleStopping' 没有 1 个参数`（vs `HandleStopping(bool)`）
+- `'SetStopped' 没有对应的 0/1 重载`
+- `'_runningState' 不包含 'Idle'`（vs `GetIdle()`）
+
+**4 项必查**：
+
+| # | API 迁移 | grep 残留验证（应 0 命中） |
+|---|---------|---------------------------|
+| 1 | `HandleStopping(bool)` → `HandleStopping()` | `git grep -n "HandleStopping(bool)" -- src/MaaWpfGui` |
+| 2 | `SetStopped(runStopScript:false)` → `SetStopped()` | `git grep -n "SetStopped(runStopScript" -- src/MaaWpfGui` |
+| 3 | `_runningState.Idle` → `_runningState.GetIdle()` | `git grep -n "_runningState\\.Idle" -- src/MaaWpfGui`（PowerShell BRE，`.` 转义） |
+| 4 | `RunningState` 属性 → `RunControlState` + `RunOwner`（v6.18 双状态类并存） | 三页开始/停止按钮按 Owner 区分（参见 §9 上游约定） |
+
+**`GetIdle()` 调用点共 28 处**（v6.18 全仓统计）：
+- `AsstProxy.cs` L1020 / L1477 / L3155（回调链路）
+- `RunningState.cs` L363 / L420（状态机内部）
+- `TaskQueueViewModel.AccountCycle.cs` L408（fork 轮换回调）
+- `TaskQueueViewModel.cs` 14 处（主类）
+- 其他 VM 10 处
+
+**`LinkStartWithTasks` 必须保留的 fork 私有定义**（v6.18 API 迁移后丢失，需手动加回）：
+
+```csharp
+bool lateStageOn = StartUpTask.LateStageRogueAndReclamation;  // L2224
+int currentPhase = StartUpTask.CurrentPhase;                  // L2225
+// ... 后续用于 ShouldSkipByPhase(item, lateStageOn, currentPhase)
+ShouldSkipByPhase(item, lateStageOn, currentPhase);           // L2242
+```
+
+**编译验证**：
+
+```powershell
+dotnet build src/MaaWpfGui/MaaWpfGui.csproj -c Release -r win-x64  # 预期 0 错误
+```
+
+### §6.5.11 C++ 工具链迁移 SOP（VS 2026 实例消失场景）
+
+**触发条件**：
+- `cmake --build build --target MaaCore` 报 `error MSB8020: 无法找到 Visual Studio 2022/2026 的生成工具`
+- 或 `where cl` 无输出
+- 或 CMake configure 报 `Could not find any instance of Visual Studio`
+
+**方案 A：portable-msvc（推荐，零安装）**：
+
+```powershell
+# 1. 下载 mmozeiko 的 portable-msvc.py（微软官方 manifest 解析）
+# 仓库：https://github.com/mmozeiko/msvc
+python msvc.py
+# 默认输出到 .\msvc\ 子目录
+# 内含：cl.exe / link.exe / lib.exe + Windows SDK + C++ STL + 必要的 VS 组件
+
+# 2. 重命名/搬迁到约定位置（避免被 git 误识别）
+Move-Item .\msvc C:\msvc-portable\msvc  # 改用 C 盘避免长路径；479 MB
+
+# 3. 加载环境变量（创建一次性脚本 E:\msvc-setup\refresh-msvc-env.ps1）
+$msvc = "C:\msvc-portable\msvc"
+$env:Path = "$msvc\bin\Hostx64\x64;$msvc\bin\Hostx64\x64\cl;$env:Path"
+$env:INCLUDE = "$msvc\include;$msvc\Windows Kits\10\Include\10.0.28000.0\ucrt;$msvc\Windows Kits\10\Include\10.0.28000.0\um;$msvc\Windows Kits\10\Include\10.0.28000.0\shared;$msvc\Windows Kits\10\Include\10.0.28000.0\winrt;$msvc\Windows Kits\10\Include\10.0.28000.0\cppwinrt"
+$env:LIB = "$msvc\lib\x64;$msvc\Windows Kits\10\Lib\10.0.28000.0\ucrt\x64;$msvc\Windows Kits\10\Lib\10.0.28000.0\um\x64"
+& refresh-msvc-env.ps1
+
+# 4. 安装 Ninja（替代 VS generator）
+pip install ninja  # 1.13.2
+
+# 5. 删旧 build/ 缓存（VS generator 配置无效）
+Remove-Item -Recurse -Force build
+
+# 6. 重新 configure（强制 Ninja + cl）
+cmake -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo `
+      -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl `
+      --preset windows-publish-x64
+
+# 7. 构建（单目标绕开 §4.1 已知 VS 2026 SDK bug）
+cmake --build build --target MaaCore
+# 预期：472/472 成功
+```
+
+**方案 B：vcpkg（仅当方案 A 失败且无 vcpkg 缓存时）**：
+
+```powershell
+vcpkg install opencv4 onnxruntime paddleocr fastdeploy  # ABI x64-windows
+```
+
+**踩坑点**：
+- vcpkg triplet `maa-x64-windows`（OpenCV/onnxruntime/PaddleOCR/FastDeploy）ABI 硬约束，GCC 跨 ABI 不可链接（MSYS2 GCC 不可用）
+- portable-msvc 与 MSYS2 GCC 可并存（不动 `E:\msys2`）
+- 不要把 `C:\msvc-portable\msvc\` 加进 git（加到 `.gitignore` 的 `msvc-portable/` 或放仓库外）
+
+**验证**：
+
+```powershell
+where cl  # 应有 C:\msvc-portable\msvc\bin\Hostx64\x64\cl.exe
+cmake --version  # 应含 Ninja 1.13+
+Get-Item build\bin\MaaCore.dll  # 应 5MB+
+```
+
 ### §6.6 提交
 
 ```powershell
@@ -507,6 +626,11 @@ if (Test-Path $netbeauty_bin) {
 # 预期: MAA.runtimeconfig.json 包含 STARTUP_HOOKS=libloader 配置
 Get-Content install-staging/MAA.runtimeconfig.json | Select-String "STARTUP_HOOKS"
 ```
+
+**实测验证记录**：
+- 2026-09-16 19:24：首次 publish + nbeauty2，22:24：dead key 清理后重 publish + nbeauty2，两次均 `ret: true`、0 错误
+- `install-staging/MaaCore.dll` MD5 与 `build/bin/MaaCore.dll` 一致（`CCFCEFDE868C6C2385CD5CB565F413E9`），确认 cmake --install 与 dotnet publish 产物链路正确
+- v6.18 上游将 `MaaWpfGui.dll` 重命名为 `MAA.dll`，旧 deploy 脚本里引用 `MaaWpfGui.dll` 的需要更新
 
 ### §8.3 启动验证
 
@@ -800,6 +924,18 @@ Write-Host "`n完成后继续执行：git add -u && git commit -m 'merge: upstre
 □ git replace --list 包含 fork_root
 □ git merge-base HEAD upstream/master-v2 返回 fork_root
 □ 所有 DLL 在 maaDlls 白名单内（§8.4 验证）
+
+—— 8 维度总检（v6.18 沉淀，merge 后与 staging→branch 晋升前必跑）——
+□ git status --porcelain（应为空）
+□ git rev-list --count master..staging（应 > 0，记录 commit 数）
+□ git merge-base HEAD upstream/master-v2（应等于上游 release commit，如 ec14df252a = v6.18.0-beta.1）
+□ git log -1 --format="%h %s" HEAD（merge commit 形态：Merge: xxxx yyyy）
+□ install-staging/MAA.exe 时间戳 ≥ 最近一次 publish；MaaCore.dll MD5 与 build/bin/MaaCore.dll 一致
+□ install-staging/MAA.runtimeconfig.json 含 "STARTUP_HOOKS": "libloader"
+□ git replace --list 含 fork_root（c8c8e75be5227d0fcc8d1ebe9fdbc462055cdfce）
+□ fork marker 12 项 grep 全命中（§6.5.8 一键验证脚本）
+□ tools/post-merge-validate.ps1 7/7 检查全 OK
+□ 3 个 backup 分支存活：backup/staging-pre-v{N}-sync-{日期} + backup/master-pre-v{N}-sync-{日期} + backup/staging-pre-v{N-1}-sync-{日期}
 ```
 
 ### §11.2 回滚策略
