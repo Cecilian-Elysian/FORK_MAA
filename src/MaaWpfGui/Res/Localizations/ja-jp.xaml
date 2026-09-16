@@ -788,6 +788,7 @@ HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Notifications\Settin
     <system:String x:Key="AlwaysAutoDetectConnectionTip" xml:space="preserve">このオプションはお勧めしません。
 検出時には、接続する必要があるエミュレータのみを起動してください。複数のエミュレータを同時に起動すると、誤ったターゲットに接続する可能性があります。
 ポートが頻繁に変更され、かつ単一のエミュレータのみが実行されていることを確認できる場合にのみ、このオプションを有効にしてください。</system:String>
+    <system:String x:Key="CurrentAccountLabel">現在のアカウント：</system:String>
     <system:String x:Key="AccountCycle">アカウントローテーション</system:String>
     <system:String x:Key="AccountCycleTip">チェックするとマルチアカウントローテーションが有効になります</system:String>
     <system:String x:Key="AccountCycleNewAccountDefaultName">アカウント</system:String>

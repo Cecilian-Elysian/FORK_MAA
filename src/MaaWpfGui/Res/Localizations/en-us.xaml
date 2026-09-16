@@ -788,6 +788,7 @@ Please ensure only the target emulator is running during detection. Running mult
     <system:String x:Key="AlwaysAutoDetectConnectionTip" xml:space="preserve">This option is not recommended.
 Please ensure only the target emulator is running during detection. Running multiple emulators simultaneously may result in connecting to the wrong target.
 Only enable this option when the port changes frequently and you are certain only one emulator is running.</system:String>
+    <system:String x:Key="CurrentAccountLabel">Current account: </system:String>
     <system:String x:Key="AccountCycle">Account Cycle</system:String>
     <system:String x:Key="AccountCycleTip">Enable multi-account rotation</system:String>
     <system:String x:Key="AccountCycleNewAccountDefaultName">Account</system:String>

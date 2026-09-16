@@ -787,6 +787,7 @@ HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Notifications\Settin
     <system:String x:Key="AlwaysAutoDetectConnectionTip" xml:space="preserve">不推薦勾選此選項。
 偵測時請確保只開啟需要連線的模擬器，同時開啟多個模擬器可能會導致連線到錯誤的目標。
 僅當通訊埠經常發生變化且確認只執行單個模擬器時才建議勾選。</system:String>
+    <system:String x:Key="CurrentAccountLabel">目前帳號：</system:String>
     <system:String x:Key="AccountCycle">帳號輪換</system:String>
     <system:String x:Key="AccountCycleTip">勾選後啟用多帳號輪換</system:String>
     <system:String x:Key="AccountCycleNewAccountDefaultName">帳號</system:String>

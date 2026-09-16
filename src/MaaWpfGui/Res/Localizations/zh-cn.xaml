@@ -786,6 +786,7 @@ HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Notifications\Settin
     <system:String x:Key="AlwaysAutoDetectConnectionTip" xml:space="preserve">不推荐勾选此选项。
 检测时请确保只开启需要连接的模拟器，同时开启多个模拟器可能会导致连接到错误的目标。
 仅当端口经常发生变化且确认只运行单个模拟器时才建议勾选。</system:String>
+    <system:String x:Key="CurrentAccountLabel">当前账号：</system:String>
     <system:String x:Key="AccountCycle">账号轮换</system:String>
     <system:String x:Key="AccountCycleTip">勾选后启用多账号轮换</system:String>
     <system:String x:Key="AccountCycleNewAccountDefaultName">账号</system:String>
