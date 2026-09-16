@@ -1515,7 +1515,7 @@ C:\leidian\LDPlayer9
     <system:String x:Key="RecruitExperienceLowConfidence">経験庫ヒント（信頼度低）</system:String>
     <system:String x:Key="RecruitScreenshotAnomaly">スクリーンショット異常: {0}（スキップ）</system:String>
     <system:String x:Key="RecruitOcrEngineFallback">OCR エンジン フォールバック: {0} → {1}</system:String>
-    <system:String x:Key="ToolboxTabRecruitHistory">公招履歴</system:String>
+    
     <system:String x:Key="RecruitRoundSummary">本輪集計: 6★ {0} / 5★ {1} / 4★ {2}、緊急 {3} 回</system:String>
     <system:String x:Key="RecruitAccuracyReport">近 {0} 回精度: {1}% (L1+={1}% / L2={3}% / L3={4}%)</system:String>
     <system:String x:Key="RecruitScreenshotSanitized">スクリーンショット脱敏</system:String>

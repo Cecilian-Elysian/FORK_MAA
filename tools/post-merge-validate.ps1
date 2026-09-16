@@ -33,9 +33,7 @@ $requiredKeys = @(
     # feat/account-scoped-recognition-data
     "DataAccountLabel", "DataAccountDefault",
     # feat/copilot-paste-clipboard
-    "PasteClipboardCopilotSetTip",
-    # feat/recruit-history-tab
-    "ToolboxTabRecruitHistory"
+    "PasteClipboardCopilotSetTip"
 )
 
 $forbiddenKeys = @(

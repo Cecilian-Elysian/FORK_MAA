@@ -1512,7 +1512,7 @@ Right-click to clear inactive jobs</system:String>
     <system:String x:Key="RecruitExperienceLowConfidence">Experience hint (low confidence)</system:String>
     <system:String x:Key="RecruitScreenshotAnomaly">Screenshot anomaly: {0} (skipped)</system:String>
     <system:String x:Key="RecruitOcrEngineFallback">OCR engine fallback: {0} → {1}</system:String>
-    <system:String x:Key="ToolboxTabRecruitHistory">Recruit History</system:String>
+    
     <system:String x:Key="RecruitRoundSummary">Round summary: 6★ {0} / 5★ {1} / 4★ {2}, expedited {3} times</system:String>
     <system:String x:Key="RecruitAccuracyReport">Recent {0} accuracy: {1}% (L1+={1}% / L2={3}% / L3={4}%)</system:String>
     <system:String x:Key="RecruitScreenshotSanitized">Screenshot sanitized</system:String>
