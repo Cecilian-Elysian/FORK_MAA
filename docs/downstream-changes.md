@@ -18,7 +18,7 @@
 py tools/gen-downstream-changes.py
 ```
 
-共扫描 474 个表格行，聚合出 65 个唯一源文件路径。
+共扫描 478 个表格行，聚合出 65 个唯一源文件路径。
 
 ## 仓库根（2 个文件）
 
@@ -56,7 +56,7 @@ py tools/gen-downstream-changes.py
 |------|------|
 | 双轨字段 | fork `expedite_min_level` 扩展段 + 上游 `expedite`/`expedite_times` |
 
-### [HOT] `docs/downstream-changes.md` (x13)
+### [HOT] `docs/downstream-changes.md` (x14)
 
 | 操作 | 说明 |
 |------|------|
@@ -73,6 +73,7 @@ py tools/gen-downstream-changes.py
 | `py tools/gen-downstream-changes.py` | 自动刷新清单（51 文件，352 LOG.md 表格行） |
 | 重生成 | `py tools/gen-downstream-changes.py`：366→392 表格行、52→58 文件（commit `16a40b0442`） |
 | 自动 | gen-downstream-changes.py 重生成 |
+| 重新生成 | 474 表格行 / 65 唯一路径；tasks.json x7→x8，新增 template/Depot 3 张 PNG 条目 |
 
 ### [TGT] `docs/en-us/protocol/integration.md` (x2)
 
