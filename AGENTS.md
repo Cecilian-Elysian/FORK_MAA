@@ -497,7 +497,7 @@ Select-String -Path install-staging/MAA.runtimeconfig.json -Pattern "STARTUP_HOO
 | 生命周期 | 2026-08-16 创建（从 staging 拉出） → 2026-08-16 `--no-ff` 合入 `staging`（`9a46d7b4ce`） |
 | 关键 commit | `fa99387755`（fix(cycle): supersede single-account switcher with cycle，9 文件 +100 -194） |
 | 子修复分支 | 无 |
-| **已知 TODO**（不在本 fix 范围） | `CurrentAccountLabel` 在 `TaskQueueView.xaml:102` 引用但 5 语 xaml 全缺，Header 前缀空白。需 5 语 × 1 行 = 5 行修复，待后续 fix 单独处理 |
+| **已知 TODO**（不在本 fix 范围） | ~~`CurrentAccountLabel` 在 `TaskQueueView.xaml:102` 引用但 5 语 xaml 全缺，Header 前缀空白。需 5 语 × 1 行 = 5 行修复，待后续 fix 单独处理~~ **已修 2026-09-16**（commit `ae24fd2851`，5 语各 +1 行插于 AccountCycle key 前） |
 | 验证 | install-staging 部署（`MAA.exe` 2026/8/16 18:28，`MaaCore.dll` 4241920 B 与合并前一致因 C++ 无改动）；编译 0 错误 / 32 StyleCop warning（不阻断）；信任 staging 验证（无实测跑日常），因改动纯 UI 重构 + localization 字符串调整 |
 | 部署备注 | `tools/local-install-staging.bat` 触发 §4.1 已知 VS 2026 SDK bug，本次绕行（`MSBuildSDKsPath=C:\Program Files\dotnet\sdk\10.0.300\Sdks` + 单 `cmake --build --target MaaCore`） |
 | 作用域 | 仅本仓库 fork 私有，不推 upstream |
