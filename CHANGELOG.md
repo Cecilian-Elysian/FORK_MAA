@@ -1,28 +1,30 @@
-## v6.18.0-beta.1（进行中，staging 合入未晋升 branch）
+## v6.18.0-beta.1（已合入 staging，未晋升 branch）
 
-> 本仓库为 [MaaAssistantArknights/MaaAssistantArknights](https://github.com/MaaAssistantArknights/MaaAssistantArknights) 的本地增强型分叉，跟随上游 \master-v2\。
-> 与上游 v6.17.0 → v6.18.0-beta.1 的同步计划书见 [\V618_SYNC_PLAN.md\](./V618_SYNC_PLAN.md)，Fork 私有功能保持兼容。
-> 详细工作流与差异说明见 [\README.md\](./README.md)、[\AGENTS.md\](./AGENTS.md) 和 [\WORKFLOW.md\](./WORKFLOW.md)。
+> 本仓库为 [MaaAssistantArknights/MaaAssistantArknights](https://github.com/MaaAssistantArknights/MaaAssistantArknights) 的本地增强型分叉，跟随上游 `master-v2`。
+> 与上游 v6.17.0 → v6.18.0-beta.1 的三方合并已于 2026-09-16 以 merge `6d32144858` 合入 staging，Fork 私有功能保持兼容。
+> 详细工作流与差异说明见 [`README.md`](./README.md)、[`AGENTS.md`](./AGENTS.md) 和 [`WORKFLOW.md`](./WORKFLOW.md)。
 
-### Fork 增量（本轮待汇总，合并完成后补完）
+### Fork 增量（随 merge `6d32144858` 保留）
 
-- 多账号自动轮换日常任务（\eat/account_rotation\），肉鸽与生息演算延后到最后（\eat/defer-rogue\）
-- 公招加急门槛（\eat/expedite-threshold\）：\expedite_min_level\ Fork 协议字段，与上游 \expedite\ / \expedite_times\ 并存
-- 公招加急按目标槽位点击（\ix/recruit-expedite-slot-target\），避免多槽位串位
-- 干员 / 仓库识别数据按账号分桶（\eat/account-scoped-recognition-data\），切号即切桶
-- 「生成诊断报告」重构（\ix/diagnostic-export-refactor\）：分卷导出 + 系统信息收集
-- 会客室线索快捷置入失败回退 legacy 循环（\ix/reception-clue-restore\）：修复上游 issue #16165
-- 账号轮换 UI 整理与启动竞态保护（\ix/account-rotation-supersede-switcher\、\ix/account-cycle-start-race\）
-- 仓库识别特别纪念 tab 修复（\ix/depot-special-memorial-tab\）：同步上游 \da5ccfe4ed- 切号异步丢失保护（\ix/account-switch-retry\），增量本地构建与 NetBeauty2 文档补齐
-- 本地构建脚本强化、\	ools/local-install-staging.bat\ 与 VS 2022 BuildTools 兼容路径
+- 多账号自动轮换日常任务（`feat/account_rotation`），肉鸽与生息演算延后到最后（`feat/defer-rogue`）
+- 公招加急门槛（`feat/expedite-threshold`）：`expedite_min_level` Fork 协议字段，与上游 `expedite` / `expedite_times` 并存
+- 公招加急按目标槽位点击（`fix/recruit-expedite-slot-target`），避免多槽位串位
+- 干员 / 仓库识别数据按账号分桶（`feat/account-scoped-recognition-data`），切号即切桶
+- 「生成诊断报告」重构（`fix/diagnostic-export-refactor`）：分卷导出 + 系统信息收集
+- 会客室线索快捷置入失败回退 legacy 循环（`fix/reception-clue-restore`）：修复上游 issue #16165
+- 账号轮换 UI 整理与启动竞态保护（`fix/account-rotation-supersede-switcher`、`fix/account-cycle-start-race`）
+- 仓库识别特别纪念 tab 修复（`fix/depot-special-memorial-tab`）：与上游 `da5ccfe4ed` 在 v6.18 自然收敛
+- 切号异步丢失保护（`fix/account-switch-retry`），增量本地构建与 NetBeauty2 文档补齐
+- 本地构建脚本强化、`tools/local-install-staging.bat` 与便携 MSVC（C:\msvc-portable）兼容路径
 
-### v6.18 上游新功能预告（来自 master-v2 v6.17.0 → v6.18.0-beta.1）
+### v6.18 上游新功能（master-v2 v6.17.0 → v6.18.0-beta.1，随 merge 接入）
 
-- 运行时重构：\RunningState\ → \RunControlState\ + \RunOwner\，所有 Idle/Inited/Stopping 公开属性收敛到 \Run.*- 三方服务设置页（Yituliu OpenAPI Token / Penguin.id 迁移）
-- 基建副手换班（\InfrastAssistantChangeTask\）与 MaterialSynthesis 自动合成
+- 运行时重构：`RunningState` → `RunControlState` + `RunOwner`，所有 Idle/Inited/Stopping 公开属性收敛到 `Run.*`
+- 三方服务设置页（Yituliu OpenAPI Token / Penguin.id 迁移）
+- 基建副手换班（`InfrastAssistantChangeTask`）与 MaterialSynthesis 自动合成
 - Roguelike 黑流树海适配（v6.17.0 已含，beta.1 跟进）
-- GPU 驱动信息展示、\Achievement\ 成就等次要功能
-- 切主题（\SwitchTheme\）自动切换
+- GPU 驱动信息展示、`Achievement` 成就等次要功能
+- 切主题（`SwitchTheme`）自动切换
 
 
 > 本仓库为 [`MaaAssistantArknights/MaaAssistantArknights`](https://github.com/MaaAssistantArknights/MaaAssistantArknights) 的本地增强型分叉，跟随上游 `master-v2`。

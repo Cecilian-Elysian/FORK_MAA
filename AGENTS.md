@@ -117,7 +117,7 @@ staging ──── feat/<name>, fix/<name> ← 从 staging 拉出
 | 2026-08-07 | `4d862ec98a` | （master-v2 基线重建首晋升） | 完整实测 | `c951f239c1` 放弃 fork C++ 回归 master |
 | 2026-08-13 | `1774d128a2` | 17 commit（4 修复 + 3 文档 + 10 间接） | trust staging | §7.10/§7.11/§7.12/§7.13 全部 fix 走 staging 验证流程后晋升 |
 | 2026-08-30 | `a0f530912c` | 20 commit（2 修复 + 1 feat + 3 工具/重构 + 14 间接） | trust staging | §7.14/§7.15/§7.16/§7.17 全部 fix/feat 走 staging 验证流程后晋升；install-staging 2026-08-28 09:28 内核指纹覆盖全部变更 |
-| _pending_ | _pending_ | v6.17.0 → v6.18.0-beta.1 全量同步 ~170 commit | trust staging | §7.22 `feat/upstream-v618-sync` 合入 staging；§7.18 已先手摘上游 `da5ccfe4ed` depot 修复入 staging（9/7） |
+| 2026-09-16 | _待晋升_ | v6.17.0 → v6.18.0-beta.1 全量同步 merge `6d32144858`（staging 已含，branch 未晋升） | trust staging | §7.22 `feat/upstream-v618-sync` 合入 staging；§7.18 已先手摘上游 `da5ccfe4ed` depot 修复入 staging（9/7）；编译/冒烟/fork marker 全过 |
 
 晋升后实测验证项（仅适用于 `staging → branch` 晋升决策；本次晋升 trust staging）：
 - 多账号切号（官服 + B 服，含新增繁中服支援）
@@ -294,7 +294,7 @@ Select-String -Path install-staging/MAA.runtimeconfig.json -Pattern "STARTUP_HOO
 
 | 分支 | 角色 | 修复目标 |
 |------|------|----------|
-| `feat/upstream-v618-sync` | 上游同步基线 | v6.17.0 ~ v6.18.0-beta.1 三方合并；仅解决基线冲突，后续 Fork 适配从该分支拆出 |
+| （无 — v6.18 同步已随 merge `6d32144858` 直接落地 staging，无独立分支） | — | — |
 
 
 ## 7. 分支生命周期记录
@@ -575,13 +575,13 @@ Select-String -Path install-staging/MAA.runtimeconfig.json -Pattern "STARTUP_HOO
 | 项 | 内容 |
 |----|------|
 | 用途 | 拉取上游 v6.17.0 → v6.18.0-beta.1 共 170 commit 三方合并（master-v2 head `ec14df252ae` Release v6.18.0-beta.1）；含 12 项新功能（RunningState → RunControlState + RunOwner 运行时重构 / SwitchTheme / MaterialSynthesis / Yituliu OpenAPI / 基建副手换班 / Roguelike 黑流树海 / GPU 驱动信息 / Achievement 等） |
-| 关键策略 | 阶段 0 仓库卫生 + cherry-pick `e079795071`（验证为空，§7.21 早合）+ 删 feat/* 三个本地分支 + master reset upstream + 备份；阶段 1-6 按 WORKFLOW §5-§6 三方合并 + 14 批手解冲突（5.A-5.N）+ 注回 RecruitNow@Slot 4 变体 + replace 验证；阶段 7-9 单目标编译 + 启动冒烟 + §6.5.8 fork marker 12 项 grep |
-| 关键冲突区 | HIGH: TaskQueueViewModel.cs / ToolboxViewModel.cs / CopilotViewModel.cs / RunningState.cs → RunControlState.cs + RunOwner.cs / 5-lang xaml 41 fork key + 30 upstream 新 key / tasks.json Swipe specialParams / AsstProxy.cs L1397 hook |
-| 生命周期 | 2026-09-16 创建（从 staging 拉出） → 进行中（阶段 5 手解 14 批） |
-| 关键 commit | _pending_（merge commit 仿 `a92a8a9124` 风格） |
+| 关键策略 | 阶段 0 仓库卫生 + cherry-pick `e079795071`（验证为空，§7.21 早合）+ 删 feat/* 三个本地分支 + master reset upstream + 备份；阶段 4-6 三方合并 + 12 文件手解（实际冲突面远小于预估 30-50，fork partial class 隔离生效）+ fork marker 12 项验证；阶段 7 C# API 迁移（Idle→GetIdle / HandleStopping 无参化 / SetStopped() 签名对齐）+ C++ 编译环境重建（VS 2026 实例消失 → portable-msvc 14.51 到 C:\msvc-portable + Ninja）472/472 成功；阶段 8-10 部署 + 冒烟 + 文档 |
+| 关键冲突区 | HIGH: TaskQueueViewModel.cs / ToolboxViewModel.cs / IssueReportUserControlModel.cs（保留 fork §7.17 分卷重写）/ 5-lang xaml / tasks.json 11 处（Swipe specialParams ×8 + CharsNameOcrReplace + StartButton1 + InfrastSmiley + BattleSelectFormation + BattleAvatarDialog + 仓库 tab）/ AsstProxy→OnAllTasksCompleted 链路（WORKFLOW §6.5.5 直调描述过时） |
+| 生命周期 | 2026-09-16 创建（从 staging 拉出） → 2026-09-16 merge `6d32144858` 合入 staging |
+| 关键 commit | `6d32144858`（merge: upstream/master-v2 v6.18.0-beta.1 三方合并 — 同步基线）+ API 迁移修复 commit |
 | 子修复分支 | 无 |
-| 验证 | trust staging：多账号切号 / 公招加急 / 仓库识别 / 基建换班 / 一图流 OpenAPI / 任务运行时长上限 / 切号数据桶 / 诊断报告 8 项冒烟 + §6.5.8 fork marker 12 项 grep 全命中 + NetBeauty runtimeconfig STARTUP_HOOKS |
-| 部署备注 | install-staging/ 重建，单目标 cmake + 手工 publish + nbeauty2 后处理三步走 |
+| 验证 | dotnet build 0 错误；MaaCore 472/472 编译成功；install-staging 部署完成（STARTUP_HOOKS=libloader ✓）；启动冒烟 AsstLoadResource ret: true 无闪退；fork marker 12 项全命中；MaaCore.dll MD5 与 build 产物一致；8 项实机冒烟待用户日常验证 |
+| 部署备注 | C++ 工具链迁移至 `C:\msvc-portable\msvc\`（MSVC 14.51.36231 + SDK 28000，纯解包零安装）；CMake 改用 Ninja + cl（旧 VS generator 缓存已删）；`E:\msvc-setup\refresh-msvc-env.ps1` 已改指 C 盘新路径 |
 | 作用域 | 仅本仓库 fork 三方同步操作，不推 upstream |
 | 详见 | `V618_SYNC_PLAN.md`（项目根，压缩执行计划）；`LOG.md` 2026-09-16 阶段 0-10 全部记录 |
 
