@@ -311,7 +311,7 @@ bool asst::RoguelikeRecruitTaskPlugin::_run()
 
                     // REFACTOR ME: 不招募情况没有对 oper_list 进行处理
                     // 若遇到 offset ，最终 priority 可能为正，会导致练度不够也招募 @Daydreamer114 @Saratoga-Official
-                    priority -= 114514;
+                    priority -= 114'514;
                 }
 
                 if (temp_recruit_exist && !oper_info.name.starts_with("预备干员")) {
@@ -739,8 +739,9 @@ void asst::RoguelikeRecruitTaskPlugin::slowly_swipe(bool to_left, int swipe_dist
         StartPoint,
         { StartPoint.x + swipe_dist - StartPoint.width, StartPoint.y, StartPoint.width, StartPoint.height },
         swipe_task->special_params.empty() ? 0 : swipe_task->special_params.at(0),
-        (swipe_task->special_params.size() < 2) ? false : swipe_task->special_params.at(1),
-        (swipe_task->special_params.size() < 3) ? 1 : swipe_task->special_params.at(2),
-        (swipe_task->special_params.size() < 4) ? 1 : swipe_task->special_params.at(3));
+        (swipe_task->special_params.size() < 2) ? SwipeExtraDirection::None
+                                                : to_swipe_extra_direction(swipe_task->special_params.at(1)),
+        (swipe_task->special_params.size() < 3) ? 1 : swipe_task->special_params.at(2) / 10.0,
+        (swipe_task->special_params.size() < 4) ? 1 : swipe_task->special_params.at(3) / 10.0);
     sleep(swipe_task->post_delay);
 }

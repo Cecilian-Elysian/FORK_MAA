@@ -25,12 +25,7 @@
             100
         ],
         "rectMove_Doc": "滑动终点",
-        "specialParams": [
-            200,
-            1,
-            2,
-            0
-        ],
+"specialParams": [200, 1, 37, 1],
         "specialParams_Doc": [
             "滑动 duration",
             "额外滑动？",
@@ -46,189 +41,70 @@
         "algorithm": "JustReturn",
         "action": "Swipe",
         "postDelay": 200,
-        "specificRect": [
-            880,
-            310,
-            100,
-            100
-        ],
-        "rectMove": [
-            300,
-            310,
-            100,
-            100
-        ],
-        "specialParams": [
-            200,
-            1,
-            2,
-            0
-        ],
-        "next": [
-            "#next"
-        ],
+        "specificRect": [880, 310, 100, 100],
+        "rectMove": [300, 310, 100, 100],
+        "specialParams": [200, 1, 37, 1],
+        "next": ["#next"],
         "maxTimes": 50
     },
     "SlowlySwipeToTheUp": {
         "algorithm": "JustReturn",
         "action": "Swipe",
         "postDelay": 200,
-        "specificRect": [
-            600,
-            510,
-            100,
-            100
-        ],
-        "rectMove": [
-            600,
-            0,
-            100,
-            100
-        ],
-        "specialParams": [
-            200,
-            1,
-            2,
-            0
-        ],
-        "next": [
-            "#next"
-        ],
+        "specificRect": [600, 510, 100, 100],
+        "rectMove": [600, 0, 100, 100],
+        "specialParams": [200, 1, 37, 1],
+        "next": ["#next"],
         "maxTimes": 50
     },
     "SlowlySwipeToTheDown": {
         "algorithm": "JustReturn",
         "action": "Swipe",
         "postDelay": 200,
-        "specificRect": [
-            600,
-            145,
-            100,
-            100
-        ],
-        "rectMove": [
-            600,
-            610,
-            100,
-            100
-        ],
-        "specialParams": [
-            200,
-            1,
-            2,
-            0
-        ],
-        "next": [
-            "#next"
-        ],
+        "specificRect": [600, 145, 100, 100],
+        "rectMove": [600, 610, 100, 100],
+        "specialParams": [200, 1, 37, 1],
+        "next": ["#next"],
         "maxTimes": 50
     },
     "SwipeToTheLeft": {
         "algorithm": "JustReturn",
         "action": "Swipe",
         "postDelay": 100,
-        "specificRect": [
-            100,
-            310,
-            100,
-            100
-        ],
-        "rectMove": [
-            1080,
-            310,
-            100,
-            100
-        ],
-        "specialParams": [
-            150,
-            0,
-            1,
-            1
-        ],
-        "next": [
-            "#next"
-        ],
+        "specificRect": [100, 310, 100, 100],
+        "rectMove": [1080, 310, 100, 100],
+        "specialParams": [150],
+        "next": ["#next"],
         "maxTimes": 20
     },
     "SwipeToTheRight": {
         "algorithm": "JustReturn",
         "action": "Swipe",
         "postDelay": 100,
-        "specificRect": [
-            1080,
-            310,
-            100,
-            100
-        ],
-        "rectMove": [
-            100,
-            310,
-            200,
-            100
-        ],
-        "specialParams": [
-            150,
-            0,
-            1,
-            1
-        ],
-        "next": [
-            "#next"
-        ],
+        "specificRect": [1080, 310, 100, 100],
+        "rectMove": [100, 310, 200, 100],
+        "specialParams": [150],
+        "next": ["#next"],
         "maxTimes": 20
     },
     "SwipeToTheUp": {
         "algorithm": "JustReturn",
         "action": "Swipe",
         "postDelay": 350,
-        "specificRect": [
-            600,
-            510,
-            100,
-            100
-        ],
-        "rectMove": [
-            600,
-            0,
-            100,
-            100
-        ],
-        "specialParams": [
-            150,
-            0,
-            1,
-            1
-        ],
-        "next": [
-            "#next"
-        ],
+        "specificRect": [600, 510, 100, 100],
+        "rectMove": [600, 0, 100, 100],
+        "specialParams": [150],
+        "next": ["#next"],
         "maxTimes": 20
     },
     "SwipeToTheDown": {
         "algorithm": "JustReturn",
         "action": "Swipe",
         "postDelay": 350,
-        "specificRect": [
-            600,
-            145,
-            100,
-            100
-        ],
-        "rectMove": [
-            600,
-            610,
-            100,
-            100
-        ],
-        "specialParams": [
-            150,
-            0,
-            1,
-            1
-        ],
-        "next": [
-            "#next"
-        ],
+        "specificRect": [600, 145, 100, 100],
+        "rectMove": [600, 610, 100, 100],
+        "specialParams": [150],
+        "next": ["#next"],
         "maxTimes": 20
     },
     "StageTheme": {
@@ -1352,305 +1228,84 @@
     "CharsNameOcrReplace": {
         "algorithm": "OcrDetect",
         "text": [],
-        "Doc": "该任务的 ocrReplace 被所有涉及干员名的识别任务复用，中文被拆成3字节处理，需要包括号",
+        "Doc": "该任务的 ocrReplace 被所有涉及干员名的识别任务复用",
         "fullMatch": true,
         "ocrReplace": [
-            [
-                "^(?:[<4~]|《|。ぐ)+",
-                ""
-            ],
-            [
-                "^c(?!ast)",
-                ""
-            ],
-            [
-                "^\\^一",
-                ""
-            ],
-            [
-                "^[_<>]*(?=.)",
-                ""
-            ],
-            [
-                "[_<>]*$",
-                ""
-            ],
-            [
-                ".*弦惊.*",
-                "“弦惊”"
-            ],
-            [
-                ".*亚梅塔",
-                "菲亚梅塔"
-            ],
-            [
-                ".*逍遥.*",
-                "“逍遥”"
-            ],
-            [
-                ".*清平.*",
-                "“清平”"
-            ],
-            [
-                ".*打字机.*",
-                "“打字机”"
-            ],
-            [
-                ".*耀阳.*",
-                "“耀阳”"
-            ],
-            [
-                "玛恩.*",
-                "玛恩纳"
-            ],
-            [
-                ".*默德克萨.*",
-                "缄默德克萨斯"
-            ],
-            [
-                ".*芜拉普兰.*",
-                "荒芜拉普兰德"
-            ],
-            [
-                "^持克诺$",
-                "特克诺"
-            ],
-            [
-                "^重岳.+",
-                "重岳"
-            ],
-            [
-                "(麒.+夜刀|.*麟.*夜刀)$",
-                "麒麟R夜刀"
-            ],
-            [
-                ".*龙.*黑角$",
-                "火龙S黑角"
-            ],
-            [
-                "[Uu]-[O0o]f{1,2}icial",
-                "U-Official"
-            ],
-            [
-                ".*威龙陈",
-                "假日威龙陈"
-            ],
-            [
-                "青积",
-                "青枳"
-            ],
-            [
-                ".*烬艾雅法.*",
-                "纯烬艾雅法拉"
-            ],
-            [
-                "^[委泰黍]$",
-                "黍"
-            ],
-            [
-                "^[H夕]$",
-                "夕"
-            ],
-            [
-                "12E",
-                "12F"
-            ],
-            [
-                "归.*幽灵鲨",
-                "归溟幽灵鲨"
-            ],
-            [
-                "(临六$|^临光.*)",
-                "临光"
-            ],
-            [
-                ".*甜蜜狂搅.*",
-                "“甜蜜狂搅”"
-            ],
-            [
-                "^尖端研究成果共享.*",
-                "尖端研究成果共享终端"
-            ],
-            [
-                "^w$",
-                "W"
-            ],
-            [
-                "维获",
-                "维荻"
-            ],
-            [
-                ".*ancet-2",
-                "Lancet-2"
-            ],
-            [
-                "[CcOo0]ast.*le-3",
-                "Castle-3"
-            ],
-            [
-                "phonoR-0",
-                "PhonoR-0"
-            ],
-            [
-                ".*HRM-EX$",
-                "THRM-EX"
-            ],
-            [
-                ".*心斯卡蒂$",
-                "浊心斯卡蒂"
-            ],
-            [
-                "^预备干员-近.*",
-                "预备干员-近战"
-            ],
-            [
-                "^预备干员-术.*",
-                "预备干员-术师"
-            ],
-            [
-                "^预备干员-后.*",
-                "预备干员-后勤"
-            ],
-            [
-                "^预备干员-狙.*",
-                "预备干员-狙击"
-            ],
-            [
-                "^预备干员-重.*",
-                "预备干员-重装"
-            ],
-            [
-                "^折光.*",
-                "折光"
-            ],
-            [
-                "^红集$",
-                "红隼"
-            ],
-            [
-                "小.?满",
-                "小满"
-            ],
-            [
-                ".*夹子.*",
-                "“夹子”"
-            ],
-            [
-                "应泡普卡",
-                "泡普卡"
-            ],
-            [
-                "特米米.+",
-                "特米米"
-            ],
-            [
-                "崖心.+",
-                "崖心"
-            ],
-            [
-                ".*芙利特$",
-                "伊芙利特"
-            ],
-            [
-                "^提非$",
-                "提丰"
-            ],
-            [
-                "^华琳$",
-                "华法琳"
-            ],
-            [
-                "^宝箱的肉.*",
-                "宝箱的肉？"
-            ],
-            [
-                ".*维多利亚$",
-                "维娜·维多利亚"
-            ],
-            [
-                "^盥心$",
-                "塑心"
-            ],
-            [
-                "^(钳|钥)铅$",
-                "钼铅"
-            ],
-            [
-                "^墨键$",
-                "黑键"
-            ],
-            [
-                "^灰亳$",
-                "灰毫"
-            ],
-            [
-                "^野鬘$",
-                "野鬃"
-            ],
-            [
-                ".*NFESS-47$",
-                "CONFESS-47"
-            ],
-            [
-                "^焰影苇.*",
-                "焰影苇草"
-            ],
-            [
-                "Miss[.\\-][Cc]hristine",
-                "Miss.Christine"
-            ],
-            [
-                "^野.{0,2}$",
-                "野鬃"
-            ],
-            [
-                "^(“|”|\\\\|\")?斩(“|”|\\\\|\")?$",
-                "“斩”"
-            ],
-            [
-                "八.*海铃",
-                "八幡海铃"
-            ],
-            [
-                ".*英调香师",
-                "撷英调香师"
-            ],
-            [
-                "矿石.*杀手.*",
-                "矿石“杀手”"
-            ],
-            [
-                ".*涤火杰西卡",
-                "涤火杰西卡"
-            ],
-            [
-                "GALLU.*",
-                "GALLUS²"
-            ],
-            [
-                "凯尔希.*思衡托",
-                "凯尔希·思衡托"
-            ],
-            [
-                ".*反壳龟$",
-                "御龙：反壳龟"
-            ],
-            [
-                ".*影丝蛛$",
-                "御龙：影丝蛛"
-            ],
-            [
-                ".*岩甲兽$",
-                "御龙：岩甲兽"
-            ],
-            [
-                ".*雷狼龙$",
-                "御龙：雷狼龙"
-            ],
-            [
-                "^折娅$",
-                "折桠"
-            ]
+            ["^(?:[<4~]|《|。ぐ)+", ""],
+            ["^c(?!ast)", ""],
+            ["^\\^一", ""],
+            ["^[_<>]*(?=.)", ""],
+            ["[_<>]*$", ""],
+            [".*弦惊[^\\n]*", "“弦惊”"],
+            [".*亚梅塔", "菲亚梅塔"],
+            [".*逍遥[^\\n]*", "“逍遥”"],
+            [".*清平[^\\n]*", "“清平”"],
+            [".*打字机[^\\n]*", "“打字机”"],
+            [".*耀阳[^\\n]*", "“耀阳”"],
+            ["玛恩[^\\n]*", "玛恩纳"],
+            [".*默德克萨[^\\n]*", "缄默德克萨斯"],
+            [".*芜拉普兰[^\\n]*", "荒芜拉普兰德"],
+            ["^持克诺$", "特克诺"],
+            ["^重岳[^\\n]+", "重岳"],
+            ["(麒.+夜刀|.*麟.*夜刀)$", "麒麟R夜刀"],
+            [".*龙.*黑角$", "火龙S黑角"],
+            ["[Uu]-[O0o]f{1,2}icial", "U-Official"],
+            [".*威龙陈", "假日威龙陈"],
+            ["青积", "青枳"],
+            [".*烬艾雅法[^\\n]*", "纯烬艾雅法拉"],
+            ["^[委泰黍]$", "黍"],
+            ["^[H夕]$", "夕"],
+            ["12E", "12F"],
+            ["归.*幽灵鲨", "归溟幽灵鲨"],
+            ["(临六$|^临光[^\\n]*)", "临光"],
+            [".*甜蜜狂搅[^\\n]*", "“甜蜜狂搅”"],
+            ["^尖端研究成果共享[^\\n]*", "尖端研究成果共享终端"],
+            ["^w$", "W"],
+            ["维获", "维荻"],
+            [".*ancet-2", "Lancet-2"],
+            ["[CcOo0]ast.*le-3", "Castle-3"],
+            ["phonoR-0", "PhonoR-0"],
+            [".*HRM-EX$", "THRM-EX"],
+            [".*心斯卡蒂$", "浊心斯卡蒂"],
+            ["^预备干员-近[^\\n]*", "预备干员-近战"],
+            ["^预备干员-术[^\\n]*", "预备干员-术师"],
+            ["^预备干员-后[^\\n]*", "预备干员-后勤"],
+            ["^预备干员-狙[^\\n]*", "预备干员-狙击"],
+            ["^预备干员-重[^\\n]*", "预备干员-重装"],
+            ["^折光[^\\n]*", "折光"],
+            ["^红集$", "红隼"],
+            ["小.?满", "小满"],
+            [".*夹子[^\\n]*", "“夹子”"],
+            ["应泡普卡", "泡普卡"],
+            ["特米米[^\\n]+", "特米米"],
+            ["崖心[^\\n]+", "崖心"],
+            [".*芙利特$", "伊芙利特"],
+            ["^提非$", "提丰"],
+            ["^华琳$", "华法琳"],
+            ["^宝箱的肉[^\\n]*", "宝箱的肉？"],
+            [".*维多利亚$", "维娜·维多利亚"],
+            ["^盥心$", "塑心"],
+            ["^(钳|钥)铅$", "钼铅"],
+            ["^墨键$", "黑键"],
+            ["^灰亳$", "灰毫"],
+            ["^野鬘$", "野鬃"],
+            [".*NFESS-47$", "CONFESS-47"],
+            ["^焰影苇[^\\n]*", "焰影苇草"],
+            ["Miss[.\\-][Cc]hristine", "Miss.Christine"],
+            ["^野.{0,2}$", "野鬃"],
+            ["^(“|”|\\\\|\")?斩(“|”|\\\\|\")?$", "“斩”"],
+            ["八.*海铃", "八幡海铃"],
+            [".*英调香师", "撷英调香师"],
+            ["矿石.*杀手[^\\n]*", "矿石“杀手”"],
+            [".*涤火杰西卡", "涤火杰西卡"],
+            ["GALLU[^\\n]*", "GALLUS²"],
+            ["凯尔希.*思衡托", "凯尔希·思衡托"],
+            [".*反壳龟$", "御龙：反壳龟"],
+            [".*影丝蛛$", "御龙：影丝蛛"],
+            [".*岩甲兽$", "御龙：岩甲兽"],
+            [".*雷狼龙$", "御龙：雷狼龙"],
+            ["^折娅$", "折桠"],
+            ["^埃[癸类奖突]?斯$", "埃癸斯"]
         ]
     },
     "SwitchAccount@StartUpBegin": {
@@ -2869,16 +2524,35 @@
             40
         ]
     },
+    "SR-TarotClose": {
+        "doc": "月行水上代理结算退出后概率弹出的塔罗牌弹窗，拦截点击；结算退出后先于开始行动关闭，此时无需返还次数",
+        "algorithm": "OcrDetect",
+        "text": ["获得了塔罗牌"],
+        "roi": [580, 280, 180, 60],
+        "action": "ClickRect",
+        "specificRect": [1044, 219, 10, 10],
+        "postDelay": 1000,
+        "next": ["StartButton1"]
+    },
+    "SR-TarotClose-AfterStart": {
+        "doc": "弹窗晚于 ClickCorner 轮询弹出、StartButton1 的点击已被拦截时的兜底；返还 StartButton1 次数并重试",
+        "baseTask": "SR-TarotClose",
+        "reduceOtherTimes": ["StartButton1"]
+    },
+    "PreStartCheck": {
+        "doc": "结算退出后可能存在延迟弹出的界面（如月行水上的塔罗牌弹窗），识别到开始行动后等待界面稳定再执行后续",
+        "baseTask": "StartButton1",
+        "action": "DoNothing",
+        "postDelay": 1000,
+        "exceededNext": [],
+        "reduceOtherTimes": [],
+        "next": ["SR-TarotClose", "StartButton1"]
+    },
     "StartButton1": {
         "doc": "绑定插件调整代理倍率",
         "algorithm": "OcrDetect",
         "action": "ClickSelf",
-        "text": [
-            "开始行动",
-            "开始作战",
-            "开始推演"
-        ],
-        "preDelay": 500,
+        "text": ["开始行动", "开始作战", "开始推演"],
         "postDelay": 1000,
         "roi": [
             1010,
@@ -2895,6 +2569,7 @@
             "PrtsStillLoading*100"
         ],
         "next": [
+            "SR-TarotClose-AfterStart",
             "StartButton2",
             "UseMedicine",
             "UseStone",
@@ -2909,7 +2584,6 @@
         "action": "ClickRect",
         "exceededNext": [],
         "reduceOtherTimes": [],
-        "preDelay": 0,
         "postDelay_Doc": "理智不足时弹出吃药界面约需两秒，理智足够则不到一秒就能进入StartButton2",
         "postDelay": 3000,
         "specificRect_Doc": "避免第二次点击时点到StartButton2",
@@ -3195,7 +2869,7 @@
         ],
         "maxTimes": 10,
         "next": [
-            "StartButton1",
+            "PreStartCheck",
             "StartButton2",
             "UseMedicine",
             "UseStone",
@@ -6314,28 +5988,9 @@
             90
         ]
     },
-    "InfrastSmileyOnRest": {
-        "template": "SmileyOnRest.png",
-        "maskRange": [
-            100,
-            255
-        ],
-        "templThreshold": 0.8
-    },
-    "InfrastSmileyOnWork": {
-        "template": "SmileyOnWork.png",
-        "maskRange": [
-            100,
-            255
-        ],
-        "templThreshold": 0.8
-    },
-    "InfrastSmileyOnDistract": {
-        "template": "SmileyOnDistract.png",
-        "maskRange": [
-            100,
-            255
-        ],
+    "InfrastSmiley": {
+        "template": ["SmileyOnRest.png", "SmileyOnWork.png", "SmileyOnDistract.png"],
+        "maskRange": [100, 255],
         "templThreshold": 0.8
     },
     "InfrastSkills": {
@@ -6832,6 +6487,100 @@
             248
         ],
         "templThreshold": 0.95
+    },
+    "InfrastAssistantChangeTask": {
+        "algorithm": "JustReturn",
+        "next": ["InfrastAssistantEnter"]
+    },
+    "InfrastAssistantEnter": {
+        "template": "AssistantEnter.png",
+        "roi": [0, 319, 152, 173],
+        "action": "ClickSelf",
+        "postDelay": 800,
+        "next": ["InfrastAssistantFlag"]
+    },
+    "InfrastAssistantFlag": {
+        "template": "AssistantFlag.png",
+        "roi": [454, 62, 185, 186],
+        "maxTimes": 20,
+        "postDelay": 500
+    },
+    "InfrastAssistantChangeEntry1": {
+        "algorithm": "JustReturn",
+        "action": "ClickRect",
+        "specificRect": [394, 192, 63, 94],
+        "postDelay": 800,
+        "next": ["InfrastAssistantOperatorList"]
+    },
+    "InfrastAssistantChangeEntry2": {
+        "baseTask": "InfrastAssistantChangeEntry1",
+        "specificRect": [152, 484, 63, 94]
+    },
+    "InfrastAssistantChangeEntry3": {
+        "baseTask": "InfrastAssistantChangeEntry1",
+        "specificRect": [313, 484, 63, 94]
+    },
+    "InfrastAssistantChangeEntry4": {
+        "baseTask": "InfrastAssistantChangeEntry1",
+        "specificRect": [473, 484, 63, 94]
+    },
+    "InfrastAssistantChangeEntry5": {
+        "baseTask": "InfrastAssistantChangeEntry1",
+        "specificRect": [634, 484, 63, 94]
+    },
+    "InfrastAssistantOperatorList": {
+        "doc": "以识别到确认按钮作为进入干员列表的标志",
+        "template": "AssistantConfirmButton.png",
+        "roi": [630, 620, 650, 100],
+        "maxTimes": 20,
+        "postDelay": 500
+    },
+    "InfrastAssistantChangeOperator7": {
+        "doc": "任务列表第七个干员位置,也就是第四列第一行",
+        "algorithm": "JustReturn",
+        "action": "ClickRect",
+        "specificRect": [846, 147, 66, 118],
+        "postDelay": 500,
+        "next": ["InfrastAssistantChangeConfirmButtonClick"]
+    },
+    "InfrastAssistantChangeConfirmButtonClick": {
+        "baseTask": "InfrastAssistantOperatorList",
+        "template": "AssistantConfirmButton.png",
+        "action": "ClickSelf",
+        "postDelay": 800,
+        "next": ["InfrastAssistantButtonWait", "InfrastAssistantFlag"]
+    },
+    "InfrastAssistantButtonWait": {
+        "algorithm": "OcrDetect",
+        "text": ["正在提交", "反馈至神经"],
+        "roi": [700, 640, 300, 80],
+        "postDelay": 500,
+        "next": ["InfrastAssistantButtonWait", "InfrastAssistantChangeConfirmButtonClick", "InfrastAssistantFlag"]
+    },
+    "InfrastAssistantChangeOperator2": {
+        "doc": "任务列表第二个干员位置,也就是第一列第二行",
+        "baseTask": "InfrastAssistantChangeOperator7",
+        "specificRect": [402, 418, 70, 120]
+    },
+    "InfrastAssistantChangeOperator3": {
+        "doc": "任务列表第三个干员位置,也就是第二列第一行",
+        "baseTask": "InfrastAssistantChangeOperator7",
+        "specificRect": [558, 144, 70, 120]
+    },
+    "InfrastAssistantChangeOperator4": {
+        "doc": "任务列表第四个干员位置,也就是第二列第二行",
+        "baseTask": "InfrastAssistantChangeOperator7",
+        "specificRect": [558, 418, 70, 120]
+    },
+    "InfrastAssistantChangeOperator5": {
+        "doc": "任务列表第五个干员位置,也就是第三列第一行",
+        "baseTask": "InfrastAssistantChangeOperator7",
+        "specificRect": [703, 149, 70, 120]
+    },
+    "InfrastAssistantChangeOperator6": {
+        "doc": "任务列表第六个干员位置,也就是第三列第二行",
+        "baseTask": "InfrastAssistantChangeOperator7",
+        "specificRect": [704, 424, 70, 120]
     },
     "InfrastStationedInfo": {
         "algorithm": "OcrDetect",
@@ -8435,39 +8184,19 @@
     "BattleSelectFormation1": {
         "algorithm": "JustReturn",
         "action": "ClickRect",
-        "specificRect": [
-            105,
-            662,
-            10,
-            58
-        ]
+        "specificRect": [105, 662, 5, 58]
     },
     "BattleSelectFormation2": {
         "baseTask": "BattleSelectFormation1",
-        "specificRect": [
-            380,
-            662,
-            10,
-            58
-        ]
+        "specificRect": [380, 662, 5, 58]
     },
     "BattleSelectFormation3": {
         "baseTask": "BattleSelectFormation1",
-        "specificRect": [
-            650,
-            662,
-            10,
-            58
-        ]
+        "specificRect": [650, 662, 5, 58]
     },
     "BattleSelectFormation4": {
         "baseTask": "BattleSelectFormation1",
-        "specificRect": [
-            920,
-            662,
-            10,
-            58
-        ]
+        "specificRect": [920, 662, 5, 58]
     },
     "BattleSupportUnitFormation": {
         "action": "ClickSelf",
@@ -8881,22 +8610,9 @@
     "BattleAvatarDialog": {
         "doc": "战斗中带头像对话框, 类似于 SkipThePreBattlePlot(可见于画中人关卡) 的, 但是缺少 跳过 按钮",
         "action": "ClickSelf",
-        "roi": [
-            70,
-            30,
-            120,
-            30
-        ],
-        "next": [
-            "BattleAvatarDialog",
-            "Stop"
-        ],
-        "rectMove": [
-            125,
-            20,
-            200,
-            60
-        ]
+        "roi": [70, 30, 150, 500],
+        "next": ["BattleAvatarDialog", "Stop"],
+        "rectMove": [125, 20, 200, 60]
     },
     "EndOfPlot": {
         "roi": [
@@ -9975,35 +9691,16 @@
     },
     "DepotAllTab": {
         "action": "ClickSelf",
-        "roi": [
-            450,
-            0,
-            300,
-            138
-        ],
-        "next": [
-            "DepotMaterialTab"
-        ]
+        "roi": [450, 0, 300, 138],
+        "next": ["DepotMaterialTab"]
     },
     "DepotMaterialTab": {
         "action": "ClickSelf",
-        "roi": [
-            945,
-            0,
-            300,
-            138
-        ],
-        "next": [
-            "DepotMaterialTabClicked"
-        ]
+        "roi": [945, 0, 300, 138],
+        "next": ["DepotMaterialTabClicked"]
     },
     "DepotMaterialTabClicked": {
-        "roi": [
-            945,
-            0,
-            300,
-            138
-        ]
+        "roi": [945, 0, 300, 138]
     },
     "InfrastOperListSlowlySwipeToTheRight": {
         "baseTask": "SlowlySwipeToTheRight",

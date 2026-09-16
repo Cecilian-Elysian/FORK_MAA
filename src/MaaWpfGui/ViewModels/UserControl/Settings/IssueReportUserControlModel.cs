@@ -40,6 +40,8 @@ namespace MaaWpfGui.ViewModels.UserControl.Settings;
 /// </summary>
 public class IssueReportUserControlModel : PropertyChangedBase
 {
+    private static readonly ILogger _logger = Log.ForContext<IssueReportUserControlModel>();
+
     static IssueReportUserControlModel()
     {
         Instance = new();
@@ -151,7 +153,7 @@ public class IssueReportUserControlModel : PropertyChangedBase
         catch (Exception ex)
         {
             ToastNotification.ShowDirect($"Failed to open debug folder\n{ex.Message}");
-            Log.Error(ex, "Failed to open debug folder");
+            _logger.Error(ex, "Failed to open debug folder");
         }
     }
 
@@ -169,7 +171,7 @@ public class IssueReportUserControlModel : PropertyChangedBase
         catch (Exception ex)
         {
             ToastNotification.ShowDirect($"Failed to open reports folder\n{ex.Message}");
-            Log.Error(ex, "Failed to open reports folder");
+            _logger.Error(ex, "Failed to open reports folder");
         }
     }
 
@@ -223,7 +225,7 @@ public class IssueReportUserControlModel : PropertyChangedBase
         catch (Exception ex)
         {
             ShowGrowl($"{LocalizationHelper.GetString("ClearImageCacheException")}\n{ex.Message}");
-            Log.Error(ex, "Failed to clear image cache");
+            _logger.Error(ex, "Failed to clear image cache");
         }
     }
 
@@ -245,7 +247,7 @@ public class IssueReportUserControlModel : PropertyChangedBase
                 }
                 catch (Exception ex)
                 {
-                    Log.Warning(ex, $"Failed to delete image file: {file}");
+                    _logger.Warning(ex, "Failed to delete image file: {File}", file);
                 }
             }
         }
@@ -490,6 +492,7 @@ public class IssueReportUserControlModel : PropertyChangedBase
             currentSize = 0;
             partNumber++;
         }
+
 
         foreach (var fi in allFiles)
         {

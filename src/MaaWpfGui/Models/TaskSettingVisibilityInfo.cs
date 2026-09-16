@@ -30,6 +30,8 @@ namespace MaaWpfGui.Models;
 /// </summary>
 public class TaskSettingVisibilityInfo : PropertyChangedBase
 {
+    private static readonly ILogger _logger = Log.ForContext<TaskSettingVisibilityInfo>();
+
     public TaskSettingVisibilityInfo()
     {
         PropertyDependsOnUtility.InitializePropertyDependencies(this);
@@ -55,6 +57,8 @@ public class TaskSettingVisibilityInfo : PropertyChangedBase
     public bool UserDataUpdate { get => field; set => SetAndNotify(ref field, value); }
 
     public bool DepotMaintain { get => field; set => SetAndNotify(ref field, value); }
+
+    public bool SwitchTheme { get => field; set => SetAndNotify(ref field, value); }
 
     public bool Custom { get => field; set => SetAndNotify(ref field, value); }
 
@@ -112,7 +116,7 @@ public class TaskSettingVisibilityInfo : PropertyChangedBase
         // 边界检查
         if (taskIndex < 0 || taskIndex >= ConfigFactory.CurrentConfig.TaskQueue.Count)
         {
-            Log.Error("Tried to set task settings visibility for a nonexistent task, index: {TaskIndex}", taskIndex);
+            _logger.Error("Tried to set task settings visibility for a nonexistent task, index: {TaskIndex}", taskIndex);
             return;
         }
 
@@ -155,6 +159,7 @@ public class TaskSettingVisibilityInfo : PropertyChangedBase
             ReclamationTask => Reclamation = enable,
             UserDataUpdateTask => UserDataUpdate = enable,
             DepotMaintainTask => DepotMaintain = enable,
+            SwitchThemeTask => SwitchTheme = enable,
             CustomTask => Custom = enable,
             _ => throw new NotImplementedException(),
         };
@@ -196,6 +201,7 @@ public class TaskSettingVisibilityInfo : PropertyChangedBase
         Reclamation = false;
         UserDataUpdate = false;
         DepotMaintain = false;
+        SwitchTheme = false;
         Custom = false;
     }
 

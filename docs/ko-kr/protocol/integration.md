@@ -186,6 +186,7 @@ v6.8.0부터 폐기됨. 대신 `medicine_expire_days`를 사용하세요.
 :::  
 ::: field series  
 @type number
+@default 1
 @optional
 연속 전투 횟수, -1~10
 <br>
@@ -344,7 +345,7 @@ v6.8.0부터 폐기됨. 대신 `medicine_expire_days`를 사용하세요.
 ::: field expedite_times  
 @type number
 @optional
-즉시 완료 사용 횟수, `expedite`가 true일 때만 유효. 기본값은 무제한(즉 `times` 상한까지)  
+즉시 완료 사용 횟수, `expedite`가 true일 때만 유효. 현재 버전에서는 적용되지 않으며, 가속은 횟수 제한 없이 `times` 상한까지 계속됨  
 :::  
 ::: field expedite_min_level
 @type number
@@ -465,7 +466,7 @@ Yituliu 전송 ID, 기본값 비어 있음. `report_to_yituliu`가 true일 때�
 <br>
 `mode = 0`일 때 이 배열은 활성화 집합으로 취급되며, 순서와 중복 항목은 스케줄링에 영향을 주지 않습니다(교대 순서는 알고리즘이 자동으로 결정). `mode = 10000` / `20000`일 때는 배열 순서대로 처리됩니다.
 <br>
-시설명: `Mfg` | `Trade` | `Power` | `Control` | `Reception` | `Office` | `Dorm` | `Processing` | `Training`  
+시설명: `Mfg` | `Trade` | `Power` | `Control` | `Reception` | `Office` | `Dorm` | `Processing` | `Training` | `AssistantChange`  
 :::  
 ::: field drones  
 @type string
@@ -572,6 +573,12 @@ Yituliu 전송 ID, 기본값 비어 있음. `report_to_yituliu`가 true일 때�
 설정 내 사용할 플랜 번호. 실행 중 설정 불가
 <br>
 <Badge type="warning" text="mode = 10000일 때만 유효" />  
+:::  
+::: field continue_training  
+@type boolean
+@default false
+@optional
+훈련실에서 완료되지 않은 특화 훈련을 계속할지 여부  
 :::  
 ::::
 
@@ -752,6 +759,35 @@ OF-1 플레이 시 사용할 편성 슬롯 번호
 
 </details>
 
+- `SwitchTheme`  
+   게임 메인 화면 테마 전환
+
+:::: field-group  
+::: field enable  
+@type boolean
+@default true
+@optional
+본 작업 활성화 여부  
+:::  
+::: field themes  
+@type string[]
+@required
+후보 테마 이름 목록으로, 게임 내 테마 목록에 표시되는 이름과 일치해야 합니다. 여러 개를 입력하면 실행할 때마다 무작위로 하나가 선택되며, 빈 배열이면 작업을 건너뜁니다.  
+:::  
+::::
+
+<details>
+<summary>Example</summary>
+
+```json
+{
+   "enable": true,
+   "themes": ["夜间", "银凇"]
+}
+```
+
+</details>
+
 - `Roguelike`  
    통합 전략 무한 반복
 
@@ -790,9 +826,9 @@ OF-1 플레이 시 사용할 편성 슬롯 번호
 <br>
 `1` - 오리지늄 각뿔 파밍, 1층 투자 후 퇴각
 <br>
-`2` - <Badge type="danger" text="폐기됨" /> 모드 0과 1 겸용, 투자 후 퇴각, 투자할 게 없으면 계속 진행
+`2` - <Badge type="danger" text="제거됨" /> 기존 모드 0과 1 겸용, 현재 버전에서는 입력 시 거부됨
 <br>
-`3` - 개발 중..
+`3` - <Badge type="danger" text="미개방" /> 입력 시 거부됨
 <br>
 `4` - 스타트 리세마라, 난이도 0으로 3층 도달 후 재시작, 지정 난이도에서 스타트 보상 확인. 전기주전자나 희망이 아니면 난이도 0으로 돌아가 반복; Phantom 테마는 난이도 전환 없이 현재 난이도에서 반복
 <br>
@@ -801,6 +837,10 @@ OF-1 플레이 시 사용할 편성 슬롯 번호
 `6` - 월간 소대 보상 파밍, 모드 적응 외엔 모드 0과 동일
 <br>
 `7` - 심층 조사 보상 파밍, 모드 적응 외엔 모드 0과 동일
+<br>
+`10001` - 1층 빠른 클리어. Sarkaz 테마 전용  
+<br>
+`20001` - 상락(常樂) 노드 파밍. 1층 진입 후 필요한 노드가 없으면 재시작. JieGarden 테마 전용이며 `find_playTime_target` 필요  
 <br>
 `30001` - 포대기 동물 파밍, BlackFlow 테마 전용  
 :::  
@@ -1010,6 +1050,11 @@ Sarkaz 테마, Investment 모드, "연금술 분대" 또는 "지원 분대"일 �
 @default swaddled_cat
 @optional
 포대기 동물 파밍 모드의 목표. 선택 가능한 값: `swaddled_cat`(포대기의 고양이) | `swaddled_feathered_serpent`(포대기의 깃털 뱀) | `swaddled_dog`(포대기의 개) | `swaddled_cerberus`(포대기의 케르베로스). `blackflow_strategy`가 `baby_animal`일 때만 사용됩니다.  
+:::  
+::: field find_playTime_target  
+@type number
+@optional
+상락(常樂) 노드 파밍 모드의 목표 노드입니다. 선택 가능한 값: `1`(Ling/令) | `2`(Shu/黍) | `3`(Nian/年). JieGarden 테마이자 mode = 20001일 때만 사용되며, 해당 모드에서는 필수입니다. 미입력 시 또는 범위 밖의 값은 작업 매개변수 설정에 실패합니다.  
 :::  
 ::::
 
@@ -1243,9 +1288,11 @@ Sarkaz 테마, Investment 모드, "연금술 분대" 또는 "지원 분대"일 �
 단일 작전 JSON 파일 경로, 절대/상대 경로 모두 가능. 실행 중 설정 불가. 필수, list와 택일.  
 :::  
 ::: field list  
-@type array<string>
+@type array`<object>` | array`<string>`
 @required
-작전 JSON 목록, 절대/상대 경로 모두 가능. 실행 중 설정 불가. 필수, filename과 택일.  
+작전 목록, 실행 중 설정 불가. 필수, filename과 택일.
+<br>
+배열 요소는 두 가지 형식을 지원합니다: 객체 형식은 `id`(작전 식별자, `CopilotListLoadTaskFileSuccess` 콜백에 그대로 전달됨)와 `filename`(작전 JSON 파일 경로, 절대/상대 경로 모두 가능)을 포함하며, 작전 경로 문자열을 직접 사용할 수도 있습니다.  
 :::  
 ::::
 
@@ -1352,9 +1399,15 @@ Sarkaz 테마, Investment 모드, "연금술 분대" 또는 "지원 분대"일 �
 :::  
 ::: field tools_to_craft  
 @type array<string>
-@default [&quot;荧光棒&quot;]
+@default []
 @optional
-자동 제작 아이템, 부분 문자열 입력 권장. Tales 테마에서만 유효  
+자동 제작 아이템, 부분 문자열 입력 권장, 비워 두면 제작하지 않음. Tales 테마의 세이브 있는 모드(mode = 1)에서만 유효  
+:::  
+::: field clear_store  
+@type boolean
+@default false
+@optional
+작업 완료 후 상점 상품 구매(비우기) 여부. Tales 테마의 세이브 없는 모드(mode = 0)에서만 유효  
 :::  
 ::: field increment_mode  
 @type number
@@ -1460,12 +1513,12 @@ Sarkaz 테마, Investment 모드, "연금술 분대" 또는 "지원 분대"일 �
 @required
 현재 `"copilot"`만 지원  
 :::  
-::: field subtask  
+::: field subtype  
 @type string
 @required
 서브 작업 유형
 <br>
-`stage` - 스테이지명 설정, `"details": { "stage": "xxxx" }` 필요
+`stage` - 스테이지명 설정, `"details": { "stage_name": "xxxx" }` 필요
 <br>
 `start` - 작전 시작, `details` 없음
 <br>
@@ -1485,9 +1538,9 @@ Sarkaz 테마, Investment 모드, "연금술 분대" 또는 "지원 분대"일 �
 {
    "enable": true,
    "type": "copilot",
-   "subtask": "stage",
+   "subtype": "stage",
    "details": {
-      "stage": "1-7"
+      "stage_name": "1-7"
    }
 }
 ```
@@ -1528,7 +1581,7 @@ Sarkaz 테마, Investment 모드, "연금술 분대" 또는 "지원 분대"일 �
 #### 인터페이스 원형
 
 ```cpp
-bool ASSTAPI AsstSetTaskParams(AsstHandle handle, AsstTaskId id, const char* params);
+AsstBool ASSTAPI AsstSetTaskParams(AsstHandle handle, AsstTaskId id, const char* params);
 ```
 
 #### 인터페이스 설명
@@ -1537,7 +1590,7 @@ bool ASSTAPI AsstSetTaskParams(AsstHandle handle, AsstTaskId id, const char* par
 
 #### 반환 값
 
-- `bool`  
+- `AsstBool`  
    설정 성공 여부 반환
 
 #### 파라미터 설명
@@ -1548,7 +1601,7 @@ bool ASSTAPI AsstSetTaskParams(AsstHandle handle, AsstTaskId id, const char* par
 @required
 인스턴스 핸들  
 :::  
-::: field task  
+::: field id  
 @type AsstTaskId
 @required
 작업 ID, `AsstAppendTask` 인터페이스 반환 값  
@@ -1566,7 +1619,7 @@ bool ASSTAPI AsstSetTaskParams(AsstHandle handle, AsstTaskId id, const char* par
 #### 인터페이스 원형
 
 ```cpp
-bool ASSTAPI AsstSetStaticOption(AsstStaticOptionKey key, const char* value);
+AsstBool ASSTAPI AsstSetStaticOption(AsstStaticOptionKey key, const char* value);
 ```
 
 #### 인터페이스 설명
@@ -1575,7 +1628,7 @@ bool ASSTAPI AsstSetStaticOption(AsstStaticOptionKey key, const char* value);
 
 #### 반환 값
 
-- `bool`  
+- `AsstBool`  
    설정 성공 여부 반환
 
 #### 파라미터 설명
@@ -1595,14 +1648,31 @@ Value
 
 ##### 키-값 목록
 
-없음
+:::: field-group  
+::: field Invalid  
+@type number
+@default 0
+@optional
+무효 점유. 열거값: 0  
+:::  
+::: field CpuOCR  
+@type boolean
+@optional
+CPU로 OCR 수행. 값은 파싱에 사용되지 않음. 리소스 로드 후 전환 불가. 열거값: 1  
+:::  
+::: field GpuOCR  
+@type string
+@optional
+GPU로 OCR 수행. 값은 GPU 장치 번호(정수), Windows에서는 `luid:<16진수 LUID>`도 가능. 리소스 로드 후 전환 불가. 열거값: 2  
+:::  
+::::
 
 ### `AsstSetInstanceOption`
 
 #### 인터페이스 원형
 
 ```cpp
-bool ASSTAPI AsstSetInstanceOption(AsstHandle handle, AsstInstanceOptionKey key, const char* value);
+AsstBool ASSTAPI AsstSetInstanceOption(AsstHandle handle, AsstInstanceOptionKey key, const char* value);
 ```
 
 #### 인터페이스 설명
@@ -1611,7 +1681,7 @@ bool ASSTAPI AsstSetInstanceOption(AsstHandle handle, AsstInstanceOptionKey key,
 
 #### 반환 값
 
-- `bool`  
+- `AsstBool`  
    설정 성공 여부 반환
 
 #### 파라미터 설명
@@ -1652,7 +1722,7 @@ Value
 @type string
 @default minitouch
 @optional
-터치 모드 설정. 옵션: minitouch | maatouch | adb | MaaFwAdb | MumuExtras. 기본값 minitouch. 열거값: 2  
+터치 모드 설정. 옵션: minitouch | maatouch | adb | MacPlayTools | MaaFwAdb | MumuExtras. 기본값 minitouch. 열거값: 2  
 :::  
 ::: field DeploymentWithPause  
 @type boolean

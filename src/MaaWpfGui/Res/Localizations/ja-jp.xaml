@@ -53,6 +53,7 @@
     <system:String x:Key="ExternalNotificationSendWhenComplete">タスク完了時に通知を送信</system:String>
     <system:String x:Key="ExternalNotificationSendWhenError">タスクが失敗したときに通知を送信</system:String>
     <system:String x:Key="ExternalNotificationSendWhenStalled">タスクログ出力停滞時に通知を送信</system:String>
+    <system:String x:Key="ExternalNotificationSendWhenStalledTip">｢{key=GameSettings}｣ で ｢{key=StallTimeoutEnabled}｣ を有効にした場合にのみ有効になります</system:String>
     <system:String x:Key="ExternalNotificationSendSuccess">正常に送信</system:String>
     <system:String x:Key="ExternalNotificationSendFail">送信に失敗しました</system:String>
     <system:String x:Key="ExternalNotificationSendTest">テストを送信する</system:String>
@@ -101,6 +102,7 @@
     <system:String x:Key="GpuOptionSystemDefault">システムデフォルトGPU</system:String>
     <system:String x:Key="GpuDeprecatedMessage">現在選択されている推論加速 GPU（{0}）には互換性の問題があり、認識ミスやずれ、その他の予期しない不具合が発生する可能性があります。\n ｢{key=Settings} - {key=PerformanceSettings}｣ で別の GPU に変更することをおすすめします。</system:String>
     <system:String x:Key="GpuDriverOutdatedMessage">現在選択されている推論加速 GPU（{0}）のドライバーバージョン（{1}、リリース日：{2}）は{3}年以上経過しており、互換性の問題が発生する可能性があります。\nグラフィックスドライバーを更新するか、 ｢{key=Settings} - {key=PerformanceSettings}｣ で別の GPU に変更することをおすすめします。</system:String>
+    <system:String x:Key="GpuDriverInfoUnavailableMessage">現在選択されている推論加速 GPU（{0}）のドライバー情報を読み取れません。ドライバーが正しくインストールされていないか異常な状態である可能性があり、互換性の問題が発生する可能性があります。\nグラフィックスドライバーを更新または再インストールするか、 ｢{key=Settings} - {key=PerformanceSettings}｣ で別の GPU に変更することをおすすめします。</system:String>
     <system:String x:Key="GpuAllowDeprecated">非推奨 GPU の使用を許可する</system:String>
     <system:String x:Key="Copy">コピー</system:String>
     <!--  Toast 不可用  -->
@@ -121,13 +123,15 @@
     <system:String x:Key="PrevGuide">前へ</system:String>
     <system:String x:Key="NextGuide">次へ</system:String>
     <system:String x:Key="DoneGuide">完了</system:String>
-    <system:String x:Key="ToolTipGuide">マウスを乗せるとヒントあり→</system:String>
+    <system:String x:Key="GuideConfirmCountdownPrefix">あと</system:String>
+    <system:String x:Key="GuideConfirmCountdownSuffix">秒</system:String>
+    <system:String x:Key="ToolTipGuide">マウスを乗せるとヒントあり</system:String>
     <system:String x:Key="TaskGuide">↑ タスク</system:String>
     <system:String x:Key="OftenUsedGuide">↑ よく使われる</system:String>
     <system:String x:Key="SometimesUsedGuide">あまり使われていない ↑</system:String>
     <system:String x:Key="LinkStartGuide">← タスクを開始</system:String>
-    <system:String x:Key="HoverActionButtons" xml:space="preserve">   ホバーでコピー/名前変更/削除
-↓ 歯車を右クリックで操作一覧</system:String>
+    <system:String x:Key="HoverActionButtons">ホバーでコピー/名前変更/削除</system:String>
+    <system:String x:Key="GearContextMenuTip">歯車を右クリックで操作一覧 ↓</system:String>
     <system:String x:Key="UserGuide">使用ガイド</system:String>
     <system:String x:Key="GuideDocumentationTitle">📖 公式サイトとドキュメント</system:String>
     <system:String x:Key="GuideDocumentationPath">MAA の公式サイトと完全なドキュメントは ｢{key=Settings} - {key=AboutUs} - {key=Website}｣ でご覧いただけます。</system:String>
@@ -146,6 +150,7 @@
     <system:String x:Key="Mfg">製造所</system:String>
     <system:String x:Key="Processing">加工所</system:String>
     <system:String x:Key="Training">訓練室</system:String>
+    <system:String x:Key="AssistantChange">副手交代替え</system:String>
     <system:String x:Key="Trade">貿易所</system:String>
     <system:String x:Key="Power">発電所</system:String>
     <system:String x:Key="Reception">応接室</system:String>
@@ -272,6 +277,7 @@
     <system:String x:Key="Roguelike3FirstFloorFoldartal">第一層遠見で指定された啓示板を取得し、戦闘を行わない</system:String>
     <system:String x:Key="Roguelike3NewSquad2StartingFoldartal">生活重視分隊で開始、指定された啓示板を取得する</system:String>
     <system:String x:Key="Roguelike3NewSquad2StartingFoldartalTip">最大3つ書き込み、半角セミコロン;で区切る</system:String>
+    <system:String x:Key="Roguelike3FirstFloorFoldartalTip">予見啓示板の名前を入力し、複数は半角セミコロン;で区切ります</system:String>
     <system:String x:Key="RoguelikeCollapseList">崩壊パラダイムリスト</system:String>
     <system:String x:Key="RoguelikeCollapseListTip">英語のセミコロン ｢;｣ で区切る、空白のままにするとデフォルトリストが使用されます。</system:String>
     <system:String x:Key="RoguelikeUseSupportUnit">｢{key=StartingCoreChar}｣ をサポートから選択</system:String>
@@ -286,7 +292,9 @@
     <system:String x:Key="RoguelikeMonthlySquadCheckComms">月次小隊通信</system:String>
     <system:String x:Key="RoguelikeDeepExplorationAutoIterate">多面調査自動切替</system:String>
     <system:String x:Key="DeploymentWithPause">統合戦略/保全駐在でポーズトリックを使用します（ベータ機能のため非推奨です）</system:String>
+    <system:String x:Key="DeploymentWithPauseTip">自動戦闘で{key=Operator}を配置する際にゲームを一時停止し、次の{key=Operator}を配置します</system:String>
     <system:String x:Key="AdbLiteEnabled">軽量ADBを使用（実験機能）</system:String>
+    <system:String x:Key="AdbLiteEnabledTip">MAA が独自に実装した ADB 機能で、adb コマンドを実行するたびに adb.exe プロセスが起動するのを避けられます</system:String>
     <system:String x:Key="KillAdbOnExit">終了時にADBを終了する</system:String>
     <system:String x:Key="DefaultSquad">デフォルト</system:String>
     <system:String x:Key="IS2NewSquad1">精神論分隊</system:String>
@@ -383,6 +391,8 @@
     <system:String x:Key="TaskRenamed">タスク名を変更しました: {0}</system:String>
     <system:String x:Key="TaskDeleted">タスクを削除しました: {0}</system:String>
     <system:String x:Key="TaskCopied">タスクをコピーしました: {0}</system:String>
+    <system:String x:Key="StartGuideDemo">デモでは実際にタスクは実行されません</system:String>
+    <system:String x:Key="GuideDemoTaskAddLimitTip">デモリストに追加できるタスクは最大 5 個です。追加する前に一部を削除してください</system:String>
     <system:String x:Key="TaskCopyFailed">タスクのコピーに失敗しました</system:String>
     <system:String x:Key="HotKeyShowGui">[ホットキー] MAAの表示/最小化</system:String>
     <system:String x:Key="HotKeyLinkStart">[ホットキー] Link 開始/停止</system:String>
@@ -403,6 +413,8 @@
     <system:String x:Key="UpdateAutoDownloadTip" xml:space="preserve">オフの場合、更新の検出時（手動で ｢{key=UpdateCheckNow}｣ を実行した場合を含む）に自動ダウンロードは行われず、ダウンロードリンク付きのシステム通知のみが表示されます。リンク先から更新パッケージをダウンロードし、MAA にドラッグして手動更新できます。
 システム通知が無効な場合はアプリ内通知に切り替わりますが、アプリ内通知には操作可能なダウンロードボタンは提供されません。</system:String>
     <system:String x:Key="AutoInstallUpdatePackage">自動インストール更新</system:String>
+    <system:String x:Key="AutoInstallUpdatePackageTip">新しいバージョンが見つかっても確認ダイアログを表示せず、タスクの空き時間に自動的にアップデートして MAA を再起動します</system:String>
+    <system:String x:Key="WindowUpdateInfoTip">クリックで今すぐ更新</system:String>
     <system:String x:Key="ShowUpdaterConsole">更新中にアップデーターのコンソール出力を表示</system:String>
     <system:String x:Key="ShowUpdaterProgress">アップデーターの進行状況ウィンドウを表示</system:String>
     <system:String x:Key="ShowUpdaterProgressTip" xml:space="preserve">更新時にアップデーターが独立した進行状況ウィンドウを表示し、現在のステータスとファイル処理の進捗を示します。
@@ -523,8 +535,9 @@ D:\
     <system:String x:Key="ForceScheduledStart">強制的なタイミングで起動</system:String>
     <system:String x:Key="ForceScheduledStartTip">現在のタスクを停止して、ゲームを再起動し、新しいタスクを開始します</system:String>
     <system:String x:Key="ShowWindowBeforeForceScheduledStart">強制的なタイミングで起動前の表示ウィンドウ</system:String>
+    <system:String x:Key="ShowWindowBeforeForceScheduledStartTip">起動前にメインウィンドウを表示し、最小化中にカウントダウンが見えないのを防ぎます</system:String>
     <system:String x:Key="TimerCustomConfig">カスタム構成オプション</system:String>
-    <system:String x:Key="TimerCustomConfigTip">2分前に再起動して設定を切り替えます</system:String>
+    <system:String x:Key="TimerCustomConfigTip">起動時刻の2分前にゲームを再起動して設定を切り替えます</system:String>
     <system:String x:Key="Timer">タイマー</system:String>
     <system:String x:Key="GlobalConfigTip">このオプション ページはグローバル設定用です</system:String>
     <system:String x:Key="MultiTasksShareTip">以下のオプションは複数のタスクで共有されます</system:String>
@@ -553,6 +566,7 @@ MAA は非インストール型のアプリケーションであり、レジス�
     <system:String x:Key="StartGameLaunchClient">起動時にクライアントを開始する</system:String>
     <system:String x:Key="UseWeeklySchedule">週次スケジュールを有効にする</system:String>
     <system:String x:Key="UseWeeklyScheduleTip">ここでの曜日はゲーム内時間に基づいており、現実時間ではありません。例えば、ゲームが4:00にリセットされる場合、3:59は前日としてカウントされます。</system:String>
+    <system:String x:Key="FightSkippedWeeklySchedule">週次スケジュールで今日が未選択</system:String>
     <system:String x:Key="HelpUsWithOverseasServersTip">グローバルサーバーの対応は非常に大変で、皆様の協力が必要です！プログラミングの知識は必要ありません。</system:String>
     <system:String x:Key="OpenEmulatorAfterLaunch">起動時にエミュレータ自動起動</system:String>
     <system:String x:Key="OpenEmulatorAfterLaunchTip">エミュレータは MAA 起動時に一度だけ起動され、｢{key=LinkStart}｣ をクリックするたびに起動されるわけではありません。\nそのような動作が必要な場合は ｢{key=RetryOnDisconnected}｣ を有効にしてください</system:String>
@@ -674,9 +688,28 @@ MAA は非インストール型のアプリケーションであり、レジス�
     <system:String x:Key="RoguelikeStartWithIdea">構想</system:String>
     <system:String x:Key="RoguelikeStartWithTicket">遊覧券</system:String>
     <system:String x:Key="RefreshTraderWithDice">ダイスで品揃えを更新する（ミチビキリンジュウ）</system:String>
-    <system:String x:Key="PenguinId">Penguin-StatsのレポートのID（デジタル部分のみ）</system:String>
-    <system:String x:Key="EnablePenguin">Penguin-Statsへ報告</system:String>
-    <system:String x:Key="EnableYituliu">Yituliuへ報告</system:String>
+    <system:String x:Key="PenguinId">レポートID（デジタル部分のみ）</system:String>
+    <system:String x:Key="EnablePenguin">ドロップと公開求人のデータを報告</system:String>
+    <system:String x:Key="EnableYituliu">{key=EnablePenguin}</system:String>
+    <system:String x:Key="ThirdPartyServiceSettings">サードパーティ</system:String>
+    <system:String x:Key="ThirdPartyGroupPenguin">Penguin-Stats</system:String>
+    <system:String x:Key="ThirdPartyGroupYituliu">Yituliu</system:String>
+    <system:String x:Key="YituliuOpenApiToken">OpenAPIトークン</system:String>
+    <system:String x:Key="YituliuTokenVerify">検証</system:String>
+    <system:String x:Key="YituliuTokenEmpty">先にトークンを入力してください</system:String>
+    <system:String x:Key="YituliuTokenValid">トークンは有効です。合計 {0} 名のオペレーター</system:String>
+    <system:String x:Key="YituliuTokenValidNoData">トークンは有効ですが、アカウントにまだオペレーターデータがありません</system:String>
+    <system:String x:Key="YituliuTokenWriteOnly">トークンに読み取り権限がありません。読み取り専用または読み書き可能なトークンを使用してください</system:String>
+    <system:String x:Key="YituliuTokenInvalid">トークンが無効または期限切れです。再生成してください</system:String>
+    <system:String x:Key="YituliuTokenNetworkError">ネットワークエラーが発生しました。後でもう一度お試しください</system:String>
+    <system:String x:Key="EnableOperBoxYituliuApi">{key=OperBoxRecognition}をYituliuから取得</system:String>
+    <system:String x:Key="EnableOperBoxYituliuApiTip" xml:space="preserve">有効にすると、｢{key=Toolbox}｣と｢{key=UserDataUpdate}｣の{key=OperBoxRecognition}はエミュレーターに接続してスクリーンショット識別を行わず、トークンに対応するYituliuの育成データを直接読み取ります。&#10;｢{key=UserDataUpdate}｣によるトリガーでは、｢{key=LinkStart}｣押下後にエミュレーターへ接続次第、他のタスクと並行して取得を開始します。&#10;Yituliuに保存されるのは育成データのスナップショットのため、事前にYituliuサイトへオペレーターデータをアップロードしている必要があります。育成データは森空島からのインポートのため、CNサーバーのアカウントのみデータが存在します。&#10;トークンはYituliuの「アカウント」ページの「サードパーティ API Token」で生成できます。アカウントデータを保護するため、読み取り専用のトークンのみ使用してください。</system:String>
+    <system:String x:Key="OperBoxFetchingFromYituliu">Yituliuからオペレーターデータを取得中…</system:String>
+    <system:String x:Key="YituliuFetchFailed">Yituliuからの取得に失敗しました：{0}</system:String>
+    <system:String x:Key="YituliuNoOperBoxData">トークンに対応するYituliuアカウントにオペレーターデータがなく、ローカルの識別結果を保持しました</system:String>
+    <system:String x:Key="YituliuOperBoxCompleted">{key=OperBoxRecognition}の取得が完了しました（Yituliu）</system:String>
+    <system:String x:Key="OperBoxExportHeaderSkills">スキル特化</system:String>
+    <system:String x:Key="OperBoxExportHeaderEquips">モジュール</system:String>
     <system:String x:Key="DrGrandet">Dr.グランデモード</system:String>
     <system:String x:Key="DrGrandetTip">理性の回復画面で、現在の待機中の回復が完了するまで待ってから、理性剤などを使用します。</system:String>
     <system:String x:Key="SocialPtShop">FP交換</system:String>
@@ -710,18 +743,18 @@ MAA は非インストール型のアプリケーションであり、レジス�
     <system:String x:Key="HideTray">トレイアイコンを隠す</system:String>
     <system:String x:Key="MinimizeToTray">最小化した際にトレイに表示</system:String>
     <system:String x:Key="SystemNotification">重要な通知をポップアップする</system:String>
-    <system:String x:Key="SystemNotificationInfo" xml:space="preserve">
-MAA は非インストール型のポータブルソフトウェアで、通知機能は Microsoft.Toolkit.Uwp.Notifications ライブラリを使用しています。このライブラリはデフォルトで実行ファイルのパスを登録識別子として使用します。
+    <system:String x:Key="SystemNotificationInfo" xml:space="preserve">MAA は非インストール型のポータブルソフトウェアで、通知機能は Microsoft.Toolkit.Uwp.Notifications ライブラリを使用しています。このライブラリはデフォルトで実行ファイルのパスを登録識別子として使用します。
 複数の場所から MAA を起動すると、Windows は各パスごとに別々の通知アイコン（タスクバーのトーストなど）を作成します。これはライブラリのデフォルト動作であり、MAA は制御または自動削除できません。
 削除したい場合は、レジストリエディターを開き、以下の場所に移動してください：
 HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Notifications\Settings
-該当するパスのキーを削除してください。
-</system:String>
+該当するパスのキーを削除してください。</system:String>
     <system:String x:Key="HideCloseButton">｢閉じる｣ ボタンを隠す</system:String>
     <system:String x:Key="WindowTitleScrollable">タイトルのスクロール機能</system:String>
     <system:String x:Key="MainTasksNullFunctionality">メインタスクの右クリック効果を反転</system:String>
     <system:String x:Key="MainTasksNullFunctionalityTip">デフォルト：1回のみ有効、チェック後：1回のみスキップ</system:String>
     <system:String x:Key="MainTasksNullFunctionalitySwitch">｢{key=Settings} - {key=UiSettings} - {key=MainTasksNullFunctionality}｣ で右クリック効果を切替可能</system:String>
+    <system:String x:Key="HideHoverActionButtons">メインタスク ホバー時に操作ボタンを隠す</system:String>
+    <system:String x:Key="HideHoverActionButtonsTip">各操作は歯車の右クリックメニューから引き続き利用できます</system:String>
     <system:String x:Key="UseCardLog">カードスタイルのログを使用</system:String>
     <system:String x:Key="MaxNumberOfLogThumbnails">ログサムネイルの最大数</system:String>
     <system:String x:Key="TitleBarDisplayContent">タイトルバー表示コンテンツ</system:String>
@@ -731,6 +764,7 @@ HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Notifications\Settin
     <system:String x:Key="SwitchResolutionTip">エミュレータの解像度を1920x1080に変更!</system:String>
     <system:String x:Key="ResolutionInfoYoStarEN">エミュレータが1920x1080に設定されていることを確認してください</system:String>
     <system:String x:Key="AllowUseStoneSave">源石の数を割る保存状態を許可</system:String>
+    <system:String x:Key="AllowUseStoneSaveTip">デフォルトでは ｢{key=UseOriginitePrime}｣ は一度だけ有効です。チェックするとその状態が保存され、左クリックで通常どおり切り替えられ、右クリックで選択した場合も一度だけ有効になります</system:String>
     <system:String x:Key="AllowUseStoneSaveWarning">この機能は危険な機能と見なされます。 ｢{key=Confirm}｣ ボタンを押すと、リスクを理解し、受け入れることに同意したと見なされます。</system:String>
     <system:String x:Key="UseAlternateStage">代替ステージを選択可能にする</system:String>
     <system:String x:Key="UseExpiringMedicine">N時間以内に期限が切れる回復剤を無制限に使用</system:String>
@@ -778,20 +812,23 @@ HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Notifications\Settin
     <system:String x:Key="MuMu12ExtrasEnabled">MuMu のスクリーンショット拡張モードを有効にする</system:String>
     <system:String x:Key="MuMuExtrasTouchEnabled">MuMu タッチ強化を有効化（実験的、MuMu エミュレータ 6.3.2+、バックグラウンド常駐対応）</system:String>
     <system:String x:Key="MuMuEmulatorPathNotFound">MuMu エミュレータのパスが見つかりません。</system:String>
-    <system:String x:Key="MuMuExternalRendererMissing" xml:space="preserve">external_renderer_ipc.dll が選択した MuMu インストール内に見つかりませんでした。\n
+    <system:String x:Key="MuMuExternalRendererMissing" xml:space="preserve">external_renderer_ipc.dll が選択した MuMu インストール内に見つかりませんでした。
+
 想定される相対パス：
 nx_device/15.0/shell/sdk/external_renderer_ipc.dll または
 nx_device/12.0/shell/sdk/external_renderer_ipc.dll または
-shell/sdk/external_renderer_ipc.dll\n
+shell/sdk/external_renderer_ipc.dll
+
 インストールディレクトリを確認してください。</system:String>
-    <system:String x:Key="MuMu12ExtrasEnabledTip" xml:space="preserve">
-MuMu / MuMu Arknights V4.1.26 以降を利用する必要があり、MuMu Global は V5.21.3 以降に対応しています。
+    <system:String x:Key="MuMu12ExtrasEnabledTip" xml:space="preserve">MuMu / MuMu Arknights V4.1.26 以降を利用する必要があり、MuMu Global は V5.21.3 以降に対応しています。
 この機能を有効にした後、すぐにスクリーンショットテストを実行することを強くお勧めします。
-MAA はレジストリからインストールパスを自動的に取得しますが、失敗した場合は手動で入力してください。\n
+MAA はレジストリからインストールパスを自動的に取得しますが、失敗した場合は手動で入力してください。
+
 インストールパスには、エミュレーターのインストールディレクトリのルートディレクトリを入力する必要があります。例えば、エミュレーターのプロセスファイルパスが
-C:\\Program Files\\Netease\\MuMuPlayer\\nx_device\\12.0\\shell\\MuMuNxDevice.exe
+C:\Program Files\Netease\MuMuPlayer\nx_device\12.0\shell\MuMuNxDevice.exe
 の場合、
-C:\\Program Files\\Netease\\MuMuPlayer を入力してください。\n
+C:\Program Files\Netease\MuMuPlayer を入力してください。
+
 注意：
 1. 接続アドレスのポート番号が 7555 の場合、ポート番号を 16384 に変更してください。
 2. ネットワークブリッジを使用している場合は、MuMu ネットワークブリッジモードを選択し、シリアル番号を手動で入力する必要があります。
@@ -809,22 +846,20 @@ C:\\Program Files\\Netease\\MuMuPlayer を入力してください。\n
     <system:String x:Key="LdExtrasEnabled">LD のスクリーンショット拡張モードを有効にする</system:String>
     <system:String x:Key="LdPlayerEmulatorPathNotFound">LDPlayer のインストールパスが見つかりません。</system:String>
     <system:String x:Key="LdPlayerOpenglMissing">選択した LDPlayer パスに ldopengl64.dll が見つかりません。インストールディレクトリを確認してください。</system:String>
-    <system:String x:Key="LdExtrasEnabledTip" xml:space="preserve">
-LDPlayer 9 V9.1.32以降が必要です。
+    <system:String x:Key="LdExtrasEnabledTip" xml:space="preserve">LDPlayer 9 V9.1.32以降が必要です。
 この機能を有効にした後、すぐにスクリーンショットテストを実行することを強くお勧めします。
 MAA はレジストリから自動的にインストールパスを取得しますが、失敗した場合は手動で入力してください。
 
 インストールパスはエミュレーターのインストールディレクトリのルートディレクトリを入力してください。例えば、エミュレーターのプロセスファイルパスが
-C:\\leidian\\LDPlayer9\\dnplayer.exe の場合、
-C:\\leidian\\LDPlayer9
+C:\leidian\LDPlayer9\dnplayer.exe の場合、
+C:\leidian\LDPlayer9
 と入力してください。
 
 インスタンス番号は雷電マルチインスタンスマネージャーで確認できます。
 メインインスタンスは 0 で、その他のインスタンスはバージョン/IDの後の番号です。
 
 スクリーンショット拡張機能は、エミュレータの解像度を横画面モードに設定することを必須とし、接続中に画面の回転をしないでください。
-縦画面状態でゲームを起動した後、横画面に切り替えると、画面の乱れ（ティアリング）などの問題が発生する可能性があります。
-    </system:String>
+縦画面状態でゲームを起動した後、横画面に切り替えると、画面の乱れ（ティアリング）などの問題が発生する可能性があります。</system:String>
     <system:String x:Key="LdEmulatorPath">LD エミュレータパス</system:String>
     <system:String x:Key="LdEmulatorPathPlaceholder">例: C:\leidian\LDPlayer9</system:String>
     <system:String x:Key="LdEmulatorPathEmptyError">LDPlayer のインストールパスが空です！プレースホルダーはあくまで例です。｢{key=Settings} - {key=ConnectionSettings}｣ で実際のパスを入力してください</system:String>
@@ -856,6 +891,7 @@ C:\\leidian\\LDPlayer9
     <system:String x:Key="Reclamation">生息演算</system:String>
     <system:String x:Key="UserDataUpdate">ユーザーデータ更新</system:String>
     <system:String x:Key="DepotMaintain">在庫維持</system:String>
+    <system:String x:Key="SwitchTheme">テーマ変更</system:String>
     <system:String x:Key="MiniGame">便利機能</system:String>
     <system:String x:Key="MiniGameCategoryPermanent">常設</system:String>
     <system:String x:Key="MiniGameCategoryCurrentEvent">現在のイベント</system:String>
@@ -887,6 +923,7 @@ C:\\leidian\\LDPlayer9
     <system:String x:Key="Inverse">逆選択</system:String>
     <system:String x:Key="Clear">解除</system:String>
     <system:String x:Key="PostActions">完了後</system:String>
+    <system:String x:Key="PostActionsSettings">完了後アクション設定</system:String>
     <system:String x:Key="DoNothing">何もしない</system:String>
     <system:String x:Key="ExitArknights">アークナイツを終了する</system:String>
     <system:String x:Key="ExitSelf">MAAを終了する</system:String>
@@ -900,9 +937,11 @@ C:\\leidian\\LDPlayer9
 このオプションのチェックを解除すると、他のオプションの状態は正常に保存されます
 他のオプションを右クリックすると、このオプションも同時にチェック/チェック解除されます</system:String>
     <system:String x:Key="IfNoOtherMaa">他のMAAがない場合</system:String>
+    <system:String x:Key="IfNoOtherMaaTip">チェックすると、他の MAA インスタンスが実行されていない場合にのみ、スリープ/休止状態/シャットダウンを実行します</system:String>
     <system:String x:Key="BackToAndroidHome">エミュレータのホーム画面に戻る</system:String>
     <system:String x:Key="LinkStart">Link Start!</system:String>
     <system:String x:Key="Stop">停止</system:String>
+    <system:String x:Key="StopCurrentTaskFormat">実行中の{0}を停止</system:String>
     <system:String x:Key="WaitAndStop">待機 &amp; 停止</system:String>
     <system:String x:Key="AutoReloadResource">リソースを自動リロード</system:String>
     <system:String x:Key="CustomTaskName">タスク名</system:String>
@@ -966,8 +1005,10 @@ C:\\leidian\\LDPlayer9
     <system:String x:Key="DepotPlanAddTaskFailed">#{0}：タスクの追加に失敗しました</system:String>
     <system:String x:Key="DepotSkipDuringActivity">イベント期間中はスキップ</system:String>
     <system:String x:Key="DepotSkipDuringResourceCollection">資源收集限時全日開放期間中はスキップ</system:String>
-    <system:String x:Key="DepotPlanSkippedActivity">イベント開催中のため、在庫維持をスキップしました。</system:String>
-    <system:String x:Key="DepotPlanSkippedResourceCollection">資源收集限時全日開放期間中のため、在庫維持をスキップしました。</system:String>
+    <system:String x:Key="DepotOnlyFirstInsufficientPlan">在庫不足の最初のプランのみ実行</system:String>
+    <system:String x:Key="DepotOnlyFirstInsufficientPlanTip" xml:space="preserve">在庫不足かつ当日実行可能な最初のプランのみ実行します。&#10;ログはそのプランまでの表示で、以降のプランは今回実行されません。&#10;補充完了後は次回実行で後続のプランへ進みます。</system:String>
+    <system:String x:Key="DepotPlanSkippedActivity">イベント開催中</system:String>
+    <system:String x:Key="DepotPlanSkippedResourceCollection">資源收集限時全日開放期間中</system:String>
     <system:String x:Key="DepotPlanUpdateDepotFailed">在庫データの更新に失敗しました。</system:String>
     <system:String x:Key="DepotUseAutoSeries">AUTO 代理倍率</system:String>
     <system:String x:Key="DepotUseAutoSeriesTip" xml:space="preserve">未チェック時は 1 倍で代理；チェック後は現在の理性で可能な最大倍率で代理し、1回の周回で目標在庫上限を超える場合があります。</system:String>
@@ -979,6 +1020,15 @@ C:\\leidian\\LDPlayer9
     <system:String x:Key="DepotGroupTaskBehavior">タスク動作</system:String>
     <system:String x:Key="DepotGroupStageAndBattle">ステージと戦闘</system:String>
     <system:String x:Key="DepotGroupSanityRecovery">理性回復</system:String>
+    <!--  SwitchTheme  -->
+    <system:String x:Key="SwitchThemeTip" xml:space="preserve">ゲーム内のテーマ一覧に表示されるテーマ名を入力してください。&#10;複数入力した場合は実行ごとにランダムに選択され、1 つのみの場合は常にそれに切り替わります。&#10;使用頻度の低い漢字（例: 凇と淞）は形の類似した字に誤認識され、テーマが見つからない場合があります。&#10;その際は ｢問題報告｣ からログの圧縮ファイルを提出してください。</system:String>
+    <system:String x:Key="SwitchThemeAdd">テーマ追加</system:String>
+    <system:String x:Key="SwitchThemePlaceholder">テーマ名</system:String>
+    <system:String x:Key="SwitchThemeSkipped">テーマ名が未入力のため、テーマ変更をスキップします。</system:String>
+    <system:String x:Key="SwitchThemeSucceeded">テーマを {0} に切り替えました。</system:String>
+    <system:String x:Key="SwitchThemeAlreadySet">テーマ {0} は既に適用中のため、切り替え不要です。</system:String>
+    <system:String x:Key="SwitchThemeLocked">テーマが未解放のため切り替えできません：{0}</system:String>
+    <system:String x:Key="SwitchThemeNotFound">テーマが見つかりません：{0}。ゲーム内の表記と一致しているか確認してください。</system:String>
     <system:String x:Key="LessThanOneDay">1日以内</system:String>
     <system:String x:Key="1-7">1-7</system:String>
     <system:String x:Key="CE-6">龍門幣-6(CE-6)</system:String>
@@ -1022,7 +1072,7 @@ C:\\leidian\\LDPlayer9
     <system:String x:Key="UnselectedTask">タスクが選択されていません</system:String>
     <system:String x:Key="Running">動作中……</system:String>
     <system:String x:Key="TaskAppend.Skip">{0}: {1} タスクをスキップしました</system:String>
-    <system:String x:Key="TaskAppend.Error">{0}: {1} タスクの追加に失敗しました</system:String>
+    <system:String x:Key="TaskSerialize.Error">{0}: {1} のシリアライズに失敗しました</system:String>
     <system:String x:Key="AdbReplacementTips">タスクが応答なしになる場合は、 ｢{key=Settings} - {key=ConnectionSettings} - {key=ForcedReplaceAdb}｣ 、もしくは ADB Input タッチモード をチェックしてください（お勧めしない）。</system:String>
     <system:String x:Key="LDPlayerMaaTouchWarning">LDPlayer エミュレータと MaaTouch タッチモードの組み合わせを検出しました。この組み合わせではスワイプ操作が異常に遅くなることが知られています（実際のスワイプ時間が設定値を大幅に超過）。スワイプが終了する前に次の操作が実行され、各種異常が発生する可能性があります。他のタッチモードへの切り替えを推奨します。</system:String>
     <system:String x:Key="Waiting">ミッション終了を待っています……</system:String>
@@ -1173,6 +1223,22 @@ C:\\leidian\\LDPlayer9
     <system:String x:Key="MiniGame@SecretFront@Event3">揺蕩う影</system:String>
     <system:String x:Key="MiniGame@SecretFront">隠密戦線</system:String>
     <system:String x:Key="MiniGame@SecretFrontTip">小隊選択画面で開始します。セーブデータがある場合は手動で削除する必要があります。ゲーム内の ｢前の小隊からのデータを引き継ぐ｣ にチェックすることを推奨します。</system:String>
+    <system:String x:Key="MiniGame@MaterialSynthesis">素材自動合成</system:String>
+    <system:String x:Key="MiniGame@MaterialSynthesisTip" xml:space="preserve">対象素材の加工所の合成画面を手動で開いてから開始してください。&#10;合成可能な下位素材を再帰的に合成し、素材が不足すると停止します。</system:String>
+    <system:String x:Key="MiniGame@MaterialSynthesis@StartLog">素材の自動合成を開始します</system:String>
+    <system:String x:Key="MiniGame@MaterialSynthesis@MaterialLog">現在の素材：{0}、残り {1} 個（第 {2} 階層）</system:String>
+    <system:String x:Key="MiniGame@MaterialSynthesis@IngredientLog">{0} の第 {1} 下位素材が不足しているため、補充します</system:String>
+    <system:String x:Key="MiniGame@MaterialSynthesis@IngredientUnavailableLog">{0} の第 {1} 下位素材は合成できません</system:String>
+    <system:String x:Key="MiniGame@MaterialSynthesis@OperatorLog">{0} の加工所オペレーターを選択しています</system:String>
+    <system:String x:Key="MiniGame@MaterialSynthesis@CraftLog">{0} × {1} を合成しています</system:String>
+    <system:String x:Key="MiniGame@MaterialSynthesis@ReturnLog">{0} を満たしました。上位のレシピに戻ります</system:String>
+    <system:String x:Key="MiniGame@MaterialSynthesis@DoneLog">素材合成が完了しました</system:String>
+    <system:String x:Key="MiniGame@MaterialSynthesis@FailedLog">素材合成を停止しました：{0}</system:String>
+    <system:String x:Key="MiniGame@MaterialSynthesis@InsufficientResources">素材不足、または処理上限に達しました</system:String>
+    <system:String x:Key="MiniGame@MaterialSynthesis@OperatorUnavailable">体力が十分な加工所オペレーターがいません</system:String>
+    <system:String x:Key="MiniGame@MaterialSynthesis@Unsupported">現在の素材またはレシピデータを認識できません</system:String>
+    <system:String x:Key="MiniGame@MaterialSynthesis@NavigationFailed">画面認識または操作に失敗しました</system:String>
+    <system:String x:Key="MiniGame@MaterialSynthesis@UnknownFailure">不明なエラー</system:String>
     <system:String x:Key="MiniGame@InteractiveExhibition">奇象巡展-未収録の奇象を探す</system:String>
     <system:String x:Key="MiniGame@InteractiveExhibitionTip" xml:space="preserve">選択したマップの高級エリアにある草原の右下からタスクを開始します。&#10;草原を行き来して未収録の生物を探し、見つかると自動的に停止します。&#10;生物に出会えるのは草原だけです。</system:String>
     <system:String x:Key="MiniGame@InteractiveExhibition@UncollectedNotificationTitle">奇象巡展：未収録の奇象を発見</system:String>
@@ -1251,7 +1317,7 @@ C:\\leidian\\LDPlayer9
 この項目を選択するとこれらのチェックをスキップしますが、タスクが正常に動作しなくなる可能性があります。
 オペレーターのエリートレベルはスキップできません。いずれかの条件をスキップした場合、戦闘後にオペレーションは自動的に評価されなくなります。</system:String>
     <system:String x:Key="AddUserAdditional">カスタム{key=Operator}追加</system:String>
-    <system:String x:Key="AddUserAdditionalTip">｢;｣ はセパレータ、 ｢,｣ で{key=Operator}の名前とスキルを区切ります。例: Surtr, 3; Eyjafjalla, 1</system:String>
+    <system:String x:Key="AddUserAdditionalTip">横の設定ボタンをクリックして編集ウィンドウを開き、｢{key=UserAdditional.Add}｣ をクリックして1件ずつ追加し、各列に{key=Operator}名・スキル・操作を入力します</system:String>
     <system:String x:Key="UserAdditional.OperatorName">{key=Operator}名</system:String>
     <system:String x:Key="UserAdditional.Skill">スキル</system:String>
     <system:String x:Key="UserAdditional.Action">操作</system:String>
@@ -1270,6 +1336,8 @@ C:\\leidian\\LDPlayer9
     <system:String x:Key="CopilotTaskRaidStage">（強襲）</system:String>
     <system:String x:Key="CopilotAddTask" xml:space="preserve">左クリックで通常難易度を追加
 右クリックしてレイドの難易度を追加します</system:String>
+    <system:String x:Key="CopilotSelectTaskTip" xml:space="preserve">左クリック：ジョブ情報を表示
+右クリック：このジョブを選択してマルチジョブモードを終了</system:String>
     <system:String x:Key="CopilotClearTask" xml:space="preserve">左クリックですべてのタスクをクリア
 右クリックで非アクティブなタスクをクリア</system:String>
     <system:String x:Key="Start">開始</system:String>
@@ -1365,16 +1433,23 @@ C:\\leidian\\LDPlayer9
     <system:String x:Key="CopyErrorMessage">エラー情報をコピーする</system:String>
     <!--  !ErrorView  -->
     <!--  AsstProxy  -->
-    <system:String x:Key="UpdateApplyFailed">更新の適用に失敗し、現在のインストールが不完全になっている可能性があります。完全パッケージを再ダウンロードし、以下の説明に従って config、data、debug を手動で移行してください。\n\n{key=FullPackageUpgradeTips}</system:String>
-    <system:String x:Key="UpdateApplyMissingUpdater">MAA.Updater.exe が見つからないため、外部更新プログラムを起動できず、更新を続行できませんでした。今回の更新はキャンセルされました。このファイルは手動で削除されたか、セキュリティソフトによってブロックまたは削除された可能性があります。セキュリティソフトが原因の場合は、その隔離領域を確認してファイルを復元し、MAA のフォルダーを当該ソフトの許可リストに追加してから、もう一度お試しください。\n\n{key=FullPackageUpgradeTips}</system:String>
-    <system:String x:Key="ResourceBroken">リソースファイルが破損しています。完全なパッケージを再度ダウンロードしてください。\n\n{key=FullPackageUpgradeTips}</system:String>
+    <system:String x:Key="DelegatedUpdateFailureDetected">前回の自動更新に失敗したため、現在のインストールが不完全な可能性があり、今回の起動ではリソースの読み込みをスキップしました。次のダイアログで修復方法を選択してください。\n\n失敗理由：{0}</system:String>
+    <system:String x:Key="SecuritySoftwareWhitelistTips">MAA のフォルダーを当該ソフトの許可リストに追加してから、もう一度お試しください。</system:String>
+    <system:String x:Key="DelegatedUpdateFailureReasonFileLocked">更新中のファイル移動に失敗しました。セキュリティソフトによるスキャン・ブロック・ロック、または他のプログラムによる占有が考えられます。セキュリティソフトが原因の場合は、{key=SecuritySoftwareWhitelistTips} PC を再起動してからもう一度試すこともできます。</system:String>
+    <system:String x:Key="DelegatedUpdateFailureReasonPackageError">更新パッケージまたはその展開ファイルが破損・不完全な可能性があります。</system:String>
+    <system:String x:Key="DelegatedUpdateFailureReasonUnknown">原因は不明です。詳細は debug フォルダーの gui.log を確認してください。</system:String>
+    <system:String x:Key="UpdateApplyMissingUpdater">MAA.Updater.exe が見つからないため、外部更新プログラムを起動できず、更新を続行できませんでした。今回の更新はキャンセルされました。このファイルは手動で削除されたか、セキュリティソフトによってブロックまたは削除された可能性があります。セキュリティソフトが原因の場合は、その隔離領域を確認してファイルを復元し、{key=SecuritySoftwareWhitelistTips}\n\n{key=FullPackageUpgradeTips}</system:String>
+    <system:String x:Key="ResourceBroken">リソースファイルが破損しています。自動修復（完全なパッケージの再ダウンロード）を試すか、今はそのまま続けて、後でローカルの完全パッケージをドラッグして更新してください。\n\n{key=FullPackageUpgradeTips}</system:String>
     <system:String x:Key="ResourceIntegrityCheckTitle">インストールファイルの欠落</system:String>
-    <system:String x:Key="ResourceIntegrityCheckDesc">{0} 個のインストールファイルが欠落していることが検出されました（{1}）。一部の機能が使用できない可能性があります。ファイルがセキュリティソフトによってブロックまたは削除されたか、手動で削除された可能性があります。セキュリティソフトが原因の場合は、その隔離領域を確認してファイルを復元し、MAA のフォルダーを当該ソフトの許可リストに追加してから、もう一度お試しください。\n\n以下の説明に従って手動で再インストールすることもできます：\n\n{key=FullPackageUpgradeTips}</system:String>
+    <system:String x:Key="ResourceIntegrityCheckDesc">{0} 個のインストールファイルが欠落していることが検出されました（{1}）。一部の機能が使用できない可能性があります。ファイルがセキュリティソフトによってブロックまたは削除されたか、手動で削除された可能性があります。セキュリティソフトが原因の場合は、その隔離領域を確認してファイルを復元し、{key=SecuritySoftwareWhitelistTips}\n\n以下の説明に従って手動で再インストールすることもできます：\n\n{key=FullPackageUpgradeTips}</system:String>
     <system:String x:Key="ResourceIntegrityRepairYes">自動修復（完全パッケージをダウンロードし、再起動後に復元）</system:String>
     <system:String x:Key="ResourceIntegrityRepairNo">後で行う</system:String>
-    <system:String x:Key="ResourceIntegrityRepairDownloading">欠落したリソースファイルを修復するため、完全パッケージをダウンロードしています…</system:String>
+    <system:String x:Key="ResourceBrokenTaskBlocked">リソースが破損しているためタスクを開始できません。起動時の案内に従ってリソースを修復するか、完全なパッケージを再ダウンロードして MAA を再起動してください。</system:String>
+    <system:String x:Key="ResourceIntegrityRepairDownloading">インストールを修復するため、完全パッケージをダウンロードしています…</system:String>
     <system:String x:Key="ResourceIntegrityRepairFailed">自動修復に失敗しました。表示された手順に従って手動で処理してください。\n\n{key=FullPackageUpgradeTips}</system:String>
-    <system:String x:Key="ResourceIntegrityRepairCanceled">自動修復をキャンセルしました。欠落ファイルについては次回起動時に再度通知されます。</system:String>
+    <system:String x:Key="ResourceIntegrityRepairCanceled">自動修復をキャンセルしました。次回起動時に再度通知されます。</system:String>
+    <system:String x:Key="ForcedFullPackageUpdateNotice">インストールを修復するため、増分更新パッケージではなく完全パッケージをダウンロードします。</system:String>
+    <system:String x:Key="OtaPackageRejectedByBrokenInstall">インストールが不完全な状態（リソース破損または前回の更新失敗）の可能性があるため、OTA 増分パッケージでは修復できません。完全パッケージを使用してください。</system:String>
     <system:String x:Key="ReplaceAdbNotExists">ADBファイルが存在しません</system:String>
     <system:String x:Key="AdbDownloadFailedTitle">ADBのダウンロードに失敗しました</system:String>
     <system:String x:Key="AdbDeletionFailedMessage">ディレクトリを削除できません。既に置換されたか、他の問題が発生している可能性があります。詳細な情報はログをご確認ください。</system:String>
@@ -1427,7 +1502,7 @@ C:\\leidian\\LDPlayer9
     <system:String x:Key="GiveUpUploadingPenguins">Penguin-Statsへのアップロードをあきらめました</system:String>
     <system:String x:Key="ReportSkippedForPcClient">PC クライアントではカーソルがドロップ品や個数の認識を遮る場合があります。誤ったデータでデータプールを汚染しないよう、今回のレポートは自動的にスキップしました</system:String>
     <system:String x:Key="TheEx">ステージ報酬がないため停止します</system:String>
-    <system:String x:Key="MissingOperators">以下の{key=Operator}グループの{key=Operator}を所有していません（各グループ1体で足ります）：\n{0}｢戦術要員｣ マークは{key=Operator}の認識に影響する可能性があります。実際に所有している場合は、マークを解除して再試行するか、｢{key=AutoSquad}｣ をオフにして手動で補充してください。実際に所有していない場合は、不足グループが1つなら ｢{key=SupportUnitUsage}｣ で補えますが、2つ以上の場合は他の作業ファイルを使用してください。</system:String>
+    <system:String x:Key="MissingOperators">以下の{key=Operator}グループの{key=Operator}を所有していません（各グループ1体で足ります）または作業要件を満たしていません：\n{0}｢戦術要員｣ マークは{key=Operator}の認識に影響する可能性があります。実際に所有している場合は、マークを解除して再試行するか、｢{key=AutoSquad}｣ をオフにして手動で補充してください。実際に所有していない場合は、不足グループが1つなら ｢{key=SupportUnitUsage}｣ で補えますが、2つ以上の場合は他の作業ファイルを使用してください。</system:String>
     <system:String x:Key="RecruitSupportOperator">サポートユニットを追加：{0}</system:String>
     <system:String x:Key="RecruitUnknownOperator">オペレーター（名前不明）</system:String>
     <system:String x:Key="RecruitLogHeaderExpedited">[緊急] 招募完了（slot {0}/{1}）</system:String>
@@ -1523,6 +1598,10 @@ C:\\leidian\\LDPlayer9
     <system:String x:Key="BlackFlowMilestoneChanged">段階目標 {0}: {1}</system:String>
     <system:String x:Key="BlackFlowStrategyResult">ローグライク戦略終了：{0}（{1}）</system:String>
     <system:String x:Key="BlackFlowStrategyStarted">ローグライク戦略を開始：{0}</system:String>
+    <system:String x:Key="BlackFlowInventoryCleanupStarted">零件箱超载，开始清理</system:String>
+    <system:String x:Key="BlackFlowInventoryCleanupDiscarded">已丢弃零件：{0}</system:String>
+    <system:String x:Key="BlackFlowInventoryCleanupCompleted">零件箱清理完成</system:String>
+    <system:String x:Key="BlackFlowInventoryCleanupFailed">零件箱清理失败</system:String>
     <system:String x:Key="BlackFlowStrategyUnknown">不明な戦略</system:String>
     <system:String x:Key="BlackFlowDecisionProbeUnknownNode">経路上で最も近い未分類ノードを調査</system:String>
     <system:String x:Key="BlackFlowDecisionPolicyOrder">戦略で設定された優先順位で選択</system:String>
@@ -1633,7 +1712,7 @@ C:\\leidian\\LDPlayer9
     <system:String x:Key="BlackFlowOutcomeMoveConfirmationFailed">今回の移動を確定できず</system:String>
     <system:String x:Key="BlackFlowOutcomePostMoveValidationFailed">移動後の状態検証に失敗</system:String>
     <system:String x:Key="BlackFlowOutcomePlanningRetryExhausted">経路再計画の回数を使い切りました</system:String>
-    <system:String x:Key="BlackFlowOutcomeStateMachineDeadEnd">画面フローが先へ進めません</system:String>
+    <system:String x:Key="BlackFlowOutcomeStateMachineDeadEnd">内部ステートマシンエラー</system:String>
     <system:String x:Key="BlackFlowOutcomeMapRecoveryExhausted">マップ復旧の再試行回数を使い切りました</system:String>
     <system:String x:Key="BlackFlowOutcomeFloorRecognitionFailed">階層認識に失敗</system:String>
     <system:String x:Key="BlackFlowOutcomeMovementInventoryFailed">移動加工品の認識に失敗</system:String>
@@ -1663,7 +1742,7 @@ C:\\leidian\\LDPlayer9
     <system:String x:Key="BlackFlowTerminationPerceptionPortUnavailable">地図認識・タスクインターフェースが利用不可</system:String>
     <system:String x:Key="BlackFlowTerminationMapRebuildFailedTwice">マップ再構築が連続2回失敗</system:String>
     <system:String x:Key="BlackFlowTerminationPlanningRetryExhausted">プレビューが経路を変え続け再計画回数の上限に達しました</system:String>
-    <system:String x:Key="BlackFlowTerminationUnknown">詳細はファイルログを確認してください</system:String>
+    <system:String x:Key="BlackFlowTerminationUnknown">フィードバックは ｢{key=Settings} - {key=IssueReport}｣ へ</system:String>
     <system:String x:Key="RoguelikeEvent">イベント:</system:String>
     <system:String x:Key="RoguelikeEncounterOptions">{0} 件の選択肢を検出しました:</system:String>
     <system:String x:Key="RoguelikeEncounterEnabledOption">選択可能な選択肢: {0}</system:String>
@@ -2042,6 +2121,12 @@ MAA を複数開くには、新しい MAA を他のフォルダにコピーし�
     <system:String x:Key="StallTimeoutMinutes">ログ出力停滞タイムアウト（分）</system:String>
     <system:String x:Key="StallTimeoutEnabled">停滞検出を有効にする</system:String>
     <system:String x:Key="TaskStallWarning">タスクログ出力が {0} 分間更新されていません（現在 {1} 分間停滞）。タスクが正常に実行中か確認してください。正常であればこの警告は無視できます。応答がない場合は、手動での操作が必要になる可能性があります。</system:String>
+    <system:String x:Key="RunDurationLimitEnabled">1回の実行時間を制限する</system:String>
+    <system:String x:Key="RunDurationLimitMinutes">実行時間の上限（分）</system:String>
+    <system:String x:Key="RunDurationLimitTip" xml:space="preserve">｢{key=LinkStart}｣ をクリックした時点から計測し、上限に達すると手動停止を一度だけ実行します。
+{key=CheckBoxesNotSavedAsNull}。</system:String>
+    <system:String x:Key="RunDurationLimitExecutePostActions">停止後に ｢{key=PostActionsSettings}｣ の動作を実行する</system:String>
+    <system:String x:Key="RunDurationLimitReached">実行時間の上限（{0} 分）に達したため、タスクを停止します</system:String>
     <!--  !TimeOutTimer  -->
     <!--  Achievement  -->
     <system:String x:Key="AchievementCelebrate">🎉 実績を獲得した</system:String>

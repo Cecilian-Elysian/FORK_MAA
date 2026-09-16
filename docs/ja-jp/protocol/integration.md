@@ -192,6 +192,7 @@ Bilibili：`张三`、入力可能：`张三`、`张`、`三`
   :::  
   ::: field series  
   @type number
+  @default 1
   @optional
   連戦回数。-1～10。
   <br>
@@ -358,7 +359,7 @@ Bilibili：`张三`、入力可能：`张三`、`张`、`三`
 ::: field expedite_times  
 @type number
 @optional
-緊急招集の回数。`expedite` が true の場合のみ有効です。デフォルトは制限なし（`times` の上限まで）です。  
+緊急招集の回数。`expedite` が true の場合のみ有効です。現在のバージョンでは機能せず、緊急招集は回数制限なしで `times` の上限まで使用されます。  
 :::  
 ::: field expedite_min_level
 @type number
@@ -479,7 +480,7 @@ Fork 拡張です。確定した最低レアリティがこの値以上の場合
 <br>
 `mode = 0` の場合、この配列は有効化セットとして扱われ、順序と重複はスケジューリングに影響しません（交代順序はアルゴリズムが自動的に決定します）。`mode = 10000` / `20000` の場合は配列の順序で処理されます。
 <br>
-施設名：`Mfg` | `Trade` | `Power` | `Control` | `Reception` | `Office` | `Dorm` | `Processing` | `Training`  
+施設名：`Mfg` | `Trade` | `Power` | `Control` | `Reception` | `Office` | `Dorm` | `Processing` | `Training` | `AssistantChange`  
 :::  
 ::: field drones  
 @type string
@@ -586,6 +587,12 @@ Fork 拡張です。確定した最低レアリティがこの値以上の場合
 構成で使用する計画シーケンス番号。実行中の設定はサポートされていません。
 <br>
 <Badge type="warning" text="mode = 10000 の場合のみ有効" />  
+:::  
+::: field continue_training  
+@type boolean
+@default false
+@optional
+訓練室で未完了の専門化トレーニングを続行するかどうか。  
 :::  
 ::::
 
@@ -766,6 +773,35 @@ OF-1 実行時に使用する編成スロットのインデックス。
 
 </details>
 
+- `SwitchTheme`  
+  ゲームのメイン画面テーマを切り替える
+
+:::: field-group  
+::: field enable  
+@type boolean
+@default true
+@optional
+このタスクを有効にするかどうか。  
+:::  
+::: field themes  
+@type string[]
+@required
+候補テーマ名のリスト。ゲーム内のテーマ一覧に表示される名称と一致させてください。複数指定した場合は実行ごとにランダムに 1 つ選択され、空の配列の場合はスキップします。  
+:::  
+::::
+
+<details>
+<summary>Example</summary>
+
+```json
+{
+   "enable": true,
+   "themes": ["夜间", "银凇"]
+}
+```
+
+</details>
+
 - `Roguelike`  
   統合戦略
 
@@ -804,9 +840,9 @@ OF-1 実行時に使用する編成スロットのインデックス。
 <br>
 `1` - 源石錐を稼ぎ、第 1 層投資後に終了。
 <br>
-`2` - <Badge type="danger" text="廃止済み" /> モード 0 と 1 を兼ね備え、投資後に終了、投資なしで続行。
+`2` - <Badge type="danger" text="削除済み" /> かつてはモード 0 と 1 を兼ね備え、投資後に終了、投資なしで続行でしたが、現在のバージョンでは指定すると拒否されます。
 <br>
-`3` - 開発中...
+`3` - <Badge type="danger" text="未開放" /> 指定すると拒否されます。
 <br>
 `4` - 開局リセット、難易度 0 で第 3 層に到達後リセット、指定難易度で開局リセット報酬を狙う。最初に遭遇した報酬が「湯沸かしポット」または「希望」以外の場合、難易度 0 に戻って再挑戦します。Phantom テーマでは難易度を変更せず、現在の難易度で第 3 層到達後リセット、開局リセットを試行します。
 <br>
@@ -815,6 +851,10 @@ OF-1 実行時に使用する編成スロットのインデックス。
 `6` - 月次小隊を稼ぎ、モード 0 と同じですがモード固有の適応あり。
 <br>
 `7` - 多面調査を稼ぎ、モード 0 と同じですがモード固有の適応あり。
+<br>
+`10001` - 第 1 層を素早く通過。Sarkaz テーマのみ対応。
+<br>
+`20001` - 常楽ノードを稼ぎます。第 1 層で洞窟に入り、必要なノードが見つからなければリセット。JieGarden テーマ専用で、`find_playTime_target` との併用が必要です。
 <br>
 `30001` - 襁褓動物の入手。BlackFlow テーマ専用。
 :::  
@@ -1024,6 +1064,11 @@ Sarkaz テーマ、Investment モード、「破棘成金分隊」または「�
 @default swaddled_cat
 @optional
 襁褓動物育成モードの目標。選択可能な値：`swaddled_cat`（襁褓の猫）| `swaddled_feathered_serpent`（襁褓の羽蛇）| `swaddled_dog`（襁褓の犬）| `swaddled_cerberus`（襁褓のケルベロス）。`blackflow_strategy` が `baby_animal` の場合のみ使用されます。  
+:::  
+::: field find_playTime_target  
+@type number
+@optional
+常楽ノード稼ぎモードの目標常楽ノード。`1` - 令（掷地有声）；`2` - 黍（种因得果）；`3` - 年（三缺一）。テーマが JieGarden かつモードが 20001 の場合のみ使用され、そのモードでは必須。未指定やその他の値ではタスクパラメータの設定に失敗します。  
 :::  
 ::::
 
@@ -1258,9 +1303,11 @@ Sarkaz テーマ、Investment モード、「破棘成金分隊」または「�
 単一作業 JSON ファイルのパス。絶対/相対パスの両方対応。実行期設定非対応。必須。list と二択。  
 :::  
 ::: field list  
-@type array<string>
+@type array`<object>` | array`<string>`
 @required
-作業 JSON リスト。絶対/相対パスの両方対応。実行期設定非対応。必須。filename と二択。  
+作業リスト。実行期設定非対応。必須。filename と二択。
+<br>
+配列の要素は 2 つの形式をサポートします：オブジェクト形式は `id`（作業識別子。`CopilotListLoadTaskFileSuccess` コールバックにそのまま透過される）と `filename`（作業 JSON ファイルのパス。絶対/相対パスの両方可）を含みます。作業パスの文字列を直接指定することもできます。  
 :::  
 ::::
 
@@ -1367,9 +1414,15 @@ Sarkaz テーマ、Investment モード、「破棘成金分隊」または「�
 :::  
 ::: field tools_to_craft  
 @type array<string>
-@default [&quot;荧光棒&quot;]
+@default []
 @optional
-自動製造品。サブストリング入力推奨。Tales テーマのみ有効。  
+自動製造品。サブストリング入力推奨。空の場合は製造しません。Tales テーマのセーブありモード（mode = 1）のみ有効。  
+:::  
+::: field clear_store  
+@type boolean
+@default false
+@optional
+タスク完了後にショップの商品を購入（買い切る）するかどうか。Tales テーマのセーブなしモード（mode = 0）のみ有効。  
 :::  
 ::: field increment_mode  
 @type number
@@ -1475,12 +1528,12 @@ Sarkaz テーマ、Investment モード、「破棘成金分隊」または「�
 @required
 現在は `"copilot"` のみ対応。  
 :::  
-::: field subtask  
+::: field subtype  
 @type string
 @required
 サブタスク型。
 <br>
-`stage` - ステージ名を設定、`"details": { "stage": "xxxx" }` が必要。
+`stage` - ステージ名を設定、`"details": { "stage_name": "xxxx" }` が必要。
 <br>
 `start` - 作戦開始、`details` なし。
 <br>
@@ -1500,9 +1553,9 @@ Sarkaz テーマ、Investment モード、「破棘成金分隊」または「�
 {
    "enable": true,
    "type": "copilot",
-   "subtask": "stage",
+   "subtype": "stage",
    "details": {
-      "stage": "1-7"
+      "stage_name": "1-7"
    }
 }
 ```
@@ -1543,7 +1596,7 @@ Sarkaz テーマ、Investment モード、「破棘成金分隊」または「�
 #### インターフェース プロトタイプ
 
 ```cpp
-bool ASSTAPI AsstSetTaskParams(AsstHandle handle, AsstTaskId id, const char* params);
+AsstBool ASSTAPI AsstSetTaskParams(AsstHandle handle, AsstTaskId id, const char* params);
 ```
 
 #### インターフェースの説明
@@ -1552,7 +1605,7 @@ bool ASSTAPI AsstSetTaskParams(AsstHandle handle, AsstTaskId id, const char* par
 
 #### 返回値
 
-- `bool`  
+- `AsstBool`  
    設定が成功したかどうかを返す
 
 #### パラメータ説明
@@ -1563,7 +1616,7 @@ bool ASSTAPI AsstSetTaskParams(AsstHandle handle, AsstTaskId id, const char* par
 @required
 インスタンス ハンドル  
 :::  
-::: field task  
+::: field id  
 @type AsstTaskId
 @required
 タスク ID、`AsstAppendTask` インターフェイスの返回値  
@@ -1581,7 +1634,7 @@ bool ASSTAPI AsstSetTaskParams(AsstHandle handle, AsstTaskId id, const char* par
 #### インターフェース プロトタイプ
 
 ```cpp
-bool ASSTAPI AsstSetStaticOption(AsstStaticOptionKey key, const char* value);
+AsstBool ASSTAPI AsstSetStaticOption(AsstStaticOptionKey key, const char* value);
 ```
 
 #### インターフェースの説明
@@ -1590,7 +1643,7 @@ bool ASSTAPI AsstSetStaticOption(AsstStaticOptionKey key, const char* value);
 
 #### 返回値
 
-- `bool`  
+- `AsstBool`  
    設定が成功したかどうかを返す
 
 #### パラメータ説明
@@ -1610,14 +1663,31 @@ bool ASSTAPI AsstSetStaticOption(AsstStaticOptionKey key, const char* value);
 
 ##### キー値一覧
 
-なし
+:::: field-group  
+::: field Invalid  
+@type number
+@default 0
+@optional
+無効なプレースホルダ。列挙値：0。  
+:::  
+::: field CpuOCR  
+@type boolean
+@optional
+CPU で OCR を行います。値はパースに参加しません。リソースロード後の切り替えは非対応。列挙値：1。  
+:::  
+::: field GpuOCR  
+@type string
+@optional
+GPU で OCR を行います。値は GPU デバイスの序数（整数）。Windows では `luid:<16 進数 LUID>` も指定できます。リソースロード後の切り替えは非対応。列挙値：2。  
+:::  
+::::
 
 ### `AsstSetInstanceOption`
 
 #### インターフェース プロトタイプ
 
 ```cpp
-bool ASSTAPI AsstSetInstanceOption(AsstHandle handle, AsstInstanceOptionKey key, const char* value);
+AsstBool ASSTAPI AsstSetInstanceOption(AsstHandle handle, AsstInstanceOptionKey key, const char* value);
 ```
 
 #### インターフェースの説明
@@ -1626,7 +1696,7 @@ bool ASSTAPI AsstSetInstanceOption(AsstHandle handle, AsstInstanceOptionKey key,
 
 #### 返回値
 
-- `bool`  
+- `AsstBool`  
    設定が成功したかどうかを返す
 
 #### パラメータ説明
@@ -1667,7 +1737,7 @@ bool ASSTAPI AsstSetInstanceOption(AsstHandle handle, AsstInstanceOptionKey key,
 @type string
 @default minitouch
 @optional
-タッチ モード設定。可能な値：minitouch | maatouch | adb | MaaFwAdb | MumuExtras。デフォルト minitouch。列挙値：2。  
+タッチ モード設定。可能な値：minitouch | maatouch | adb | MacPlayTools | MaaFwAdb | MumuExtras。デフォルト minitouch。列挙値：2。  
 :::  
 ::: field DeploymentWithPause  
 @type boolean

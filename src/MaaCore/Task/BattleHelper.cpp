@@ -16,8 +16,8 @@
 #include "Vision/Battle/BattlefieldClassifier.h"
 #include "Vision/Battle/BattlefieldMatcher.h"
 #include "Vision/Matcher.h"
-#include "Vision/Miscellaneous/OperNameAnalyzer.h"
 #include "Vision/MultiMatcher.h"
+#include "Vision/Oper/OperNameAnalyzer.h"
 #include "Vision/RegionOCRer.h"
 #include <ranges>
 
@@ -460,9 +460,9 @@ bool asst::BattleHelper::deploy_oper(
         oper_point,
         target_point,
         duration,
-        false,
-        swipe_oper_task_ptr->special_params.at(2),
-        swipe_oper_task_ptr->special_params.at(3),
+        SwipeExtraDirection::None,
+        swipe_oper_task_ptr->special_params.at(2) / 10.0,
+        swipe_oper_task_ptr->special_params.at(3) / 10.0,
         deploy_with_pause && depoly_when_pause_not_support);
 
     // 拖动干员朝向

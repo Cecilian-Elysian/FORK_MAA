@@ -56,17 +56,20 @@ public class InfrastSettingsUserControlModel : TaskSettingsViewModel, InfrastSet
     public static InfrastSettingsUserControlModel Instance { get; }
 
     private static readonly ILogger _logger = Log.ForContext<InfrastSettingsUserControlModel>();
+
+    // 默认模式的固定顺序，也是自定义模式未拖拽改序时的执行顺序；宿舍须在换人设施之后，否则换下的干员送不进宿舍
     private static readonly InfrastRoomType[] _normalFacilityOrder =
     [
-        InfrastRoomType.Dorm,
         InfrastRoomType.Power,
         InfrastRoomType.Office,
         InfrastRoomType.Control,
         InfrastRoomType.Mfg,
         InfrastRoomType.Trade,
         InfrastRoomType.Reception,
+        InfrastRoomType.Dorm,
         InfrastRoomType.Processing,
         InfrastRoomType.Training,
+        InfrastRoomType.AssistantChange,
     ];
 
     private static readonly (string Value, string LocalizationKey)[] _fiammettaTargetEntries =
@@ -90,6 +93,7 @@ public class InfrastSettingsUserControlModel : TaskSettingsViewModel, InfrastSet
     {
         var preList = GetTaskConfig<InfrastTask>().RoomList;
         var set = new HashSet<InfrastRoomType>(preList.Select(i => i.Room));
+        bool assistantChangeMissing = !set.Contains(InfrastRoomType.AssistantChange);
 
         // 房间列表不完整，补全
         if (set.Count != Enum.GetValues<InfrastRoomType>().Length || set.Count != preList.Count)
@@ -105,7 +109,7 @@ public class InfrastSettingsUserControlModel : TaskSettingsViewModel, InfrastSet
             SetTaskConfig<InfrastTask>(t => t.RoomList.SequenceEqual(list), t => t.RoomList = list);
             preList = GetTaskConfig<InfrastTask>().RoomList;
         }
-        if (GetTaskConfig<InfrastTask>().Mode == Mode.Normal)
+        if (!assistantChangeMissing && GetTaskConfig<InfrastTask>().Mode == Mode.Normal)
         {
             var list = new List<InfrastTask.RoomInfo>();
             foreach (var room in _normalFacilityOrder)

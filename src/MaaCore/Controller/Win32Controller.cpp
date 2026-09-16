@@ -296,7 +296,7 @@ bool Win32Controller::swipe(
     const Point& p1,
     const Point& p2,
     int duration,
-    bool extra_swipe,
+    SwipeExtraDirection extra_swipe,
     double slope_in,
     double slope_out,
     bool with_pause [[maybe_unused]])
@@ -337,7 +337,10 @@ bool Win32Controller::swipe(
     };
 
     auto move_func = [this](int x, int y) {
-        return unit_touch_move(0, x, y, 0);
+        bool ret = unit_touch_move(0, x, y, 0);
+        // Win32 输入（如 Seize 的 SendInput）为异步注入且无内置节拍，不等待会使整段滑动在毫秒级完成，被游戏判定为点击
+        std::this_thread::sleep_for(std::chrono::milliseconds(DefaultSwipeDelay));
+        return ret;
     };
 
     auto do_swipe = [&](int _x1, int _y1, int _x2, int _y2, int _duration) {
@@ -359,9 +362,10 @@ bool Win32Controller::swipe(
         return false;
     }
 
-    if (extra_swipe && opt.minitouch_extra_swipe_duration > 0) {
+    if (extra_swipe != SwipeExtraDirection::None && opt.minitouch_extra_swipe_duration > 0) {
         std::this_thread::sleep_for(std::chrono::milliseconds(opt.minitouch_swipe_extra_end_delay));
-        do_swipe(x2, y2, x2, y2 - opt.minitouch_extra_swipe_dist, opt.minitouch_extra_swipe_duration);
+        const auto offset = extra_swipe_offset(extra_swipe, opt.minitouch_extra_swipe_dist);
+        do_swipe(x2, y2, x2 + offset.x, y2 + offset.y, opt.minitouch_extra_swipe_duration);
     }
 
     return unit_touch_up(0);

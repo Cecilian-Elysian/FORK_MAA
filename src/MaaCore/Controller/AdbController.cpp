@@ -3,6 +3,7 @@
 #include "Assistant.h"
 #include "Controller.h"
 #include "MaaUtils/NoWarningCV.hpp"
+#include "SwipeHelper.hpp"
 #include <cmath>
 #include <cstdint>
 #include <numeric>
@@ -238,7 +239,7 @@ std::optional<int> asst::AdbController::get_mumu_index(const std::string& addres
     }
     int port = std::stoi(port_str);
     int mumu_index = 0;
-    if (port >= 16384) {
+    if (port >= 16'384) {
         // port = 16384 + (index % 32) * 32 + ((offset + floor(index/32) * 4) % 32)
         // 设 i = (index % 32) 是 0~31
         // 不考虑 index 超过 256 的情况，设 j = floor(index/32)，只能是 0~7
@@ -248,7 +249,7 @@ std::optional<int> asst::AdbController::get_mumu_index(const std::string& addres
         //     port = 16384 + (index % 32) * 32 + floor(index/32) * 4 = 16384 + i * 32 + j * 4
         // 设 k = (port - 16384) / 4，则 k = i * 8 + j
         // index = j * 32 + i = (k & 7) * 32 + (k >> 3) = ((k & 7) << 5) + (k >> 3)
-        int k = (port - 16384) / 4;
+        int k = (port - 16'384) / 4;
         mumu_index = ((k & 7) << 5) | (k >> 3);
     }
     else if (port == 7555) {
@@ -479,7 +480,7 @@ bool asst::AdbController::swipe(
     const Point& p1,
     const Point& p2,
     int duration,
-    bool extra_swipe,
+    SwipeExtraDirection extra_swipe,
     [[maybe_unused]] double slope_in,
     [[maybe_unused]] double slope_out,
     [[maybe_unused]] bool with_pause)
@@ -509,15 +510,16 @@ bool asst::AdbController::swipe(
         });
     bool ret = call_command(cur_cmd).has_value();
 
-    // 额外的滑动：adb有bug，同样的参数，偶尔会划得非常远。额外做一个短程滑动，把之前的停下来
-    if (extra_swipe && opt.adb_extra_swipe_duration > 0) {
+    // 额外的滑动：adb有bug，同样的参数，偶尔会划得非常远。额外做一个指定方向的短程滑动，把之前的停下来
+    if (extra_swipe != SwipeExtraDirection::None && opt.adb_extra_swipe_duration > 0) {
+        const auto offset = extra_swipe_offset(extra_swipe, opt.adb_extra_swipe_dist);
         std::string extra_cmd = utils::string_replace_all(
             m_adb.swipe,
             {
                 { "[x1]", std::to_string(x2) },
                 { "[y1]", std::to_string(y2) },
-                { "[x2]", std::to_string(x2) },
-                { "[y2]", std::to_string(y2 - opt.adb_extra_swipe_dist /* * m_control_scale*/) },
+                { "[x2]", std::to_string(x2 + offset.x) },
+                { "[y2]", std::to_string(y2 + offset.y) },
                 { "[duration]", std::to_string(opt.adb_extra_swipe_duration) },
             });
         ret &= call_command(extra_cmd).has_value();
@@ -620,7 +622,7 @@ void asst::AdbController::release()
     close_socket();
 
     if (m_kill_adb_on_exit && !m_adb.release.empty()) {
-        m_platform_io->release_adb(m_adb.release, 20000);
+        m_platform_io->release_adb(m_adb.release, 20'000);
     }
 }
 
@@ -1178,7 +1180,7 @@ bool asst::AdbController::connect(const std::string& adb_path, const std::string
 
     /* get uuid (imei) */
     {
-        auto uuid_ret = call_command(m_conn_ctx.replace_cmd(adb_cfg.uuid), 20000, false /* adb 连接时不允许重试 */);
+        auto uuid_ret = call_command(m_conn_ctx.replace_cmd(adb_cfg.uuid), 20'000, false /* adb 连接时不允许重试 */);
         if (!uuid_ret) {
             json::value info = get_info_json() | json::object {
                 { "what", "ConnectFailed" },

@@ -61,6 +61,51 @@ enum class TouchMode
     MumuExtras = 6, // MuMu external renderer IPC，不可用时自动降级为 Minitouch
 };
 
+// Swipe 任务 specialParams[1] 的额外滑动方向。json 协议层仍为 int：0 不启用，1/2/3/4 为上/下/左/右
+enum class SwipeExtraDirection : int
+{
+    None = 0,
+    Up = 1,
+    Down = 2,
+    Left = 3,
+    Right = 4,
+};
+
+// 域外值（如 json 里误写的 5/-1）一律收敛为 None，避免零位移的空 extra 滑动
+inline SwipeExtraDirection to_swipe_extra_direction(int direction)
+{
+    switch (direction) {
+    case 1:
+        return SwipeExtraDirection::Up;
+    case 2:
+        return SwipeExtraDirection::Down;
+    case 3:
+        return SwipeExtraDirection::Left;
+    case 4:
+        return SwipeExtraDirection::Right;
+    default:
+        return SwipeExtraDirection::None;
+    }
+}
+
+inline std::string enum_to_string(SwipeExtraDirection direction)
+{
+    switch (direction) {
+    case SwipeExtraDirection::None:
+        return "None";
+    case SwipeExtraDirection::Up:
+        return "Up";
+    case SwipeExtraDirection::Down:
+        return "Down";
+    case SwipeExtraDirection::Left:
+        return "Left";
+    case SwipeExtraDirection::Right:
+        return "Right";
+    default:
+        return std::format("Unknown({})", static_cast<int>(direction));
+    }
+}
+
 #ifdef _WIN32
 
 // Win32 截图方式，与 MaaFramework 的 MaaWin32ScreencapMethod 保持一致
@@ -391,6 +436,28 @@ struct FeatureMatchRect : public AnalyzerResult
     int count = 0;
 };
 } // namespace asst
+
+namespace json::ext
+{
+template <>
+class jsonization<asst::Rect>
+{
+public:
+    json::value to_json(const asst::Rect& t) const { return json::array { t.x, t.y, t.width, t.height }; }
+
+    bool check_json(const json::value& j) const { return j.is<std::array<int, 4>>(); }
+
+    bool from_json(const json::value& j, asst::Rect& out) const
+    {
+        const auto& arr = j.as<std::array<int, 4>>();
+        out.x = arr[0];
+        out.y = arr[1];
+        out.width = arr[2];
+        out.height = arr[3];
+        return true;
+    }
+};
+} // namespace json::ext
 
 namespace std
 {

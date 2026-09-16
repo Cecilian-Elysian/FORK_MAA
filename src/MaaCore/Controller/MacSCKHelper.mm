@@ -8,16 +8,26 @@
 
 #include "Utils/Logger.hpp"
 
-@interface MacSCKOutput : NSObject <SCStreamDelegate, SCStreamOutput> {
-}
+@interface MacSCKOutput : NSObject <SCStreamDelegate, SCStreamOutput>
 
-@property (nonatomic, assign) CVImageBufferRef buffer;
+@property (nonatomic, readonly) CVImageBufferRef buffer;
 
 @property (atomic, assign) BOOL running;
 
 @end
 
-@implementation MacSCKOutput
+@implementation MacSCKOutput {
+    std::atomic_bool _initialized;
+}
+
+- (instancetype)init
+{
+    self = [super init];
+    if (self) {
+        _initialized.store(false, std::memory_order_relaxed);
+    }
+    return self;
+}
 
 - (void)stream:(SCStream*)stream didStopWithError:(NSError*)error
 {
@@ -27,11 +37,37 @@
         Log.trace(__FUNCTION__, "| Stream stopped without error");
     }
     self.running = NO;
+    _initialized.store(true, std::memory_order_release);
+    _initialized.notify_all();
 }
 
 - (void)stream:(SCStream*)stream didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer ofType:(SCStreamOutputType)type
 {
-    if (type != SCStreamOutputTypeScreen) {
+    if (type != SCStreamOutputTypeScreen || !CMSampleBufferIsValid(sampleBuffer)) {
+        return;
+    }
+
+    auto attachments = CMSampleBufferGetSampleAttachmentsArray(sampleBuffer, NO);
+    if (!attachments || CFArrayGetCount(attachments) == 0) {
+        return;
+    }
+    bool complete = false;
+    if (auto frameInfo = CFArrayGetValueAtIndex(attachments, 0)) {
+        if (auto value = CFDictionaryGetValue((CFDictionaryRef)frameInfo, SCStreamFrameInfoStatus)) {
+            SCFrameStatus status;
+            if (CFNumberGetValue((CFNumberRef)value, kCFNumberNSIntegerType, &status)) {
+                switch (status) {
+                case SCFrameStatusComplete:
+                case SCFrameStatusStarted:
+                    complete = true;
+                    break;
+                default:
+                    break;
+                }
+            }
+        }
+    }
+    if (!complete) {
         return;
     }
 
@@ -43,7 +79,17 @@
             CFRelease(_buffer);
         }
         _buffer = newBuffer;
+
+        if (!_initialized.load(std::memory_order::relaxed)) {
+            _initialized.store(true, std::memory_order_release);
+            _initialized.notify_all();
+        }
     }
+}
+
+- (void)waitForInitialized
+{
+    _initialized.wait(false, std::memory_order_acquire);
 }
 
 - (void)dealloc
@@ -81,29 +127,31 @@ struct asst::MacSCKHelper::Impl {
 
 asst::MacSCKHelper::Impl::~Impl()
 {
-    if (m_stream) {
-        auto sem = dispatch_semaphore_create(0);
-        [m_stream stopCaptureWithCompletionHandler:^(NSError* _Nullable error) {
+    const auto stream = m_stream;
+    const auto output = m_output;
+    const auto queue = m_queue;
+
+    m_stream = nil;
+    m_output = nil;
+    m_queue = nil;
+
+    const auto cleanup = ^{
+        [stream release];
+        [output release];
+        if (queue) {
+            dispatch_release(queue);
+        }
+    };
+
+    if (stream) {
+        [stream stopCaptureWithCompletionHandler:^(NSError* _Nullable error) {
             if (error) {
                 Log.error("Error stopping capture:", error.localizedDescription.UTF8String);
             }
-            dispatch_semaphore_signal(sem);
+            cleanup();
         }];
-
-        dispatch_time_t timeout = dispatch_time(DISPATCH_TIME_NOW, 3 * NSEC_PER_SEC);
-        dispatch_semaphore_wait(sem, timeout);
-        dispatch_release(sem);
-
-        [m_stream release];
-        m_stream = nil;
-    }
-
-    [m_output release];
-    m_output = nil;
-
-    if (m_queue) {
-        dispatch_release(m_queue);
-        m_queue = nil;
+    } else {
+        cleanup();
     }
 }
 
@@ -192,93 +240,95 @@ bool asst::MacSCKHelper::Impl::init(std::string_view bundle_id, std::string_view
                                                onScreenWindowsOnly:YES
                                                  completionHandler:handler];
 
-    dispatch_time_t timeout = dispatch_time(DISPATCH_TIME_NOW, 3 * NSEC_PER_SEC);
-    if (dispatch_semaphore_wait(sem, timeout) != 0) {
-        Log.error("Screenshot init timed out.");
-        result = false;
-    }
-
+    dispatch_semaphore_wait(sem, DISPATCH_TIME_FOREVER);
     dispatch_release(sem);
     return result;
 }
 
+struct BufferGuard {
+    CVImageBufferRef buffer;
+    bool locked = false;
+
+    explicit BufferGuard(CVImageBufferRef buf) noexcept
+        : buffer(buf)
+    {
+    }
+
+    BufferGuard(const BufferGuard&) = delete;
+    BufferGuard& operator=(const BufferGuard&) = delete;
+
+    ~BufferGuard()
+    {
+        if (locked) {
+            CVPixelBufferUnlockBaseAddress(buffer, kCVPixelBufferLock_ReadOnly);
+        }
+        if (buffer) {
+            CFRelease(buffer);
+        }
+    }
+};
+
 bool asst::MacSCKHelper::Impl::capture(std::vector<uint8_t>& bgrData) const
 {
-    auto sem = dispatch_semaphore_create(0);
-    __block bool result = false;
-
     if (!m_queue || !m_output) {
         Log.error("Stream output is not initialized");
-        dispatch_release(sem);
         return false;
     }
 
-    dispatch_async(m_queue, ^{
+    [m_output waitForInitialized];
+
+    __block CVImageBufferRef buffer = nullptr;
+    dispatch_sync(m_queue, ^{
         if (!m_output.running) {
             Log.error("Stream is not running");
-            dispatch_semaphore_signal(sem);
             return;
         }
-
-        auto buffer = m_output.buffer;
-        if (!buffer) {
-            Log.error("No image buffer available");
-            dispatch_semaphore_signal(sem);
-            return;
+        if (m_output.buffer) {
+            CFRetain(m_output.buffer);
+            buffer = m_output.buffer;
         }
-
-        long ret = CVPixelBufferLockBaseAddress(buffer, kCVPixelBufferLock_ReadOnly);
-        if (ret != kCVReturnSuccess) [[unlikely]] {
-            Log.error("Failed to lock pixel buffer:", ret);
-            dispatch_semaphore_signal(sem);
-            return;
-        }
-
-        const auto width = CVPixelBufferGetWidth(buffer);
-        const auto height = CVPixelBufferGetHeight(buffer);
-
-        const auto dstRowBytes = width * 3;
-        bgrData.resize(height * dstRowBytes);
-
-        vImage_Buffer srcBuffer;
-        srcBuffer.data = CVPixelBufferGetBaseAddress(buffer);
-        srcBuffer.height = height;
-        srcBuffer.width = width;
-        srcBuffer.rowBytes = CVPixelBufferGetBytesPerRow(buffer);
-
-        vImage_Buffer dstBuffer;
-        dstBuffer.data = bgrData.data();
-        dstBuffer.height = height;
-        dstBuffer.width = width;
-        dstBuffer.rowBytes = dstRowBytes;
-
-        ret = vImageConvert_RGBA8888toRGB888(&srcBuffer, &dstBuffer, kvImageNoFlags);
-        if (ret != kvImageNoError) [[unlikely]] {
-            Log.error("Failed to convert buffer channels:", ret);
-            CVPixelBufferUnlockBaseAddress(buffer, kCVPixelBufferLock_ReadOnly);
-            dispatch_semaphore_signal(sem);
-            return;
-        }
-
-        ret = CVPixelBufferUnlockBaseAddress(buffer, kCVPixelBufferLock_ReadOnly);
-        if (ret != kCVReturnSuccess) [[unlikely]] {
-            Log.error("Failed to unlock pixel buffer:", ret);
-            dispatch_semaphore_signal(sem);
-            return;
-        }
-
-        result = true;
-        dispatch_semaphore_signal(sem);
     });
 
-    dispatch_time_t timeout = dispatch_time(DISPATCH_TIME_NOW, 3 * NSEC_PER_SEC);
-    if (dispatch_semaphore_wait(sem, timeout) != 0) {
-        Log.error("Screenshot operation timed out.");
-        result = false;
+    if (!buffer) {
+        Log.error("No image buffer available");
+        return false;
     }
 
-    dispatch_release(sem);
-    return result;
+    BufferGuard guard { buffer };
+
+    long ret = CVPixelBufferLockBaseAddress(buffer, kCVPixelBufferLock_ReadOnly);
+    if (ret != kCVReturnSuccess) [[unlikely]] {
+        Log.error("Failed to lock pixel buffer:", ret);
+        return false;
+    }
+
+    guard.locked = true;
+
+    const auto width = CVPixelBufferGetWidth(buffer);
+    const auto height = CVPixelBufferGetHeight(buffer);
+
+    const auto dstRowBytes = width * 3;
+    bgrData.resize(height * dstRowBytes);
+
+    vImage_Buffer srcBuffer;
+    srcBuffer.data = CVPixelBufferGetBaseAddress(buffer);
+    srcBuffer.height = height;
+    srcBuffer.width = width;
+    srcBuffer.rowBytes = CVPixelBufferGetBytesPerRow(buffer);
+
+    vImage_Buffer dstBuffer;
+    dstBuffer.data = bgrData.data();
+    dstBuffer.height = height;
+    dstBuffer.width = width;
+    dstBuffer.rowBytes = dstRowBytes;
+
+    ret = vImageConvert_RGBA8888toRGB888(&srcBuffer, &dstBuffer, kvImageNoFlags);
+    if (ret != kvImageNoError) [[unlikely]] {
+        Log.error("Failed to convert buffer channels:", ret);
+        return false;
+    }
+
+    return true;
 }
 
 asst::MacSCKHelper::MacSCKHelper()

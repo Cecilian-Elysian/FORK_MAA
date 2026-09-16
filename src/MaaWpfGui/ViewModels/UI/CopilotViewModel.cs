@@ -27,6 +27,7 @@ using System.Windows.Input;
 using JetBrains.Annotations;
 using MaaWpfGui.Configuration.Factory;
 using MaaWpfGui.Constants;
+using MaaWpfGui.Constants.Enums;
 using MaaWpfGui.Helper;
 using MaaWpfGui.Main;
 using MaaWpfGui.Models;
@@ -83,7 +84,7 @@ public partial class CopilotViewModel : Screen
     [GeneratedRegex(InvalidStageNameChars)]
     private static partial Regex InvalidStageNameRegex();
 
-    [GeneratedRegex(@"^(act\d+(side|mini)|a00\d+)_")]
+    [GeneratedRegex(@"^(act\d+(side|mini|d\d+)|a00\d+)_")]
     private static partial Regex SideStoryStageIdRegex();
 
     [GeneratedRegex(@"^(main|sub|tough|hard)_")]
@@ -113,11 +114,6 @@ public partial class CopilotViewModel : Screen
         DisplayName = LocalizationHelper.GetString("Copilot");
         AddLog(LocalizationHelper.GetString("CopilotTip"), showTime: false);
         _runningState = RunningState.Instance;
-        _runningState.StateChanged += (_, e) => {
-            Idle = e.NewState.Idle;
-            Inited = e.NewState.Inited;
-            Stopping = e.NewState.Stopping;
-        };
         LocalizationHelper.LanguageChanged += () => {
             DisplayName = LocalizationHelper.GetString("Copilot");
             SupportUnitUsageList.RefreshLocalization();
@@ -161,8 +157,8 @@ public partial class CopilotViewModel : Screen
     /// <param name="showTime">Whether show time.</param>
     public void AddLog(string? content, string color = UiLogColor.Trace, string weight = "Regular", bool showTime = true)
     {
-        // Copilot 鑷姩鎴樻枟鏈熼棿涔熶細鍚姩鍋滄粸璁℃椂鍣紙Start 閫氳繃 SetIdle(false) 杩涘叆杩愯鎬侊級锛?
-        // 杩欓噷鐨勬棩蹇楀悓鏍峰睘浜?鏈夎緭鍑烘椿鍔?锛岄渶瑕侀噸缃鏃跺櫒锛屽惁鍒欎細璇姤浠诲姟鍗′綇銆?
+// Copilot 自动战斗期间也会启动停滞计时器（Start 通过 BeginRun 进入运行态），
+        // 这里的日志同样属于"有输出活动"，需要重置计时器，否则会误报任务卡住。
         RunningState.Instance.NotifyOutputActivity();
 
         if (string.IsNullOrEmpty(content))
@@ -218,13 +214,9 @@ public partial class CopilotViewModel : Screen
     #region 灞炴€?
 
     /// <summary>
-    /// Gets a value indicating whether it is idle.
+    /// Gets the shared run control state for run-state bindings.
     /// </summary>
-    public bool Idle { get => field; private set => SetAndNotify(ref field, value); }
-
-    public bool Inited { get => field; set => SetAndNotify(ref field, value); }
-
-    public bool Stopping { get => field; set => SetAndNotify(ref field, value); }
+    public RunControlState Run => RunControlState.Instance;
 
     /// <summary>
     /// Gets or sets a value indicating whether the start button is enabled.
@@ -240,7 +232,7 @@ public partial class CopilotViewModel : Screen
     {
         get => _copilotTabIndex;
         set {
-            if (!Idle)
+            if (!_runningState.GetIdle())
             {
                 return;
             }
@@ -1829,12 +1821,18 @@ public partial class CopilotViewModel : Screen
     [UsedImplicitly]
     public async Task Start()
     {
+        if (Bootstrapper.TryGetTaskBlockReason() is { } reason)
+        {
+            AddLog(reason, UiLogColor.Error);
+            return;
+        }
+
         /*
         if (_form)
         {
             AddLog(Localization.GetString("AutoSquadTip"), LogColor.Message);
         }*/
-        _runningState.SetIdle(false);
+        _runningState.BeginRun(RunOwner.Copilot);
 
         Instances.OverlayViewModel.LogItemsSource = LogItemViewModels;
 
@@ -1847,7 +1845,7 @@ public partial class CopilotViewModel : Screen
         // 缁熶竴鍓嶇疆鏍￠獙锛氬厛鎸?CopilotTabIndex 鍒嗗彂锛屽啀鍒ゆ柇瀵瑰簲閫夐」锛圲seCopilotList 绛夛級
         if (!await ValidateStartAsync())
         {
-            _runningState.SetIdle(true);
+            Instances.TaskQueueViewModel.SetStopped();
             return;
         }
 
@@ -1855,14 +1853,16 @@ public partial class CopilotViewModel : Screen
 
         if (!await ConnectToEmulatorAsync())
         {
+            // Core 从未 start，Stop() 的轮询立即结束、走不到超时强制 SetStopped，需显式收尾
             await Stop();
+            Instances.TaskQueueViewModel.SetStopped();
             return;
         }
 
         // 杩炴帴鏈熼棿鐢ㄦ埛鍙兘宸茬偣鍋滄锛岄渶鍦ㄦ澶勬嫤鎴?
         if (_runningState.GetStopping())
         {
-            Instances.TaskQueueViewModel.SetStopped(SettingsViewModel.GameSettings.CopilotWithScript);
+            Instances.TaskQueueViewModel.SetStopped();
             AddLog(LocalizationHelper.GetString("Stopped"));
             return;
         }
@@ -1892,7 +1892,7 @@ public partial class CopilotViewModel : Screen
                 _logger.Warning("Failed to stop Asst");
             }
 
-            _runningState.SetIdle(true);
+            Instances.TaskQueueViewModel.SetStopped();
             AddLog(LocalizationHelper.GetString("CopilotFileReadError"), UiLogColor.Error, showTime: false);
         }
     }
@@ -2095,13 +2095,36 @@ public partial class CopilotViewModel : Screen
     // }
 
     /// <summary>
-    /// Stops copilot.
-    /// UI 缁戝畾鐨勬柟娉?
+/// 手动停止 copilot。
+    /// UI 绑定的方法
+    /// </summary>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    [UsedImplicitly]
+    public async Task ManualStop()
+    {
+        if (_runningState.GetStopping() || _runningState.GetIdle())
+        {
+            return;
+        }
+
+        AddLog(LocalizationHelper.GetString("Stopping"));
+
+        // 停止目标按运行归属判定：本页发起的运行归属 copilot，脚本须双开关同时开启；
+        // 其他页发起的运行在本页停止时也能正确判定归属（连接中、Core 未运行的启动阶段归属已在入口声明）
+        var stopped = await Instances.TaskQueueViewModel.StopManuallyAsync();
+        if (stopped)
+        {
+            AddLog(LocalizationHelper.GetString("Stopped"));
+        }
+    }
+
+    /// <summary>
+    /// 内部收尾停止：仅通知 Core 停止并等待，不发射结束脚本（连接失败等启动链路调用）。
     /// </summary>
     /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
     public async Task Stop()
     {
-        // 绛夊緟 Core 瀹為檯鍋滄锛涘洖璋冩垨瓒呮椂鑷姩 SetStopped锛堣剼鏈敱 proxy 鍥炶皟鎸?CopilotWithScript 璁剧疆鍒ゆ柇锛?
+// 等待 Core 实际停止；回调或超时自动 SetStopped，结束脚本不经此发射
         AddLog(LocalizationHelper.GetString("Stopping"));
         await Instances.TaskQueueViewModel.Stop();
         if (_runningState.GetIdle() && !_runningState.GetStopping())

@@ -39,6 +39,7 @@ using MaaWpfGui.Helper;
 using MaaWpfGui.Main;
 using MaaWpfGui.Models;
 using MaaWpfGui.Models.AsstTasks;
+using MaaWpfGui.Services.Web;
 using MaaWpfGui.States;
 using MaaWpfGui.Utilities;
 using MaaWpfGui.Utilities.ValueType;
@@ -68,10 +69,6 @@ public partial class ToolboxViewModel : Screen
         DisplayName = LocalizationHelper.GetString("Toolbox");
         _runningState = RunningState.Instance;
         _runningState.StateChanged += (__, e) => {
-            Idle = e.NewState.Idle;
-            Inited = e.NewState.Inited;
-            Stopping = e.NewState.Stopping;
-
             if (e.NewState.Idle)
             {
                 PixelPaintParametersLocked = false;
@@ -119,32 +116,10 @@ public partial class ToolboxViewModel : Screen
         UpdateMiniGameTaskList();
     }
 
-    private bool _idle;
-
     /// <summary>
-    /// Gets or sets a value indicating whether it is idle.
+    /// Gets the shared run control state for run-state bindings.
     /// </summary>
-    public bool Idle
-    {
-        get => _idle;
-        set => SetAndNotify(ref _idle, value);
-    }
-
-    private bool _inited;
-
-    public bool Inited
-    {
-        get => _inited;
-        set => SetAndNotify(ref _inited, value);
-    }
-
-    private bool _stopping;
-
-    public bool Stopping
-    {
-        get => _stopping;
-        set => SetAndNotify(ref _stopping, value);
-    }
+    public RunControlState Run => RunControlState.Instance;
 
     #region Recruit
 
@@ -372,9 +347,15 @@ public partial class ToolboxViewModel : Screen
     [UsedImplicitly]
     public async Task RecruitStartCalc()
     {
+        if (Bootstrapper.TryGetTaskBlockReason() is { } reason)
+        {
+            RecruitInfo = reason;
+            return;
+        }
+
         string errMsg = string.Empty;
         RecruitInfo = LocalizationHelper.GetString("ConnectingToEmulator");
-        _runningState.SetIdle(false);
+        _runningState.BeginRun(RunOwner.Toolbox);
         var recruitCaught = await Task.Run(() => Instances.AsstProxy.AsstConnect(ref errMsg));
         if (!recruitCaught)
         {
@@ -1193,9 +1174,15 @@ public partial class ToolboxViewModel : Screen
     [UsedImplicitly]
     public async Task StartDepot()
     {
-        // feat/account-scoped-recognition-data: 鎵嬪姩璇嗗埆鍓嶉敋瀹氬洖閰嶇疆璐﹀彿妗? 闃叉鍐欏叆鏌ョ湅涓殑鍏朵粬璐﹀彿妗?
+if (Bootstrapper.TryGetTaskBlockReason() is { } reason)
+        {
+            DepotInfo = reason;
+            return;
+        }
+
+        // feat/account-scoped-recognition-data: 手动识别前固定回配置账号桶, 防止写入查看中的其它账号桶
         SwitchDataAccount(ResolveConfiguredAccountName());
-        _runningState.SetIdle(false);
+        _runningState.BeginRun(RunOwner.Toolbox);
         string errMsg = string.Empty;
         DepotInfo = LocalizationHelper.GetString("ConnectingToEmulator");
         bool caught = await Task.Run(() => Instances.AsstProxy.AsstConnect(ref errMsg));
@@ -1283,7 +1270,8 @@ public partial class ToolboxViewModel : Screen
         }
     }
 
-    public class Operator(string id, string name, int rarity, int elite = 0, int level = 0, int potential = 0)
+    public class Operator(string id, string name, int rarity, int elite = 0, int level = 0, int potential = 0,
+        List<OperBoxData.SkillData>? skills = null, List<OperBoxData.EquipData>? equips = null)
     {
         [JsonProperty("id")]
         public string Id { get; } = id;
@@ -1302,6 +1290,18 @@ public partial class ToolboxViewModel : Screen
 
         [JsonProperty("potential")]
         public int Potential { get; } = potential;
+
+        /// <summary>
+        /// Gets 技能专精，仅从一图流 OpenAPI 获取的数据有值
+        /// </summary>
+        [JsonProperty("skills", NullValueHandling = NullValueHandling.Ignore)]
+        public List<OperBoxData.SkillData>? Skills { get; } = skills;
+
+        /// <summary>
+        /// Gets 模组，仅从一图流 OpenAPI 获取的数据有值
+        /// </summary>
+        [JsonProperty("equips", NullValueHandling = NullValueHandling.Ignore)]
+        public List<OperBoxData.EquipData>? Equips { get; } = equips;
 
         public int IdNumber { get; } = ExtractIdNumber(id);
 
@@ -1471,11 +1471,12 @@ public partial class ToolboxViewModel : Screen
         return count <= 0 ? 1 : Math.Min(count, rowSize);
     }
 
-    private void SaveOperBoxDetails(List<OperBoxData.OperData> details)
+    private void SaveOperBoxDetails(List<OperBoxData.OperData> details, string source)
     {
         var data = new JObject {
             ["done"] = true,
             ["own_opers"] = JArray.FromObject(details),
+            ["source"] = source,
         };
 
         // feat/account-scoped-recognition-data: 璁板綍鏁版嵁鎵€灞炶处鍙峰師濮嬪悕 (涓嬫媺鏄剧ず鐢?
@@ -1581,7 +1582,12 @@ public partial class ToolboxViewModel : Screen
     }
 
     /// <summary>
-    /// 姣忔浼犺繘鏉ョ殑閮芥槸瀹屾暣鏁版嵁, 涓存椂缂撳瓨鍘婚噸
+/// 干员识别数据的来源（local 或 yituliu），决定导出时是否包含专精/模组字段
+    /// </summary>
+    private string _operBoxDataSource = "local";
+
+    /// <summary>
+    /// 每次传进来的都是完整数据, 临时缓存去重
     /// </summary>
     private HashSet<string> _tempOperHaveSet = [];
     private readonly HashSet<int> _pendingOperBoxRecognitionResetTaskIds = [];
@@ -1623,6 +1629,8 @@ public partial class ToolboxViewModel : Screen
             ResetOperBoxRecognitionState();
         }
 
+        _operBoxDataSource = details["source"]?.ToString() == "yituliu" ? "yituliu" : "local";
+
         var ownOpers = (details["own_opers"] as JArray)?.ToObject<List<OperBoxData.OperData>>()?.Where(o => !string.IsNullOrEmpty(o.Id)).ToList();
         if (ownOpers is null)
         {
@@ -1634,7 +1642,7 @@ public partial class ToolboxViewModel : Screen
             if (_tempOperHaveSet.Add(oper.Id))
             {
                 var name = DataHelper.GetLocalizedCharacterName(DataHelper.Operators.FirstOrDefault(i => i.Key == oper.Id).Value) ?? "???";
-                OperBoxHaveList.Add(new Operator(oper.Id, name, oper.Rarity, oper.Elite, oper.Level, oper.Potential));
+                OperBoxHaveList.Add(new Operator(oper.Id, name, oper.Rarity, oper.Elite, oper.Level, oper.Potential, oper.Skills, oper.Equips));
                 if (oper.Id == "char_485_pallas")
                 {
                     AchievementTrackerHelper.Instance.Unlock(AchievementIds.WarehouseKeeper);
@@ -1679,7 +1687,7 @@ public partial class ToolboxViewModel : Screen
         }
 
         OperBoxInfo = $"{LocalizationHelper.GetString("IdentificationCompleted")}  {LocalizationHelper.GetString("OperBoxRecognitionTip")}";
-        SaveOperBoxDetails(ownOpers);
+        SaveOperBoxDetails(ownOpers, _operBoxDataSource);
         _tempOperHaveSet = [];
         return true;
     }
@@ -1710,17 +1718,143 @@ public partial class ToolboxViewModel : Screen
     }
 
     /// <summary>
-    /// 寮€濮嬭瘑鍒共鍛?
-    /// UI 缁戝畾鐨勬柟娉?
+/// 从一图流 OpenAPI 拉取干员练度数据并按识别结果填充，不依赖模拟器连接。
+    /// 拉取失败只报错不回退 core 本地识别：开关开着是用户显式选择，静默回退会突然要求连接模拟器，无人值守队列下不可预期。
+    /// 拉取成功后才重置旧识别数据，失败时保留；运行状态（Idle）由调用方负责收尾。
+    /// </summary>
+    /// <returns>是否成功。</returns>
+    public async Task<bool> StartOperBoxFromYituliuApiAsync()
+    {
+        var token = SettingsViewModel.ThirdPartyServiceSettings.YituliuOpenApiToken.Trim();
+        if (string.IsNullOrEmpty(token))
+        {
+            OperBoxInfo = LocalizationHelper.GetString("YituliuTokenEmpty");
+            Instances.TaskQueueViewModel.AddLog(OperBoxInfo, UiLogColor.Error);
+            return false;
+        }
+
+        OperBoxInfo = LocalizationHelper.GetString("OperBoxFetchingFromYituliu");
+
+        try
+        {
+            var (result, data) = await YituliuApiService.GetOperatorInfoAsync(token);
+            if (result != YituliuApiService.TokenValidationResult.Valid || data is null)
+            {
+                var reason = result switch {
+                    YituliuApiService.TokenValidationResult.WriteOnly => LocalizationHelper.GetString("YituliuTokenWriteOnly"),
+                    YituliuApiService.TokenValidationResult.Invalid => LocalizationHelper.GetString("YituliuTokenInvalid"),
+                    _ => LocalizationHelper.GetString("YituliuTokenNetworkError"),
+                };
+                OperBoxInfo = LocalizationHelper.GetStringFormat("YituliuFetchFailed", reason);
+                Instances.TaskQueueViewModel.AddLog(OperBoxInfo, UiLogColor.Error);
+                return false;
+            }
+
+            var details = ConvertYituliuDataToDetails(data);
+            if ((details["own_opers"] as JArray) is not { Count: > 0 })
+            {
+                // 账号未绑定或未导入练度时接口返回空列表（本地资源过旧跳过全部干员时同样为空），此时保留本地数据，不落盘覆盖
+                OperBoxInfo = LocalizationHelper.GetString("YituliuNoOperBoxData");
+                Instances.TaskQueueViewModel.AddLog(OperBoxInfo, UiLogColor.Error);
+                return false;
+            }
+
+            // 拉取成功后才清空内存中的旧识别数据与同步时间，失败时原样保留
+            ResetOperBoxRecognitionState();
+            return OperBoxParse(details, updateSyncTime: true);
+        }
+        catch (Exception e)
+        {
+            _logger.Error("Failed to load operator box from yituliu open-api: {Message}", e.Message);
+            OperBoxInfo = LocalizationHelper.GetString("YituliuTokenNetworkError");
+            Instances.TaskQueueViewModel.AddLog(OperBoxInfo, UiLogColor.Error);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 将一图流 OpenAPI 返回的干员数据转换为 <see cref="OperBoxParse"/> 的输入格式，
+    /// 用本地干员表补全名称与星级，无法识别的干员（通常是本地资源过旧）跳过并记日志。
+    /// </summary>
+    /// <param name="data">一图流干员数据</param>
+    /// <returns>识别结果 details</returns>
+    private static JObject ConvertYituliuDataToDetails(List<YituliuApiService.OperatorInfo> data)
+    {
+        var ownOpers = new JArray();
+        foreach (var oper in data)
+        {
+            if (!DataHelper.Operators.TryGetValue(oper.Id, out var charInfo))
+            {
+                _logger.Information("Skipped unknown operator from yituliu open-api: {Id}", oper.Id);
+                continue;
+            }
+
+            var entry = new JObject {
+                ["id"] = oper.Id,
+                ["own"] = true,
+                ["elite"] = oper.EvolvePhase,
+                ["level"] = oper.Level,
+                ["potential"] = oper.PotentialRank,
+                ["rarity"] = charInfo.Rarity,
+            };
+            if (oper.Skills is not null)
+            {
+                entry["skills"] = JArray.FromObject(oper.Skills);
+            }
+
+            if (oper.Equips is not null)
+            {
+                entry["equips"] = JArray.FromObject(oper.Equips);
+            }
+
+            ownOpers.Add(entry);
+        }
+
+        return new JObject {
+            ["done"] = true,
+            ["own_opers"] = ownOpers,
+            ["source"] = "yituliu",
+        };
+    }
+
+    /// <summary>
+    /// 开始识别干员，按设置分派到一图流 OpenAPI 拉取或 core 本地识别。
+    /// UI 绑定的方法
     /// </summary>
     /// <returns>Task</returns>
     [UsedImplicitly]
     public async Task StartOperBox()
     {
-        // feat/account-scoped-recognition-data: 鎵嬪姩璇嗗埆鍓嶉敋瀹氬洖閰嶇疆璐﹀彿妗? 闃叉鍐欏叆鏌ョ湅涓殑鍏朵粬璐﹀彿妗?
+// feat/account-scoped-recognition-data: 手动识别前固定回配置账号桶, 防止写入查看中的其它账号桶
         SwitchDataAccount(ResolveConfiguredAccountName());
+        // 只拦 Core 本地识别分支；一图流 API 拉取不发 Core 任务，不受限
+        var useYituliuApi = SettingsViewModel.ThirdPartyServiceSettings.EnableOperBoxYituliuApi;
+        if (!useYituliuApi && Bootstrapper.TryGetTaskBlockReason() is { } reason)
+        {
+            OperBoxInfo = reason;
+            return;
+        }
+
+        _runningState.BeginRun(RunOwner.Toolbox);
+        if (useYituliuApi)
+        {
+            await StartOperBoxFromYituliuApiAsync();
+            _runningState.SetIdle(true);
+        }
+        else
+        {
+            await StartOperBoxFromCoreAsync();
+        }
+    }
+
+    /// <summary>
+    /// 连接模拟器并开始 core 本地识别。点击即清空旧识别数据；
+    /// 运行状态只在连接失败时于此复位，识别完成由 core 回调收尾。
+    /// </summary>
+    /// <returns>Task</returns>
+    private async Task StartOperBoxFromCoreAsync()
+    {
         ResetOperBoxRecognitionState();
-        _runningState.SetIdle(false);
         string errMsg = string.Empty;
         OperBoxInfo = LocalizationHelper.GetString("ConnectingToEmulator");
         bool caught = await Task.Run(() => Instances.AsstProxy.AsstConnect(ref errMsg));
@@ -1790,6 +1924,8 @@ public partial class ToolboxViewModel : Screen
                     Level = value.Level,
                     Potential = value.Potential,
                     Own = true,
+                    Skills = value.Skills,
+                    Equips = value.Equips,
                 });
             }
             else
@@ -1858,7 +1994,7 @@ public partial class ToolboxViewModel : Screen
     private void ExportOperBoxToMarkdown()
     {
         ExportOperBoxToFile(
-            list => string.Join(Environment.NewLine, BuildOperBoxMarkdownExportLines(list)),
+            list => string.Join(Environment.NewLine, BuildOperBoxMarkdownExportLines(list, _operBoxDataSource == "yituliu")),
             "Markdown files (*.md)|*.md|All files (*.*)|*.*",
             ".md",
             "Arknights_OperBox_Export.md");
@@ -1867,13 +2003,13 @@ public partial class ToolboxViewModel : Screen
     private void ExportOperBoxToCsv()
     {
         ExportOperBoxToFile(
-            list => string.Join(Environment.NewLine, BuildOperBoxCsvExportLines(list)),
+            list => string.Join(Environment.NewLine, BuildOperBoxCsvExportLines(list, _operBoxDataSource == "yituliu")),
             "CSV files (*.csv)|*.csv|All files (*.*)|*.*",
             ".csv",
             "Arknights_OperBox_Export.csv");
     }
 
-    private static IEnumerable<string> BuildOperBoxMarkdownExportLines(IReadOnlyList<OperBoxData.OperData> items)
+    private static IEnumerable<string> BuildOperBoxMarkdownExportLines(IReadOnlyList<OperBoxData.OperData> items, bool includeYituliuFields)
     {
         var nameHeader = LocalizationHelper.GetString("OperBoxExportHeaderName");
         var idHeader = LocalizationHelper.GetString("OperBoxExportHeaderId");
@@ -1885,15 +2021,41 @@ public partial class ToolboxViewModel : Screen
         var yes = LocalizationHelper.GetString("OperBoxExportYes");
         var no = LocalizationHelper.GetString("OperBoxExportNo");
 
-        yield return $"| {nameHeader} | {idHeader} | {rarityHeader} | {eliteHeader} | {levelHeader} | {ownHeader} | {potentialHeader} |";
-        yield return "| :-- | :-- | :-- | :-- | :-- | :-- | :-- |";
+        var skillsHeader = LocalizationHelper.GetString("OperBoxExportHeaderSkills");
+        var equipsHeader = LocalizationHelper.GetString("OperBoxExportHeaderEquips");
+
+        yield return includeYituliuFields
+            ? $"| {nameHeader} | {idHeader} | {rarityHeader} | {eliteHeader} | {levelHeader} | {ownHeader} | {potentialHeader} | {skillsHeader} | {equipsHeader} |"
+            : $"| {nameHeader} | {idHeader} | {rarityHeader} | {eliteHeader} | {levelHeader} | {ownHeader} | {potentialHeader} |";
+        yield return includeYituliuFields
+            ? "| :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |"
+            : "| :-- | :-- | :-- | :-- | :-- | :-- | :-- |";
         foreach (var item in items)
         {
-            yield return $"| {item.Name} | {item.Id} | {item.Rarity} | {item.Elite} | {item.Level} | {(item.Own ? yes : no)} | {item.Potential} |";
+            var baseColumns = $"| {item.Name} | {item.Id} | {item.Rarity} | {item.Elite} | {item.Level} | {(item.Own ? yes : no)} | {item.Potential} |";
+            yield return includeYituliuFields ? baseColumns + $" {FormatSkillsColumn(item)} | {FormatEquipsColumn(item)} |" : baseColumns;
         }
     }
 
-    private static IEnumerable<string> BuildOperBoxCsvExportLines(IReadOnlyList<OperBoxData.OperData> items)
+    /// <summary>
+    /// 技能专精列：按技能顺序拼接专精等级（如 3/3/0），无专精技能为空。
+    /// </summary>
+    private static string FormatSkillsColumn(OperBoxData.OperData item)
+    {
+        return item.Skills is { Count: > 0 } ? string.Join("/", item.Skills.Select(s => s.Level)) : string.Empty;
+    }
+
+    /// <summary>
+    /// 模组列：分支字母加等级（如 X3 Y1），过滤等级为 0 的占位条目。
+    /// </summary>
+    private static string FormatEquipsColumn(OperBoxData.OperData item)
+    {
+        return item.Equips is { Count: > 0 }
+            ? string.Join(" ", item.Equips.Where(e => e.Level > 0).Select(e => $"{e.Type}{e.Level}"))
+            : string.Empty;
+    }
+
+    private static IEnumerable<string> BuildOperBoxCsvExportLines(IReadOnlyList<OperBoxData.OperData> items, bool includeYituliuFields)
     {
         var nameHeader = LocalizationHelper.GetString("OperBoxExportHeaderName");
         var idHeader = LocalizationHelper.GetString("OperBoxExportHeaderId");
@@ -1905,7 +2067,12 @@ public partial class ToolboxViewModel : Screen
         var yes = LocalizationHelper.GetString("OperBoxExportYes");
         var no = LocalizationHelper.GetString("OperBoxExportNo");
 
-        yield return $"{nameHeader},{idHeader},{rarityHeader},{eliteHeader},{levelHeader},{ownHeader},{potentialHeader}";
+        var skillsHeader = LocalizationHelper.GetString("OperBoxExportHeaderSkills");
+        var equipsHeader = LocalizationHelper.GetString("OperBoxExportHeaderEquips");
+
+        yield return includeYituliuFields
+            ? $"{nameHeader},{idHeader},{rarityHeader},{eliteHeader},{levelHeader},{ownHeader},{potentialHeader},{skillsHeader},{equipsHeader}"
+            : $"{nameHeader},{idHeader},{rarityHeader},{eliteHeader},{levelHeader},{ownHeader},{potentialHeader}";
         foreach (var item in items)
         {
             var name = item.Name ?? string.Empty;
@@ -1914,7 +2081,8 @@ public partial class ToolboxViewModel : Screen
                 name = "\"" + name.Replace("\"", "\"\"") + "\"";
             }
 
-            yield return $"{name},{item.Id},{item.Rarity},{item.Elite},{item.Level},{(item.Own ? yes : no)},{item.Potential}";
+            var baseColumns = $"{name},{item.Id},{item.Rarity},{item.Elite},{item.Level},{(item.Own ? yes : no)},{item.Potential}";
+            yield return includeYituliuFields ? baseColumns + $",{FormatSkillsColumn(item)},{FormatEquipsColumn(item)}" : baseColumns;
         }
     }
 
@@ -1963,7 +2131,13 @@ public partial class ToolboxViewModel : Screen
 
     public async Task StartGacha(bool once = true)
     {
-        _runningState.SetIdle(false);
+        if (Bootstrapper.TryGetTaskBlockReason() is { } reason)
+        {
+            GachaInfo = reason;
+            return;
+        }
+
+        _runningState.BeginRun(RunOwner.Toolbox);
 
         string errMsg = string.Empty;
         GachaInfo = LocalizationHelper.GetString("ConnectingToEmulator");
@@ -2258,10 +2432,10 @@ public partial class ToolboxViewModel : Screen
 
             AchievementTrackerHelper.Instance.Unlock(AchievementIds.PeekScreen);
 
-            // 濡傛灉娌′换鍔″湪杩愯锛岄渶瑕佸厛杩炴帴锛屽苟鏍囪鏄敱 Peep() 鏂规硶鍚姩鐨?Peep
-            if (Idle)
+// 如果没任务在运行，需要先连接，并标记是由 Peep() 方法启动的 Peep
+            if (_runningState.GetIdle())
             {
-                _runningState.SetIdle(false);
+                _runningState.BeginRun(RunOwner.Toolbox);
                 string errMsg = string.Empty;
                 bool caught = await Task.Run(() => Instances.AsstProxy.AsstConnect(ref errMsg));
                 if (!caught)
@@ -2951,11 +3125,31 @@ public partial class ToolboxViewModel : Screen
         _ = StartMiniGameAsync();
     }
 
-    private async Task StartMiniGameAsync()
+    /// <summary>
+    /// 停止小游戏；其他任务运行时作为跨页停止入口，走手动停止核心。
+    /// UI 绑定的方法
+    /// </summary>
+    /// <returns>Task</returns>
+    [UsedImplicitly]
+    public async Task StopMiniGame()
     {
-        if (!Idle)
+        // 小游戏自身运行中的停止是清场，不发射结束脚本；
+        // 其他归属的运行经此停止属手动停止语义，脚本条件由运行归属判定
+        if (_runningState.Owner == RunOwner.MiniGame)
         {
             await Instances.TaskQueueViewModel.Stop();
+        }
+        else
+        {
+            await Instances.TaskQueueViewModel.StopManuallyAsync();
+        }
+    }
+
+    private async Task StartMiniGameAsync()
+    {
+        if (Bootstrapper.TryGetTaskBlockReason() is { } reason)
+        {
+            Instances.TaskQueueViewModel.AddLog(reason, UiLogColor.Error);
             return;
         }
 
@@ -2968,7 +3162,7 @@ public partial class ToolboxViewModel : Screen
 
         Instances.TaskQueueViewModel.ClearLog();
 
-        _runningState.SetIdle(false);
+        _runningState.BeginRun(RunOwner.MiniGame);
         if (isPixelPaint)
         {
             PixelPaintParametersLocked = true;

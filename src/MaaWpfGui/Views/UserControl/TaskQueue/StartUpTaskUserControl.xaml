@@ -11,6 +11,7 @@
     xmlns:hc="https://handyorg.github.io/handycontrol"
     xmlns:helper="clr-namespace:MaaWpfGui.Helper"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:properties="clr-namespace:MaaWpfGui.Styles.Properties"
     xmlns:s="https://github.com/canton7/Stylet"
     xmlns:settings_vms="clr-namespace:MaaWpfGui.ViewModels.UserControl.Settings"
     xmlns:taskQueue_vms="clr-namespace:MaaWpfGui.ViewModels.UserControl.TaskQueue"
@@ -23,9 +24,7 @@
     <StackPanel>
         <StackPanel d:Visibility="Visible" Visibility="{c:Binding 'ConnectConfig != enums:ConnectConfig.PC', Source={x:Static settings_vms:ConnectSettingsUserControlModel.Instance}}">
             <StackPanel d:Visibility="Visible" Visibility="{c:Binding 'ClientType == enums:ClientType.Official or ClientType == enums:ClientType.Bilibili or ClientType == enums:ClientType.Txwy or ClientType == enums:ClientType.KR', Source={x:Static settings_vms:GameSettingsUserControlModel.Instance}}">
-                <!--  Account Cycle Section  -->
-                <!--  fix/account-rotation-supersede-switcher: 吸收 AccountSwitch 生态位, 单账号 section 整段删除;
-                      轮换 CheckBox 加 tooltip 与 + 添加账号按钮共用 AccountCycleTip 提示语义  -->
+                <!--  Account Cycle Section (fork §7.16 吸收 AccountSwitch 生态位)  -->
                 <StackPanel
                     Margin="0,5"
                     HorizontalAlignment="Left"
@@ -63,8 +62,6 @@
                                             Margin="4,0"
                                             hc:BorderElement.CornerRadius="4"
                                             Text="{Binding AccountName, UpdateSourceTrigger=PropertyChanged}" />
-                                        <!--  fix/account-rotation-supersede-switcher: [✖] 删除按钮永久可见, 不再依赖 ShowDeleteMode 开关;
-                                              点击弹出 MessageBox 二次确认 (VM RemoveAccount 内), 防误删  -->
                                         <Button
                                             Grid.Column="2"
                                             Width="20"
@@ -84,17 +81,12 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
-                    <!--  fix/account-rotation-supersede-switcher: 末尾 [+ 添加账号] 按钮替代二级「编辑模式」ComboBox;
-                          CommandParameter={x:Null} 走 AddAccountAfter 的 null 分支 (insertIndex = list.Count)  -->
                     <Button
                         Margin="0,5"
                         HorizontalAlignment="Left"
                         Command="{s:Action AddAccountAfter}"
                         CommandParameter="{x:Null}"
                         Content="{DynamicResource AccountCycleAddNewAccount}" />
-
-                    <!--  feat/defer-rogue: Late stage rogue & reclamation  -->
-                    <!--  fix/defer-rogue/1: 轮换运行中(IsCycling=true)时禁用此开关,防止运行中切换污染 phase 2 步骤  -->
                     <StackPanel Margin="0,5" HorizontalAlignment="Left" Orientation="Horizontal">
                         <CheckBox
                             MaxWidth="{c:Binding '220 - ActualWidth',
@@ -132,7 +124,7 @@
             Margin="0,5"
             hc:InfoElement.Title="{DynamicResource ClientType}"
             DisplayMemberPath="Display"
-            IsHitTestVisible="{Binding Idle, Source={x:Static helper:Instances.SettingsViewModel}}"
+            IsHitTestVisible="{Binding Run.Idle, Source={x:Static helper:Instances.SettingsViewModel}}"
             ItemsSource="{Binding ClientTypeList, Source={x:Static settings_vms:GameSettingsUserControlModel.Instance}}"
             SelectedValue="{Binding ClientType, Source={x:Static settings_vms:GameSettingsUserControlModel.Instance}}"
             SelectedValuePath="Value"
@@ -166,14 +158,21 @@
                 SelectedValue="{Binding ConnectConfig}"
                 SelectedValuePath="Value" />
 
-            <TextBlock
-                Margin="5,0"
-                HorizontalAlignment="Center"
-                d:Visibility="Visible"
-                Foreground="Red"
-                Text="{DynamicResource UseAttachWindowWarning}"
-                TextWrapping="Wrap"
-                Visibility="{c:Binding 'ConnectConfig == enums:ConnectConfig.PC'}" />
+            <StackPanel d:Visibility="Visible" Visibility="{c:Binding 'ConnectConfig == enums:ConnectConfig.PC'}">
+                <TextBlock
+                    Margin="5,0"
+                    HorizontalAlignment="Left"
+                    Foreground="{DynamicResource ErrorLogBrush}"
+                    Text="{DynamicResource UseAttachWindowWarning}"
+                    TextWrapping="Wrap" />
+                <TextBlock
+                    Margin="5,0"
+                    HorizontalAlignment="Left"
+                    properties:RainbowAnimationBehavior.IsActive="True"
+                    Foreground="{DynamicResource RainbowFlowBrush}"
+                    Text="{DynamicResource UseAttachWindowWarningRecommendation}"
+                    TextWrapping="Wrap" />
+            </StackPanel>
 
             <!--  ADB 连接配置区域  -->
             <StackPanel d:Visibility="Visible" Visibility="{c:Binding 'ConnectConfig != enums:ConnectConfig.PC'}">
@@ -197,20 +196,16 @@
                         Content="{DynamicResource Select}" />
                 </Grid>
 
-                <Grid Margin="0,5" Visibility="{c:Binding !AutoDetectConnection}">
+                <StackPanel Margin="0,5" Visibility="{c:Binding !AutoDetectConnection}">
                     <StackPanel
+                        Margin="8,0,0,5"
                         HorizontalAlignment="Left"
-                        VerticalAlignment="Top"
                         Orientation="Horizontal">
-                        <TextBlock
-                            Margin="8,0,0,0"
-                            Text="{DynamicResource ConnectionAddress}"
-                            Visibility="Hidden" />
-                        <controls:TooltipBlock Margin="0,0,5,0" TooltipText="{DynamicResource ConnectionAddressTip}" />
+                        <controls:TextBlock Text="{DynamicResource ConnectionAddress}" />
+                        <controls:TooltipBlock TooltipText="{DynamicResource ConnectionAddressTip}" />
                     </StackPanel>
                     <hc:ComboBox
                         HorizontalContentAlignment="Stretch"
-                        hc:InfoElement.Title="{DynamicResource ConnectionAddress}"
                         IsEditable="True"
                         ItemsSource="{Binding ConnectAddressHistory}"
                         Text="{Binding ConnectAddress, UpdateSourceTrigger=LostFocus}">
@@ -242,16 +237,40 @@
                             </DataTemplate>
                         </ComboBox.ItemTemplate>
                     </hc:ComboBox>
-                </Grid>
+                </StackPanel>
 
-                <hc:ComboBox
-                    Margin="0,5"
-                    hc:InfoElement.Title="{DynamicResource TouchMode}"
-                    DisplayMemberPath="Display"
-                    IsHitTestVisible="{Binding Idle, Source={x:Static helper:Instances.SettingsViewModel}}"
-                    ItemsSource="{Binding TouchModeList}"
-                    SelectedValue="{Binding TouchMode}"
-                    SelectedValuePath="Value" />
+                <StackPanel Margin="0,5">
+                    <StackPanel
+                        Margin="8,0,0,5"
+                        HorizontalAlignment="Left"
+                        Orientation="Horizontal">
+                        <controls:TextBlock Text="{DynamicResource TouchMode}" />
+                        <controls:TooltipBlock>
+                            <controls:TooltipBlock.CustomToolTip>
+                                <StackPanel MaxWidth="400">
+                                    <MediaElement
+                                        Width="252"
+                                        Height="268"
+                                        IsMuted="True"
+                                        LoadedBehavior="Play"
+                                        Source="{Binding Source={x:Static settings_vms:ConnectSettingsUserControlModel.TouchModeVideoPath}}" />
+                                    <TextBlock
+                                        Margin="0,8,0,0"
+                                        FontSize="12"
+                                        Foreground="{DynamicResource PrimaryTextBrush}"
+                                        Text="{DynamicResource TouchModeTip}"
+                                        TextWrapping="Wrap" />
+                                </StackPanel>
+                            </controls:TooltipBlock.CustomToolTip>
+                        </controls:TooltipBlock>
+                    </StackPanel>
+                    <hc:ComboBox
+                        DisplayMemberPath="Display"
+                        IsHitTestVisible="{Binding Run.Idle, Source={x:Static helper:Instances.SettingsViewModel}}"
+                        ItemsSource="{Binding TouchModeList}"
+                        SelectedValue="{Binding TouchMode}"
+                        SelectedValuePath="Value" />
+                </StackPanel>
             </StackPanel>
 
             <!--  额外配置  -->
@@ -276,7 +295,7 @@
                                 </CheckBox>
                                 <hc:TextBox
                                     Margin="0,5"
-                                    hc:InfoElement.Placeholder="Example: C:\Program Files\Netease\MuMuPlayer"
+                                    hc:InfoElement.Placeholder="{DynamicResource MuMu12EmulatorPathPlaceholder}"
                                     hc:TitleElement.Title="{DynamicResource MuMu12EmulatorPath}"
                                     hc:TitleElement.TitlePlacement="Top"
                                     Text="{Binding EmulatorPath}" />
@@ -311,7 +330,7 @@
                             <StackPanel d:Visibility="Visible" Visibility="{c:Binding Enable}">
                                 <hc:TextBox
                                     Margin="0,5"
-                                    hc:InfoElement.Placeholder="Example: C:\leidian\LDPlayer9"
+                                    hc:InfoElement.Placeholder="{DynamicResource LdEmulatorPathPlaceholder}"
                                     hc:TitleElement.Title="{DynamicResource LdEmulatorPath}"
                                     hc:TitleElement.TitlePlacement="Left"
                                     Text="{Binding EmulatorPath}" />
@@ -340,7 +359,18 @@
                                 DisplayMemberPath="Display"
                                 ItemsSource="{Binding ScreencapMethodList}"
                                 SelectedValue="{Binding ScreencapMethod}"
-                                SelectedValuePath="Value" />
+                                SelectedValuePath="Value">
+                                <hc:ComboBox.ItemContainerStyle>
+                                    <Style BasedOn="{StaticResource ComboBoxItemBaseStyle}" TargetType="{x:Type ComboBoxItem}">
+                                        <Setter Property="IsEnabled" Value="{Binding IsEnabled}" />
+                                        <Style.Triggers>
+                                            <Trigger Property="IsEnabled" Value="False">
+                                                <Setter Property="Opacity" Value="0.4" />
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </hc:ComboBox.ItemContainerStyle>
+                            </hc:ComboBox>
 
                             <hc:ComboBox
                                 Margin="0,5"
@@ -348,7 +378,18 @@
                                 DisplayMemberPath="Display"
                                 ItemsSource="{Binding MouseMethodList}"
                                 SelectedValue="{Binding MouseMethod}"
-                                SelectedValuePath="Value" />
+                                SelectedValuePath="Value">
+                                <hc:ComboBox.ItemContainerStyle>
+                                    <Style BasedOn="{StaticResource ComboBoxItemBaseStyle}" TargetType="{x:Type ComboBoxItem}">
+                                        <Setter Property="IsEnabled" Value="{Binding IsEnabled}" />
+                                        <Style.Triggers>
+                                            <Trigger Property="IsEnabled" Value="False">
+                                                <Setter Property="Opacity" Value="0.4" />
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </hc:ComboBox.ItemContainerStyle>
+                            </hc:ComboBox>
 
                             <hc:ComboBox
                                 Margin="0,5"
@@ -363,20 +404,29 @@
             </ContentControl>
 
             <!--  截图测试  -->
-            <StackPanel d:Visibility="Visible" Visibility="{c:Binding 'ConnectConfig != enums:ConnectConfig.PC'}">
+            <StackPanel Orientation="Horizontal">
                 <Button
                     Height="30"
                     Margin="0,5"
                     HorizontalAlignment="Left"
                     Command="{s:Action TestLinkAndGetImage}"
                     Content="{DynamicResource ScreenshotTest}" />
-                <controls:TextBlock
-                    Margin="0,5"
+                <Button
+                    Height="30"
+                    Margin="10,5,0,5"
                     HorizontalAlignment="Left"
-                    Text="{Binding TestLinkInfo}"
-                    TextWrapping="Wrap"
-                    Visibility="{c:Binding 'TestLinkInfo!=&quot;&quot;'}" />
+                    Command="{s:Action RestoreGameWindowPosition,
+                                       Target={x:Static helper:Instances.AsstProxy}}"
+                    Content="{DynamicResource WindowRestore}"
+                    Visibility="{c:Binding ShowWindowRestoreButton}" />
             </StackPanel>
+
+            <controls:TextBlock
+                Margin="0,5"
+                HorizontalAlignment="Left"
+                Text="{Binding TestLinkInfo}"
+                TextWrapping="Wrap"
+                Visibility="{c:Binding 'TestLinkInfo!=&quot;&quot;'}" />
         </StackPanel>
     </StackPanel>
 </UserControl>

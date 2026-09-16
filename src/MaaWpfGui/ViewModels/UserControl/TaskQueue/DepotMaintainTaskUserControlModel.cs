@@ -133,10 +133,9 @@ public class DepotMaintainTaskUserControlModel : TaskSettingsViewModel, DepotMai
                 MedicineExpireDays = task.UseExpiringMedicine ? DepotMaintainTask.ExpiringMedicineDays : 0,
                 Series = task.UseAutoSeries ? 0 : 1,
                 MaxTimes = int.MaxValue,
-                ReportToPenguin = SettingsViewModel.GameSettings.EnablePenguin,
-                ReportToYituliu = SettingsViewModel.GameSettings.EnableYituliu,
-                PenguinId = SettingsViewModel.GameSettings.PenguinId,
-                YituliuId = SettingsViewModel.GameSettings.PenguinId,
+                ReportToPenguin = SettingsViewModel.ThirdPartyServiceSettings.EnablePenguin,
+                ReportToYituliu = SettingsViewModel.ThirdPartyServiceSettings.EnableYituliu,
+                PenguinId = SettingsViewModel.ThirdPartyServiceSettings.PenguinId,
                 ServerType = Instances.SettingsViewModel.ServerType,
                 ClientType = SettingsViewModel.GameSettings.ClientType,
             };
@@ -170,6 +169,15 @@ public class DepotMaintainTaskUserControlModel : TaskSettingsViewModel, DepotMai
     {
         get => GetTaskConfig<DepotMaintainTask>().SkipDuringResourceCollection;
         set => SetTaskConfig<DepotMaintainTask>(t => t.SkipDuringResourceCollection == value, t => t.SkipDuringResourceCollection = value);
+    }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether 仅下发第一个库存不足且当日可执行的计划，其补满后由下次运行继续后续计划。
+    /// </summary>
+    public bool OnlyFirstInsufficientPlan
+    {
+        get => GetTaskConfig<DepotMaintainTask>().OnlyFirstInsufficientPlan;
+        set => SetTaskConfig<DepotMaintainTask>(t => t.OnlyFirstInsufficientPlan == value, t => t.OnlyFirstInsufficientPlan = value);
     }
 
     /// <summary>
@@ -616,10 +624,9 @@ public class DepotMaintainTaskUserControlModel : TaskSettingsViewModel, DepotMai
                     Stone = depot.UseStone && plan.UseStone ? plan.StoneCount : 0,
                     MedicineExpireDays = depot.UseExpiringMedicine ? DepotMaintainTask.ExpiringMedicineDays : 0,
                     Series = depot.UseAutoSeries ? 0 : 1,
-                    ReportToPenguin = SettingsViewModel.GameSettings.EnablePenguin,
-                    ReportToYituliu = SettingsViewModel.GameSettings.EnableYituliu,
-                    PenguinId = SettingsViewModel.GameSettings.PenguinId,
-                    YituliuId = SettingsViewModel.GameSettings.PenguinId,
+                    ReportToPenguin = SettingsViewModel.ThirdPartyServiceSettings.EnablePenguin,
+                    ReportToYituliu = SettingsViewModel.ThirdPartyServiceSettings.EnableYituliu,
+                    PenguinId = SettingsViewModel.ThirdPartyServiceSettings.PenguinId,
                     ServerType = Instances.SettingsViewModel.ServerType,
                     ClientType = SettingsViewModel.GameSettings.ClientType,
                 };
@@ -634,6 +641,10 @@ public class DepotMaintainTaskUserControlModel : TaskSettingsViewModel, DepotMai
                     taskIds.Add(id);
                     depot.PlanList[i] = plan with { TaskId = id };
                     Instances.TaskQueueViewModel.AddLog(LocalizationHelper.GetStringFormat("DepotPlanInventoryInsufficient", i + 1, dropName, currentCount.ToString("N0"), plan.DropCount.ToString("N0"), need.ToString("N0")));
+                    if (depot.OnlyFirstInsufficientPlan)
+                    {
+                        break; // 仅下发第一个库存不足的计划，其后计划本轮不评估也不输出日志
+                    }
                 }
             }
 

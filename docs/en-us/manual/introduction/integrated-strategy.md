@@ -5,13 +5,13 @@ icon: ri:game-fill
 
 # Auto Integrated Strategy
 
-MAA selects the latest theme by default, which can be changed in `Auto Integrated Strategy` - `Integrated Strategy Theme`.
+MAA selects the Phantom theme by default, which can be changed in `Auto Integrated Strategy` - `Integrated Strategy Theme`.
 
 ::: warning
 All features involving Copilot require the following prerequisites, including but not limited to Copilot and Auto I. S.
 
 - At least 60 frames of **stable** framerate
-- Touch mode set to Minitouch or MaaTouch
+- Touch mode set to Minitouch, MaaTouch, or MuMu Touch Enhancement
 
 :::
 
