@@ -714,10 +714,38 @@ git commit -m $msg
 
 **首次踩坑实例**：2026-09-16 19:28 / 19:29 / 22:24 三次冒烟均通过 `ret: true`、0 错误、进程存活。
 
+### 10.4 MAA HttpClient 代理配置：gui.new.json vs gui.json 陷阱
+
+**症状**：设置了本地代理（Clash / SS / 其他）让 MAA 外部 HTTP（api.maa.plus / Penguin / Yituliu / GitHub）走代理，重启 MAA 后仍走默认直连；`gui.log` 无 `Rebuild HttpClient with proxy` 行；外部请求要么 `TaskCanceledException: Timeout 15s` 要么 `SSL EOF`。
+
+**根因模式**：MAA 的新配置实际读 `install-staging/config/gui.new.json`（System.Text.Json `Root` 对象，`ConfigFactory.cs:43`），**不是** `install-staging/config/gui.json`（legacy Newtonsoft 扁平 key-value）。两者并存但语义不同：
+
+| 文件 | 格式 | 读取方 | 代理字段路径 |
+|------|------|--------|------------|
+| `config/gui.new.json` | 嵌套对象（new） | `ConfigFactory.Root`（System.Text.Json，`ConfigFactory.cs:43`） | `Update.Proxy` / `Update.ProxyType`（顶层 `Update` 子对象） |
+| `config/gui.json` | 扁平 key-value（legacy） | `ConfigurationHelper`（Newtonsoft，`ConfigurationHelper.cs:317`） | `Global.VersionUpdate.Proxy` / `Global.VersionUpdate.ProxyType` |
+
+迁移代码（`Helper/ConfigConverter.cs:81-83`）只对 legacy 配置触发，不会把 `Global.VersionUpdate.Proxy` 自动搬到 `Root.Update.Proxy`。new-format 配置彻底绕过 migration。
+
+**正确做法**：
+
+| # | 操作 | 命令 |
+|---|------|------|
+| 1 | 启动 MAA 后查代理是否挂载 | `Select-String -Path install-staging/debug/gui.log -Pattern 'Rebuild HttpClient with proxy'` |
+| 2 | 若无日志，编辑正确文件 | `install-staging/config/gui.new.json`，找 `"Proxy": ""`，改为 `"Proxy": "127.0.0.1:7897"` |
+| 3 | JSON 不破坏校验 | `[System.IO.File]::ReadAllText('install-staging/config/gui.new.json') \| ConvertFrom-Json` 应成功，`$result.Update.Proxy` 应为代理地址 |
+| 4 | 重启 MAA | HttpService 是单例（`Bootstrapper.cs:902 InSingletonScope`），构造时一次挂代理；改配置必须重启 |
+| 5 | 验证 | 重启后 gui.log 应有 `[INF][HttpService] Rebuild HttpClient with proxy Http://127.0.0.1:7897` |
+
+**代理格式**：`Proxy` 不含 `://` 时自动加 `ProxyType + "://"` 前缀（`HttpService.cs:52`）。例：`"127.0.0.1:7897" + ProxyType="Http"` → `Http://127.0.0.1:7897`；SOCKS5 填 `127.0.0.1:7897` + `ProxyType=Socks5`。
+
+**首次踩坑记录**：2026-09-19 — fork 用户报 MAA 跑日常 Penguin/Yituliu 报数失败（直连 SSL EOF）。在 `gui.json` 的 `Global` 加 `VersionUpdate.Proxy` 键失败，日志无 `Rebuild HttpClient with proxy`。根因即上表 new vs legacy 路径混淆。改 `gui.new.json` 的 `Update.Proxy` 字段后 1 分钟内日志出现代理行，api.maa.plus 返回 304。**Proxy / ProxyType 字段位置在 `gui.new.json` 顶层 `"Update": { ... }` 子对象里，不是顶层散落，也不是 `Global` 子对象里**。
+
 ---
 
 **§10 与其它章节互引**：
 - §10.1 通用 → 所有 commit 操作前
 - §10.2 dead key → 任何 feat/* / fix/* 回退后
 - §10.3 冒烟 → 所有修改后必跑
+- §10.4 代理配置 → 任何「设置本地代理走 Clash」类需求
 - 上游同步专项 → [`WORKFLOW.md`](./WORKFLOW.md)
