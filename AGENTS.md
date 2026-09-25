@@ -121,7 +121,7 @@ staging ──── feat/<name>, fix/<name> ← 从 staging 拉出
 | 2026-08-13 | `1774d128a2` | 17 commit（4 修复 + 3 文档 + 10 间接） | trust staging | §7.10/§7.11/§7.12/§7.13 全部 fix 走 staging 验证流程后晋升 |
 | 2026-08-30 | `a0f530912c` | 20 commit（2 修复 + 1 feat + 3 工具/重构 + 14 间接） | trust staging | §7.14/§7.15/§7.16/§7.17 全部 fix/feat 走 staging 验证流程后晋升；install-staging 2026-08-28 09:28 内核指纹覆盖全部变更 |
 | 2026-09-16 | _待晋升_ | v6.17.0 → v6.18.0-beta.1 全量同步 merge `6d32144858`（staging 已含，branch 未晋升） | trust staging | §7.22 `feat/upstream-v618-sync` 合入 staging；§7.18 已先手摘上游 `da5ccfe4ed` depot 修复入 staging（9/7）；编译/冒烟/fork marker 全过 |
-| 2026-09-25 | _待晋升_ | v6.18.0 release 跟进 merge `0a3884231d` + `1b7b087aae`（staging 已含，branch 未晋升） | trust staging | §7.22 阶段 11：上游 134 commit + MaaUtils bump `6e9ba33` + 冒烟/总检全过；晋升实测项与上行一致 |
+| 2026-09-25 | _待晋升_ | v6.18.0 release 跟进 merge `0a3884231d` + `1b7b087aae`（staging 已含，branch 未晋升） | trust staging | §7.22 阶段 11-13：上游 134 commit + MaaUtils bump `6e9ba33` + 冒烟/总检全过；阶段 12 OOM 修复（第三方 DLL 半匹配同步）+ CPU/GPU OCR 双模式实测通过；阶段 13 编码事故修复（LOG 阶段 11 重建 / AGENTS §9 上游原文重写）+ WORKFLOW §9 错误 8-11 沉淀；晋升实测项与上行一致 |
 
 晋升后实测验证项（仅适用于 `staging → branch` 晋升决策；本次晋升 trust staging）：
 - 多账号切号（官服 + B 服，含新增繁中服支援）
@@ -584,10 +584,10 @@ Select-String -Path install-staging/MAA.runtimeconfig.json -Pattern "STARTUP_HOO
 | 生命周期 | 2026-09-16 创建（从 staging 拉出） → 2026-09-16 merge `6d32144858` 合入 staging → 2026-09-25 merge `0a3884231d`（v6.18.0 release，134 commit）+ `1b7b087aae`（编译修复三连）合入 staging |
 | 关键 commit | `6d32144858`（merge: upstream/master-v2 v6.18.0-beta.1 三方合并 — 同步基线）+ API 迁移修复 commit；`0a3884231d`（merge: upstream/master-v2 v6.18.0 → staging）+ `1b7b087aae`（fix(post-merge) 编译修复三连） |
 | 子修复分支 | 无 |
-| 验证 | dotnet build 0 错误；MaaCore 472/472 编译成功；install-staging 部署完成（STARTUP_HOOKS=libloader ✓）；启动冒烟 AsstLoadResource ret: true 无闪退；fork marker 12 项全命中；MaaCore.dll MD5 与 build 产物一致；8 项实机冒烟待用户日常验证。v6.18.0 跟进（09-25）：dotnet build 0 错误；MaaCore 249/249（含上游新增 AutoRaisePotentialTaskPlugin 等）；两轮冒烟（22:34/22:40）`ret: true` + 0 Unhandled/Fatal；post-merge-validate 7/7；merge-base = `23feeddc53` = 上游 release commit |
-| 部署备注 | C++ 工具链实际位于 `E:\Tools\msvc-portable\msvc\`（`C:\msvc-portable` 为 junction 指向同处；MSVC 14.51.36231 + SDK 28000，env 模板 `setup_x64.bat` 以 `%~dp0` 自定位，两路径均可）；CMake 用 Ninja + cl（preset `windows-publish-x64` 会报 "generator platform: x64 Does not match"，须 `cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_{C,CXX}_COMPILER=cl`）；上游 release 窗口 bump 的子模块须在 MaaCore 打包前 `git submodule update`（否则 DLL 用旧 MaaUtils 编出） |
+| 验证 | dotnet build 0 错误；MaaCore 472/472 编译成功；install-staging 部署完成（STARTUP_HOOKS=libloader ✓）；启动冒烟 AsstLoadResource ret: true 无闪退；fork marker 12 项全命中；MaaCore.dll MD5 与 build 产物一致；8 项实机冒烟待用户日常验证。v6.18.0 跟进（09-25）：dotnet build 0 错误；MaaCore 249/249（含上游新增 AutoRaisePotentialTaskPlugin 等）；两轮冒烟（22:34/22:40）`ret: true` + 0 Unhandled/Fatal；merge-base = `23feeddc53` = 上游 release commit；阶段 12：三次 OOM（第三方 DLL 半匹配）→ 同步 5 DLL 后 CPU 模式 `det 1 rec 1 ocr 1`（3091ms）全任务链跑通 + GPU 模式 `det 1 rec 1 ocr 1`（3255ms）开始唤醒→基建链 0 错误；阶段 13：LOG 阶段 11 乱码重建 + AGENTS §9 用上游原文重写 + WORKFLOW §9 错误 8-11 沉淀；post-merge-validate 8/8（[8] 为新增 DLL 同步检查） |
+| 部署备注 | C++ 工具链实际位于 `E:\Tools\msvc-portable\msvc\`（`C:\msvc-portable` 为 junction 指向同处；MSVC 14.51.36231 + SDK 28000，env 模板 `setup_x64.bat` 以 `%~dp0` 自定位，两路径均可）；CMake 用 Ninja + cl（preset `windows-publish-x64` 会报 "generator platform: x64 Does not match"，须 `cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_{C,CXX}_COMPILER=cl`）；上游 release 窗口 bump 的子模块须在 MaaCore 打包前 `git submodule update`（否则 DLL 用旧 MaaUtils 编出），部署后跑 `tools/post-merge-validate.ps1` 第 [8] 项核对第三方 DLL 同步（见 WORKFLOW.md §9 错误 8） |
 | 作用域 | 仅本仓库 fork 三方同步操作，不推 upstream |
-| 详见 | `V618_SYNC_PLAN.md`（项目根，压缩执行计划）；`LOG.md` 2026-09-16 阶段 0-10 + 2026-09-25 阶段 11 全部记录 |
+| 详见 | `V618_SYNC_PLAN.md`（项目根，压缩执行计划）；`LOG.md` 2026-09-16 阶段 0-10 + 2026-09-25 阶段 11-13 全部记录；`WORKFLOW.md` §9 错误 8-11（合并问题复盘主体） |
 
 
 ## 8. 关键参考链接
