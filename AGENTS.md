@@ -629,28 +629,68 @@ Select-String -Path install-staging/MAA.runtimeconfig.json -Pattern "STARTUP_HOO
 
 ## 9. 上游开发约定（v6.18.0-beta.1 新增，merge from upstream master-v2）
 
-> 本节为 v6.18 上游新增的「MAA 开发约定」全量同步，与 fork §1-§8 工作流并存。  
+> 本节为 v6.18 上游新增的「MAA 开发约定」全量同步（原文 = 上游 `23feeddc53:AGENTS.md`），与 fork §1-§8 工作流并存。  
 > 上游 pre-commit / StyleCop / clang-format 强约束，本仓库 pre-commit run --all-files 仍按 §5 既有规则运行。
 
-## C++锛圡aaCore锛?
-- 鎵归噺鏍煎紡鍖栫敤 `python tools/ClangFormatter/clang-formatter.py --input=src/MaaCore`锛岀増鏈渶姹傦細clang-format 20.0.0锛? 浣嶄互涓婃暣鏁板瓧闈㈤噺鍔犲崈鍒嗕綅鎾囷紙`65'535`锛屽瓨閲忓皻鏈夋紡鏀癸紝鍕跨収鎶勶級銆?- 鏃ュ織鐢?`"Utils/Logger.hpp"`锛屾棩蹇楄蛋 `<<` 娴佸紡鏍煎紡锛屾鏂囦竴寰嬭嫳鏂囥€傛棫浠ｇ爜涓瓨鍦ㄤ娇鐢ㄥ嚱鏁板紡鏃ュ織鐨勬儏鍐碉紝鍕跨収鎶勩€傚悎鐞嗕娇鐢?`__FUNCTION__`銆乣LogTraceFunction` 鏍囨敞褰撳墠鍑芥暟锛岄伩鍏嶆墜鍔ㄥ湪鏃ュ織涓爣璁般€傞伩鍏嶅尶鍚嶅懡鍚嶇┖闂达紝浼氬鑷村湪鏃ュ織涓緭鍑轰负 `<anonymous namespace>`锛屼笉鍒╀簬瀹氫綅銆?- 瀛楃涓蹭竴寰?UTF-8 `std::string`锛屼腑鏂囪８鍐欍€佺 `u8""` 鍓嶇紑锛涙枃浠惰矾寰勫繀椤荤粡 `asst::utils::path()` 鎴?`"xxx"_p` 瀛楅潰閲忔瀯閫狅紝浠?Win32 API 杈圭晫杞?`to_osstring`銆?- 閿欒澶勭悊杩斿洖 `bool` / `std::optional` / 绌烘寚閽堝苟璁版棩蹇楋紝甯歌浠诲姟涓庨厤缃摼璺笉鐢ㄥ紓甯搞€?- 閬垮厤杩斿洖瑁告寚閽堬紝濡傛湁闇€瑕侊紝浣跨敤寮曠敤鎴栨櫤鑳芥寚閽堬紱寮曠敤杩斿洖鍊奸』淇濊瘉鐢熷懡鍛ㄦ湡锛岀姝㈣繑鍥炲眬閮ㄥ彉閲忓紩鐢ㄣ€?- Json 搴忓垪鍖栫敤 `meojson`锛宍#include <meojson/json.hpp>`銆傜畝鍗曠粨鏋勫彲鑰冭檻浣跨敤 `MEO_JSONIZATION` 瀹忕敓鎴愬簭鍒楀寲鍑芥暟锛屽鏈夊鏉傞渶姹傚垯闇€鎵嬪啓 `to_json` / `check_json` / `from_json`銆傛鏌?Json 瀛楁銆佺被鍨嬨€佽寖鍥淬€佹灇涓惧€肩瓑锛屽簲鍦?`check_json` 涓畬鎴愶紝`from_json` 杩斿洖 false 鍒欎細鐩存帴鎶涘嚭寮傚父锛岀洰鍓嶆棤杩斿洖 false 鐨勬儏鍐点€俶eojson 鏀寔鏋氫妇鐨勫拷鐣ュぇ灏忓啓鍙嶅簭鍒楀寲锛屼絾鏄鏈?`_` 鍒嗛殧绗︼紝鍒欓渶瑕佹墜鍔ㄧ紪鍐?`json::_reflection::enum_name_storage` 杩涜鏄犲皠銆?
-## C# / WPF锛圡aaWpfGui锛?
-- 鏂?`.cs` 鏂囦欢蹇呴』甯?`stylecop.json` 妯℃澘瑙勫畾鐨勭増鏉冨ご锛宍file=` 鍊奸』绛変簬瀹為檯鏂囦欢鍚嶃€?- MVVM 妗嗘灦鏄?Stylet锛氬璇濇 VM 缁ф壙 `Screen`锛孯oot 鐢?`Conductor<Screen>.Collection.OneActive`锛孶serControl 瀛愭ā鍨嬩笌鍒楄〃椤圭户鎵?`PropertyChangedBase`锛岄厤缃爲绫荤户鎵?`NotifyPropertyChangedWithValue`锛涗氦浜掔敤 `Command="{s:Action 鏂规硶鍚峿"` 鐩寸粦 VM 鏂规硶锛屼笉鑷缓 ICommand銆?- 娲剧敓灞炴€ф爣 `[PropertyDependsOn(nameof(X))]` 骞跺湪鏋勯€犲嚱鏁拌皟 `PropertyDependsOnUtility.InitializePropertyDependencies(this)`銆?- `MaaWpfGui.Configuration.` 鍛藉悕绌洪棿鍐呯殑绫荤敤绾?auto-property锛團ody PropertyChanged 缁囧叆閫氱煡锛夛紝鍛藉悕绌洪棿澶栫粐鍏ヤ笉鐢熸晥锛屽繀椤绘墜鍔?`SetAndNotify`锛屽惁鍒?UI 闈欓粯涓嶅埛鏂般€?- 閰嶇疆鎸佷箙鍖栦笌杩佺Щ褰掑彛 `ConfigFactory`锛堝叏灞€ `Root.Gui.X`銆佸綋鍓嶆。妗?`CurrentConfig.X`锛屼繚瀛樿嚜鍔ㄩ槻鎶栵級锛汫UI 璁剧疆鍊肩殑璇诲彇涓€寰嬭蛋 `SettingsViewModel.XxxSettings.X`锛堣缃?VM 灞炴€т笌閰嶇疆鍙屽悜鍚屾锛宻tatic 灞炴€х被鍨嬪悕闄愬畾锛夛紝鐩村彇 `CurrentConfig` 浠呴檺 `TaskQueue` 浠诲姟瀵硅薄锛堝浠诲姟闂村垏鎹㈠綋鍓嶈缃渶鐩磋閰嶇疆锛屽叾浣欒缃竴寰嬭蛋璁剧疆 VM锛夛紱鏂颁换鍔＄被鍨嬮』鍦?`BaseTask` 娉ㄥ唽 `[JsonDerivedType(typeof(XxxTask), typeDiscriminator: nameof(XxxTask))]`銆?- 鏈嶅姟鍦?Bootstrapper 鐢?StyletIoC 鏄惧紡娉ㄥ唽锛岃法瀵硅薄鍙栫敤璧?`Instances.Xxx` 闈欐€佸畾浣嶅櫒锛屼笉鍋氭瀯閫犲嚱鏁版敞鍏ャ€?- 鍥?UI 绾跨▼鐢?Stylet 鐨?`Execute.OnUIThread`锛堝悓姝ワ級鎴?`Execute.OnUIThreadAsync`锛涚函鍚庡彴閾捐矾 await 鍔?`ConfigureAwait(false)`锛屽悗缁纰?UI 鐨勪笉鍔犮€?- 鏃ュ織鐢?Serilog `Log.ForContext<T>()`锛岀粨鏋勫寲鍗犱綅銆佹秷鎭嫳鏂囷紱UI 鍙鏃ュ織鍙﹁蛋 `Instances.TaskQueueViewModel.AddLog`锛圕opilot 鐩稿叧閾捐矾鐢?`Instances.CopilotViewModel.AddLog`锛夈€傚鏈夐渶瑕侊紝绫诲唴澹版槑`private static readonly ILogger _logger = Log.ForContext<T>();`锛岄伩鍏嶅弽澶?`ForContext`銆?- View 涓?VM 鍛藉悕闀滃儚鐢?Stylet 鎸夌害瀹氳В鏋愶紝鏀鹃敊鍛藉悕绌洪棿杩愯鏃舵壘涓嶅埌 View锛歚XxxView` 瀵瑰簲 `XxxViewModel`锛宍XxxUserControl` 瀵瑰簲 `XxxUserControlModel`锛圴M 绫诲悕浠?Model 缁撳熬锛夈€?- TaskQueue 浠诲姟瀵硅薄绫荤殑鍛藉悕鍙傝€冧负 `XxxTask`锛孷M 涓?`XxxTaskViewModel`锛孷iew 涓?`XxxTaskView`锛孶serControl 涓?`XxxTaskUserControl`锛汼ettings 閰嶇疆绫荤殑鍛藉悕鍙傝€冧负 `XxxSettings`锛岄厤缃?VM 涓?`XxxSettingsViewModel`锛岄厤缃?View 涓?`XxxSettingsView`銆?
-## XAML 涓庢湰鍦板寲
+### MAA 开发约定
 
-- 鐣岄潰鏂囨湰涓€寰嬬敤 `controls:TextBlock` 鑰岄潪鍘熺増 `TextBlock`锛涗緥澶栨槸鏂囨湰鏍峰紡闇€璺熼殢瀹夸富鎺т欢妯℃澘鐨勫満鏅紙瓒呴摼鎺ャ€佷笅鎷夐€変腑椤广€佹寜閽?Content銆丏ataTemplate 鍐呴儴绛夛級锛岃繖浜涚敤鍘熺増 `TextBlock`锛屼笉瑕佸缁熶竴鏍峰紡锛屼繚鎸佸師鐢熻〃鐜般€?- 鏈湴鍖?key 涓庝富棰?Brush 涓€寰?`{DynamicResource ...}`锛孲taticResource 鍦ㄨ瑷€鎴栦富棰樼儹鍒囨崲鍚庝笉鍒锋柊锛涘紩鐢ㄦ湰浠撳簱鑷畾涔夋牱寮忕瓑涓嶉殢涓婚/璇█鐑垏鎹㈢殑璧勬簮鏃剁敤 StaticResource銆?- 鎻愮ず鏂囨 key 鍔?`Tip` 鍚庣紑锛坄ForceScheduledStart` 涓?`ForceScheduledStartTip`锛夛紝鍙ュ唴澶嶇敤鍏朵粬 key 鍐?`{key=Xxx}` 鍐呰仈銆?- `TooltipBlock` 闀挎枃妗堟寜鍙ョ晫鏄惧紡鎹㈣锛屼竴鍙ヤ竴琛屽嵆鍙紱鏃犲彞鐣岀殑闀垮彞涓嶅繀寮鸿鎷嗭紝鐢?TooltipText 榛樿 MaxWidth 500 鐨勮蒋鎹㈣鍏滃簳銆傝祫婧愪覆鍐呭啓 `&#10;` 鎴栧瓧闈㈡崲琛屽潎鍙紝涓斿繀椤诲０鏄?`xml:space="preserve"`锛屽惁鍒欐崲琛岀琚?XAML 褰掍竴鍖栵紱鍚勮瑷€鍦ㄨ嚜宸卞彞鐣屽鎹㈣锛岃鏁颁笉瑕佹眰涓€鑷淬€?- 鍥哄畾閫夐」鐨勪笅鎷夋鐢?`LocalizedObservableList<T>`锛坄src/MaaWpfGui/Utilities/ValueType/LocalizedObservableList.cs`锛夛紝鏋勯€犵粰 (鍊? 鏈湴鍖?key)锛屽嬁鎵嬪姩 GetString 鍥哄寲 Display锛堢儹鍒囨崲璇█鍚庤椤瑰仠鐣欐棫璇█锛夛紱ViewModel 璁㈤槄 `LocalizationHelper.LanguageChanged` 骞跺湪鍥炶皟閲?`RefreshLocalization()`锛涘鍒犵敤鑷甫 Add/Remove/Insert/Clear锛屽嬁鐩存帴鎿嶄綔 Items銆?- 璁剧疆椤垫柊澧炲尯鍧楀鐢?Expander + Border + UserControl 鏃㈡湁缁撴瀯锛堟牱鏉胯 `SettingsView.xaml`锛夛紝鍚﹀垯鐮村潖鎼滅储杩囨护涓庢姌鍙犳寔涔呭寲銆?
-## 璧勬簮涓庡伐绋嬫枃浠?
-- `resource/tasks/tasks.json` 瀛楁椤诲湪 TaskData 鐧藉悕鍗曞唴锛岃嚜瀹氫箟瀛楁椤婚厤 `xxx_Doc` 娉ㄩ噴瀛楁锛屾牎楠屽彧鍦?`ASST_DEBUG` 鍔犺浇鏈燂紙Release 闈欓粯锛夛紱`next` 鍒楄〃鐗规畩寮曠敤鐢?`#` 鍓嶇紑锛坄#self` / `#next` / `#back`锛夈€?- MaaCore 婧愭枃浠剁敱 CMake `file(GLOB_RECURSE)` 鑷姩鏀堕泦锛屾柊澧?`.h/.cpp` 鏃犻渶鐧昏 CMakeLists銆?- 鏀?`Res/Localizations/*.xaml` 涓?stub 鐩稿叧鏂囨锛堝 ErrorCongratulations锛夐』鍚屾 `src/MaaAppHostStub/MaaAppHostStub.cpp`锛孋I 鏈夌‖鏍￠獙銆?
-## 鏂囨。缁存姢
+格式由 `.pre-commit-config.yaml` 钩子机器强制，各钩子有 files 范围；本地不处理好的话 GitHub CI 会定时代跑并生成额外的机器修复 commit，为避免此副作用，改完文件后须本地跑对应格式化（如 C++ 的 clang-formatter）。
 
-- 鏀逛换涓€璇█鍚庡悓姝ュ叾浣欏洓璇█锛坺h-cn/zh-tw/en-us/ja-jp/ko-kr锛夌殑瀵瑰簲娈佃惤锛堣鍙锋湭蹇呭搴旓級锛氳涔変竴鑷村嵆鍙紝鏌愯瑷€鏈氨缂烘钀藉垯淇濇寔鐜扮姸浣嗘彁绀恒€?- 鏂囨。涓殑 UI 鍧囨寚 WPF UI锛屼慨鏀规椂涓嶅繀澶勭悊 Avalonia锛圡AAUnified锛夌瓑绀惧尯瀹炵幇鐨勭浉鍏虫弿杩帮紱鏄庢棩鏂硅垷 PC 绔笉杩涙枃妗ｃ€?- 鏂版椿鍔?妯″紡灏氭棤瀹樻柟璇戝悕鏃朵互鍚勮瑷€ UI 鏄剧ず涓哄噯锛堣 `Res/Localizations/*.xaml`锛夛紝UI 涔熸棤璇戞枃鍒欏啓涓枃骞舵嫭鍙峰姞鎻忚堪锛屽嬁鑷鍙戞槑璇戝悕銆?- docs 鏂板鏂囨。椤诲缓浜旇瑷€鍚屽悕鏂囦欢锛宖rontmatter 甯?`icon` 涓?`order`锛堜晶杈规爮鎺掑簭锛夛紱绔欏唴閾炬帴鐢ㄧ浉瀵硅矾寰勶紝CI 鏈夋閾炬鏌ャ€?
-## 鍙戝竷 / 鎵撳寘
+### C++（MaaCore）
 
-- Windows 瀹屾暣鍖呯敱 `.github/workflows/ci.yml`锛堟寮忥級涓?`.github/workflows/release-nightly-ota.yml`锛圢ightly锛変袱鏉″伐浣滄祦鍚勮嚜鐙珛鎵撳寘锛屽嚒鏀规墦鍖呬骇鐗╂垨鍙戝竷娴佺▼**蹇呴』鍚屾椂鍚屾涓ゆ潯**锛沗release-ota.yml` / `release-package-distribution.yml` 鍙熀浜庡凡涓婁紶浜х墿鍋氬樊鍒嗗垎鍙戯紝閫氬父鏃犻渶闅忓姩銆?- 绂佹瑁?`dotnet build -o build\bin\Debug`锛堜笉甯?-r锛夛細璇ョ洰褰曟槸鑷寘鍚骇鐗╋紝framework-dependent 鐨?runtimeconfig 涓庢畫鐣欒嚜鍖呭惈瀹夸富娣疯浼氳嚧鍚姩鎶ラ敊锛涢噸寤?GUI 鐢?`dotnet publish -r win-x64 --self-contained true` 鎴?`dotnet build -r win-x64`銆俙dotnet publish` 涓嶉噸寤?MaaCore.dll锛岄渶鍗曠嫭 CMake 缂栬瘧鍚庢斁缃€?- CHANGELOG 鐢卞彂鐗堟椂缁熶竴鏁寸悊锛屾棩甯告敼鍔ㄥ嬁鑷娣诲姞鏉＄洰銆?
-## 娴嬭瘯
+- 格式化用 `python tools/ClangFormatter/clang-formatter.py --input=<改动文件或其所在子目录>`（`--input` 收目录递归或单个文件），只传本次改动的范围，确需全仓库批量时才传 `src/MaaCore`（全量幂等但白扫全仓库）；版本需求：clang-format 23.1.1（对齐 `.pre-commit-config.yaml` 锁定版本）；5 位以上整数字面量加千分位撇（`65'535`，存量尚有漏改，勿照抄）。
+- 日志用 `"Utils/Logger.hpp"`，日志走 `<<` 流式格式，正文一律英文。旧代码中存在使用函数式日志的情况，勿照抄。合理使用 `__FUNCTION__`、`LogTraceFunction` 标注当前函数，避免手动在日志中标记。避免匿名命名空间，会导致在日志中输出为 `<anonymous namespace>`，不利于定位。
+- 字符串一律 UTF-8 `std::string`，中文裸写、禁 `u8""` 前缀；文件路径必须经 `asst::utils::path()` 或 `"xxx"_p` 字面量构造，仅 Win32 API 边界转 `to_osstring`。
+- 错误处理返回 `bool` / `std::optional` / 空指针并记日志，常规任务与配置链路不用异常。
+- 避免返回裸指针，如有需要，使用引用或智能指针；引用返回值须保证生命周期，禁止返回局部变量引用。
+- Json 序列化用 `meojson`，`#include <meojson/json.hpp>`。简单结构可考虑使用 `MEO_JSONIZATION` 宏生成序列化函数，如有复杂需求则需手写 `to_json` / `check_json` / `from_json`。检查 Json 字段、类型、范围、枚举值等，应在 `check_json` 中完成，`from_json` 返回 false 则会直接抛出异常，目前无返回 false 的情况。meojson 支持枚举的忽略大小写反序列化，但是如有 `_` 分隔符，则需要手动编写 `json::_reflection::enum_name_storage` 进行映射。
 
-- MaaCore 鏈湴娴嬭瘯涓€寰?Debug 鏋勫缓锛氬姞杞芥湡妫€鏌ユ暣浣撳湪 `ASST_DEBUG` 鍐咃紝Release 涓嬮浂閿欒鏄亣璞°€?- MSB3026/MSB3021 鏋勫缓澶嶅埗澶辫触鏃讹紝鎸℃瀯寤虹殑鏄崰鐢ㄤ粨搴撴瀯寤虹増 `build\bin\Debug\MAA.exe` 鐨勮繘绋嬶紙涓庡畨瑁呯増鏃犲叧锛夛紝涓存椂楠岃瘉绋嬪簭寮曠敤 MaaWpfGui 鏃跺悓鐞嗐€?- 鏂囨。绔欏湪涓讳粨搴?`docs/` 涓嬬洿鎺ヨ窇锛屾棩甯搁獙璇佹敼瀹屾枃浠剁湅 `pnpm dev` 鐑噸杞藉嵆鍙紝鏃犲繀瑕佷笉璺?build锛涢潪浜や簰 install 鍔?`CI=true`銆?
+### C# / WPF（MaaWpfGui）
 
+- 新 `.cs` 文件必须带 `stylecop.json` 模板规定的版权头，`file=` 值须等于实际文件名。
+- MVVM 框架是 Stylet：对话框 VM 继承 `Screen`，Root 用 `Conductor<Screen>.Collection.OneActive`，UserControl 子模型与列表项继承 `PropertyChangedBase`，配置树类继承 `NotifyPropertyChangedWithValue`；交互用 `Command="{s:Action 方法名}"` 直绑 VM 方法，不自建 ICommand。
+- 派生属性标 `[PropertyDependsOn(nameof(X))]` 并在构造函数调 `PropertyDependsOnUtility.InitializePropertyDependencies(this)`。
+- `MaaWpfGui.Configuration.` 命名空间内的类用纯 auto-property（Fody PropertyChanged 织入通知），命名空间外织入不生效，必须手动 `SetAndNotify`，否则 UI 静默不刷新。
+- 配置持久化与迁移归口 `ConfigFactory`（全局 `Root.Gui.X`、当前档案 `CurrentConfig.X`，保存自动防抖）；GUI 设置值的读取一律走 `SettingsViewModel.XxxSettings.X`（设置 VM 属性与配置双向同步，static 属性类型名限定），直取 `CurrentConfig` 仅限 `TaskQueue` 任务对象（多任务间切换当前设置需直读配置，其余设置一律走设置 VM）；新任务类型须在 `BaseTask` 注册 `[JsonDerivedType(typeof(XxxTask), typeDiscriminator: nameof(XxxTask))]`。
+- 服务在 Bootstrapper 用 StyletIoC 显式注册，跨对象取用走 `Instances.Xxx` 静态定位器，不做构造函数注入。
+- 回 UI 线程用 Stylet 的 `Execute.OnUIThread`（同步）或 `Execute.OnUIThreadAsync`；纯后台链路 await 加 `ConfigureAwait(false)`，后续要碰 UI 的不加。
+- 日志用 Serilog `Log.ForContext<T>()`，结构化占位、消息英文；UI 可见日志另走 `Instances.TaskQueueViewModel.AddLog`（Copilot 相关链路用 `Instances.CopilotViewModel.AddLog`）。如有需要，类内声明`private static readonly ILogger _logger = Log.ForContext<T>();`，避免反复 `ForContext`。
+- View 与 VM 命名镜像由 Stylet 按约定解析，放错命名空间运行时找不到 View：`XxxView` 对应 `XxxViewModel`，`XxxUserControl` 对应 `XxxUserControlModel`（VM 类名以 Model 结尾）。
+- TaskQueue 任务对象类的命名参考为 `XxxTask`，VM 为 `XxxTaskViewModel`，View 为 `XxxTaskView`，UserControl 为 `XxxTaskUserControl`；Settings 配置类的命名参考为 `XxxSettings`，配置 VM 为 `XxxSettingsViewModel`，配置 View 为 `XxxSettingsView`。
+
+### XAML 与本地化
+
+- 界面文本一律用 `controls:TextBlock` 而非原版 `TextBlock`；例外是文本样式需跟随宿主控件模板的场景（超链接、下拉选中项、按钮 Content、DataTemplate 内部等），这些用原版 `TextBlock`，不要套统一样式，保持原生表现。
+- 本地化 key 与主题 Brush 一律 `{DynamicResource ...}`，StaticResource 在语言或主题热切换后不刷新；引用本仓库自定义样式等不随主题/语言热切换的资源时用 StaticResource。
+- 提示文案 key 加 `Tip` 后缀（`ForceScheduledStart` 与 `ForceScheduledStartTip`），句内复用其他 key 写 `{key=Xxx}` 内联。
+- `TooltipBlock` 长文案按句界显式换行，一句一行即可；无句界的长句不必强行拆，由 TooltipText 默认 MaxWidth 500 的软换行兜底。资源串内写 `&#10;` 或字面换行均可，且必须声明 `xml:space="preserve"`，否则换行符被 XAML 归一化；各语言在自己句界处换行，行数不要求一致。
+- 固定选项的下拉框用 `LocalizedObservableList<T>`（`src/MaaWpfGui/Utilities/ValueType/LocalizedObservableList.cs`），构造给 (值, 本地化 key)，勿手动 GetString 固化 Display（热切换语言后该项停留旧语言）；ViewModel 订阅 `LocalizationHelper.LanguageChanged` 并在回调里 `RefreshLocalization()`；增删用自带 Add/Remove/Insert/Clear，勿直接操作 Items。
+- 设置页新增区块复用 Expander + Border + UserControl 既有结构（样板见 `SettingsView.xaml`），否则破坏搜索过滤与折叠持久化。
+
+### 资源与工程文件
+
+- `resource/tasks/tasks.json` 字段须在 TaskData 白名单内，自定义字段须配 `xxx_Doc` 注释字段，校验只在 `ASST_DEBUG` 加载期（Release 静默）；`next` 列表特殊引用用 `#` 前缀（`#self` / `#next` / `#back`）。
+- MaaCore 源文件由 CMake `file(GLOB_RECURSE)` 自动收集，新增 `.h/.cpp` 无需登记 CMakeLists。
+- 改 `Res/Localizations/*.xaml` 中 stub 相关文案（如 ErrorCongratulations）须同步 `src/MaaAppHostStub/MaaAppHostStub.cpp`，CI 有硬校验。
+
+### 文档维护
+
+- 改任一语言后同步其余四语言（zh-cn/zh-tw/en-us/ja-jp/ko-kr）的对应段落（行号未必对应）：语义一致即可，某语言本就缺段落则保持现状但提示。
+- 文档中的 UI 均指 WPF UI，修改时不必处理 Avalonia（MAAUnified）等社区实现的相关描述；明日方舟 PC 端不进文档。
+- 新活动/模式尚无官方译名时以各语言 UI 显示为准（见 `Res/Localizations/*.xaml`），UI 也无译文则写中文并括号加描述，勿自行发明译名。
+- docs 新增文档须建五语言同名文件，frontmatter 带 `icon` 与 `order`（侧边栏排序）；站内链接用相对路径，CI 有死链检查。
+
+### 发布 / 打包
+
+- Windows 完整包由 `.github/workflows/ci.yml`（正式）与 `.github/workflows/release-nightly-ota.yml`（Nightly）两条工作流各自独立打包，凡改打包产物或发布流程**必须同时同步两条**；`release-ota.yml` / `release-package-distribution.yml` 只基于已上传产物做差分分发，通常无需随动。
+- 禁止裸 `dotnet build -o build\bin\Debug`（不带 -r）：该目录是自包含产物，framework-dependent 的 runtimeconfig 与残留自包含宿主混装会致启动报错；重建 GUI 用 `dotnet publish -r win-x64 --self-contained true` 或 `dotnet build -r win-x64`。`dotnet publish` 不重建 MaaCore.dll，需单独 CMake 编译后放置。
+- CHANGELOG 由发版时统一整理，日常改动勿自行添加条目。
+
+### 测试
+
+- MaaCore 本地测试一律 Debug 构建：加载期检查整体在 `ASST_DEBUG` 内，Release 下零错误是假象。
+- MSB3026/MSB3021 构建复制失败时，挡构建的是占用仓库构建版 `build\bin\Debug\MAA.exe` 的进程（与安装版无关），临时验证程序引用 MaaWpfGui 时同理。
+- 文档站在主仓库 `docs/` 下直接跑，日常验证改完文件看 `pnpm dev` 热重载即可，无必要不跑 build；非交互 install 加 `CI=true`。
 
 ## 10. 通用踩坑（v6.18 沉淀）
 
