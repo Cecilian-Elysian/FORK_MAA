@@ -197,10 +197,14 @@ std::optional<int> asst::FightTimesTaskPlugin::change_series_new(int sanity_curr
 {
     int fight_times_remain = std::min(m_fight_times_max - m_fight_times, 10);
     if (!m_has_used_medicine && !m_is_medicine_exhausted) {
-        if (fight_times_remain != series) {
-            return select_series_new(fight_times_remain); // 调整到剩余次数
+        if (m_medicine != 0 || m_stone != 0) {
+            if (fight_times_remain != series) {
+                return select_series_new(fight_times_remain) ? fight_times_remain : std::optional<int>(); // 调整到剩余次数
+            }
+            return series;
         }
-        return series;
+        // 无药无源石预算: 理智是唯一约束, 落到下方按理智计算 target_times 自适应倍率,
+        // 避免盲目选满剩余次数后因理智不足被跳过 (fork fix/sanity-auto-series-adapt)
     }
 
     if (m_has_used_medicine) {               // 用过药品, 认为已选择最大可用次数
