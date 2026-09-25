@@ -43,6 +43,9 @@ public:
 
     void set_has_used_medicine() { m_has_used_medicine = true; }
 
+    void set_medicine(int medicine) noexcept { m_medicine = medicine; }
+    void set_stone(int stone) noexcept { m_stone = stone; }
+
     // 识别 当前理智/最大理智
     static std::optional<asst::SanityResult> analyze_sanity_remain(const cv::Mat& image);
     // 识别 代理倍率
@@ -79,5 +82,7 @@ private:
     int m_series_current = 1;                     // 当前代理倍率
     mutable bool m_has_used_medicine = false;     // 是否使用过药品
     mutable bool m_is_medicine_exhausted = false; // 是否药品、石头用完
+    int m_medicine = INT_MAX;   // 用户预算药剂数；0 = 不吃药
+    int m_stone = INT_MAX;      // 用户预算源石数；0 = 不买源石
 };
 }
