@@ -128,6 +128,18 @@ bool asst::FightTimesTaskPlugin::_run()
         Log.info(__FUNCTION__, "fight times reached max");
         fight["details"]["finished"] = true;
     }
+    else if (m_medicine == 0 && m_stone == 0 && sanity->current < *sanity_cost) {
+        // 无药无源石预算, 理智不足本轮消耗, 跳过战斗
+        m_task_ptr->set_enable(false);
+        Log.info(
+            __FUNCTION__,
+            "sanity insufficient (",
+            sanity->current,
+            " < ",
+            *sanity_cost,
+            "), no medicine/stone budget, skip fight");
+        fight["details"]["finished"] = true;
+    }
     callback(AsstMsg::SubTaskExtraInfo, fight);
     return true;
 }

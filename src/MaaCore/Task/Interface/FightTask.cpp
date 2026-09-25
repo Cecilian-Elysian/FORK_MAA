@@ -190,5 +190,8 @@ bool asst::FightTask::set_params(const json::value& params)
     m_sidestory_reopen_task_ptr->set_enable_yituliu(enable_yituliu);
     m_sidestory_reopen_task_ptr->set_server(server);
 
+    m_fight_times_prt->set_medicine(medicine);
+    m_fight_times_prt->set_stone(stone);
+
     return true;
 }
