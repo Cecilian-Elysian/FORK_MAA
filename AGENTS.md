@@ -107,6 +107,9 @@ staging ──── feat/<name>, fix/<name> ← 从 staging 拉出
 - 2026-08-07 master-v2 对齐：`c951f239c1` 放弃全部 fork 私有 C++ 回归 master；`c34403ac94` tasks.json account-switch 区块回归 master（删除 fork `AccountManagerPageConfirm` task + 模板）；`3904577917` 仅恢复 expedite_min_level 阈值 C++（对齐 fork WPF UI）
 - 2026-08-08：`1ea65d0aed` 加急点击按槽位限定 RecruitNow roi（`RecruitNow@Slot0..3` 四变体）；`70b3d63770` fix/account-cycle-start-race 提交落地（AsstStart 竞态 AsstRunning 兜底 + AsstStop 清队列）
 - 2026-08-09：`265bd875a4` 恢复 ClipboardLinkSet20Regular Geometry 资源（修 CopilotView 启动闪退）
+- 2026-09-07：`f580d7ed6d` fix/depot-special-memorial-tab 手摘上游 `da5ccfe4ed` 仓库「特别纪念」tab 修复（§7.18）
+- 2026-09-16：`6d32144858` merge 上游 v6.18.0-beta.1（§7.22 阶段 0-10）；`ae24fd2851` 补 CurrentAccountLabel 5 语 key；`16b11a0e31` 清 ToolboxTabRecruitHistory dead key（§10.2）
+- 2026-09-25：`39a7b516e7` fix/sanity-auto-series-adapt（AUTO 倍率按理智自适应）；`0a3884231d` merge 上游 v6.18.0 release（134 commit，§7.22 阶段 11）+ `1b7b087aae` 编译修复三连；MaaUtils 子模块 bump `0c2556cf` → `6e9ba33`
 
 历史假关联：fork base `c8c8e75be5` 无父节点，通过 `git replace --graft` 接 `6147357bd0`（v6.14.0 upstream release），merge-base = `c8c8e75be5` 走 3-way 合并。
 
@@ -118,6 +121,7 @@ staging ──── feat/<name>, fix/<name> ← 从 staging 拉出
 | 2026-08-13 | `1774d128a2` | 17 commit（4 修复 + 3 文档 + 10 间接） | trust staging | §7.10/§7.11/§7.12/§7.13 全部 fix 走 staging 验证流程后晋升 |
 | 2026-08-30 | `a0f530912c` | 20 commit（2 修复 + 1 feat + 3 工具/重构 + 14 间接） | trust staging | §7.14/§7.15/§7.16/§7.17 全部 fix/feat 走 staging 验证流程后晋升；install-staging 2026-08-28 09:28 内核指纹覆盖全部变更 |
 | 2026-09-16 | _待晋升_ | v6.17.0 → v6.18.0-beta.1 全量同步 merge `6d32144858`（staging 已含，branch 未晋升） | trust staging | §7.22 `feat/upstream-v618-sync` 合入 staging；§7.18 已先手摘上游 `da5ccfe4ed` depot 修复入 staging（9/7）；编译/冒烟/fork marker 全过 |
+| 2026-09-25 | _待晋升_ | v6.18.0 release 跟进 merge `0a3884231d` + `1b7b087aae`（staging 已含，branch 未晋升） | trust staging | §7.22 阶段 11：上游 134 commit + MaaUtils bump `6e9ba33` + 冒烟/总检全过；晋升实测项与上行一致 |
 
 晋升后实测验证项（仅适用于 `staging → branch` 晋升决策；本次晋升 trust staging）：
 - 多账号切号（官服 + B 服，含新增繁中服支援）
@@ -294,7 +298,7 @@ Select-String -Path install-staging/MAA.runtimeconfig.json -Pattern "STARTUP_HOO
 
 | 分支 | 角色 | 修复目标 |
 |------|------|----------|
-| （无 — v6.18 同步已随 merge `6d32144858` 直接落地 staging，无独立分支） | — | — |
+| （无 — v6.18 beta.1/v6.18.0 同步均随 merge `6d32144858`/`0a3884231d` 直接落地 staging，无独立分支） | — | — |
 
 
 ## 7. 分支生命周期记录
@@ -570,20 +574,20 @@ Select-String -Path install-staging/MAA.runtimeconfig.json -Pattern "STARTUP_HOO
 | 作用域 | 仅本仓库 fork 私有工具 + 文档，不推 upstream |
 | 详见 | `LOG.md` 2026-08-25（启动 / 实施完成 / 合入 staging 三段） |
 
-### 7.22 feat/upstream-v618-sync（2026-09-16 进行中，merge v6.17.0 → v6.18.0-beta.1）
+### 7.22 feat/upstream-v618-sync（beta.1 2026-09-16 合入 staging；v6.18.0 release 跟进 2026-09-25 合入 staging）
 
 | 项 | 内容 |
 |----|------|
 | 用途 | 拉取上游 v6.17.0 → v6.18.0-beta.1 共 170 commit 三方合并（master-v2 head `ec14df252ae` Release v6.18.0-beta.1）；含 12 项新功能（RunningState → RunControlState + RunOwner 运行时重构 / SwitchTheme / MaterialSynthesis / Yituliu OpenAPI / 基建副手换班 / Roguelike 黑流树海 / GPU 驱动信息 / Achievement 等） |
 | 关键策略 | 阶段 0 仓库卫生 + cherry-pick `e079795071`（验证为空，§7.21 早合）+ 删 feat/* 三个本地分支 + master reset upstream + 备份；阶段 4-6 三方合并 + 12 文件手解（实际冲突面远小于预估 30-50，fork partial class 隔离生效）+ fork marker 12 项验证；阶段 7 C# API 迁移（Idle→GetIdle / HandleStopping 无参化 / SetStopped() 签名对齐）+ C++ 编译环境重建（VS 2026 实例消失 → portable-msvc 14.51 到 C:\msvc-portable + Ninja）472/472 成功；阶段 8-10 部署 + 冒烟 + 文档 |
 | 关键冲突区 | HIGH: TaskQueueViewModel.cs / ToolboxViewModel.cs / IssueReportUserControlModel.cs（保留 fork §7.17 分卷重写）/ 5-lang xaml / tasks.json 11 处（Swipe specialParams ×8 + CharsNameOcrReplace + StartButton1 + InfrastSmiley + BattleSelectFormation + BattleAvatarDialog + 仓库 tab）/ AsstProxy→OnAllTasksCompleted 链路（WORKFLOW §6.5.5 直调描述过时） |
-| 生命周期 | 2026-09-16 创建（从 staging 拉出） → 2026-09-16 merge `6d32144858` 合入 staging |
-| 关键 commit | `6d32144858`（merge: upstream/master-v2 v6.18.0-beta.1 三方合并 — 同步基线）+ API 迁移修复 commit |
+| 生命周期 | 2026-09-16 创建（从 staging 拉出） → 2026-09-16 merge `6d32144858` 合入 staging → 2026-09-25 merge `0a3884231d`（v6.18.0 release，134 commit）+ `1b7b087aae`（编译修复三连）合入 staging |
+| 关键 commit | `6d32144858`（merge: upstream/master-v2 v6.18.0-beta.1 三方合并 — 同步基线）+ API 迁移修复 commit；`0a3884231d`（merge: upstream/master-v2 v6.18.0 → staging）+ `1b7b087aae`（fix(post-merge) 编译修复三连） |
 | 子修复分支 | 无 |
-| 验证 | dotnet build 0 错误；MaaCore 472/472 编译成功；install-staging 部署完成（STARTUP_HOOKS=libloader ✓）；启动冒烟 AsstLoadResource ret: true 无闪退；fork marker 12 项全命中；MaaCore.dll MD5 与 build 产物一致；8 项实机冒烟待用户日常验证 |
-| 部署备注 | C++ 工具链迁移至 `C:\msvc-portable\msvc\`（MSVC 14.51.36231 + SDK 28000，纯解包零安装）；CMake 改用 Ninja + cl（旧 VS generator 缓存已删）；`E:\msvc-setup\refresh-msvc-env.ps1` 已改指 C 盘新路径 |
+| 验证 | dotnet build 0 错误；MaaCore 472/472 编译成功；install-staging 部署完成（STARTUP_HOOKS=libloader ✓）；启动冒烟 AsstLoadResource ret: true 无闪退；fork marker 12 项全命中；MaaCore.dll MD5 与 build 产物一致；8 项实机冒烟待用户日常验证。v6.18.0 跟进（09-25）：dotnet build 0 错误；MaaCore 249/249（含上游新增 AutoRaisePotentialTaskPlugin 等）；两轮冒烟（22:34/22:40）`ret: true` + 0 Unhandled/Fatal；post-merge-validate 7/7；merge-base = `23feeddc53` = 上游 release commit |
+| 部署备注 | C++ 工具链实际位于 `E:\Tools\msvc-portable\msvc\`（`C:\msvc-portable` 为 junction 指向同处；MSVC 14.51.36231 + SDK 28000，env 模板 `setup_x64.bat` 以 `%~dp0` 自定位，两路径均可）；CMake 用 Ninja + cl（preset `windows-publish-x64` 会报 "generator platform: x64 Does not match"，须 `cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_{C,CXX}_COMPILER=cl`）；上游 release 窗口 bump 的子模块须在 MaaCore 打包前 `git submodule update`（否则 DLL 用旧 MaaUtils 编出） |
 | 作用域 | 仅本仓库 fork 三方同步操作，不推 upstream |
-| 详见 | `V618_SYNC_PLAN.md`（项目根，压缩执行计划）；`LOG.md` 2026-09-16 阶段 0-10 全部记录 |
+| 详见 | `V618_SYNC_PLAN.md`（项目根，压缩执行计划）；`LOG.md` 2026-09-16 阶段 0-10 + 2026-09-25 阶段 11 全部记录 |
 
 
 ## 8. 关键参考链接
