@@ -509,6 +509,7 @@ public class IssueReportUserControlModel : PropertyChangedBase
                     using var fileStream = File.OpenRead(file.FullName);
                     fileStream.CopyTo(entryStream);
                 }
+            }
 
             partMetas.Add(new PartInfo
             {

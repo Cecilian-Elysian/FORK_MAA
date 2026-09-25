@@ -14,6 +14,7 @@
 #nullable enable
 
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using JetBrains.Annotations;
@@ -67,7 +68,7 @@ public partial class CopilotViewModel
 
         StartEnabled = false;
         ClearLog();
-        await GetCopilotSetAsync(text);
+        await GetCopilotSetAsync(text, CancellationToken.None);
         CopilotUrl = CopilotUiUrl;
         StartEnabled = true;
     }
