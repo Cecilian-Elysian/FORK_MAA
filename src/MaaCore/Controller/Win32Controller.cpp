@@ -2,6 +2,10 @@
 
 #include "Win32Controller.h"
 
+#include <algorithm>
+#include <chrono>
+#include <future>
+#include <numeric>
 #include <sstream>
 #include <thread>
 
@@ -12,6 +16,26 @@
 
 namespace asst
 {
+static const char* get_win32_screencap_method_name(Win32ScreencapMethod method)
+{
+    switch (method) {
+    case Win32Screencap::GDI:
+        return "GDI";
+    case Win32Screencap::FramePool:
+        return "FramePool";
+    case Win32Screencap::DXGI_DesktopDup:
+        return "DXGI_DesktopDup";
+    case Win32Screencap::DXGI_DesktopDup_Window:
+        return "DXGI_DesktopDup_Window";
+    case Win32Screencap::PrintWindow:
+        return "PrintWindow";
+    case Win32Screencap::ScreenDC:
+        return "ScreenDC";
+    default:
+        return "Win32";
+    }
+}
+
 Win32Controller::Win32Controller(const AsstCallback& callback, Assistant* inst) :
     InstHelper(inst),
     m_callback(callback),
@@ -45,6 +69,8 @@ bool Win32Controller::attach(
     m_screencap_method = screencap_method;
     m_mouse_method = mouse_method;
     m_keyboard_method = keyboard_method;
+    m_screencap_cost.clear();
+    m_screencap_times = 0;
 
     // 销毁旧的控制单元
     if (m_unit_handle && m_loader) {
@@ -171,7 +197,10 @@ bool Win32Controller::screencap(cv::Mat& image_payload, bool allow_reconnect [[m
         }
     }
 
-    bool ret = unit_screencap(image_payload);
+    const auto start_time = std::chrono::steady_clock::now();
+    const bool ret = unit_screencap(image_payload);
+    const auto cost =
+        std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time).count();
 
     if (cursor_pos_saved) {
         if (!SetCursorPos(original_cursor_pos.x, original_cursor_pos.y)) {
@@ -183,11 +212,53 @@ bool Win32Controller::screencap(cv::Mat& image_payload, bool allow_reconnect [[m
         BlockInput(FALSE);
     }
 
+    if (!ret) {
+        return false;
+    }
+
     if (m_screen_size.first == 0) {
         m_screen_size = { image_payload.cols, image_payload.rows };
     }
 
-    return ret;
+    const bool is_first_screencap = m_screencap_cost.empty();
+    m_screencap_cost.emplace_back(cost);
+    if (m_screencap_cost.size() > 30) {
+        m_screencap_cost.pop_front();
+    }
+    m_screencap_times = (m_screencap_times + 1) % 10;
+
+    if (is_first_screencap) {
+        json::value info = json::object {
+            { "uuid", m_uuid },
+            { "what", "FastestWayToScreencap" },
+            { "details",
+              json::object {
+                  { "method", get_win32_screencap_method_name(m_screencap_method) },
+                  { "cost", cost },
+              } },
+        };
+        callback(AsstMsg::ConnectionInfo, info);
+    }
+
+    if (is_first_screencap || m_screencap_times == 0) {
+        const auto [min_cost, max_cost] = std::ranges::minmax(m_screencap_cost);
+        const auto avg_cost = std::accumulate(m_screencap_cost.begin(), m_screencap_cost.end(), 0LL) /
+                              static_cast<long long>(m_screencap_cost.size());
+
+        json::value info = json::object {
+            { "uuid", m_uuid },
+            { "what", "ScreencapCost" },
+            { "details",
+              json::object {
+                  { "min", min_cost },
+                  { "avg", avg_cost },
+                  { "max", max_cost },
+              } },
+        };
+        callback(AsstMsg::ConnectionInfo, info);
+    }
+
+    return true;
 }
 
 bool Win32Controller::start_game(const std::string& client_type [[maybe_unused]])
@@ -275,13 +346,10 @@ bool Win32Controller::click(const Point& p)
     // 需要使用 touch_down/touch_up 替代 click
     // down/up 之间保持一小段时间（hold time），模拟器才能识别为一次完整的点击；
     // up 之后再等同样时间，为下一次 click 留出间隔。
-    // 与 Minitoucher::DefaultClickDelay（50ms）对齐。
-    constexpr int click_delay_ms = 50;
-
     bool down = unit_touch_down(0, p.x, p.y, 0);
-    std::this_thread::sleep_for(std::chrono::milliseconds(click_delay_ms));
+    std::this_thread::sleep_for(std::chrono::milliseconds(TouchHoldMs));
     bool up = unit_touch_up(0);
-    std::this_thread::sleep_for(std::chrono::milliseconds(click_delay_ms));
+    std::this_thread::sleep_for(std::chrono::milliseconds(TouchHoldMs));
 
     return up && down;
 }
@@ -299,7 +367,7 @@ bool Win32Controller::swipe(
     SwipeExtraDirection extra_swipe,
     double slope_in,
     double slope_out,
-    bool with_pause [[maybe_unused]])
+    bool with_pause)
 {
     LogTraceFunction;
 
@@ -325,39 +393,81 @@ bool Win32Controller::swipe(
     if (!unit_touch_down(0, x1, y1, 0)) {
         return false;
     }
+    std::this_thread::sleep_for(std::chrono::milliseconds(TouchHoldMs));
 
     const auto& opt = Config.get_options();
     int actual_duration = duration > 0 ? duration : opt.minitouch_swipe_default_duration;
+
+    // pause 的 press_esc 走底层按键注入（key down/up），无 adb 通道前置条件，故直判
+    bool need_pause = with_pause;
+    std::future<void> pause_future;
 
     auto bounds_check = [width, height](int x, int y) {
         if (width <= 0 || height <= 0) {
             return true;
         }
-        return x >= 0 && x <= width && y >= 0 && y <= height;
+        return x >= 0 && x < width && y >= 0 && y < height;
     };
 
-    auto move_func = [this](int x, int y) {
+    // Win32 输入（如 Seize 的 SendInput）为异步注入且无内置节拍，不等待会使整段滑动在
+    // 毫秒级完成，被游戏判定为点击。按绝对节拍控制：以本段滑动起点为基准，
+    // 第 k 步对齐 start + k * SwipeIntervalMs，调用耗时吃进预算，超时不补立即继续
+    auto tick_start = std::chrono::steady_clock::now();
+    int move_step = 0;
+    auto move_func = [this, &tick_start, &move_step](int x, int y) {
         bool ret = unit_touch_move(0, x, y, 0);
-        // Win32 输入（如 Seize 的 SendInput）为异步注入且无内置节拍，不等待会使整段滑动在毫秒级完成，被游戏判定为点击
-        std::this_thread::sleep_for(std::chrono::milliseconds(DefaultSwipeDelay));
+        high_res_sleep_until(tick_start + ++move_step * std::chrono::milliseconds(SwipeIntervalMs));
         return ret;
     };
 
-    auto do_swipe = [&](int _x1, int _y1, int _x2, int _y2, int _duration) {
+    auto pause_check = [&opt](int cur_x, int cur_y, int start_x, int start_y) {
+        return std::sqrt(std::pow(cur_x - start_x, 2) + std::pow(cur_y - start_y, 2)) >
+               opt.swipe_with_pause_required_distance;
+    };
+
+    // press_esc 走底层按键注入，耗时不可控，异步执行以免卡住滑动节拍
+    auto pause_action = [this, &pause_future]() {
+        pause_future = std::async(std::launch::async, [this]() { press_esc(); });
+    };
+
+    auto do_swipe = [&](int _x1, int _y1, int _x2, int _y2, int _duration) -> bool {
+        // 每段滑动各自成段，重置绝对节拍的起点与步计数
+        tick_start = std::chrono::steady_clock::now();
+        move_step = 0;
+        if (need_pause) {
+            return interpolate_swipe_with_pause(
+                _x1,
+                _y1,
+                _x2,
+                _y2,
+                _duration,
+                SwipeIntervalMs,
+                slope_in,
+                slope_out,
+                move_func,
+                bounds_check,
+                pause_check,
+                [&]() {
+                    need_pause = false;
+                    pause_action();
+                });
+        }
         return interpolate_swipe(
             _x1,
             _y1,
             _x2,
             _y2,
             _duration,
-            DefaultSwipeDelay,
+            SwipeIntervalMs,
             slope_in,
             slope_out,
             move_func,
             bounds_check);
     };
 
+    // 中途失败也必须抬手，否则手指会一直按在屏幕上，后续操作全部失效
     if (!do_swipe(x1, y1, x2, y2, actual_duration)) {
+        LogWarn << "failed during main swipe movement";
         unit_touch_up(0);
         return false;
     }
@@ -365,10 +475,16 @@ bool Win32Controller::swipe(
     if (extra_swipe != SwipeExtraDirection::None && opt.minitouch_extra_swipe_duration > 0) {
         std::this_thread::sleep_for(std::chrono::milliseconds(opt.minitouch_swipe_extra_end_delay));
         const auto offset = extra_swipe_offset(extra_swipe, opt.minitouch_extra_swipe_dist);
-        do_swipe(x2, y2, x2 + offset.x, y2 + offset.y, opt.minitouch_extra_swipe_duration);
+        // extra 是主滑成功后的补偿段，失败不判整体失败，避免上层无谓重试
+        if (!do_swipe(x2, y2, x2 + offset.x, y2 + offset.y, opt.minitouch_extra_swipe_duration)) {
+            LogWarn << "failed during extra swipe movement";
+        }
     }
 
-    return unit_touch_up(0);
+    const bool up = unit_touch_up(0);
+    // 抬起后留出间隔，为下一次输入留出手势结束的时间
+    std::this_thread::sleep_for(std::chrono::milliseconds(TouchHoldMs));
+    return up;
 }
 
 bool Win32Controller::inject_input_event(const InputEvent& event)
@@ -452,7 +568,9 @@ void Win32Controller::restore_window_position()
 
 ControlFeat::Feat Win32Controller::support_features() const noexcept
 {
-    return ControlFeat::PRECISE_SWIPE;
+    // Win32 的 touch 坐标即窗口客户区原生坐标，无 minitouch 式的 max_x/max_y 换算；
+    // 暂停走底层按键注入，两个特性都能完整支持
+    return ControlFeat::PRECISE_SWIPE | ControlFeat::SWIPE_WITH_PAUSE;
 }
 
 std::pair<int, int> Win32Controller::get_screen_res() const noexcept

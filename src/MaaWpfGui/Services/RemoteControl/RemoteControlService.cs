@@ -58,6 +58,8 @@ public class RemoteControlService
 
     private static RemoteControlUserControlModel RemoteSettings => SettingsViewModel.RemoteControlSettings;
 
+    private static readonly ILogger _logger = Log.ForContext<RemoteControlService>();
+
     public RemoteControlService()
     {
         InitializePollJobTask();
@@ -66,6 +68,12 @@ public class RemoteControlService
 
     public void InitializePollJobTask()
     {
+        if (Bootstrapper.IsDemoMode)
+        {
+            // README 截图演示模式：禁止远程控制轮询联网（更新检查类的定时器联网链已由 InitTimer 拦截）
+            return;
+        }
+
         if (_inited)
         {
             return;
@@ -86,7 +94,7 @@ public class RemoteControlService
                 {
                     if (!IsEndpointValid(RemoteSettings.RemoteControlGetTaskEndpointUri))
                     {
-                        Log.Logger.Information("RemoteControlGetTaskEndpointUri is not valid, return");
+                        _logger.Information("RemoteControlGetTaskEndpointUri is not valid, return");
                         _inited = false;
                         return;
                     }
@@ -95,7 +103,7 @@ public class RemoteControlService
                 }
                 catch (Exception ex)
                 {
-                    Log.Logger.Error(ex, "RemoteControl service raises unknown error.");
+                    _logger.Error(ex, "RemoteControl service raises unknown error.");
                 }
             }
 
@@ -110,7 +118,7 @@ public class RemoteControlService
                 {
                     if (!IsEndpointValid(RemoteSettings.RemoteControlGetTaskEndpointUri))
                     {
-                        Log.Logger.Information("RemoteControlGetTaskEndpointUri is not valid, return");
+                        _logger.Information("RemoteControlGetTaskEndpointUri is not valid, return");
                         return;
                     }
 
@@ -118,7 +126,7 @@ public class RemoteControlService
                 }
                 catch (Exception ex)
                 {
-                    Log.Logger.Error(ex, "RemoteControl service raises unknown error.");
+                    _logger.Error(ex, "RemoteControl service raises unknown error.");
                 }
             }
 
@@ -133,7 +141,7 @@ public class RemoteControlService
                 {
                     if (!IsEndpointValid(RemoteSettings.RemoteControlGetTaskEndpointUri))
                     {
-                        Log.Logger.Information("RemoteControlGetTaskEndpointUri is not valid, return");
+                        _logger.Information("RemoteControlGetTaskEndpointUri is not valid, return");
                         return;
                     }
 
@@ -141,7 +149,7 @@ public class RemoteControlService
                 }
                 catch (Exception ex)
                 {
-                    Log.Logger.Error(ex, "RemoteControl service raises unknown error.");
+                    _logger.Error(ex, "RemoteControl service raises unknown error.");
                 }
             }
 
@@ -258,7 +266,7 @@ public class RemoteControlService
         var response = await Instances.HttpService.PostAsJsonAsync(new Uri(endpoint), new { user = uid, device = did });
         if (response == null)
         {
-            Log.Logger.Error("RemoteControlService endpoint failed.");
+            _logger.Error("RemoteControlService endpoint failed.");
             return;
         }
 
@@ -442,7 +450,7 @@ public class RemoteControlService
                 });
                 if (response == null)
                 {
-                    Log.Logger.Error("RemoteControlService report task failed.");
+                    _logger.Error("RemoteControlService report task failed.");
                 }
             }
 
@@ -527,7 +535,7 @@ public class RemoteControlService
                 });
                 if (response == null)
                 {
-                    Log.Logger.Error("RemoteControlService report task failed.");
+                    _logger.Error("RemoteControlService report task failed.");
                 }
             }
         }
@@ -556,7 +564,7 @@ public class RemoteControlService
         if (Bootstrapper.TryGetTaskBlockReason() is { } reason)
         {
             Instances.TaskQueueViewModel.AddLog(reason, UiLogColor.Error);
-            Log.Logger.Warning("RemoteControl LinkStart blocked");
+            _logger.Warning("RemoteControl LinkStart blocked");
             return;
         }
 

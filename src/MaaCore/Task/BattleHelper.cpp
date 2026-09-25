@@ -565,6 +565,48 @@ bool asst::BattleHelper::retreat_oper(const Point& loc, bool manually)
     return true;
 }
 
+bool asst::BattleHelper::set_unit_location(battle::Role role, const std::string& name, const Point& loc)
+{
+    LogTraceFunction;
+
+    if (!m_normal_tile_info.contains(loc)) {
+        LogError << __FUNCTION__ << "| No tile found at" << loc << "for unit" << name;
+        return false;
+    }
+
+    auto oper_iter = std::ranges::find_if(m_battlefield_opers, [&](const auto& pair) {
+        return (role == battle::Role::Unknown || pair.first.role == role) && pair.first.name == name;
+    });
+
+    battle::OperNameTag tag;
+    if (oper_iter != m_battlefield_opers.cend()) {
+        tag = oper_iter->first;
+        if (oper_iter->second == loc) {
+            LogInfo << __FUNCTION__ << "| Location of unit" << tag.name << "is already" << loc;
+            return true;
+        }
+        // 单位已不在旧格，迁移时同步释放旧格占用
+        m_used_tiles.erase(oper_iter->second);
+        m_battlefield_opers.erase(oper_iter);
+    }
+    else {
+        // 不在场的单位（装置、设施等）直接登记，使其参与技能用法与自动开技能流程
+        tag = { role, name };
+        LogInfo << __FUNCTION__ << "| Unit" << name << "not on battlefield, register it at" << loc;
+    }
+
+    // 一格只保留一条单位记录：目标格已有占用者时，旧单位的记录整条移除（其名字不再可按名引用）
+    if (m_used_tiles.contains(loc)) {
+        const auto& pre_oper = m_used_tiles.at(loc);
+        LogInfo << __FUNCTION__ << "| remove previous oper" << pre_oper << loc;
+        m_battlefield_opers.erase(pre_oper);
+        m_used_tiles.erase(loc);
+    }
+
+    register_deployed_oper(tag.role, tag.name, loc);
+    return true;
+}
+
 bool asst::BattleHelper::is_skill_ready(const Point& loc, const cv::Mat& reusable)
 {
     cv::Mat image = reusable.empty() ? m_inst_helper.ctrler()->get_image() : reusable;
@@ -1103,20 +1145,24 @@ void asst::BattleHelper::fix_swipe_out_of_limit(
     p2 += adjust;
 }
 
-bool asst::BattleHelper::move_camera(const std::pair<double, double>& delta)
+bool asst::BattleHelper::move_camera(const std::pair<double, double>& delta, bool keep_kills)
 {
     LogTraceFunction;
     Log.info("move", delta.first, delta.second);
 
     update_kills(m_inst_helper.ctrler()->get_image());
 
-    // 还没转场的时候
-    if (m_kills != 0) {
-        wait_until_end(false);
-    }
+    // keep_kills 为 false 时（引航者试炼转场）：等待当前波次结束并归零击杀数；
+    // 为 true 时（同一波内移动镜头）：跳过等待与归零，击杀数保持连续
+    if (!keep_kills) {
+        // 还没转场的时候
+        if (m_kills != 0) {
+            wait_until_end(false);
+        }
 
-    m_kills = 0;
-    m_total_kills = 0;
+        m_kills = 0;
+        m_total_kills = 0;
+    }
 
     m_camera_shift.first += delta.first;
     m_camera_shift.second += delta.second;

@@ -319,6 +319,12 @@
                                         SelectedValue="{Binding KeyboardMethod}"
                                         SelectedValuePath="Value" />
                                 </StackPanel>
+
+                                <CheckBox
+                                    Margin="5"
+                                    HorizontalAlignment="Center"
+                                    Content="{DynamicResource MuteGameWhileRunning}"
+                                    IsChecked="{Binding MuteWhileRunning, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                             </StackPanel>
                         </DataTemplate>
                     </ContentControl.Resources>
@@ -428,6 +434,7 @@
                 Margin="5,5,0,5"
                 HorizontalAlignment="Left"
                 Command="{s:Action ReplaceAdb}"
+                IsEnabled="{Binding CanReplaceAdb}"
                 Content="{DynamicResource ForcedReplaceAdb}" />
             <controls:TooltipBlock TooltipText="{DynamicResource ForcedReplaceAdbTip}" />
             </StackPanel>

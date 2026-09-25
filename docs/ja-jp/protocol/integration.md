@@ -319,6 +319,12 @@ Bilibili：`张三`、入力可能：`张三`、`张`、`三`
 @required
 確認するタグレベル。計算のみの場合は、空配列に設定できます。  
 :::  
+::: field level3_recruitment_permit_reserve
+@type number
+@default 0
+@optional
+星3の自動確認時に残しておく求人票の枚数です。現在の求人票数がこの値以下の場合は星3募集をスキップします。星4以上の募集には影響しません。`0` に設定すると無効になります。有効時に枚数の認識に失敗した場合も、求人票を誤って消費しないよう現在の星3募集をスキップします。
+:::
 ::: field first_tags  
 @type array<string>
 @optional
@@ -430,6 +436,7 @@ Fork 拡張です。確定した最低レアリティがこの値以上の場合
    "refresh": true,
    "select": [5, 4],
    "confirm": [4, 3],
+   "level3_recruitment_permit_reserve": 8,
    "first_tags": ["高级资深干员"],
    "extra_tags_mode": 1,
    "times": 4,
@@ -754,6 +761,9 @@ OF-1 実行時に使用する編成スロットのインデックス。
 @optional
 5 周年から送信された月パス報酬を受け取るかどうか。  
 :::  
+::: field name="signinevent" type="boolean" optional default="false"  
+期間限定スタンプイベント報酬を受け取るかどうか（横型レイアウトのみ対応）。  
+:::  
 ::::
 
 <details>
@@ -767,7 +777,8 @@ OF-1 実行時に使用する編成スロットのインデックス。
    "recruit": true,
    "orundum": false,
    "mining": true,
-   "specialaccess": false
+   "specialaccess": false,
+   "signinevent": false
 }
 ```
 
@@ -873,19 +884,24 @@ OF-1 実行時に使用する編成スロットのインデックス。
 ::: field core_char  
 @type string
 @optional
-開局オペレーター名。単一のオペレーター**中国語名**のみ対応、サーバー関係なし。空欄または空文字列 `""` の場合は練度に応じて自動選択。  
+開局オペレーター名。単一のオペレーター**中国語名**のみ対応、サーバー関係なし。空欄または空文字列 `""` の場合は練度に応じて自動選択。`core_char_list` の第 1 順位と等価で、旧呼び出し元との互換性のためのみ保持。  
+:::  
+::: field core_char_list  
+@type array<object>
+@optional
+開局オペレーターリスト。各項目は `{ "name": オペレーター名, "use_support": サポートを使用するかどうか }` で、オペレーター名は同じく**中国語名**のみ対応、サーバー関係なし。配列の順に開局 1・2・3 回目の募集に対応し、3 つの順位のオペレーターは職業が異なる必要あり。募集は先頭の数ページのみを検索するため、希望消費の低いオペレーターは登場位置が後ろで見つからないことがある。特定の順位でオペレーターを募集できなかった場合（自前・サポートのどちらも出なかった場合）はその回はデフォルトの優先順位で募集されるため、希望消費の高いオペレーターを前に配置することをお勧めする。`core_char` と同時に指定された場合はこのフィールドが優先される。  
 :::  
 ::: field use_support  
 @type boolean
 @default false
 @optional
-開局オペレーターがサポートかどうか。  
+開局オペレーターがサポートかどうか。`core_char_list` 第 1 順位のサポートフラグと等価で、旧呼び出し元との互換性のためのみ保持。  
 :::  
 ::: field use_nonfriend_support  
 @type boolean
 @default false
 @optional
-フレンド以外のサポートが使用可能かどうか。`use_support` が true の場合のみ有効。  
+フレンド以外のサポートが使用可能かどうか。サポートを使用するすべての開局順位に適用されるグローバルスイッチ。  
 :::  
 ::: field starts_count  
 @type number
@@ -1081,9 +1097,12 @@ Sarkaz テーマ、Investment モード、「破棘成金分隊」または「�
    "theme": "Sami",
    "mode": 5,
    "squad": "指挥分队",
-   "roles": "取长补短",
-   "core_char": "塑心",
-   "use_support": false,
+   "roles": "稳扎稳打",
+   "core_char_list": [
+      { "name": "维什戴尔", "use_support": true },
+      { "name": "古米", "use_support": false },
+      { "name": "史都华德", "use_support": false }
+   ],
    "use_nonfriend_support": false,
    "starts_count": 3,
    "difficulty": 8,

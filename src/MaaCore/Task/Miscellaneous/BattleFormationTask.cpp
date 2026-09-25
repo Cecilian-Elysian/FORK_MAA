@@ -658,7 +658,7 @@ bool asst::BattleFormationTask::select_opers_in_cur_page(const std::vector<OperG
             continue;
         }
 
-        if (oper->requirements.module >= 0 && oper->requirements.module <= 4) {
+        if (oper->requirements.module >= 0 && oper->requirements.module <= 5) {
             ret = ProcessTask(*this, { "BattleQuickFormationModulePage" }).run();
             ret =
                 ret &&
@@ -907,7 +907,7 @@ bool asst::BattleFormationTask::compare_formation()
             }
 
             const auto& oper_last_it = std::ranges::find_if(last_group_it->opers, [&](const battle::OperUsage& op) {
-                return op.status == battle ::OperStatus::Selected;
+                return op.status == battle::OperStatus::Selected;
             });
             if (oper_last_it == last_group_it->opers.cend()) [[unlikely]] {
                 LogError << __FUNCTION__ << "| Group" << last_group_it->name
@@ -1063,7 +1063,7 @@ std::optional<std::string> asst::BattleFormationTask::add_support_unit_from_supp
 
     for (const RequiredOper& required_oper : required_opers) {
         auto it = std::ranges::find_if(support_units, [friendship, &required_oper](const SupportUnit& support_unit) {
-            return support_unit.name == battle::canonical_oper_name(required_oper.role, required_oper.name) &&
+            return support_unit.role == required_oper.role && support_unit.name == required_oper.name &&
                    (support_unit.elite > required_oper.elite ||
                     (support_unit.elite == required_oper.elite && support_unit.level >= required_oper.level)) &&
                    support_unit.potential >= required_oper.potential &&

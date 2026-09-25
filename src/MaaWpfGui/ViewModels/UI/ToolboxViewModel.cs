@@ -88,6 +88,8 @@ public partial class ToolboxViewModel : Screen
             PixelPaintFitModeList.RefreshLocalization();
             PixelPaintDitherModeList.RefreshLocalization();
             SecretFrontEventList.RefreshLocalization();
+            ExportOptionList.RefreshLocalization();
+            OperBoxExportOptionList.RefreshLocalization();
             Application.Current.Dispatcher.InvokeAsync(
                 () => {
                     LoadDepotDetails();
@@ -120,6 +122,18 @@ public partial class ToolboxViewModel : Screen
     /// Gets the shared run control state for run-state bindings.
     /// </summary>
     public RunControlState Run => RunControlState.Instance;
+
+    private int _toolboxSelectedIndex;
+
+    /// <summary>
+    /// Gets or sets 外层功能 Tab 的选中索引（0 公招识别、1 干员识别、2 仓库识别，后续为隐藏/其他页）。
+    /// XAML 的外层 TabControl 原本无 VM 绑定，此属性供 README 截图演示模式等场景程序化切页。
+    /// </summary>
+    public int ToolboxSelectedIndex
+    {
+        get => _toolboxSelectedIndex;
+        set => SetAndNotify(ref _toolboxSelectedIndex, value);
+    }
 
     #region Recruit
 
@@ -894,14 +908,14 @@ public partial class ToolboxViewModel : Screen
         Csv = 3,
     }
 
-    public record struct ExportEntry(string Display, int Value);
-
-    public List<ExportEntry> ExportOptionList { get; } = [
-        new(LocalizationHelper.GetString("ExportToArkplanner"), (int)DepotExportFormat.Arkplanner),
-        new(LocalizationHelper.GetString("ExportToLolicon"), (int)DepotExportFormat.Lolicon),
-        new(LocalizationHelper.GetString("ExportToMarkdown"), (int)DepotExportFormat.Markdown),
-        new(LocalizationHelper.GetString("ExportToCsv"), (int)DepotExportFormat.Csv),
-    ];
+    /// <summary>
+    /// Gets 仓库导出格式选项，文案随语言热切换自动刷新。
+    /// </summary>
+    public LocalizedObservableList<int> ExportOptionList { get; } = new(
+        ((int)DepotExportFormat.Arkplanner, "ExportToArkplanner"),
+        ((int)DepotExportFormat.Lolicon, "ExportToLolicon"),
+        ((int)DepotExportFormat.Markdown, "ExportToMarkdown"),
+        ((int)DepotExportFormat.Csv, "ExportToCsv"));
 
     private int _selectedExportValue;
 
@@ -1271,7 +1285,7 @@ if (Bootstrapper.TryGetTaskBlockReason() is { } reason)
     }
 
     public class Operator(string id, string name, int rarity, int elite = 0, int level = 0, int potential = 0,
-        List<OperBoxData.SkillData>? skills = null, List<OperBoxData.EquipData>? equips = null)
+        int? mainSkillLevel = null, List<OperBoxData.SkillData>? skills = null, List<OperBoxData.EquipData>? equips = null)
     {
         [JsonProperty("id")]
         public string Id { get; } = id;
@@ -1290,6 +1304,12 @@ if (Bootstrapper.TryGetTaskBlockReason() is { } reason)
 
         [JsonProperty("potential")]
         public int Potential { get; } = potential;
+
+        /// <summary>
+        /// Gets 当前主技能等级（1~7），仅从一图流 OpenAPI 获取的数据有值
+        /// </summary>
+        [JsonProperty("mainSkillLevel", NullValueHandling = NullValueHandling.Ignore)]
+        public int? MainSkillLevel { get; } = mainSkillLevel;
 
         /// <summary>
         /// Gets 技能专精，仅从一图流 OpenAPI 获取的数据有值
@@ -1323,6 +1343,58 @@ if (Bootstrapper.TryGetTaskBlockReason() is { } reason)
         /// Gets the resource key based on rarity
         /// </summary>
         public string RarityColorResourceKey => (IsPallas && Level > 0) ? "AchievementBrush.Rare.LinearGradientBrush" : $"Star{Rarity}OperatorLogBrush";
+
+        /// <summary>
+        /// Gets 技能练度与模组区是否可见，Core 识别路径无主技能等级数据，整块隐藏
+        /// </summary>
+        public bool ShowSkillDetails => MainSkillLevel.HasValue;
+
+        /// <summary>
+        /// Gets 无任何专精（含未满 7 级与 7 级未专精）时显示单个 RANK 徽章，有任一专精则隐藏
+        /// </summary>
+        public bool ShowRankBadge => MainSkillLevel.HasValue && !HasAnyMastery;
+
+        public string RankText => $"RANK {MainSkillLevel}";
+
+        private bool HasAnyMastery => Skills?.Any(s => s.Level >= 1) == true;
+
+        /// <summary>
+        /// Gets 逐技能槽位的专精品字角标，skills 数组按槽位序全量给出（长度=干员技能数），无需按 id 对位
+        /// </summary>
+        public List<MasteryBadge> MasteryBadges => Skills?.Select(s => new MasteryBadge(s.Level)).ToList() ?? [];
+
+        public bool HasMods => Equips?.Any(e => e.Level > 0) == true;
+
+        /// <summary>
+        /// Gets 模组徽章文本（如 γ₃），分支映射 A/B/X/Y/D → α/β/χ/γ/Δ，等级用 Unicode 下标字符；
+        /// 等级 0 表示模组未开启，不显示
+        /// </summary>
+        public List<string> ModBadges =>
+        [
+            .. Equips?.Where(e => e.Level > 0).Select(e => $"{ModTypeDisplay.GetValueOrDefault(e.Type, e.Type)}{e.Level}") ?? [],
+        ];
+
+        private static readonly Dictionary<string, string> ModTypeDisplay = new()
+        {
+            ["A"] = "α",
+            ["B"] = "β",
+            ["X"] = "χ",
+            ["Y"] = "γ",
+            ["D"] = "Δ",
+        };
+
+        /// <summary>
+        /// 单技能格的品字三圆角标，点亮顺序为用户裁定：专 1 亮上圆、专 2 加亮右下圆、专 3 全亮；
+        /// 颜色由主题资源 OperBox.MasteryOnBrush/OffBrush 控制，随浅深主题切换
+        /// </summary>
+        public class MasteryBadge(int level)
+        {
+            public bool TopOn => level >= 1;
+
+            public bool BottomRightOn => level >= 2;
+
+            public bool BottomLeftOn => level >= 3;
+        }
 
         public bool Equals(Operator? other) => other != null && Name == other.Name && Rarity == other.Rarity;
 
@@ -1631,7 +1703,14 @@ if (Bootstrapper.TryGetTaskBlockReason() is { } reason)
 
         _operBoxDataSource = details["source"]?.ToString() == "yituliu" ? "yituliu" : "local";
 
-        var ownOpers = (details["own_opers"] as JArray)?.ToObject<List<OperBoxData.OperData>>()?.Where(o => !string.IsNullOrEmpty(o.Id)).ToList();
+        // 升变形态 ID 先归一到基础形态，后续的拥有去重、未拥有差集与落盘都使用同一 ID
+        var ownOpers = (details["own_opers"] as JArray)?.ToObject<List<OperBoxData.OperData>>()?
+            .Where(o => !string.IsNullOrEmpty(o.Id))
+            .Select(o => {
+                o.Id = DataHelper.GetCanonicalOperId(o.Id);
+                return o;
+            })
+            .ToList();
         if (ownOpers is null)
         {
             return false;
@@ -1642,7 +1721,8 @@ if (Bootstrapper.TryGetTaskBlockReason() is { } reason)
             if (_tempOperHaveSet.Add(oper.Id))
             {
                 var name = DataHelper.GetLocalizedCharacterName(DataHelper.Operators.FirstOrDefault(i => i.Key == oper.Id).Value) ?? "???";
-                OperBoxHaveList.Add(new Operator(oper.Id, name, oper.Rarity, oper.Elite, oper.Level, oper.Potential, oper.Skills, oper.Equips));
+                OperBoxHaveList.Add(new Operator(oper.Id, name, oper.Rarity, oper.Elite, oper.Level, oper.Potential,
+                    oper.MainSkillLevel, oper.Skills, oper.Equips));
                 if (oper.Id == "char_485_pallas")
                 {
                     AchievementTrackerHelper.Instance.Unlock(AchievementIds.WarehouseKeeper);
@@ -1791,10 +1871,12 @@ if (Bootstrapper.TryGetTaskBlockReason() is { } reason)
 
             var entry = new JObject {
                 ["id"] = oper.Id,
+                ["name"] = DataHelper.GetLocalizedCharacterName(charInfo) ?? "???",
                 ["own"] = true,
                 ["elite"] = oper.EvolvePhase,
                 ["level"] = oper.Level,
                 ["potential"] = oper.PotentialRank,
+                ["mainSkillLevel"] = oper.MainSkillLevel,
                 ["rarity"] = charInfo.Rarity,
             };
             if (oper.Skills is not null)
@@ -1868,12 +1950,14 @@ if (Bootstrapper.TryGetTaskBlockReason() is { } reason)
         StartOperBoxRecognitionTask();
     }
 
-    public List<GenericCombinedData<OperBoxExportFormat>> OperBoxExportOptionList { get; } = [
-        new(LocalizationHelper.GetString("OperBoxExportToClipboard"), OperBoxExportFormat.Clipboard),
-        new(LocalizationHelper.GetString("OperBoxExportToJson"), OperBoxExportFormat.Json),
-        new(LocalizationHelper.GetString("ExportToMarkdown"), OperBoxExportFormat.Markdown),
-        new(LocalizationHelper.GetString("ExportToCsv"), OperBoxExportFormat.Csv),
-    ];
+    /// <summary>
+    /// Gets 干员识别导出格式选项，文案随语言热切换自动刷新。
+    /// </summary>
+    public LocalizedObservableList<OperBoxExportFormat> OperBoxExportOptionList { get; } = new(
+        (OperBoxExportFormat.Clipboard, "OperBoxExportToClipboard"),
+        (OperBoxExportFormat.Json, "OperBoxExportToJson"),
+        (OperBoxExportFormat.Markdown, "ExportToMarkdown"),
+        (OperBoxExportFormat.Csv, "ExportToCsv"));
 
     public OperBoxExportFormat SelectedOperBoxExportValue
     {
@@ -1924,6 +2008,7 @@ if (Bootstrapper.TryGetTaskBlockReason() is { } reason)
                     Level = value.Level,
                     Potential = value.Potential,
                     Own = true,
+                    MainSkillLevel = value.MainSkillLevel,
                     Skills = value.Skills,
                     Equips = value.Equips,
                 });
@@ -2021,20 +2106,29 @@ if (Bootstrapper.TryGetTaskBlockReason() is { } reason)
         var yes = LocalizationHelper.GetString("OperBoxExportYes");
         var no = LocalizationHelper.GetString("OperBoxExportNo");
 
+        var mainSkillHeader = LocalizationHelper.GetString("OperBoxExportHeaderMainSkillLevel");
         var skillsHeader = LocalizationHelper.GetString("OperBoxExportHeaderSkills");
         var equipsHeader = LocalizationHelper.GetString("OperBoxExportHeaderEquips");
 
         yield return includeYituliuFields
-            ? $"| {nameHeader} | {idHeader} | {rarityHeader} | {eliteHeader} | {levelHeader} | {ownHeader} | {potentialHeader} | {skillsHeader} | {equipsHeader} |"
+            ? $"| {nameHeader} | {idHeader} | {rarityHeader} | {eliteHeader} | {levelHeader} | {ownHeader} | {potentialHeader} | {mainSkillHeader} | {skillsHeader} | {equipsHeader} |"
             : $"| {nameHeader} | {idHeader} | {rarityHeader} | {eliteHeader} | {levelHeader} | {ownHeader} | {potentialHeader} |";
         yield return includeYituliuFields
-            ? "| :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |"
+            ? "| :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |"
             : "| :-- | :-- | :-- | :-- | :-- | :-- | :-- |";
         foreach (var item in items)
         {
             var baseColumns = $"| {item.Name} | {item.Id} | {item.Rarity} | {item.Elite} | {item.Level} | {(item.Own ? yes : no)} | {item.Potential} |";
-            yield return includeYituliuFields ? baseColumns + $" {FormatSkillsColumn(item)} | {FormatEquipsColumn(item)} |" : baseColumns;
+            yield return includeYituliuFields ? baseColumns + $" {FormatMainSkillColumn(item)} | {FormatSkillsColumn(item)} | {FormatEquipsColumn(item)} |" : baseColumns;
         }
+    }
+
+    /// <summary>
+    /// 主技能等级列（1~7），无该数据的干员为空。
+    /// </summary>
+    private static string FormatMainSkillColumn(OperBoxData.OperData item)
+    {
+        return item.MainSkillLevel?.ToString() ?? string.Empty;
     }
 
     /// <summary>
@@ -2067,11 +2161,12 @@ if (Bootstrapper.TryGetTaskBlockReason() is { } reason)
         var yes = LocalizationHelper.GetString("OperBoxExportYes");
         var no = LocalizationHelper.GetString("OperBoxExportNo");
 
+        var mainSkillHeader = LocalizationHelper.GetString("OperBoxExportHeaderMainSkillLevel");
         var skillsHeader = LocalizationHelper.GetString("OperBoxExportHeaderSkills");
         var equipsHeader = LocalizationHelper.GetString("OperBoxExportHeaderEquips");
 
         yield return includeYituliuFields
-            ? $"{nameHeader},{idHeader},{rarityHeader},{eliteHeader},{levelHeader},{ownHeader},{potentialHeader},{skillsHeader},{equipsHeader}"
+            ? $"{nameHeader},{idHeader},{rarityHeader},{eliteHeader},{levelHeader},{ownHeader},{potentialHeader},{mainSkillHeader},{skillsHeader},{equipsHeader}"
             : $"{nameHeader},{idHeader},{rarityHeader},{eliteHeader},{levelHeader},{ownHeader},{potentialHeader}";
         foreach (var item in items)
         {
@@ -2082,7 +2177,7 @@ if (Bootstrapper.TryGetTaskBlockReason() is { } reason)
             }
 
             var baseColumns = $"{name},{item.Id},{item.Rarity},{item.Elite},{item.Level},{(item.Own ? yes : no)},{item.Potential}";
-            yield return includeYituliuFields ? baseColumns + $",{FormatSkillsColumn(item)},{FormatEquipsColumn(item)}" : baseColumns;
+            yield return includeYituliuFields ? baseColumns + $",{FormatMainSkillColumn(item)},{FormatSkillsColumn(item)},{FormatEquipsColumn(item)}" : baseColumns;
         }
     }
 
@@ -2334,7 +2429,7 @@ if (Bootstrapper.TryGetTaskBlockReason() is { } reason)
             _logger.Warning("Screenshot Semaphore Full, Reduce Target FPS count to {PeepTargetFps}", --PeepTargetFps);
             _ = Execute.OnUIThreadAsync(() => {
                 Growl.Clear();
-                Growl.Warning($"Screenshot taking too long, reduce Target FPS to {PeepTargetFps}");
+                Growl.Warning(LocalizationHelper.GetStringFormat("PeepScreenshotTooLong", PeepTargetFps));
             });
             return;
         }
@@ -2474,7 +2569,13 @@ if (Bootstrapper.TryGetTaskBlockReason() is { } reason)
         public bool IsSecretFront => Value == "MiniGame@SecretFront";
 
         public bool IsPixelPaint => Value is "MiniGame@PixelPaint" or "MiniGame@PixelPaint@Begin";
+
+        public bool IsAutoRaisePotential => Value == "MiniGame@AutoRaisePotential@Begin";
+
+        public bool IsMaterialSynthesis => Value == "MiniGame@MaterialSynthesis@Begin";
     }
+
+    public static string MaterialSynthesisVideoPath => Path.Combine(PathsHelper.BaseDir, "Res", "Video", "MaterialSynthesis.mp4");
 
     public ObservableCollection<MiniGameCategoryItem> MiniGameCategoryItems { get; } = [];
 
@@ -2510,9 +2611,16 @@ if (Bootstrapper.TryGetTaskBlockReason() is { } reason)
         var categorizedItems = Instances.StageManager.MiniGameEntries
             .Select(t => {
                 var isCurrentEvent = t.UtcStartTime != DateTime.MinValue || t.UtcExpireTime != DateTime.MinValue;
-                var category = LocalizationHelper.GetString(isCurrentEvent
-                    ? "MiniGameCategoryCurrentEvent"
-                    : "MiniGameCategoryPermanent");
+                var defaultCategoryKey = isCurrentEvent ? "MiniGameCategoryCurrentEvent" : "MiniGameCategoryPermanent";
+                var category = !string.IsNullOrEmpty(t.CategoryKey)
+                    && LocalizationHelper.TryGetString(t.CategoryKey, out var localizedCategory)
+                    ? localizedCategory
+                    : t.Category;
+                if (string.IsNullOrEmpty(category))
+                {
+                    category = LocalizationHelper.GetString(defaultCategoryKey);
+                }
+
                 return new MiniGameCategoryItem {
                     Display = string.IsNullOrEmpty(t.DisplayKey)
                         ? t.Display
@@ -2631,6 +2739,11 @@ if (Bootstrapper.TryGetTaskBlockReason() is { } reason)
         ("璇″奖杩疯釜", "MiniGame@SecretFront@Event3"));
 
     public string SecretFrontEvent { get; set => SetAndNotify(ref field, value); } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets 自动提升潜能：中坚信物不足时是否消耗普通信物继续提升（不勾选时点 × 跳过该次提升）。
+    /// </summary>
+    public bool MiniGameUseNormalToken { get; set => SetAndNotify(ref field, value); }
 
     #region PixelPaint
 
@@ -3201,7 +3314,7 @@ if (Bootstrapper.TryGetTaskBlockReason() is { } reason)
         }
         else
         {
-            caught = Instances.AsstProxy.AsstMiniGame(GetMiniGameTask());
+            caught = Instances.AsstProxy.AsstMiniGame(GetMiniGameTask(), MiniGameUseNormalToken);
         }
 
         if (!caught)

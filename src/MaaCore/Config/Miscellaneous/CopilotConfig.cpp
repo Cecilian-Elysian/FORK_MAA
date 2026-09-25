@@ -28,7 +28,12 @@ bool asst::CopilotConfig::parse(const json::value& json)
     else {
         return false;
     }
-    m_data.actions = parse_actions(json);
+    if (auto actions = parse_actions(json)) {
+        m_data.actions = std::move(*actions);
+    }
+    else {
+        return false;
+    }
 
     return true;
 }
@@ -188,7 +193,7 @@ std::optional<asst::battle::copilot::OperUsageGroups> asst::CopilotConfig::parse
     return groups;
 }
 
-std::vector<asst::battle::copilot::Action> asst::CopilotConfig::parse_actions(const json::value& json)
+std::optional<std::vector<asst::battle::copilot::Action>> asst::CopilotConfig::parse_actions(const json::value& json)
 {
     LogTraceFunction;
 
@@ -270,6 +275,22 @@ std::vector<asst::battle::copilot::Action> asst::CopilotConfig::parse_actions(co
             { "resetstopwatch", ActionType::ResetStopwatch },
             { "Resetstopwatch", ActionType::ResetStopwatch },
             { "重置全局计时器", ActionType::ResetStopwatch },
+
+            { "Click", ActionType::Click },
+            { "click", ActionType::Click },
+            { "CLICK", ActionType::Click },
+            { "点击", ActionType::Click },
+
+            { "Swipe", ActionType::Swipe },
+            { "swipe", ActionType::Swipe },
+            { "SWIPE", ActionType::Swipe },
+            { "滑动", ActionType::Swipe },
+
+            { "SetUnitLocation", ActionType::SetUnitLocation },
+            { "Setunitlocation", ActionType::SetUnitLocation },
+            { "setunitlocation", ActionType::SetUnitLocation },
+            { "SETUNITLOCATION", ActionType::SetUnitLocation },
+            { "设置单位坐标", ActionType::SetUnitLocation },
         };
 
         std::string type_str = action_info.get("type", "Deploy");
@@ -281,6 +302,56 @@ std::vector<asst::battle::copilot::Action> asst::CopilotConfig::parse_actions(co
             Log.warn("Unknown action type:", type_str);
             continue;
         }
+
+        if (action.type == ActionType::Click) {
+            if (!action_info.contains("rect") && !action_info.contains("location")) {
+                LogError << __FUNCTION__ << "| Click action must specify one of 'rect' or 'location'";
+                return std::nullopt;
+            }
+            if (action_info.contains("rect") && action_info.contains("location")) {
+                LogWarn << __FUNCTION__ << "| Both rect and location are set for Click action, using rect";
+            }
+        }
+        else if (action.type == ActionType::Swipe) {
+            if (!action_info.contains("begin") || !action_info.contains("end")) {
+                LogError << __FUNCTION__ << "| Swipe action requires both 'begin' and 'end'";
+                return std::nullopt;
+            }
+        }
+        else if (action.type == ActionType::SetUnitLocation) {
+            if (!action_info.contains("name") || !action_info.contains("location")) {
+                LogError << __FUNCTION__ << "| SetUnitLocation action requires both 'name' and 'location'";
+                return std::nullopt;
+            }
+            // 值级校验：name 为非空字符串，location 为 2 元素整数数组；
+            // 畸形值（空串/null/元素不足/类型不符/小数）经分量 get 回退会静默落到 [0, 0]，
+            // 该记录写入位置表后，后续按名动作都会跟着错，须在解析期拦下
+            const auto& name_json = action_info.at("name");
+            if (!name_json.is_string() || name_json.as_string().empty()) {
+                LogError << __FUNCTION__ << "| SetUnitLocation action 'name' must be a non-empty string";
+                return std::nullopt;
+            }
+            const auto& location_json = action_info.at("location");
+            if (!location_json.is_array() || location_json.as_array().size() != 2) {
+                LogError << __FUNCTION__
+                         << "| SetUnitLocation action 'location' must be a 2-element integer "
+                            "array [x, y]";
+                return std::nullopt;
+            }
+            const auto& location_arr = location_json.as_array();
+            // is<int>() 同时要求是数字且可无损解析为 int，小数与字符串数字都会被拒绝
+            if (!location_arr[0].is<int>() || !location_arr[1].is<int>()) {
+                LogError << __FUNCTION__ << "| SetUnitLocation action 'location' elements must be integers";
+                return std::nullopt;
+            }
+        }
+        else if (
+            (action.type == ActionType::Retreat || action.type == ActionType::UseSkill ||
+             action.type == ActionType::SkillUsage) &&
+            action_info.contains("name") && action_info.contains("location")) {
+            LogWarn << __FUNCTION__ << "| Both name and location are set for" << type_str << "action, using location";
+        }
+
         action.kills = action_info.get("kills", 0);
         action.cost_changes = action_info.get("cost_changes", 0);
         action.costs = action_info.get("costs", 0);
@@ -289,8 +360,20 @@ std::vector<asst::battle::copilot::Action> asst::CopilotConfig::parse_actions(co
         action.role = battle::parse_role_type(role, battle::Role::Unknown);
         action.name = action_info.get("name", std::string());
 
-        action.location.x = action_info.get("location", 0, 0);
-        action.location.y = action_info.get("location", 1, 0);
+        if (action_info.contains("location")) {
+            action.location = Point { action_info.get("location", 0, 0), action_info.get("location", 1, 0) };
+        }
+        // Click 的点击区域，720p 基准像素矩形
+        action.rect.x = action_info.get("rect", 0, 0);
+        action.rect.y = action_info.get("rect", 1, 0);
+        action.rect.width = action_info.get("rect", 2, 0);
+        action.rect.height = action_info.get("rect", 3, 0);
+        // 值畸形（元素不足、空数组、null）时分量 get 回退为 0，解析出退化 Rect，需在此拦下
+        if (action.type == ActionType::Click && action_info.contains("rect") && action.rect.empty()) {
+            LogError << __FUNCTION__
+                     << "| Click action 'rect' must be a 4-element array [x, y, w, h] with non-zero width and height";
+            return std::nullopt;
+        }
         action.direction = string_to_direction(action_info.get("direction", "Right"));
 
         action.modify_usage = static_cast<battle::SkillUsage>(action_info.get("skill_usage", 0));
@@ -311,7 +394,33 @@ std::vector<asst::battle::copilot::Action> asst::CopilotConfig::parse_actions(co
         else if (action.type == ActionType::MoveCamera) {
             auto dist_arr = action_info.at("distance").as_array();
             action.distance = std::make_pair(dist_arr[0].as_double(), dist_arr[1].as_double());
+            action.keep_kills = action_info.get("keep_kills", false);
         }
+
+        // Swipe 参数，均缺失时保持默认值
+        action.begin.x = action_info.get("begin", 0, 0);
+        action.begin.y = action_info.get("begin", 1, 0);
+        action.begin.width = action_info.get("begin", 2, 0);
+        action.begin.height = action_info.get("begin", 3, 0);
+        action.end.x = action_info.get("end", 0, 0);
+        action.end.y = action_info.get("end", 1, 0);
+        action.end.width = action_info.get("end", 2, 0);
+        action.end.height = action_info.get("end", 3, 0);
+        // 值畸形（元素不足、空数组、null）时分量 get 回退为 0，解析出退化 Rect，需在此拦下
+        if (action.type == ActionType::Swipe && (action.begin.empty() || action.end.empty())) {
+            LogError
+                << __FUNCTION__
+                << "| Swipe action 'begin' and 'end' must be 4-element arrays [x, y, w, h] with non-zero width and "
+                   "height";
+            return std::nullopt;
+        }
+        action.duration = action_info.get("duration", 0);
+        action.extra_swipe = to_swipe_extra_direction(action_info.get("extra_swipe", 0));
+        // slope 为 ×10 整数存储，10 即 1.0
+        action.slope_in = action_info.get("slope_in", 10);
+        action.slope_out = action_info.get("slope_out", 10);
+        action.with_pause = action_info.get("with_pause", false);
+        action.high_resolution_swipe_fix = action_info.get("high_resolution_swipe_fix", false);
 
         // ————————————————————————————————————————————————————————————————
         // 实验性功能

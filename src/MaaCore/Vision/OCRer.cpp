@@ -1,5 +1,6 @@
 #include "OCRer.h"
 
+#include <algorithm>
 #include <shared_mutex>
 #include <unordered_map>
 
@@ -62,6 +63,20 @@ OCRer::ResultsVecOpt OCRer::analyze() const
         return std::nullopt;
     }
 
+    switch (m_params.order_by) {
+    case ResultOrderBy::Horizontal:
+        sort_by_horizontal_(results_vec);
+        break;
+    case ResultOrderBy::Vertical:
+        sort_by_vertical_(results_vec);
+        break;
+    case ResultOrderBy::Score:
+        sort_by_score_(results_vec);
+        break;
+    case ResultOrderBy::None: // 按识别顺序，不重排
+        break;
+    }
+
     Log.trace("Proceed", results_vec);
 
     m_result = std::move(results_vec);
@@ -111,12 +126,16 @@ void OCRer::postproc_replace_(Result& res) const
         std::wstring regex_u16 = MAA_NS::to_u16(regex);
         std::wstring new_str_u16 = MAA_NS::to_u16(new_str);
         if (m_params.replace_full) {
-            if (boost::regex_search(text_u16, gen_regex(regex_u16))) {
+            if (boost::regex_search(text_u16, gen_regex(regex_u16), boost::regex_constants::match_not_dot_newline)) {
                 text_u16 = new_str_u16;
             }
         }
         else {
-            text_u16 = boost::regex_replace(text_u16, gen_regex(regex_u16), new_str_u16);
+            text_u16 = boost::regex_replace(
+                text_u16,
+                gen_regex(regex_u16),
+                new_str_u16,
+                boost::regex_constants::match_not_dot_newline);
         }
     }
     res.text = MAA_NS::from_u16(text_u16);

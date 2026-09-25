@@ -52,10 +52,12 @@ bool BlackFlowLifecycleTaskPlugin::load_params(const json::value& params)
     }
     const std::string selected_profile = profile;
 
-    // 三项都直接读 params：分队要等真正在选择界面点中才会写回 RoguelikeConfig，此刻取不到。
-    // 必须先于 initialize()，事实是在它末尾写入的。
+    // 三项都直接读 params 而非 RoguelikeConfig：分队要等真正在选择界面点中才会写回 RoguelikeConfig，开局干员顺位
+    // 也由别的插件 load_params 写入、时机不可依赖。黑流策略只消费第 1 顺位。必须先于
+    // initialize()，事实是在它末尾写入的。
+    const auto start_opers = RoguelikeConfig::parse_start_opers(params);
     m_session->set_start_loadout(
-        params.get("core_char", std::string()),
+        start_opers.empty() ? std::string {} : start_opers.front().name,
         params.get("squad", std::string()),
         params.get("roles", std::string()));
 
@@ -219,7 +221,21 @@ bool BlackFlowLifecycleTaskPlugin::_run()
 
     const std::string next_action =
         m_session != nullptr && m_session->result().has_value() ? m_session->result()->next_action : "stop_run";
-    // 两支都在主 ProcessTask 上完成放弃；停止一支在 AbandonConfirm 完成后、StartExplore 之前停用主任务。
+    if (next_action == "stop_run" && m_session != nullptr && m_session->result().has_value() &&
+        !m_session->result()->succeeded) {
+        // 错误停止保留当前画面，便于用户截图反馈。
+        // 此判定依赖策略性失败使用 restart_current_run；新增失败后 stop_run 的策略时，
+        // 需区分正常策略停止与内部故障停止，避免正常策略结果也停在局内。
+        m_task_ptr->set_enable(false);
+        LogInfo << __FUNCTION__ << "BlackFlow task stopped in place after failure" << "profile" << profile << "trigger"
+                << trigger << "pre_task" << pre_task << "outcome" << outcome << "reason" << reason << "next_action"
+                << next_action;
+        report_outputs();
+        return true;
+    }
+
+    // 重开和成功停止仍在主 ProcessTask 上放弃；成功停止在 AbandonConfirm 完成后、
+    // StartExplore 之前停用主任务，防止再次开始探索。
     m_stop_after_abandon = next_action != "restart_current_run";
     const std::string task = "BlackFlow@Roguelike@ExitThenAbandon-Enter";
     Task.set_task_base("BlackFlow@Roguelike@StrategyTerminalAction", task);

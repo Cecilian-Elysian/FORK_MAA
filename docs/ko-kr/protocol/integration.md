@@ -305,6 +305,12 @@ v6.8.0부터 폐기됨. 대신 `medicine_expire_days`를 사용하세요.
 @required
 확인 클릭할 태그 등급. 공모 계산만 할 경우 빈 배열로 설정 가능  
 :::  
+::: field level3_recruitment_permit_reserve
+@type number
+@default 0
+@optional
+★3 자동 모집 시 보유할 모집 허가증 수입니다. 현재 허가증 수가 이 값 이하이면 ★3 모집을 건너뛰며, ★4 이상 모집에는 영향을 주지 않습니다. `0`으로 설정하면 비활성화됩니다. 활성화된 상태에서 수량 인식에 실패한 경우에도 허가증이 잘못 소모되는 것을 방지하기 위해 현재 ★3 모집을 건너뜁니다.
+:::
 ::: field first_tags  
 @type array<string>
 @optional
@@ -416,6 +422,7 @@ Yituliu 전송 ID, 기본값 비어 있음. `report_to_yituliu`가 true일 때�
    "refresh": true,
    "select": [5, 4],
    "confirm": [4, 3],
+   "level3_recruitment_permit_reserve": 8,
    "first_tags": ["高级资深干员"],
    "extra_tags_mode": 1,
    "times": 4,
@@ -740,6 +747,9 @@ OF-1 플레이 시 사용할 편성 슬롯 번호
 @optional
 5주년 등 이벤트 월정액 보상 수령  
 :::  
+::: field name="signinevent" type="boolean" optional default="false"  
+기간 한정 출석 이벤트 보상 수령 (가로형 레이아웃만 지원)  
+:::  
 ::::
 
 <details>
@@ -753,7 +763,8 @@ OF-1 플레이 시 사용할 편성 슬롯 번호
    "recruit": true,
    "orundum": false,
    "mining": true,
-   "specialaccess": false
+   "specialaccess": false,
+   "signinevent": false
 }
 ```
 
@@ -859,19 +870,24 @@ OF-1 플레이 시 사용할 편성 슬롯 번호
 ::: field core_char  
 @type string
 @optional
-시작 오퍼레이터명. 단일 오퍼레이터 **중문명**만 지원(서버 무관); 비워두거나 `""`이면 육성도에 따라 자동 선택  
+시작 오퍼레이터명. 단일 오퍼레이터 **중문명**만 지원(서버 무관); 비워두거나 `""`이면 육성도에 따라 자동 선택. `core_char_list`의 1순위와 동등하며, 구버전 호출자 호환을 위해서만 유지됨  
+:::  
+::: field core_char_list  
+@type array<object>
+@optional
+시작 오퍼레이터 목록. 각 항목은 `{ "name": 오퍼레이터명, "use_support": 지원 유닛 사용 여부 }`이며, 오퍼레이터명은 마찬가지로 **중문명**만 지원(서버 무관). 배열 순서대로 시작 시 1·2·3번째 모집에 대응하며, 세 순위의 오퍼레이터는 서로 다른 직업이어야 함. 모집은 앞쪽 몇 페이지만 탐색하므로 희망 소모가 낮은 오퍼레이터는 목록 뒤쪽에 있어 찾지 못할 수 있음. 특정 순위에서 오퍼레이터를 모집하지 못한 경우(보유·지원 유닛 모두 등장하지 않은 경우) 해당 회차는 기본 우선순위로 모집되므로, 희망 소모가 높은 오퍼레이터를 앞쪽에 배치하는 것을 권장함. `core_char`와 함께 전달되면 이 필드가 우선됨  
 :::  
 ::: field use_support  
 @type boolean
 @default false
 @optional
-시작 오퍼레이터를 지원 유닛으로 빌릴지 여부  
+시작 오퍼레이터를 지원 유닛으로 빌릴지 여부. `core_char_list` 1순위의 지원 유닛 사용 플래그와 동등하며, 구버전 호출자 호환을 위해서만 유지됨  
 :::  
 ::: field use_nonfriend_support  
 @type boolean
 @default false
 @optional
-친구가 아닌 지원 유닛 사용 가능 여부. `use_support`가 true일 때만 유효  
+친구가 아닌 지원 유닛 사용 가능 여부. 지원 유닛을 사용하는 모든 시작 순위에 적용되는 전역 스위치  
 :::  
 ::: field starts_count  
 @type number
@@ -1067,9 +1083,12 @@ Sarkaz 테마, Investment 모드, "연금술 분대" 또는 "지원 분대"일 �
    "theme": "Sami",
    "mode": 5,
    "squad": "指挥分队",
-   "roles": "取长补短",
-   "core_char": "塑心",
-   "use_support": false,
+   "roles": "稳扎稳打",
+   "core_char_list": [
+      { "name": "维什戴尔", "use_support": true },
+      { "name": "古米", "use_support": false },
+      { "name": "史都华德", "use_support": false }
+   ],
    "use_nonfriend_support": false,
    "starts_count": 3,
    "difficulty": 8,
