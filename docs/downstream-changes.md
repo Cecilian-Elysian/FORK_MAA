@@ -18,7 +18,7 @@
 py tools/gen-downstream-changes.py
 ```
 
-共扫描 478 个表格行，聚合出 65 个唯一源文件路径。
+共扫描 481 个表格行，聚合出 68 个唯一源文件路径。
 
 ## 仓库根（2 个文件）
 
@@ -156,13 +156,25 @@ py tools/gen-downstream-changes.py
 |------|------|
 | 删除 | fork 独有占位模板（AccountManagerListAccount.png 复制品），master 无此文件，已验模板目录与 master 对齐 |
 
-## `src/`（42 个文件）
+## `src/`（45 个文件）
 
 ### [TGT] `src/MaaCore/Assistant.cpp` 
 
 | 操作 | 说明 |
 |------|------|
 | 淇敼 | `AllTasksCompleted` 鍚庣珛鍗宠 `m_thread_idle=true`锛屼慨澶嶇浜岃疆 `AsstStart` 鍥犵珵鎬佽繑鍥?false 鐨?bug |
+
+### [TGT] `src/MaaCore/Task/Fight/FightTimesTaskPlugin.cpp` 
+
+| 操作 | 说明 |
+|------|------|
+| 修改 (+12 行) | line 130 后: `else if (m_medicine == 0 && m_stone == 0 && sanity->current < *sanity_cost)` 短路 → `m_task_ptr->set_enable(false)` + Log.info `sanity insufficient (N < M), no medicine/stone budget, skip fight` + finished=true |
+
+### [TGT] `src/MaaCore/Task/Fight/FightTimesTaskPlugin.h` 
+
+| 操作 | 说明 |
+|------|------|
+| 修改 (+5 行) | line 46-47: `set_medicine`/`set_stone` setter (noexcept); line 85-86: `m_medicine`/`m_stone` 字段 (INT_MAX 缺省 = 用户未配置 = 不短路, 兼容上游调用方与既有 WPF 配置迁移) |
 
 ### [HOT] `src/MaaCore/Task/Infrast/InfrastReceptionTask.cpp` (x3)
 
@@ -171,6 +183,12 @@ py tools/gen-downstream-changes.py
 | 接上游 + cherry-pick | 上游已含 No1..No7（#16054）；保留 fork `vacancy_cnt==0` 早返回 |
 | 修改 | `proc_clue_vacancy` 控制流改造 — `vacancy_cnt==0` 提前 `return true`；`confirm_task != nullptr` 单独判断；引入 `click_performed` 仅真实点击时 `return true`；OCR analyze 失败 / `chars_to_number` 解析失败 / `available != vacancy_cnt` / `confirm_task` 缺失各打 `Log.warn` + fallback 到 legacy 循环 |
 | legacy 循环强化 | 迭代顶部加 `image = ctrler()->get_image()` 防陈旧截图；放置线索后 `Matcher(InfrastReceptionIcon)` 检测关闭右侧面板 |
+
+### [TGT] `src/MaaCore/Task/Interface/FightTask.cpp` 
+
+| 操作 | 说明 |
+|------|------|
+| 修改 (+3 行) | line 192 前: 注入 `medicine`/`stone` 到 `m_fight_times_prt` (与既有 `m_sidestory_reopen_task_ptr` set_medicine/stone 对齐) |
 
 ### [HOT] `src/MaaCore/Task/Interface/RecruitTask.cpp` (x7)
 
