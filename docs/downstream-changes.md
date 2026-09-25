@@ -18,7 +18,7 @@
 py tools/gen-downstream-changes.py
 ```
 
-共扫描 481 个表格行，聚合出 68 个唯一源文件路径。
+共扫描 482 个表格行，聚合出 68 个唯一源文件路径。
 
 ## 仓库根（2 个文件）
 
@@ -164,11 +164,12 @@ py tools/gen-downstream-changes.py
 |------|------|
 | 淇敼 | `AllTasksCompleted` 鍚庣珛鍗宠 `m_thread_idle=true`锛屼慨澶嶇浜岃疆 `AsstStart` 鍥犵珵鎬佽繑鍥?false 鐨?bug |
 
-### [TGT] `src/MaaCore/Task/Fight/FightTimesTaskPlugin.cpp` 
+### [TGT] `src/MaaCore/Task/Fight/FightTimesTaskPlugin.cpp` (x2)
 
 | 操作 | 说明 |
 |------|------|
 | 修改 (+12 行) | line 130 后: `else if (m_medicine == 0 && m_stone == 0 && sanity->current < *sanity_cost)` 短路 → `m_task_ptr->set_enable(false)` + Log.info `sanity insufficient (N < M), no medicine/stone budget, skip fight` + finished=true |
+| 修改 (+7 -3) | `change_series_new` (line 198-209): 第一分支改 `if (m_medicine != 0 \|\| m_stone != 0)` 包裹原选满逻辑; 零预算落穿注释; line 201 修正为 `select_series_new(remain) ? remain : std::optional<int>()` (对齐 line 224/229 既有 idiom) |
 
 ### [TGT] `src/MaaCore/Task/Fight/FightTimesTaskPlugin.h` 
 
