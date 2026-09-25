@@ -833,6 +833,74 @@ git replace --convert-graft-file
 git config --local advice.graftFileDeprecated false
 ```
 
+### 错误 8: 合并后跑「开始唤醒」报 OutOfMemory（2026-09-25 v6.18.0 实录）
+
+**症状**：
+
+```
+[ERR] Unhandled out of memory in task thread
+[INF] TaskChainError {"details":{"error":"OutOfMemory"},"taskchain":"StartUp",...}
+```
+
+GPU / CPU 模式均复现；机器内存充裕（非真 OOM）。日志特征：`asst.log` 中 `asst::OcrPack::check_and_load | enter` 之后**无** `det 1 rec 1 ocr 1`（`LogTraceFunction` 是 RAII 析构打印，异常穿栈也打 leave；无该行 = 异常抛在 DBDetector/Recognizer 模型构造内）。
+
+**根因**：第三方依赖 DLL 真身在 `src/MaaUtils` 子模块内（`MaaDeps/runtime/maa-x64-windows/`）。子模块 bump（如 `0c2556cf` → `6e9ba33`）整套替换 onnxruntime / fastdeploy / opencv 的 ABI；新 MaaCore 链接新 import lib，而 `install-staging/` 若仍留旧 DLL（`cmake --install` / `dotnet publish` 不保证刷新第三方 DLL），运行时半匹配 → OCR 初始化 `bad_alloc`。
+
+**诊断**：
+
+```powershell
+# build/bin 与 install-staging 按 Name+Length 对比，尺寸差 = 部署漏同步
+# 实录: onnxruntime_maa.dll 80,622,080 vs 18,998,784; fastdeploy_ppocr_maa.dll 17,176,576 vs 1,169,920
+Compare-Object (Get-ChildItem build\bin -Filter *.dll | ForEach-Object { '{0}|{1}' -f $_.Name, $_.Length }) `
+               (Get-ChildItem install-staging -Filter *.dll | ForEach-Object { '{0}|{1}' -f $_.Name, $_.Length })
+```
+
+**修复**：
+
+```powershell
+Copy-Item build\bin\{onnxruntime_maa,fastdeploy_ppocr_maa,opencv_world4_maa,opencv_world4d_maa,DirectML}.dll install-staging\ -Force
+```
+
+修复后重测，`check_and_load` 应出现 `det 1 rec 1 ocr 1`（约 3s）；GPU / CPU 两种模式都应验证（GPU init 只在首个 OCR 任务时发生，临时置 `gui.new.json` 的 `StartUpSettings.RunDirectly=true` 可触发，测毕还原）。
+
+**防复发**：凡动过 `src/MaaUtils` 子模块指针的合并，部署后必跑 `tools/post-merge-validate.ps1`（第 [8] 项 = 7 个 DLL 尺寸一致性检查）。官方 release 包对照实验可因网络受阻（代理未运行 + 直连超时）做不了，DLL 尺寸对比更快且同样决定性。
+
+### 错误 9: 文档中文变 `?` 或 mojibake（编码事故，2026-09-25 v6.18.0 实录 ×2）
+
+**症状**（两种形态）：
+
+- LOG.md（UTF-16 LE）某段中文全成 `?`、ASCII 完好 → 写入时编码转换丢失，**不可逆**
+- AGENTS.md（UTF-8）出现 `锛圡aaCore锛?` 型乱码 → UTF-8→GBK 误读 + ASCII 字节被吞，**不可反解**
+
+**根因**：跨编码文本搬运（上游文档 → fork 文档、会话记录 → LOG.md）走了 PowerShell `Out-File`/`Set-Content` 默认编码，或写 UTF-16 文件未显式指定编码。
+
+**修复**：
+
+- LOG.md 段落损坏 → 凭会话记录重建（ASCII 骨架如 commit hash / 命令 / 数字通常完好，可作重建锚点）
+- AGENTS.md 上游原文损坏 → 从上游 commit 干净原文整段重写（`git show <upstream-sha>:AGENTS.md`，标题降一级对齐 fork 章节结构）
+
+**预防 SOP**（2026-09-25 起）：
+
+- LOG.md 只用 Python `io.open(..., encoding='utf-16')` 读写
+- 跨编码搬运一律经 Python 显式 encoding，禁 PowerShell `Out-File`/`Set-Content` 直写非默认编码文件
+- 提交前抽查中文段落乱码特征：`锛`、成片 `?`
+
+### 错误 10: 合并后 LNK2001 unresolved（C++ 新增源文件，v6.18.0 实录）
+
+**症状**：链接期 `LNK2001: unresolved external symbol`，涉及 merge 带来的新增 Task 类（如 `AutoRaisePotentialTaskPlugin.cpp`）。
+
+**原因**：MaaCore 源文件由 CMake `file(GLOB_RECURSE)` 收集，只在 configure 时扫描；新 `.h/.cpp` 不重新 configure 就不进构建。
+
+**修复**：重新 configure 再 build（Ninja 环境命令见 §6.5.11）。
+
+### 错误 11: PowerShell 5.1 `ConvertFrom-Json` 误报重复键（v6.18.0 实录）
+
+**症状**：校验 `resource/tasks/tasks.json` 时报重复键（如 `specialParams_Doc` / `specialParams_doc` 仅大小写不同）。
+
+**原因**：PS 5.1 JSON 解析器对键名大小写不敏感去重，而 tasks.json 字段命名存在仅大小写差异的组合。
+
+**修复**：JSON 校验统一改用 Python `json.load`（大小写敏感，与 MAA 加载器语义一致）。
+
 ---
 
 ## §10 完整端到端 PowerShell 脚本
