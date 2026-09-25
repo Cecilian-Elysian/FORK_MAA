@@ -232,6 +232,53 @@ if (-not (Test-Path $runtimeConfigPath)) {
     }
 }
 
+# ---------- 8. third-party DLL sync check (build/bin vs install-staging) ----------
+# 2026-09-25 v6.18.0 OOM 排查沉淀: MaaUtils 子模块 bump 会整套替换 vcpkg 第三方依赖
+# (src/MaaUtils/MaaDeps/runtime/maa-x64-windows/)。新 MaaCore 链接新 import lib, 若
+# install-staging 仍留旧 DLL (cmake --install 未生效/手动部署漏拷), OCR 初始化即在
+# OcrPack::check_and_load 内 bad_alloc → "Unhandled out of memory in task thread"。
+# 详见 AGENTS.md §10.5 与 LOG.md 2026-09-25 阶段 12。
+Write-Host ""
+Write-Host "[8] third-party DLL sync (build/bin vs install-staging)..." -ForegroundColor Yellow
+
+$buildBin = Join-Path $repoRoot "build\bin"
+$dllsToCheck = @(
+    "onnxruntime_maa.dll", "fastdeploy_ppocr_maa.dll",
+    "opencv_world4_maa.dll", "opencv_world4d_maa.dll", "DirectML.dll",
+    "MaaCore.dll", "MaaUtils.dll"
+)
+
+if (-not (Test-Path $buildBin)) {
+    Write-Host "  [WARN] build/bin not found (cmake configure first); DLL sync unchecked" -ForegroundColor Yellow
+    $warnings = $true
+} else {
+    $dllSyncFailed = $false
+    foreach ($dll in $dllsToCheck) {
+        $src = Join-Path $buildBin $dll
+        $dst = Join-Path $repoRoot "install-staging\$dll"
+        if (-not (Test-Path $src)) {
+            Write-Host "  [WARN] build/bin/$dll not found (not built yet?)" -ForegroundColor Yellow
+            $warnings = $true
+            continue
+        }
+        if (-not (Test-Path $dst)) {
+            Write-Host "  [FAIL] install-staging/$dll missing (copy from build/bin)" -ForegroundColor Red
+            $failed = $true; $dllSyncFailed = $true
+            continue
+        }
+        $srcLen = (Get-Item $src).Length
+        $dstLen = (Get-Item $dst).Length
+        if ($srcLen -ne $dstLen) {
+            Write-Host ("  [FAIL] {0} size mismatch: build/bin={1} install-staging={2}" -f $dll, $srcLen, $dstLen) -ForegroundColor Red
+            Write-Host "         Stale third-party DLL causes OCR init bad_alloc (see AGENTS.md section 10.5)" -ForegroundColor Red
+            $failed = $true; $dllSyncFailed = $true
+        }
+    }
+    if (-not $dllSyncFailed) {
+        Write-Host "  [OK]   $($dllsToCheck.Count) DLLs in sync (by size)" -ForegroundColor Green
+    }
+}
+
 # ---------- Summary ----------
 Write-Host ""
 Write-Host "=== Validation Complete ===" -ForegroundColor Cyan

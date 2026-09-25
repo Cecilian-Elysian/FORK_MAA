@@ -745,6 +745,24 @@ git commit -m $msg
 
 **首次踩坑记录**：2026-09-19 — fork 用户报 MAA 跑日常 Penguin/Yituliu 报数失败（直连 SSL EOF）。在 `gui.json` 的 `Global` 加 `VersionUpdate.Proxy` 键失败，日志无 `Rebuild HttpClient with proxy`。根因即上表 new vs legacy 路径混淆。改 `gui.new.json` 的 `Update.Proxy` 字段后 1 分钟内日志出现代理行，api.maa.plus 返回 304。**Proxy / ProxyType 字段位置在 `gui.new.json` 顶层 `"Update": { ... }` 子对象里，不是顶层散落，也不是 `Global` 子对象里**。
 
+### 10.5 MaaUtils 子模块 bump 与第三方 DLL 同步（2026-09-25 沉淀）
+
+**症状**：合并上游后新构建的 MAA 跑「开始唤醒」即 `TaskChainError OutOfMemory`（`Unhandled out of memory in task thread`），GPU / CPU 模式均复现；机器内存充裕（RAM 5.4/15.8 GB 空、VRAM 1183/8188 MiB），显非真 OOM。
+
+**根因**：第三方依赖 DLL 的真身在 **`src/MaaUtils` 子模块内**（`MaaUtils/MaaDeps/runtime/maa-x64-windows/`，vcpkg 安装树 `MaaUtils/MaaDeps/vcpkg/installed/maa-x64-windows/`）。子模块 bump（如 v6.18.0 同步 `0c2556cf` → `6e9ba33`）会**整套替换** onnxruntime / fastdeploy / opencv 的 ABI：新 MaaCore 链接新 import lib，而 `install-staging/` 若仍留旧 DLL（cmake --install 未生效或手动部署漏拷贝），运行时半匹配 → `OcrPack::check_and_load` 内 DBDetector/Recognizer 构造抛 `bad_alloc`。
+
+**定位技巧**（LogTraceFunction RAII 特性）：
+
+| # | 手段 | 判读 |
+|---|------|------|
+| 1 | 对比失败帧 `asst.log`：`check_and_load \| enter` 后无 `det 1 rec 1 ocr 1` | `LogTraceFunction` 是 RAII 析构打印，异常穿栈也打 leave；无 det/rec/ocr 行 = 异常抛在三个模型加载之内 |
+| 2 | `Compare-Object` build/bin 与 install-staging 的 DLL `Name+Length` | 尺寸差 = 部署漏同步（本次 onnxruntime 80,622,080 vs 18,998,784） |
+| 3 | 修复 | `Copy-Item build\bin\{onnxruntime_maa,fastdeploy_ppocr_maa,opencv_world4_maa,opencv_world4d_maa,DirectML}.dll install-staging\ -Force` 后重测 |
+
+**防复发**：`tools/post-merge-validate.ps1` 第 [8] 项已加入 7 个 DLL 尺寸一致性检查（含 MaaCore.dll / MaaUtils.dll）。凡动过 `src/MaaUtils` 子模块指针的合并，部署后必须重跑该脚本。
+
+**首次踩坑记录**：2026-09-25 v6.18.0 release 同步（阶段 12）——`0a3884231d` merge + 子模块 bump 后 22:49/22:59/23:01 三次 OOM；23:05 尺寸对比定位，23:09 同步 DLL 后 `det 1 rec 1 ocr 1`（3091ms）恢复，全任务链跑通。详见 `LOG.md` 2026-09-25 阶段 12。
+
 ---
 
 **§10 与其它章节互引**：
@@ -752,4 +770,5 @@ git commit -m $msg
 - §10.2 dead key → 任何 feat/* / fix/* 回退后
 - §10.3 冒烟 → 所有修改后必跑
 - §10.4 代理配置 → 任何「设置本地代理走 Clash」类需求
+- §10.5 子模块 bump → 任何 `git submodule update` / MaaUtils 指针变更后的部署与验证
 - 上游同步专项 → [`WORKFLOW.md`](./WORKFLOW.md)
