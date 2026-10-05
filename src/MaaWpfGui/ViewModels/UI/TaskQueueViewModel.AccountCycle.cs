@@ -75,6 +75,7 @@ public partial class TaskQueueViewModel
             MarkPreviousStepCompleted(prevStep);
             StartUpTask.IsCycling = false;
             CurrentCycleAccountName = string.Empty;
+            ReanchorDataAccountToConfigured();
             _consecutiveEmptySteps = 0;
             _runningState.SetIdle(true);
             AddLog(LocalizationHelper.GetString("AccountCycleAllDone"), UiLogColor.Info);
@@ -279,6 +280,7 @@ public partial class TaskQueueViewModel
                 AddLog(LocalizationHelper.GetString("UnknownErrorOccurs"), UiLogColor.Error);
                 StartUpTask.IsCycling = false;
                 CurrentCycleAccountName = string.Empty;
+                ReanchorDataAccountToConfigured();
 
                 // 兜底: 清空 Core 队列, 避免真失败时已 append 的任务"幽灵执行"
                 _ = Instances.AsstProxy.AsstStop();
@@ -290,7 +292,27 @@ public partial class TaskQueueViewModel
             AddLog($"[Cycle] AdvanceAccountCycle error: {ex.Message}", UiLogColor.Error);
             StartUpTask.IsCycling = false;
             CurrentCycleAccountName = string.Empty;
+            ReanchorDataAccountToConfigured();
             _runningState.SetIdle(true);
+        }
+    }
+
+    /// <summary>
+    /// fix/data-account-ui-hardening: 轮换步骤耗尽 / 推进失败 / 异常收尾时把识别数据桶回锚到
+    /// 轮换列表首个非空账号, 避免工具箱干员/仓库 Tab 与同步时间停留在最后运行的账号。
+    /// 手动停止 (Stop → ClearCurrentCycleAccountName) 不回锚, 保留用户正在查看的桶。
+    /// </summary>
+    private void ReanchorDataAccountToConfigured()
+    {
+        try
+        {
+            var firstAccount = ConfigFactory.CurrentConfig.TaskQueue.OfType<StartUpTask>().FirstOrDefault()
+                ?.AccountNames?.FirstOrDefault(a => !string.IsNullOrWhiteSpace(a));
+            Instances.ToolboxViewModel.SwitchDataAccount(firstAccount);
+        }
+        catch (Exception ex)
+        {
+            _logger.Warning(ex, "[CycleAdv] reanchor data account failed");
         }
     }
 

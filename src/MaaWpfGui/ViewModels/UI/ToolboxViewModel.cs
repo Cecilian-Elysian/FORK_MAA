@@ -1805,6 +1805,11 @@ if (Bootstrapper.TryGetTaskBlockReason() is { } reason)
     /// <returns>是否成功。</returns>
     public async Task<bool> StartOperBoxFromYituliuApiAsync()
     {
+        // fix/data-account-ui-hardening: 捕获发起时的账号桶。UserDataUpdate 的一图流分支是 fire-and-forget,
+        // HTTP 往返期间轮换可能已 AdvanceAccountCycle 切到下一账号; 完成时若桶已变, 落盘会把 token
+        // 绑定账号的数据写进他人桶(且 Reset 会清掉对方已加载数据), 必须丢弃。
+        var originDataAccountKey = _currentDataAccountKey;
+
         var token = SettingsViewModel.ThirdPartyServiceSettings.YituliuOpenApiToken.Trim();
         if (string.IsNullOrEmpty(token))
         {
@@ -1836,6 +1841,21 @@ if (Bootstrapper.TryGetTaskBlockReason() is { } reason)
                 // 账号未绑定或未导入练度时接口返回空列表（本地资源过旧跳过全部干员时同样为空），此时保留本地数据，不落盘覆盖
                 OperBoxInfo = LocalizationHelper.GetString("YituliuNoOperBoxData");
                 Instances.TaskQueueViewModel.AddLog(OperBoxInfo, UiLogColor.Error);
+                return false;
+            }
+
+            // fix/data-account-ui-hardening: 桶在拉取期间被切走(轮换推进/用户切桶)则丢弃本次数据,
+            // 不 Reset 不落盘; 任务条目随返回 false 标 Error, 由告警日志说明原因
+            if (_currentDataAccountKey != originDataAccountKey)
+            {
+                _logger.Warning(
+                    "[DataAccount] yituliu oper-box fetch discarded: bucket switched during fetch (origin={Origin}, current={Current})",
+                    originDataAccountKey,
+                    _currentDataAccountKey);
+                OperBoxInfo = LocalizationHelper.GetString("YituliuTokenNetworkError");
+                Instances.TaskQueueViewModel?.AddLog(
+                    "[DataAccount] 一图流干员数据已丢弃：拉取期间账号已切换（一图流 token 仅对应单个游戏账号）",
+                    UiLogColor.Warning);
                 return false;
             }
 
