@@ -23,6 +23,7 @@ using MaaWpfGui.Configuration.Factory;
 using MaaWpfGui.Configuration.Single.MaaTask;
 using MaaWpfGui.Constants;
 using MaaWpfGui.Helper;
+using MaaWpfGui.Utilities;
 using MaaWpfGui.Utilities.ValueType;
 using MaaWpfGui.ViewModels.UserControl.Settings;
 using Newtonsoft.Json.Linq;
@@ -98,6 +99,22 @@ public partial class ToolboxViewModel
             return _currentDataAccountRaw ?? GetDataAccountDisplayName(_currentDataAccountKey);
         }
     }
+
+    /// <summary>
+    /// Gets 干员上次同步时间 + 当前账号名（fix/data-account-ui-hardening）。
+    /// 任务队列页「数据更新」设置等无账号上下文的显示位用本属性替代 <see cref="ToolboxViewModel.LastOperBoxSyncTimeText"/>，
+    /// 明示时间归属账号；工具箱两 Tab 旁已有加粗账号名，维持原属性不重复标注。
+    /// </summary>
+    [PropertyDependsOn(nameof(LastOperBoxSyncTimeText), nameof(CurrentDataAccountDisplayName))]
+    public string LastOperBoxSyncTimeAccountedText =>
+        string.IsNullOrEmpty(LastOperBoxSyncTimeText) ? string.Empty : $"{LastOperBoxSyncTimeText} ({CurrentDataAccountDisplayName})";
+
+    /// <summary>
+    /// Gets 仓库上次同步时间 + 当前账号名（fix/data-account-ui-hardening），语义同 <see cref="LastOperBoxSyncTimeAccountedText"/>。
+    /// </summary>
+    [PropertyDependsOn(nameof(LastDepotSyncTimeText), nameof(CurrentDataAccountDisplayName))]
+    public string LastDepotSyncTimeAccountedText =>
+        string.IsNullOrEmpty(LastDepotSyncTimeText) ? string.Empty : $"{LastDepotSyncTimeText} ({CurrentDataAccountDisplayName})";
 
     private string OperBoxBucketKey => AccountDataBucketKey(JsonDataKey.OperBoxData, _currentDataAccountKey);
 

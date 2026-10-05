@@ -747,7 +747,7 @@
                                     <StackPanel Orientation="Horizontal">
                                         <controls:TextBlock Text="{DynamicResource LastSyncTime}" />
                                         <controls:TextBlock Text=": " />
-                                        <controls:TextBlock Text="{Binding LastDepotSyncTimeText, Mode=OneWay, Source={x:Static helper:Instances.ToolboxViewModel}}" />
+                                        <controls:TextBlock Text="{Binding LastDepotSyncTimeAccountedText, Mode=OneWay, Source={x:Static helper:Instances.ToolboxViewModel}}" />
                                     </StackPanel>
                                 </StackPanel>
                             </controls:TooltipBlock.CustomToolTip>

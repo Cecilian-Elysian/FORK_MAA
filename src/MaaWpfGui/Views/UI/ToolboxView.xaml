@@ -302,7 +302,7 @@
                         VerticalAlignment="Center"
                         DisplayMemberPath="Display"
                         hc:TitleElement.Title="{DynamicResource DataAccountLabel}"
-                        IsEnabled="{c:Binding 'Idle and Inited'}"
+                        IsEnabled="{c:Binding 'Run.Idle and Run.Inited'}"
                         ItemsSource="{Binding DataAccountList}"
                         SelectedItem="{Binding SelectedDataAccountOption}" />
                 </StackPanel>
@@ -662,7 +662,7 @@
                             VerticalAlignment="Center"
                             DisplayMemberPath="Display"
                             hc:TitleElement.Title="{DynamicResource DataAccountLabel}"
-                            IsEnabled="{c:Binding 'Idle and Inited'}"
+                            IsEnabled="{c:Binding 'Run.Idle and Run.Inited'}"
                             ItemsSource="{Binding DataAccountList}"
                             SelectedItem="{Binding SelectedDataAccountOption}" />
                     </StackPanel>

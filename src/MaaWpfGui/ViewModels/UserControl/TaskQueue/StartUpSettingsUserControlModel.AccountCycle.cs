@@ -251,6 +251,10 @@ public partial class StartUpSettingsUserControlModel
         {
             config.AccountNames[item.Index] = item.AccountName;
             NotifyOfPropertyChange(nameof(AccountCycleItems));
+
+            // fix/data-account-ui-hardening: 账号名编辑后同步刷新工具箱「账号数据」下拉,
+            // 否则下拉残留旧名直到下次切桶 (改名不迁移旧桶文件, 新旧两行并存为既有行为)
+            Instances.ToolboxViewModel.RefreshDataAccountList();
         }
     }
 
@@ -280,6 +284,9 @@ public partial class StartUpSettingsUserControlModel
 
         RebuildIndexes();
         NotifyOfPropertyChange(nameof(AccountCycleItems));
+
+        // fix/data-account-ui-hardening: 新增空行不改变有效账号集合, 但刷新无副作用且保持逻辑单一入口
+        Instances.ToolboxViewModel.RefreshDataAccountList();
     }
 
     [UsedImplicitly]
@@ -315,6 +322,10 @@ public partial class StartUpSettingsUserControlModel
 
         RebuildIndexes();
         NotifyOfPropertyChange(nameof(AccountCycleItems));
+
+        // fix/data-account-ui-hardening: 删号后刷新工具箱「账号数据」下拉 (被删账号若已有数据桶,
+        // 仍会按磁盘桶文件显示, 属正常——数据保留供查看, 仅轮换列表不再包含)
+        Instances.ToolboxViewModel.RefreshDataAccountList();
     }
 
     private void RebuildIndexes()
