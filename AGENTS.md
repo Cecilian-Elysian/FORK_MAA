@@ -589,6 +589,19 @@ Select-String -Path install-staging/MAA.runtimeconfig.json -Pattern "STARTUP_HOO
 | 作用域 | 仅本仓库 fork 三方同步操作，不推 upstream |
 | 详见 | `V618_SYNC_PLAN.md`（项目根，压缩执行计划）；`LOG.md` 2026-09-16 阶段 0-10 + 2026-09-25 阶段 11-13 全部记录；`WORKFLOW.md` §9 错误 8-11（合并问题复盘主体） |
 
+### 7.23 fix/data-account-ui-hardening（2026-10-05 已合入 staging）
+
+| 项 | 内容 |
+|----|------|
+| 用途 | 账号轮换数据归属 UI 加固 5 项：同步时间标账号（`LastOperBox/DepotSyncTimeAccountedText` 派生属性，任务队列页库存更新提示 + 数据更新设置面板 3 处换绑）+ 账号下拉运行中锁定失效修复（ToolboxView `Idle and Inited` → `Run.Idle and Run.Inited`，v6.18 `91cdccbb17` RunControlState 重构移除 VM 级 `Idle`/`Inited` 后的悬空绑定回归）+ 一图流 OpenAPI 干员同步跨账号桶竞态（`StartOperBoxFromYituliuApiAsync` 入口捕获桶 key，完成后桶已变则丢弃+告警，堵 fire-and-forget 轮换推进后写错桶）+ 轮换结束/失败/异常后数据桶回锚首个账号（`ReanchorDataAccountToConfigured`，手动停止不回锚）+ 轮换列表增删改后刷新工具箱账号下拉 |
+| 生命周期 | 2026-10-05 创建（从 staging 拉出） → 2026-10-05 `--no-ff` 合入 `staging`（`5862c1a5d5`） |
+| 关键 commit | `5b3bb1c1d9`（fix(data-account): 账号轮换数据归属 UI 加固，8 files +77 -7） |
+| 子修复分支 | 无（独立 fix） |
+| 验证 | dotnet build 0 错误 / 57 warning（均预存）；publish + nbeauty2 部署 install-staging（STARTUP_HOOKS 在位）；冒烟 `AsstLoadResource ret: true` + 0 Unhandled/Fatal + 进程存活；`c:Binding 'Idle` 0 残留。留用户实机：轮换跑批看时间带账号名跳变 + Yituliu 跨号丢弃告警 |
+| 边界 | 账号改名不迁移旧桶文件（§7.14 既有行为，下拉短暂新旧两行并存）；工具箱两 Tab 不加账号后缀（旁有账号名避免重复）；Yituliu token 单账号语义仅在丢弃时日志说明，轮换中禁用该模式属后续可选增强 |
+| 作用域 | 仅本仓库 fork 私有，不推 upstream |
+| 详见 | `LOG.md` 2026-10-05（启动 / 实施完成 / 合入 staging 三段） |
+
 
 ## 8. 关键参考链接
 
