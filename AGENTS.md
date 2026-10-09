@@ -98,7 +98,7 @@ staging ──── feat/<name>, fix/<name> ← 从 staging 拉出
 | 出问题回退 | 从远端保留的 `feat/<name>` / `fix/<name>` 重新拉 `fix/<name>/<n>`，仍合并到 `staging` |
 | **上游同步 SOP** | **拉取上游新功能（merge `upstream/master-v2`）必须按 `WORKFLOW.md` 流程执行**（§5 graft + §6 合并 + §7 replace + §8 编译验证） |
 
-#### 当前 staging 内容（截至 2026-08-13 staging → branch 晋升完成）
+#### 当前 staging 内容（截至 2026-10-09 staging → branch 晋升完成）
 
 `staging` 通过 commit `706f8babf4` merge `upstream/master-v2`（v6.16.5 release），已含：
 - Phase A: 移除 `feat/auto-recruit-3star-to-4star`（commit `3fd8903115`）
@@ -110,6 +110,8 @@ staging ──── feat/<name>, fix/<name> ← 从 staging 拉出
 - 2026-09-07：`f580d7ed6d` fix/depot-special-memorial-tab 手摘上游 `da5ccfe4ed` 仓库「特别纪念」tab 修复（§7.18）
 - 2026-09-16：`6d32144858` merge 上游 v6.18.0-beta.1（§7.22 阶段 0-10）；`ae24fd2851` 补 CurrentAccountLabel 5 语 key；`16b11a0e31` 清 ToolboxTabRecruitHistory dead key（§10.2）
 - 2026-09-25：`39a7b516e7` fix/sanity-auto-series-adapt（AUTO 倍率按理智自适应）；`0a3884231d` merge 上游 v6.18.0 release（134 commit，§7.22 阶段 11）+ `1b7b087aae` 编译修复三连；MaaUtils 子模块 bump `0c2556cf` → `6e9ba33`
+- 2026-10-05：`5862c1a5d5` fix/data-account-ui-hardening（账号轮换数据归属 UI 加固 5 项，§7.23）
+- 2026-10-09：`9f91e74d99` staging → branch 晋升（698 commit，零冲突，branch 与 staging 树一致）；**上游待同步**：`upstream/master-v2` 已推进 84 commit 至 `54d20df` = v6.19.0-beta.1（2026-10-01）
 
 历史假关联：fork base `c8c8e75be5` 无父节点，通过 `git replace --graft` 接 `6147357bd0`（v6.14.0 upstream release），merge-base = `c8c8e75be5` 走 3-way 合并。
 
@@ -122,6 +124,7 @@ staging ──── feat/<name>, fix/<name> ← 从 staging 拉出
 | 2026-08-30 | `a0f530912c` | 20 commit（2 修复 + 1 feat + 3 工具/重构 + 14 间接） | trust staging | §7.14/§7.15/§7.16/§7.17 全部 fix/feat 走 staging 验证流程后晋升；install-staging 2026-08-28 09:28 内核指纹覆盖全部变更 |
 | 2026-09-16 | _待晋升_ | v6.17.0 → v6.18.0-beta.1 全量同步 merge `6d32144858`（staging 已含，branch 未晋升） | trust staging | §7.22 `feat/upstream-v618-sync` 合入 staging；§7.18 已先手摘上游 `da5ccfe4ed` depot 修复入 staging（9/7）；编译/冒烟/fork marker 全过 |
 | 2026-09-25 | _待晋升_ | v6.18.0 release 跟进 merge `0a3884231d` + `1b7b087aae`（staging 已含，branch 未晋升） | trust staging | §7.22 阶段 11-13：上游 134 commit + MaaUtils bump `6e9ba33` + 冒烟/总检全过；阶段 12 OOM 修复（第三方 DLL 半匹配同步）+ CPU/GPU OCR 双模式实测通过；阶段 13 编码事故修复（LOG 阶段 11 重建 / AGENTS §9 上游原文重写）+ WORKFLOW §9 错误 8-11 沉淀；晋升实测项与上行一致 |
+| 2026-10-09 | `9f91e74d99` | 698 commit（v6.17.0 → v6.18.0 全量同步 + §7.10-§7.18/§7.20/§7.21/§7.23 全部 fix 与工具） | trust staging | 2026-09-16 + 2026-09-25 两行 _待晋升_ 内容随本次一并晋升（`branch` 原为 `staging` 祖先 `f60066bacc`，`--no-ff` 零冲突，tree `396241e973` 与 staging 一致）；子模块 `src/MaaUtils` gitlink `0c2556cf` → `6e9ba33`；`install/` 仍为 2026-09-03 旧构建，待 `tools/local-install.bat` 重建后跑实测项 |
 
 晋升后实测验证项（仅适用于 `staging → branch` 晋升决策；本次晋升 trust staging）：
 - 多账号切号（官服 + B 服，含新增繁中服支援）
