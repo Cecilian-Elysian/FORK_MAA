@@ -16,8 +16,8 @@
 #include "Vision/Battle/BattlefieldClassifier.h"
 #include "Vision/Battle/BattlefieldMatcher.h"
 #include "Vision/Matcher.h"
-#include "Vision/Miscellaneous/OperNameAnalyzer.h"
 #include "Vision/MultiMatcher.h"
+#include "Vision/Oper/OperNameAnalyzer.h"
 #include "Vision/RegionOCRer.h"
 #include <ranges>
 
@@ -404,20 +404,36 @@ bool asst::BattleHelper::update_cost(const cv::Mat& image, const cv::Mat& image_
 
 bool asst::BattleHelper::deploy_oper(const std::string& name, const Point& loc, DeployDirection direction)
 {
+    return deploy_oper(battle::Role::Unknown, name, loc, direction);
+}
+
+bool asst::BattleHelper::deploy_oper(
+    battle::Role role,
+    const std::string& name,
+    const Point& loc,
+    battle::DeployDirection direction)
+{
     LogTraceFunction;
 
     const auto swipe_oper_task_ptr = Task.get("BattleSwipeOper");
     const auto use_oper_task_ptr = Task.get("BattleUseOper");
 
-    auto rect_opt = get_oper_rect_on_deployment(name);
-    if (!rect_opt) {
+    auto it = std::ranges::find_if(m_cur_deployment_opers, [&](const auto& oper) {
+        return (role == battle::Role::Unknown || oper.role == role) && oper.name == name;
+    });
+
+    if (it == m_cur_deployment_opers.cend()) {
+        LogError << "No oper" << enum_to_string(role) << name;
         return false;
     }
-    const Rect& oper_rect = *rect_opt;
+
+    const auto& oper_role = it->role;
+    const auto& oper_name = it->name;
+    const Rect& oper_rect = it->rect;
 
     auto target_iter = m_side_tile_info.find(loc);
     if (target_iter == m_side_tile_info.cend()) {
-        Log.error("No loc", loc);
+        LogError << "No loc" << loc;
         return false;
     }
     Point target_point = target_iter->second.pos;
@@ -444,9 +460,9 @@ bool asst::BattleHelper::deploy_oper(const std::string& name, const Point& loc, 
         oper_point,
         target_point,
         duration,
-        false,
-        swipe_oper_task_ptr->special_params.at(2),
-        swipe_oper_task_ptr->special_params.at(3),
+        SwipeExtraDirection::None,
+        swipe_oper_task_ptr->special_params.at(2) / 10.0,
+        swipe_oper_task_ptr->special_params.at(3) / 10.0,
         deploy_with_pause && depoly_when_pause_not_support);
 
     // 拖动干员朝向
@@ -486,22 +502,23 @@ bool asst::BattleHelper::deploy_oper(const std::string& name, const Point& loc, 
 
     // for SSS, multiple operator may be deployed at the same location.
     if (m_used_tiles.contains(loc)) {
-        std::string pre_name = m_used_tiles.at(loc);
-        Log.info("remove previous oper", pre_name, loc);
+        const auto& pre_oper = m_used_tiles.at(loc);
+        LogInfo << "remove previous oper" << pre_oper << loc;
+        m_battlefield_opers.erase(pre_oper);
         m_used_tiles.erase(loc);
-        m_battlefield_opers.erase(pre_name);
     }
 
     // 肉鸽中，一个干员可能被部署多次
-    if (m_battlefield_opers.contains(name) && BattleData.get_role(name) != battle::Role::Drone) {
-        Point pre_loc = m_battlefield_opers.at(name);
-        Log.info("remove deploy failed oper", name, pre_loc);
-        m_battlefield_opers.erase(name);
+    battle::OperNameTag oper_tag { oper_role, oper_name };
+    if (m_battlefield_opers.contains(oper_tag) && oper_role != battle::Role::Drone) {
+        Point pre_loc = m_battlefield_opers.at(oper_tag);
+        LogInfo << "remove deploy failed oper" << oper_tag << pre_loc;
+        m_battlefield_opers.erase(oper_tag);
         // 擦除已使用干员,但是不擦除已使用格子
         // m_used_tiles.erase(pre_loc);
     }
 
-    register_deployed_oper(name, loc);
+    register_deployed_oper(oper_role, oper_name, loc);
     m_inst_helper.sleep(200); // 部署完会有 166 ms 的动画
 
     return true;
@@ -509,11 +526,18 @@ bool asst::BattleHelper::deploy_oper(const std::string& name, const Point& loc, 
 
 bool asst::BattleHelper::retreat_oper(const std::string& name)
 {
+    return retreat_oper(battle::Role::Unknown, name);
+}
+
+bool asst::BattleHelper::retreat_oper(battle::Role role, const std::string& name)
+{
     LogTraceFunction;
 
-    auto oper_iter = m_battlefield_opers.find(name);
+    auto oper_iter = std::ranges::find_if(m_battlefield_opers, [&](const auto& pair) {
+        return (role == battle::Role::Unknown || pair.first.role == role) && pair.first.name == name;
+    });
     if (oper_iter == m_battlefield_opers.cend()) {
-        Log.error("No oper", name);
+        LogError << "No oper" << name << "role:" << enum_to_string(role);
         return false;
     }
 
@@ -521,7 +545,7 @@ bool asst::BattleHelper::retreat_oper(const std::string& name)
         return false;
     }
 
-    m_battlefield_opers.erase(name);
+    m_battlefield_opers.erase(oper_iter);
     return true;
 }
 
@@ -538,6 +562,48 @@ bool asst::BattleHelper::retreat_oper(const Point& loc, bool manually)
         std::erase_if(m_battlefield_opers, [&loc](const auto& pair) -> bool { return pair.second == loc; });
     }
     cancel_oper_selection(); // 兜底一下, 防止格子上面并没有干员, 导致点到隔壁格子
+    return true;
+}
+
+bool asst::BattleHelper::set_unit_location(battle::Role role, const std::string& name, const Point& loc)
+{
+    LogTraceFunction;
+
+    if (!m_normal_tile_info.contains(loc)) {
+        LogError << __FUNCTION__ << "| No tile found at" << loc << "for unit" << name;
+        return false;
+    }
+
+    auto oper_iter = std::ranges::find_if(m_battlefield_opers, [&](const auto& pair) {
+        return (role == battle::Role::Unknown || pair.first.role == role) && pair.first.name == name;
+    });
+
+    battle::OperNameTag tag;
+    if (oper_iter != m_battlefield_opers.cend()) {
+        tag = oper_iter->first;
+        if (oper_iter->second == loc) {
+            LogInfo << __FUNCTION__ << "| Location of unit" << tag.name << "is already" << loc;
+            return true;
+        }
+        // 单位已不在旧格，迁移时同步释放旧格占用
+        m_used_tiles.erase(oper_iter->second);
+        m_battlefield_opers.erase(oper_iter);
+    }
+    else {
+        // 不在场的单位（装置、设施等）直接登记，使其参与技能用法与自动开技能流程
+        tag = { role, name };
+        LogInfo << __FUNCTION__ << "| Unit" << name << "not on battlefield, register it at" << loc;
+    }
+
+    // 一格只保留一条单位记录：目标格已有占用者时，旧单位的记录整条移除（其名字不再可按名引用）
+    if (m_used_tiles.contains(loc)) {
+        const auto& pre_oper = m_used_tiles.at(loc);
+        LogInfo << __FUNCTION__ << "| remove previous oper" << pre_oper << loc;
+        m_battlefield_opers.erase(pre_oper);
+        m_used_tiles.erase(loc);
+    }
+
+    register_deployed_oper(tag.role, tag.name, loc);
     return true;
 }
 
@@ -564,32 +630,46 @@ bool asst::BattleHelper::is_skill_ready(const Point& loc, const cv::Mat& reusabl
 
 bool asst::BattleHelper::is_skill_ready(const std::string& name, const cv::Mat& reusable)
 {
-    auto oper_iter = m_battlefield_opers.find(name);
+    return is_skill_ready(battle::Role::Unknown, name, reusable);
+}
+
+bool asst::BattleHelper::is_skill_ready(battle::Role role, const std::string& name, const cv::Mat& reusable)
+{
+    auto oper_iter = std::ranges::find_if(m_battlefield_opers, [&](const auto& pair) {
+        return (role == battle::Role::Unknown || pair.first.role == role) && pair.first.name == name;
+    });
     if (oper_iter == m_battlefield_opers.cend()) {
-        Log.error("No oper", name);
+        LogError << "No oper" << name << "role:" << enum_to_string(role);
         return false;
     }
     return is_skill_ready(oper_iter->second, reusable);
 }
 
-bool asst::BattleHelper::use_skill(const std::string& name, bool keep_waiting)
+bool asst::BattleHelper::use_skill(const std::string& name, int timeout_ms)
+{
+    return use_skill(battle::Role::Unknown, name, timeout_ms);
+}
+
+bool asst::BattleHelper::use_skill(battle::Role role, const std::string& name, int timeout_ms)
 {
     LogTraceFunction;
 
-    auto oper_iter = m_battlefield_opers.find(name);
+    auto oper_iter = std::ranges::find_if(m_battlefield_opers, [&](const auto& pair) {
+        return (role == battle::Role::Unknown || pair.first.role == role) && pair.first.name == name;
+    });
     if (oper_iter == m_battlefield_opers.cend()) {
-        Log.error("No oper", name);
+        LogError << "No oper" << name << "role:" << enum_to_string(role);
         return false;
     }
 
-    return use_skill(oper_iter->second, keep_waiting);
+    return use_skill(oper_iter->second, timeout_ms);
 }
 
-bool asst::BattleHelper::use_skill(const Point& loc, bool keep_waiting)
+bool asst::BattleHelper::use_skill(const Point& loc, int timeout_ms)
 {
     LogTraceFunction;
 
-    return click_oper_on_battlefield(loc) && click_skill(keep_waiting) && m_inst_helper.sleep(200);
+    return click_oper_on_battlefield(loc) && click_skill(timeout_ms) && m_inst_helper.sleep(200);
 }
 
 bool asst::BattleHelper::check_pause_button(const cv::Mat& reusable)
@@ -677,7 +757,7 @@ bool asst::BattleHelper::wait_until_start(bool weak)
 {
     LogTraceFunction;
 
-    constexpr auto timeout_duration = std::chrono::minutes(1);
+    const auto timeout_duration = std::chrono::seconds(Config.get_options().battle_start_timeout_seconds);
     const auto start_time = std::chrono::steady_clock::now();
 
     cv::Mat image = m_inst_helper.ctrler()->get_image();
@@ -721,17 +801,28 @@ bool asst::BattleHelper::use_all_ready_skill(const cv::Mat& reusable)
     bool used = false;
     const auto now = std::chrono::steady_clock::now();
     const cv::Mat image = reusable.empty() ? m_inst_helper.ctrler()->get_image() : reusable;
-    for (const auto& [name, loc] : m_battlefield_opers) {
-        auto& usage = m_skill_usage[name];
-        auto& retry = m_skill_error_count[name];
-        auto& times = m_skill_times[name];
-        auto& last_use_time = m_last_use_skill_time[name];
+    for (const auto& [oper_tag, loc] : m_battlefield_opers) {
+        const auto& skill_it = std::ranges::find_if(m_skill_usage, [&](const auto& pair) {
+            return (pair.first.role == battle::Role::Unknown || pair.first.role == oper_tag.role) &&
+                   pair.first.name == oper_tag.name;
+        });
+        battle::OperNameTag skill_tag;
+        if (skill_it == m_skill_usage.cend()) {
+            skill_tag = oper_tag;
+        }
+        else {
+            skill_tag = skill_it->first;
+        }
+        auto& usage = m_skill_usage[skill_tag];
+        auto& times = m_skill_times[skill_tag];
+        auto& retry = m_skill_error_count[skill_tag];
+        auto& last_use_time = m_last_use_skill_time[oper_tag];
         if (usage != SkillUsage::Possibly && usage != SkillUsage::Times) {
             continue;
         }
 
         if (auto interval = now - last_use_time; min_frame_interval > interval) {
-            LogInfo << name << "analyze skill too fast, interval time:"
+            LogInfo << oper_tag.name << "analyze skill too fast, interval time:"
                     << std::chrono::duration_cast<std::chrono::milliseconds>(interval).count() << " ms";
             continue;
         }
@@ -740,16 +831,16 @@ bool asst::BattleHelper::use_all_ready_skill(const cv::Mat& reusable)
             continue;
         }
 
-        Log.info("Skill", name, "is ready");
+        LogInfo << "Skill" << oper_tag.name << "is ready";
 
         // 识别到了，但点进去发现没有。一般来说是识别错了
-        if (!use_skill(loc, false)) {
-            Log.warn("Skill", name, "is not ready");
+        if (!use_skill(loc, 0)) {
+            LogWarn << "Skill" << oper_tag.name << "is not ready";
             static const bool save_infinitely = std::filesystem::exists("DEBUG_skill_ready.txt");
             if (!save_infinitely) {
                 constexpr int MaxRetry = 3;
                 if (++retry >= MaxRetry) {
-                    Log.warn("Do not use skill anymore", name);
+                    LogWarn << "Do not use skill anymore" << oper_tag.name;
                     usage = SkillUsage::NotUse;
                 }
             }
@@ -757,7 +848,7 @@ bool asst::BattleHelper::use_all_ready_skill(const cv::Mat& reusable)
         }
         used = true;
         retry = 0;
-        m_last_use_skill_time[name] = now;
+        m_last_use_skill_time[oper_tag] = now;
 
         if (usage == SkillUsage::Times) {
             times--;
@@ -773,9 +864,20 @@ bool asst::BattleHelper::use_all_ready_skill(const cv::Mat& reusable)
 
 bool asst::BattleHelper::check_and_use_skill(const std::string& name, bool& has_error, const cv::Mat& reusable)
 {
-    auto oper_iter = m_battlefield_opers.find(name);
+    return check_and_use_skill(battle::Role::Unknown, name, has_error, reusable);
+}
+
+bool asst::BattleHelper::check_and_use_skill(
+    battle::Role role,
+    const std::string& name,
+    bool& has_error,
+    const cv::Mat& reusable)
+{
+    auto oper_iter = std::ranges::find_if(m_battlefield_opers, [&](const auto& pair) {
+        return (role == battle::Role::Unknown || pair.first.role == role) && pair.first.name == name;
+    });
     if (oper_iter == m_battlefield_opers.cend()) {
-        Log.error("No oper", name);
+        LogError << "No oper" << name << "role" << enum_to_string(role);
         return false;
     }
     return check_and_use_skill(oper_iter->second, has_error, reusable);
@@ -787,7 +889,7 @@ bool asst::BattleHelper::check_and_use_skill(const Point& loc, bool& has_error, 
     if (!is_skill_ready(loc, image)) {
         return false;
     }
-    has_error = !use_skill(loc, false);
+    has_error = !use_skill(loc, 0);
     return true;
 }
 
@@ -832,7 +934,19 @@ bool asst::BattleHelper::click_oper_on_deployment(const std::string& name)
 {
     LogTraceFunction;
 
-    auto rect_opt = get_oper_rect_on_deployment(name);
+    auto rect_opt = get_oper_rect_on_deployment(battle::Role::Unknown, name);
+    if (!rect_opt) {
+        return false;
+    }
+
+    return click_oper_on_deployment(*rect_opt);
+}
+
+bool asst::BattleHelper::click_oper_on_deployment(battle::Role role, const std::string& name)
+{
+    LogTraceFunction;
+
+    auto rect_opt = get_oper_rect_on_deployment(role, name);
     if (!rect_opt) {
         return false;
     }
@@ -853,11 +967,18 @@ bool asst::BattleHelper::click_oper_on_deployment(const Rect& rect)
 
 bool asst::BattleHelper::click_oper_on_battlefield(const std::string& name)
 {
+    return click_oper_on_battlefield(battle::Role::Unknown, name);
+}
+
+bool asst::BattleHelper::click_oper_on_battlefield(battle::Role role, const std::string& name)
+{
     LogTraceFunction;
 
-    auto oper_iter = m_battlefield_opers.find(name);
+    auto oper_iter = std::ranges::find_if(m_battlefield_opers, [&](const auto& pair) {
+        return (role == battle::Role::Unknown || pair.first.role == role) && pair.first.name == name;
+    });
     if (oper_iter == m_battlefield_opers.cend()) {
-        Log.error("No oper", name);
+        LogError << "No oper" << name << "role" << enum_to_string(role);
         return false;
     }
     return click_oper_on_battlefield(oper_iter->second);
@@ -900,25 +1021,24 @@ bool asst::BattleHelper::click_retreat()
     return ret;
 }
 
-bool asst::BattleHelper::click_skill(bool keep_waiting)
+bool asst::BattleHelper::click_skill(int timeout_ms)
 {
     LogTraceFunction;
+    const auto start_time = std::chrono::steady_clock::now();
     bool deploy_with_pause =
         ControlFeat::support(m_inst_helper.ctrler()->support_features(), ControlFeat::SWIPE_WITH_PAUSE);
 
     bool pausing = false;
-    if (!keep_waiting && deploy_with_pause) {
+    if (timeout_ms == 0 && deploy_with_pause) {
         pausing = ProcessTask(this_task(), { "BattlePause" }).run();
     }
 
     cv::Mat top_view;
     cv::Mat image;
-    for (int retry = 0; retry < (keep_waiting ? 1000 : 5); ++retry) {
-        if (m_inst_helper.need_exit()) {
-            return false;
-        }
+    int retry = 0;
+    while (!m_inst_helper.need_exit()) {
         image = m_inst_helper.ctrler()->get_image();
-        if (keep_waiting && retry > 0 && (retry % 10 == 0) && !check_in_battle(image)) {
+        if (retry > 0 && (retry % 10 == 0) && !check_in_battle(image)) {
             return false;
         }
         top_view = get_top_view(image, true, m_has_multi_stages);
@@ -932,7 +1052,16 @@ bool asst::BattleHelper::click_skill(bool keep_waiting)
             }
             return true;
         }
+        if (timeout_ms > -1) {
+            const auto elapsed_ms =
+                std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time)
+                    .count();
+            if (elapsed_ms >= timeout_ms) {
+                break;
+            }
+        }
         m_inst_helper.sleep(Config.get_options().task_delay);
+        ++retry;
     }
 
     // this means false positive in skill ready detection
@@ -1016,20 +1145,24 @@ void asst::BattleHelper::fix_swipe_out_of_limit(
     p2 += adjust;
 }
 
-bool asst::BattleHelper::move_camera(const std::pair<double, double>& delta)
+bool asst::BattleHelper::move_camera(const std::pair<double, double>& delta, bool keep_kills)
 {
     LogTraceFunction;
     Log.info("move", delta.first, delta.second);
 
     update_kills(m_inst_helper.ctrler()->get_image());
 
-    // 还没转场的时候
-    if (m_kills != 0) {
-        wait_until_end(false);
-    }
+    // keep_kills 为 false 时（引航者试炼转场）：等待当前波次结束并归零击杀数；
+    // 为 true 时（同一波内移动镜头）：跳过等待与归零，击杀数保持连续
+    if (!keep_kills) {
+        // 还没转场的时候
+        if (m_kills != 0) {
+            wait_until_end(false);
+        }
 
-    m_kills = 0;
-    m_total_kills = 0;
+        m_kills = 0;
+        m_total_kills = 0;
+    }
 
     m_camera_shift.first += delta.first;
     m_camera_shift.second += delta.second;
@@ -1079,13 +1212,14 @@ std::string asst::BattleHelper::analyze_detail_page_oper_name(const cv::Mat& ima
     return std::string();
 }
 
-std::optional<asst::Rect> asst::BattleHelper::get_oper_rect_on_deployment(const std::string& name) const
+std::optional<asst::Rect>
+    asst::BattleHelper::get_oper_rect_on_deployment(battle::Role role, const std::string& name) const
 {
-    LogTraceFunction;
-
-    auto oper_iter = std::ranges::find_if(m_cur_deployment_opers, [&](const auto& oper) { return oper.name == name; });
+    auto oper_iter = std::ranges::find_if(m_cur_deployment_opers, [&](const auto& oper) {
+        return (role == battle::Role::Unknown || oper.role == role) && oper.name == name;
+    });
     if (oper_iter == m_cur_deployment_opers.end()) {
-        Log.error("No oper", name);
+        LogError << "No oper" << name << "with role" << enum_to_string(role);
         return std::nullopt;
     }
 
@@ -1106,11 +1240,11 @@ int asst::BattleHelper::elapsed_time()
     return static_cast<int>(elapsed_ms);
 }
 
-void asst::BattleHelper::register_deployed_oper(const std::string& name, const Point& loc)
+void asst::BattleHelper::register_deployed_oper(battle::Role role, const std::string& name, const Point& loc)
 {
-    m_used_tiles.emplace(loc, name);
-    m_battlefield_opers.emplace(name, loc);
-    m_last_use_skill_time.emplace(name, std::chrono::steady_clock::time_point());
+    m_used_tiles.emplace(loc, battle::OperNameTag { role, name });
+    m_battlefield_opers.emplace(battle::OperNameTag { role, name }, loc);
+    m_last_use_skill_time.emplace(battle::OperNameTag { role, name }, std::chrono::steady_clock::time_point());
 }
 
 void asst::BattleHelper::remove_cooling_from_battlefield(const battle::DeploymentOper& oper)
@@ -1118,7 +1252,10 @@ void asst::BattleHelper::remove_cooling_from_battlefield(const battle::Deploymen
     if (!oper.cooling) {
         return;
     }
-    auto iter = m_battlefield_opers.find(oper.name);
+
+    auto iter = std::ranges::find_if(m_battlefield_opers, [&](const auto& pair) {
+        return pair.first.role == oper.role && pair.first.name == oper.name;
+    });
     if (iter == m_battlefield_opers.end()) {
         return;
     }

@@ -44,8 +44,6 @@ ADDED_KEYS = [
     "DataAccountLabel", "DataAccountDefault",
     # feat/copilot-paste-clipboard
     "PasteClipboardCopilotSetTip",
-    # feat/recruit-history-tab
-    "ToolboxTabRecruitHistory",
 ]
 
 

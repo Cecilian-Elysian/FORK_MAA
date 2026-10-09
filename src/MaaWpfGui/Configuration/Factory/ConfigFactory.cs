@@ -20,7 +20,6 @@ using System.IO;
 using System.Linq;
 using System.Text.Encodings.Web;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
 using System.Text.Unicode;
@@ -63,7 +62,7 @@ public static class ConfigFactory
     // ReSharper disable once EventNeverSubscribedTo.Global
     public static event ConfigurationUpdateEventHandler? ConfigurationUpdateEvent;
 
-    private static readonly JsonSerializerOptions _options = new() { WriteIndented = true, Converters = { new DiscordWebhookFixConverter(), new GlobalGuiRenameConverter(), new RecruitTaskHoldTagsConverter(), new FightTaskStageResetModeConverter(), new FaultTolerantRootConverter(), new TolerantEnumConverterFactory(), new FightTaskStageResetModeInvalidToIgnoreConverter() }, Encoder = JavaScriptEncoder.Create(UnicodeRanges.All), DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull, TypeInfoResolver = new DefaultJsonTypeInfoResolver { Modifiers = { JsonPredictSerializationModifier.Modify } } };
+    private static readonly JsonSerializerOptions _options = new() { WriteIndented = true, Converters = { new DiscordWebhookFixConverter(), new GlobalGuiRenameConverter(), new ThirdPartyMigrationConverter(), new RecruitTaskHoldTagsConverter(), new FightTaskStageResetModeConverter(), new RoguelikeStartingOpersConverter(), new FaultTolerantRootConverter(), new TolerantEnumConverterFactory(), new FightTaskStageResetModeInvalidToIgnoreConverter() }, Encoder = JavaScriptEncoder.Create(UnicodeRanges.All), DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull, TypeInfoResolver = new DefaultJsonTypeInfoResolver { Modifiers = { JsonPredictSerializationModifier.Modify } } };
 
     private static readonly List<string> _brokenConfigs = [];
 
@@ -216,27 +215,6 @@ public static class ConfigFactory
                     task.PropertyChanged += Handler.TaskQueueItemOnPropertyChangedFactory(config.TaskQueue, key);
                 }
             }
-
-            JsonObject? ParseJsonFile(string filePath)
-            {
-                if (File.Exists(filePath) is false)
-                {
-                    return null;
-                }
-
-                var str = File.ReadAllText(filePath);
-                try
-                {
-                    var obj = JsonSerializer.Deserialize<JsonObject>(str);
-                    return obj ?? throw new Exception("Failed to parse json file");
-                }
-                catch (Exception ex)
-                {
-                    _logger.Error(ex, "Failed to deserialize json file: {FilePath}", filePath);
-                }
-
-                return null;
-            }
         }
     });
 
@@ -278,7 +256,7 @@ public static class ConfigFactory
                     newValue = detailArgs.NewValue;
                 }
 
-                OnPropertyChanged(key + o?.GetType().Name + "." + args.PropertyName, oldValue, newValue);
+                OnPropertyChanged(key + args.PropertyName, oldValue, newValue);
             };
         }
 
@@ -366,6 +344,12 @@ public static class ConfigFactory
 
     private static bool Save(string? file = null, Root? root = null)
     {
+        if (Main.Bootstrapper.IsDemoMode)
+        {
+            // README 截图演示模式：不落盘任何配置文件，进程内状态退出即弃
+            return true;
+        }
+
         _semaphore.Wait();
         try
         {
@@ -385,6 +369,12 @@ public static class ConfigFactory
 
     private static async Task<bool> SaveAsync(string? file = null)
     {
+        if (Main.Bootstrapper.IsDemoMode)
+        {
+            // README 截图演示模式：不落盘任何配置文件，进程内状态退出即弃
+            return true;
+        }
+
         await _semaphore.WaitAsync();
         try
         {

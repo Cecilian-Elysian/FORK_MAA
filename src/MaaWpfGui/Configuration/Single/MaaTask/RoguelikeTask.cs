@@ -12,6 +12,7 @@
 // </copyright>
 
 #nullable enable
+using System.Collections.Generic;
 using MaaWpfGui.Constants.Enums;
 using static MaaWpfGui.Main.AsstProxy;
 
@@ -27,7 +28,7 @@ public class RoguelikeTask : BaseTask
     /// <summary>
     /// Gets or sets 肉鸽主题
     /// </summary>
-    public RoguelikeTheme Theme { get; set; } = RoguelikeTheme.JieGarden;
+    public RoguelikeTheme Theme { get; set; } = RoguelikeTheme.Phantom;
 
     public int Difficulty { get; set; } = int.MaxValue;
 
@@ -53,7 +54,15 @@ public class RoguelikeTask : BaseTask
     /// </summary>
     public int StartCount { get; set; } = 999999;
 
-    public string CoreChar { get; set; } = string.Empty;
+    /// <summary>
+    /// Gets or sets 开局干员顺位列表，按顺序招募，最多 3 位
+    /// </summary>
+    public List<RoguelikeStartingOper> StartingOpers { get; set; } = [];
+
+    /// <summary>
+    /// Gets or sets a value indicating whether 启用第 2、3 位开局干员
+    /// </summary>
+    public bool UseAdditionalStartingOpers { get; set; }
 
     /// <summary>
     /// Gets or sets a value indicating whether 启用投资
@@ -116,9 +125,9 @@ public class RoguelikeTask : BaseTask
     public RoguelikeBoskySubNodeType FindPlaytimeTarget { get; set; } = RoguelikeBoskySubNodeType.Ling;
 
     /// <summary>
-    /// Gets or sets a value indicating whether 使用好友助战
+    /// Gets or sets 刷襁褓动物模式的目标品种
     /// </summary>
-    public bool UseSupport { get; set; }
+    public RoguelikeBlackFlowCultivationTarget BlackFlowCultivationTarget { get; set; } = RoguelikeBlackFlowCultivationTarget.Cat;
 
     /// <summary>
     /// Gets or sets a value indicating whether 使用非好友助战
@@ -172,6 +181,16 @@ public class RoguelikeTask : BaseTask
     public bool StartWithSeed { get; set; }
 
     public string Seed { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 开局干员顺位
+    /// </summary>
+    public class RoguelikeStartingOper
+    {
+        public string Name { get; set; } = string.Empty;
+
+        public bool UseSupport { get; set; }
+    }
 }
 
 public enum RoguelikeTheme
@@ -200,6 +219,11 @@ public enum RoguelikeTheme
     /// 界园
     /// </summary>
     JieGarden,
+
+    /// <summary>
+    /// 黑流树海
+    /// </summary>
+    BlackFlow,
 }
 
 public enum RoguelikeMode
@@ -238,6 +262,22 @@ public enum RoguelikeMode
     /// 20001 - 刷常乐节点，第一层进洞，找不到需要的节点就重开
     /// </summary>
     FindPlaytime = 20001,
+
+    /// <summary>
+    /// 30001 - 刷襁褓动物（主题专用 GUI 模式）
+    /// </summary>
+    BlackFlowBabyAnimal = 30001,
+}
+
+/// <summary>
+/// 黑流树海襁褓动物目标品种
+/// </summary>
+public enum RoguelikeBlackFlowCultivationTarget
+{
+    Cat = 0,
+    FeatheredSerpent = 1,
+    Dog = 2,
+    Cerberus = 3,
 }
 
 /// <summary>

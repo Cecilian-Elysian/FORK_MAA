@@ -79,8 +79,7 @@ public class AsstCopilotTask : AsstBaseTask
 
     public override (AsstTaskType TaskType, JObject Params) Serialize()
     {
-        var taskParams = new JObject
-        {
+        var taskParams = new JObject {
             ["formation"] = Formation,
             ["support_unit_usage"] = SupportUnitUsage,
             ["add_trust"] = AddTrust,
@@ -91,7 +90,7 @@ public class AsstCopilotTask : AsstBaseTask
 
         if (!string.IsNullOrEmpty(FileName) && MultiTasks.Count > 0)
         {
-            throw new ArgumentException("FileName 和 MultiTasks 不能同时使用");
+            throw new ArgumentException("FileName and MultiTasks cannot be used at the same time");
         }
         else if (MultiTasks.Count > 0)
         {
@@ -103,7 +102,7 @@ public class AsstCopilotTask : AsstBaseTask
         }
         else
         {
-            throw new ArgumentException("FileName 和 MultiTasks 必须使用其一");
+            throw new ArgumentException("Either FileName or MultiTasks must be provided");
         }
 
         if (FormationIndex > 0)
@@ -135,7 +134,7 @@ public class AsstCopilotTask : AsstBaseTask
 
         /// <summary>
         /// Gets or sets 模组编号，可选，默认为 0
-        /// -1: 不切换模组 / 无要求, 0: 不使用模组, 1: 模组 χ, 2: 模组 γ, 3: 模组 α, 4: 模组 Δ
+        /// -1: 不切换模组 / 无要求, 0: 不使用模组, 1: 模组 χ, 2: 模组 γ, 3: 模组 α, 4: 模组 Δ, 5: 模组 β
         /// 当前核心仅使用 name 和 skill 字段，module 作为预留字段
         /// </summary>
         [JsonProperty("module")]
@@ -151,10 +150,10 @@ public class AsstCopilotTask : AsstBaseTask
         public string FileName { get; set; } = string.Empty;
 
         /// <summary>
-        /// Gets or sets 关卡名，仅导航用，Wpf 会自动读取地图对应的关卡名
+        /// Gets or sets 导航识别名，Core 会自动读取地图对应的关卡名
         /// </summary>
-        [JsonProperty("stage_name")]
-        public string StageName { get; set; } = string.Empty;
+        [JsonProperty("nav_name_override", NullValueHandling = NullValueHandling.Ignore)]
+        public string? StageName { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether 突袭难度

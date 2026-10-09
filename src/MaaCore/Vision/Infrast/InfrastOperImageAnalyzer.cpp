@@ -336,6 +336,11 @@ void asst::InfrastOperImageAnalyzer::skill_analyze()
             oper.skills.emplace(std::move(most_confident_skills));
         }
         if (!oper.skills.empty()) {
+            std::vector<infrast::Skill> skills(oper.skills.begin(), oper.skills.end());
+            oper.operator_ids = infrast::Oper::intersect_operator_ids(skills);
+            if (oper.operator_ids.size() == 1) {
+                oper.operator_id = *oper.operator_ids.begin();
+            }
             ++m_num_of_opers_with_skills;
         }
         Log.trace(log_str, "]");

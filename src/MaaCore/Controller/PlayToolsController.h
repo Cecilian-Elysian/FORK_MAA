@@ -44,7 +44,7 @@ public:
         const Point& p1,
         const Point& p2,
         int duration = 0,
-        bool extra_swipe = false,
+        SwipeExtraDirection extra_swipe = SwipeExtraDirection::None,
         double slope_in = 1,
         double slope_out = 1,
         bool with_pause = false) override;
@@ -87,12 +87,10 @@ protected:
         Ended = 3,
     };
 
-    static constexpr int DefaultClickDelay = 50;
-    static constexpr int DefaultSwipeDelay = 5;
-
-    bool toucher_down(const Point& p, const int delay = DefaultClickDelay);
-    bool toucher_move(const Point& p, const int delay = DefaultSwipeDelay);
-    bool toucher_up(const Point& p, const int delay = DefaultClickDelay);
+    // move 的节拍由 swipe 的 move_func 以绝对节拍控制，这里不再内建等待
+    bool toucher_down(const Point& p, const int delay = TouchHoldMs);
+    bool toucher_move(const Point& p, const int delay = 0);
+    bool toucher_up(const Point& p, const int delay = TouchHoldMs);
 
     void toucher_wait(const int delay);
 

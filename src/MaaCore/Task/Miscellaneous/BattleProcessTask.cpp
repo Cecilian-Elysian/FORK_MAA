@@ -92,36 +92,38 @@ void asst::BattleProcessTask::set_wait_until_end(bool wait_until_end)
     m_need_to_wait_until_end = wait_until_end;
 }
 
-void
-    asst::BattleProcessTask::set_formation_task_ptr(std::shared_ptr<std::unordered_map<std::string, std::string>> value)
+void asst::BattleProcessTask::set_formation_task_ptr(
+    std::shared_ptr<std::unordered_map<battle::OperNameTag, std::string>> value)
 {
     m_formation_ptr = value;
 }
 
 bool asst::BattleProcessTask::to_group()
 {
-    std::unordered_map<std::string, std::vector<std::string>> groups;
+    std::unordered_map<battle::OperNameTag, std::vector<battle::OperNameTag>> groups;
     // 从编队任务中获取<干员-组名>映射
     if (m_formation_ptr != nullptr) {
-        for (const auto& [group, oper] : *m_formation_ptr) {
-            groups.emplace(oper, std::vector<std::string> { group });
+        for (const auto& [oper, group] : *m_formation_ptr) {
+            groups.emplace(
+                battle::OperNameTag { battle::Role::Unknown, group },
+                std::vector<battle::OperNameTag> { oper });
         }
     }
     // 补充剩余的干员
-    for (const auto& [group_name, oper_list] : get_combat_data().groups) {
-        if (groups.contains(group_name)) {
+    for (const auto& [group_name, _, __, oper_list] : get_combat_data().groups) {
+        if (groups.contains(battle::OperNameTag { battle::Role::Unknown, group_name })) {
             continue;
         }
-        std::vector<std::string> oper_name_list;
+        std::vector<battle::OperNameTag> oper_name_list;
         std::ranges::transform(oper_list, std::back_inserter(oper_name_list), [](const auto& oper) {
-            return oper.name;
+            return battle::OperNameTag { oper.role, oper.name };
         });
-        groups.emplace(group_name, std::move(oper_name_list));
+        groups.emplace(battle::OperNameTag { battle::Role::Unknown, group_name }, std::move(oper_name_list));
     }
 
-    std::unordered_set<std::string> char_set; // 干员集合
+    std::unordered_set<battle::OperNameTag> char_set; // 干员集合
     for (const auto& oper : m_cur_deployment_opers) {
-        char_set.emplace(oper.name);
+        char_set.emplace(battle::OperNameTag { oper.role, oper.name });
     }
 
     auto allocation_result = algorithm::get_char_allocation_for_each_group(groups, char_set);
@@ -151,43 +153,66 @@ bool asst::BattleProcessTask::to_group()
         }
     }
 
-    std::unordered_map<std::string, std::string> ungrouped;
+    std::unordered_map<battle::OperNameTag, battle::OperNameTag> ungrouped;
     const auto& grouped_view = m_oper_in_group | std::views::values;
-    for (const auto& name : char_set) {
-        if (std::ranges::find(grouped_view, name) != grouped_view.end()) {
+    for (const auto& tag : char_set) {
+        if (std::ranges::find_if(grouped_view, [&](const battle::OperNameTag& oper) {
+                return (oper.role == battle::Role::Unknown || oper.role == tag.role) && oper.name == tag.name;
+            }) != grouped_view.end()) {
             continue;
         }
-        ungrouped.emplace(name, name);
+        ungrouped.emplace(tag, tag);
     }
     m_oper_in_group.merge(ungrouped);
 
     for (const auto& action : m_combat_data.actions) {
+        battle::Role role = action.role;
         const std::string& action_name = action.name;
-        if (action_name.empty() || m_oper_in_group.contains(action_name)) {
+        if (action_name.empty()) {
             continue;
         }
-        m_oper_in_group.emplace(action_name, action_name);
+        if (role != battle::Role::Unknown) { // 指定了role, 此时name应为干员名
+            auto it = std::ranges::find_if(m_oper_in_group, [&](const auto& pair) {
+                return pair.second.role == role && pair.second.name == action_name;
+            });
+            if (it != m_oper_in_group.end()) {
+                continue;
+            }
+        }
+        else {
+            // 未指定role, 先作为组名检查
+            auto it =
+                std::ranges::find_if(m_oper_in_group, [&](const auto& pair) { return pair.first.name == action_name; });
+            if (it != m_oper_in_group.end()) {
+                continue;
+            }
+        }
+
+        battle::OperNameTag tag { role, action_name };
+        m_oper_in_group.emplace(tag, tag);
     }
 
-    for (const auto& [group_name, oper_name] : m_oper_in_group) {
+    // 对于实际编入战斗的干员, 从作业中读取技能用法并存入m_skill_usage和m_skill_times
+    for (const auto& [group_tag, oper_tag] : m_oper_in_group) {
         const auto& group_it = std::ranges::find_if(get_combat_data().groups, [&](const OperUsageGroup& pair) {
-            return pair.first == group_name;
+            return pair.name == group_tag.name;
         });
         if (group_it == get_combat_data().groups.end()) {
-            Log.warn(__FUNCTION__, "Group not found in combat data: ", group_name);
+            LogError << __FUNCTION__ << "Group not found in combat data: " << group_tag.name;
             continue;
         }
-        const auto& this_group = group_it->second;
+        const auto& this_group = group_it->opers;
         // there is a build error on macOS
         // https://github.com/MaaAssistantArknights/MaaAssistantArknights/actions/runs/3779762713/jobs/6425284487
-        const std::string& oper_name_for_lambda = oper_name;
-        auto iter =
-            std::ranges::find_if(this_group, [&](const auto& oper) { return oper.name == oper_name_for_lambda; });
+        // const std::string& oper_name_for_lambda = oper_tag;
+        auto iter = std::ranges::find_if(this_group, [&](const auto& oper) {
+            return (oper.role == battle::Role::Unknown || oper.role == oper_tag.role) && oper.name == oper_tag.name;
+        });
         if (iter == this_group.end()) {
             continue;
         }
-        m_skill_usage.emplace(oper_name, iter->skill_usage);
-        m_skill_times.emplace(oper_name, iter->skill_times);
+        m_skill_usage.emplace(oper_tag, iter->skill_usage);
+        m_skill_times.emplace(oper_tag, iter->skill_times);
     }
 
     return true;
@@ -223,28 +248,30 @@ bool asst::BattleProcessTask::do_action(const battle::copilot::Action& action, s
     }
 
     bool ret = false;
-    const std::string& name = get_name_from_group(action.name);
+    const auto& [/*可unknown*/ role, name] = get_name_from_group(action.role, action.name);
     const auto& location = action.location;
 
     switch (action.type) {
     case ActionType::Deploy:
-        ret = deploy_oper(name, location, action.direction);
+        // Deploy 语义上必填 location，未填时按 [0, 0] 部署（与历史版本 json 缺失时的行为一致）
+        ret = deploy_oper(role, name, location.value_or(Point {}), action.direction);
         if (ret) {
             m_in_bullet_time = false;
         }
         break;
 
     case ActionType::Retreat:
-        ret = m_in_bullet_time ? click_retreat() : (location.empty() ? retreat_oper(name) : retreat_oper(location));
+        ret = m_in_bullet_time ? click_retreat()
+                               : (location.has_value() ? retreat_oper(*location) : retreat_oper(role, name));
         if (ret) {
             m_in_bullet_time = false;
         }
         break;
 
     case ActionType::UseSkill:
-        ret = m_in_bullet_time ? click_skill(!action.skip_if_not_ready)
-                               : (location.empty() ? use_skill(name, !action.skip_if_not_ready)
-                                                   : use_skill(location, !action.skip_if_not_ready));
+        ret = m_in_bullet_time ? click_skill(action.timeout_ms)
+                               : (location.has_value() ? use_skill(*location, action.timeout_ms)
+                                                       : use_skill(role, name, action.timeout_ms));
         if (ret) {
             m_in_bullet_time = false;
         }
@@ -258,37 +285,89 @@ bool asst::BattleProcessTask::do_action(const battle::copilot::Action& action, s
         break;
 
     case ActionType::BulletTime:
-        ret = enter_bullet_time(name, location);
+        ret = enter_bullet_time(role, name, location);
         if (ret) {
             m_in_bullet_time = true;
         }
         break;
 
-    case ActionType::SkillUsage: {
-        const auto set_usage = [this](const std::string& name, SkillUsage usage, int times) {
-            m_skill_usage[name] = usage;
-            if (usage == SkillUsage::Times) {
-                m_skill_times[name] = times;
-            }
-        };
-        if (!location.empty()) {
-            std::string drone_name;
-            if (!name.empty()) {
-                LogWarn << "Both name and location are set for SkillUsage action. Skip this step.";
+    case ActionType::Click: {
+        if (!action.rect.empty()) {
+            ret = ctrler()->click(action.rect);
+        }
+        else if (location.has_value()) {
+            // Click 为直接点击，画面处于正常战斗视角（无俯角），用 normal 表；
+            // side 表对应拖拽部署时倾斜 10° 的相机视角，仅 Deploy 拖拽使用
+            // 无识别直接点，空格子也可点击
+            auto target_iter = m_normal_tile_info.find(*location);
+            if (target_iter == m_normal_tile_info.end()) {
+                LogError << "No tile found at" << *location << "for Click action. Skip this step.";
                 break;
             }
-            if (auto it = m_used_tiles.find(location); it == m_used_tiles.end()) {
-                LogInfo << "Tile hasn't used, register for drone" << location;
-                drone_name = std::format("drone_{}_{}", location.x, location.y);
-                register_deployed_oper(drone_name, location);
-            }
-            else {
-                drone_name = it->second;
-            }
-            set_usage(drone_name, action.modify_usage, action.modify_times);
+            ret = ctrler()->click(target_iter->second.pos);
         }
         else {
-            set_usage(name, action.modify_usage, action.modify_times);
+            LogError << "Click action requires either rect or location. Skip this step.";
+            break;
+        }
+        if (ret) {
+            m_in_bullet_time = false;
+        }
+        break;
+    }
+
+    case ActionType::Swipe:
+        // slope 为 ×10 整数存储，转为 controller 需要的 double
+        ret = ctrler()->swipe(
+            action.begin,
+            action.end,
+            action.duration,
+            action.extra_swipe,
+            action.slope_in / 10.0,
+            action.slope_out / 10.0,
+            action.with_pause,
+            action.high_resolution_swipe_fix);
+        if (ret) {
+            m_in_bullet_time = false;
+        }
+        break;
+
+    case ActionType::SetUnitLocation:
+        ret = set_unit_location(role, name, location.value_or(Point {}));
+        break;
+
+    case ActionType::SkillUsage: {
+        const auto set_usage = [this](const battle::OperNameTag& tag, SkillUsage usage, int times) {
+            m_skill_usage[tag] = usage;
+            if (usage == SkillUsage::Times) {
+                m_skill_times[tag] = times;
+            }
+        };
+        if (location.has_value()) {
+            battle::Role _role;
+            std::string drone_name;
+            if (auto it = m_used_tiles.find(*location); it == m_used_tiles.end()) {
+                LogInfo << "Tile hasn't used, register for drone" << *location;
+                drone_name = std::format("drone_{}_{}", location->x, location->y);
+                _role = Role::Drone;
+                register_deployed_oper(_role, drone_name, *location);
+            }
+            else {
+                drone_name = it->second.name;
+                _role = it->second.role;
+            }
+            set_usage({ _role, drone_name }, action.modify_usage, action.modify_times);
+        }
+        else { // 坐标未填, 指定 oper name
+            auto tag_it = std::ranges::find_if(m_skill_usage, [&](const auto& pair) {
+                return (role == battle::Role::Unknown || pair.first.role == role) && pair.first.name == name;
+            });
+            if (tag_it != m_skill_usage.end()) {
+                set_usage(tag_it->first, action.modify_usage, action.modify_times);
+            }
+            else {
+                set_usage({ role, name }, action.modify_usage, action.modify_times);
+            }
         }
         ret = true;
         break;
@@ -300,7 +379,7 @@ bool asst::BattleProcessTask::do_action(const battle::copilot::Action& action, s
         break;
 
     case ActionType::MoveCamera:
-        ret = move_camera(action.distance);
+        ret = move_camera(action.distance, action.keep_kills);
         break;
 
     case ActionType::ResetStopwatch:
@@ -321,14 +400,28 @@ bool asst::BattleProcessTask::do_action(const battle::copilot::Action& action, s
     return ret;
 }
 
-const std::string& asst::BattleProcessTask::get_name_from_group(const std::string& action_name)
+asst::battle::OperNameTag
+    asst::BattleProcessTask::get_name_from_group(battle::Role role, const std::string& oper_name_in_action)
 {
-    auto iter = m_oper_in_group.find(action_name);
+    if (role == battle::Role::Unknown) {
+        // 未指定职业, 先作为组名检查
+        auto it = std::ranges::find_if(m_oper_in_group, [&](const auto& pair) {
+            return pair.first.name == oper_name_in_action;
+        });
+        if (it != m_oper_in_group.end()) {
+            return it->second;
+        }
+    }
+
+    auto iter = std::ranges::find_if(m_oper_in_group, [&](const auto& pair) {
+        return (role == battle::Role::Unknown || pair.second.role == role) && pair.second.name == oper_name_in_action;
+    });
     if (iter != m_oper_in_group.cend()) {
         return iter->second;
     }
-    m_oper_in_group.emplace(action_name, action_name);
-    return m_oper_in_group.at(action_name);
+    battle::OperNameTag tag { role, oper_name_in_action };
+    m_oper_in_group.emplace(tag, tag);
+    return m_oper_in_group.at(tag);
 }
 
 void asst::BattleProcessTask::notify_action(const battle::copilot::Action& action)
@@ -346,6 +439,9 @@ void asst::BattleProcessTask::notify_action(const battle::copilot::Action& actio
         { ActionType::DrawCard, "DrawCard" },
         { ActionType::CheckIfStartOver, "CheckIfStartOver" },
         { ActionType::ResetStopwatch, "ResetStopwatch" },
+        { ActionType::Click, "Click" },
+        { ActionType::Swipe, "Swipe" },
+        { ActionType::SetUnitLocation, "SetUnitLocation" },
     };
 
     json::value info = basic_info_with_what("CopilotAction");
@@ -459,14 +555,18 @@ bool asst::BattleProcessTask::wait_condition(const Action& action)
 
     // 部署干员还要额外等待费用够或 CD 转好
     if (action.type == ActionType::Deploy) {
-        const std::string& name = get_name_from_group(action.name);
+        const auto& action_oper = get_name_from_group(action.role, action.name);
         update_image_if_empty();
         while (!need_exit()) {
             if (!update_deployment(false, image)) {
                 return false;
             }
-            if (auto iter =
-                    std::ranges::find_if(m_cur_deployment_opers, [&](const auto& oper) { return oper.name == name; });
+            if (auto iter = std::ranges::find_if(
+                    m_cur_deployment_opers,
+                    [&](const auto& oper) {
+                        return (action_oper.role == battle::Role::Unknown || oper.role == action_oper.role) &&
+                               oper.name == action_oper.name;
+                    });
                 iter != m_cur_deployment_opers.end() && iter->available) {
                 break;
             }
@@ -477,13 +577,16 @@ bool asst::BattleProcessTask::wait_condition(const Action& action)
     return true;
 }
 
-bool asst::BattleProcessTask::enter_bullet_time(const std::string& name, const Point& location)
+bool asst::BattleProcessTask::enter_bullet_time(
+    battle::Role role,
+    const std::string& name,
+    const std::optional<Point>& location)
 {
     LogTraceFunction;
 
-    bool ret = location.empty() ? click_oper_on_battlefield(name) : click_oper_on_battlefield(location);
+    bool ret = location.has_value() ? click_oper_on_battlefield(*location) : click_oper_on_battlefield(role, name);
     if (!ret) {
-        ret = click_oper_on_deployment(name);
+        ret = click_oper_on_deployment(role, name);
     };
 
     return ret;

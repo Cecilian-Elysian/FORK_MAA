@@ -127,6 +127,12 @@ asst::AutoRecruitTask& asst::AutoRecruitTask::set_confirm_level(std::vector<int>
     return *this;
 }
 
+asst::AutoRecruitTask& asst::AutoRecruitTask::set_level3_recruitment_permit_reserve(int reserve) noexcept
+{
+    m_level3_recruitment_permit_reserve = (std::max)(reserve, 0);
+    return *this;
+}
+
 asst::AutoRecruitTask& asst::AutoRecruitTask::set_need_refresh(bool need_refresh) noexcept
 {
     m_need_refresh = need_refresh;
@@ -326,7 +332,7 @@ asst::AutoRecruitTask::recruit_result asst::AutoRecruitTask::recruit_one(const R
         {
             json::value info = basic_info();
             info["what"] = "RecruitError";
-            info["why"] = "识别错误";
+            info["why"] = "recognition error";
             callback(AsstMsg::SubTaskError, info);
         }
         if (!ProcessTask(*this, { "RecruitContinue", "Return" }).run()) {
@@ -635,7 +641,7 @@ asst::AutoRecruitTask::calc_task_result_type asst::AutoRecruitTask::recruit_calc
             if (refresh_count > refresh_limit) [[unlikely]] {
                 json::value cb_info = basic_info();
                 cb_info["what"] = "RecruitError";
-                cb_info["why"] = "刷新次数达到上限";
+                cb_info["why"] = "refresh count reached the limit";
                 cb_info["details"] = json::object { { "refresh_limit", refresh_limit } };
                 callback(AsstMsg::SubTaskError, cb_info);
                 return {};
@@ -690,15 +696,13 @@ asst::AutoRecruitTask::calc_task_result_type asst::AutoRecruitTask::recruit_calc
         if (!is_calc_only_task()) {
             if (!(has_skip_tag || has_special_tag)) {
                 // do not confirm 3 star, force skip
-                if (!is_confirm_level_valid(3) && final_combination.min_level == 3 &&
-                    !is_select_level_valid(final_combination.min_level)) {
+                if (!is_confirm_level_valid(3) && final_combination.min_level == 3) {
                     calc_task_result_type result(calc_task_result::force_skip);
                     return result;
                 }
             }
             // do not confirm 4 star
-            if (!is_confirm_level_valid(4) && final_combination.min_level == 4 &&
-                !is_select_level_valid(final_combination.min_level)) {
+            if (!is_confirm_level_valid(4) && final_combination.min_level == 4) {
                 calc_task_result_type result(calc_task_result::force_skip);
                 return result;
             }
@@ -711,6 +715,30 @@ asst::AutoRecruitTask::calc_task_result_type asst::AutoRecruitTask::recruit_calc
             if (has_skip_tag) {
                 calc_task_result_type result(calc_task_result::preserved_tag_skip);
                 return result;
+            }
+
+            if (final_combination.min_level == 3 && m_level3_recruitment_permit_reserve > 0) {
+                const auto permit_count = image_analyzer.get_recruitment_permit_count();
+                if (!permit_count) {
+                    json::value cb_info = basic_info_with_what("RecruitPermitCountRecognitionFailed");
+                    callback(AsstMsg::SubTaskExtraInfo, cb_info);
+                    Log.warn("Skip 3-star recruitment because recruitment permit count recognition failed");
+                    return calc_task_result_type(calc_task_result::force_skip);
+                }
+
+                if (*permit_count <= m_level3_recruitment_permit_reserve) {
+                    json::value cb_info = basic_info_with_what("RecruitPermitReserved");
+                    cb_info["details"] = json::object {
+                        { "current", *permit_count },
+                    };
+                    callback(AsstMsg::SubTaskExtraInfo, cb_info);
+                    Log.info(
+                        "Skip 3-star recruitment to preserve permits:",
+                        *permit_count,
+                        "<=",
+                        m_level3_recruitment_permit_reserve);
+                    return calc_task_result_type(calc_task_result::force_skip);
+                }
             }
         }
 
@@ -736,6 +764,7 @@ asst::AutoRecruitTask::calc_task_result_type asst::AutoRecruitTask::recruit_calc
         }
 
         // nothing to select, leave the selection empty
+        // 空选不消耗招募许可，因此不受上方 3 星许可保留线的约束，属有意行为
         if (!(final_combination.min_level == 3 && has_preferred_tag) &&
             !is_select_level_valid(final_combination.min_level)) {
             calc_task_result_type result(calc_task_result::nothing_to_select, recruitment_time);

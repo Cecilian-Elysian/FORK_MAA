@@ -248,14 +248,14 @@ public class VersionUpdateSettingsUserControlModel : PropertyChangedBase
         }
     } = ConfigFactory.Root.Update.HasAcknowledgedNightlyWarning;
 
-    public LocalizedObservableList<string> UpdateSourceList { get; } = new(
-        ("Github", "GlobalSource"),
-        ("MirrorChyan", "MirrorChyan"));
+    public LocalizedObservableList<UpdateSource> UpdateSourceList { get; } = new(
+        (UpdateSource.GitHub, "GlobalSource"),
+        (UpdateSource.MirrorChyan, "MirrorChyan"));
 
     /// <summary>
     /// Gets or sets the type of version to update.
     /// </summary>
-    public string UpdateSource
+    public UpdateSource UpdateSource
     {
         get; set {
             SetAndNotify(ref field, value);
@@ -499,7 +499,7 @@ public class VersionUpdateSettingsUserControlModel : PropertyChangedBase
             return;
         }
 
-        if (SettingsViewModel.VersionUpdateSettings.UpdateSource == "MirrorChyan" && string.IsNullOrEmpty(SettingsViewModel.VersionUpdateSettings.MirrorChyanCdk))
+        if (SettingsViewModel.VersionUpdateSettings.UpdateSource == UpdateSource.MirrorChyan && string.IsNullOrEmpty(SettingsViewModel.VersionUpdateSettings.MirrorChyanCdk))
         {
             ToastNotification.ShowDirect(LocalizationHelper.GetString("MirrorChyanSelectedButNoCdk"));
             return;
@@ -514,6 +514,7 @@ public class VersionUpdateSettingsUserControlModel : PropertyChangedBase
             VersionUpdateDialogViewModel.CheckUpdateRetT.UnknownError => LocalizationHelper.GetString("NewVersionDetectFailedTitle"),
             VersionUpdateDialogViewModel.CheckUpdateRetT.NetworkError => LocalizationHelper.GetString("CheckNetworking"),
             VersionUpdateDialogViewModel.CheckUpdateRetT.FailedToGetInfo => LocalizationHelper.GetString("GetReleaseNoteFailed"),
+            VersionUpdateDialogViewModel.CheckUpdateRetT.UpdatePackageDownloadFailed => LocalizationHelper.GetString("NewVersionDownloadFailedTitle"),
             VersionUpdateDialogViewModel.CheckUpdateRetT.OK => string.Empty,
             VersionUpdateDialogViewModel.CheckUpdateRetT.NewVersionIsBeingBuilt => LocalizationHelper.GetString("NewVersionIsBeingBuilt"),
             VersionUpdateDialogViewModel.CheckUpdateRetT.OnlyGameResourceUpdated => LocalizationHelper.GetString("GameResourceUpdated"),
@@ -545,7 +546,7 @@ public class VersionUpdateSettingsUserControlModel : PropertyChangedBase
             return;
         }
 
-        if (SettingsViewModel.VersionUpdateSettings.UpdateSource == "MirrorChyan" && string.IsNullOrEmpty(SettingsViewModel.VersionUpdateSettings.MirrorChyanCdk))
+        if (SettingsViewModel.VersionUpdateSettings.UpdateSource == UpdateSource.MirrorChyan && string.IsNullOrEmpty(SettingsViewModel.VersionUpdateSettings.MirrorChyanCdk))
         {
             ToastNotification.ShowDirect(LocalizationHelper.GetString("MirrorChyanSelectedButNoCdk"));
             return;
@@ -573,8 +574,8 @@ public class VersionUpdateSettingsUserControlModel : PropertyChangedBase
         }
 
         bool success = UpdateSource switch {
-            "Github" => await ResourceUpdater.UpdateFromGithubAsync(),
-            "MirrorChyan" => (ret == VersionUpdateDialogViewModel.CheckUpdateRetT.OK) && await ResourceUpdater.DownloadFromMirrorChyanAsync(uri, releaseNote),
+            UpdateSource.GitHub => await ResourceUpdater.UpdateFromGithubAsync(),
+            UpdateSource.MirrorChyan => (ret == VersionUpdateDialogViewModel.CheckUpdateRetT.OK) && await ResourceUpdater.DownloadFromMirrorChyanAsync(uri, releaseNote),
             _ => await ResourceUpdater.UpdateFromGithubAsync(),
         };
 
@@ -595,6 +596,7 @@ public class VersionUpdateSettingsUserControlModel : PropertyChangedBase
     public void ShowChangelog()
     {
         AchievementTrackerHelper.Instance.Unlock(AchievementIds.ChangelogReader);
+        _ = Instances.VersionUpdateDialogViewModel.DownloadMissingContributorAvatarsAsync();
         if (Instances.VersionUpdateDialogViewModel.View is System.Windows.Window window)
         {
             if (window.WindowState == System.Windows.WindowState.Minimized)
@@ -617,5 +619,8 @@ public class VersionUpdateSettingsUserControlModel : PropertyChangedBase
     {
         AllVersionTypeList.RefreshLocalization();
         UpdateSourceList.RefreshLocalization();
+
+        // CDK 剩余天数文本为一次性格式化的本地化串，需通知重算（无 CDK 时 getter 自行返回空串）
+        RefreshMirrorChyanCdkRemaining();
     }
 }

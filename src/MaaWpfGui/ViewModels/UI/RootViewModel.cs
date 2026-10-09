@@ -15,6 +15,7 @@
 
 using System;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows;
@@ -56,6 +57,13 @@ public class RootViewModel : Conductor<Screen>.Collection.OneActive
         // 必须在其他内容初始化之前执行，否则其他内容语言可能已经被初始化为非宿醉语言
         Instances.SettingsViewModel.HangoverEnd();
 
+        if (Bootstrapper.IsDemoMode)
+        {
+            // README 截图演示模式：跳过版本不匹配提示、Nightly 提示、公告下载、
+            // 完整性/更新检查与配置损坏等弹窗，避免联网与弹窗干扰自动截图
+            return;
+        }
+
         ShowVersionMismatchWarningOnStartup();
         if (SettingsViewModel.VersionUpdateSettings.VersionType == VersionUpdateSettingsUserControlModel.UpdateVersionType.Nightly &&
             !SettingsViewModel.VersionUpdateSettings.HasAcknowledgedNightlyWarning)
@@ -81,11 +89,93 @@ public class RootViewModel : Conductor<Screen>.Collection.OneActive
             }
         });
 
-        _ = Instances.VersionUpdateDialogViewModel.ShowUpdateOrDownload();
+        _ = StartupIntegrityCheckAndUpdateAsync();
 
         // 主窗口已显示，此时弹窗不会导致 WPF 因无窗口而退出
         Task.Run(ConfigBrokenCheck);
         Task.Run(ToastNotificationCheck);
+    }
+
+    /// <summary>
+    /// 启动时的完整性检查与更新检查。
+    /// 对照 filelist.txt 检查安装文件是否缺失，缺失时弹窗询问是否修复（重新下载完整包）；
+    /// 未缺失、用户选择忽略、或修复未完成（失败/用户取消）时回退常规更新检查。
+    /// 资源已标记损坏时本检查整体跳过（扫描前后各检测一次标志），修复入口由资源损坏弹窗统一提供，
+    /// 不再叠加缺失弹窗或常规更新弹窗。前检测拦 OnStart 已置位的更新失败标志（时序有同步保证），
+    /// 后检测拦扫描期间 Init 才置位的资源损坏（两者并发赛跑）。
+    /// 必须在主窗口显示之后执行，否则弹窗会成为唯一窗口，关闭时触发 WPF 退出。
+    /// </summary>
+    private static async Task StartupIntegrityCheckAndUpdateAsync()
+    {
+        if (Bootstrapper.IsResourceBroken)
+        {
+            _logger.Information("Skip startup integrity check, resource-broken dialog takes over");
+            return;
+        }
+
+        var missingFiles = await Task.Run(ResourceIntegrityChecker.GetMissingFiles);
+
+        // 后检测：资源在扫描期间才标记损坏（与 Init 并发）时也不再叠任何弹窗，缺失数与是否缺失无关
+        if (Bootstrapper.IsResourceBroken)
+        {
+            _logger.Information("Skip integrity and update check, resource-broken dialog takes over, {Count} file(s) missing", missingFiles.Count);
+            return;
+        }
+
+        if (missingFiles.Count > 0)
+        {
+            var shownFiles = string.Join(", ", missingFiles.Take(5));
+            if (missingFiles.Count > 5)
+            {
+                shownFiles += ", …";
+            }
+
+            var repairChoice = MessageBoxHelper.Show(
+                LocalizationHelper.GetStringFormat("ResourceIntegrityCheckDesc", missingFiles.Count, shownFiles),
+                LocalizationHelper.GetString("ResourceIntegrityCheckTitle"),
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Error,
+                yes: LocalizationHelper.GetString("ResourceIntegrityRepairYes"),
+                no: LocalizationHelper.GetString("ResourceIntegrityRepairNo"));
+            if (repairChoice == MessageBoxResult.Yes)
+            {
+                // 修复优先于常规更新检查，注册完成后会提示重启
+                _logger.Information("Integrity repair accepted by user, {Count} file(s) missing", missingFiles.Count);
+                var repairResult = await Instances.VersionUpdateDialogViewModel.RunIntegrityRepairAsync();
+                if (repairResult is Dialogs.VersionUpdateDialogViewModel.IntegrityRepairResult.Succeeded
+                    or Dialogs.VersionUpdateDialogViewModel.IntegrityRepairResult.AlreadyRunning)
+                {
+                    // AlreadyRunning 表示另一弹窗路径的修复仍在进行，由那条链路收尾，此处不叠加常规更新检查
+                    return;
+                }
+
+                if (repairResult == Dialogs.VersionUpdateDialogViewModel.IntegrityRepairResult.Canceled)
+                {
+                    // 用户主动取消修复：仍执行常规更新检查，持续取消时才不会一直收不到更新提示
+                    _logger.Information("Integrity repair canceled by user, falling back to regular update check");
+                }
+                else
+                {
+                    // 修复失败时回退常规更新检查：完整包升级可补齐缺失文件，
+                    // 但 OTA 增量只含版本间变化的文件，未变化的缺失文件不会被补上
+                    _logger.Warning("Integrity repair failed, falling back to regular update check");
+                }
+            }
+            else
+            {
+                _logger.Warning("Integrity repair declined by user, {Count} file(s) missing", missingFiles.Count);
+            }
+        }
+
+        // 修复仍在进行中（另一弹窗路径已接受修复）时不叠加常规更新检查，避免下载与弹窗互相干扰；
+        // 修复已结束（失败/取消）时标志已复位，回退常规更新检查的行为不变
+        if (Instances.VersionUpdateDialogViewModel.IsIntegrityRepairRunning)
+        {
+            _logger.Information("Skip regular update check, integrity repair in progress");
+            return;
+        }
+
+        await Instances.VersionUpdateDialogViewModel.ShowUpdateOrDownload();
     }
 
     private static void ConfigBrokenCheck()
@@ -330,8 +420,10 @@ public class RootViewModel : Conductor<Screen>.Collection.OneActive
 
         try
         {
+            // 强制完整包更新期间最常见的版本状态是当前版本即最新，用户从官网重下的同版本完整包是此期间的官方自救途径
+            bool forceFullPackageUpdate = Dialogs.VersionUpdateDialogViewModel.ShouldForceFullPackageUpdate;
             PendingUpdateApplier.PackageInspectionResult packageInspection =
-                PendingUpdateApplier.InspectLocalUpdatePackage(packagePath, currentVersion, architecture);
+                PendingUpdateApplier.InspectLocalUpdatePackage(packagePath, currentVersion, architecture, allowSameVersion: forceFullPackageUpdate);
 
 #if DEBUG
             // Debug 专用：Ctrl+Shift 拖入时只做检测判断，不实际注册，用于快速验证正则匹配
@@ -346,8 +438,7 @@ public class RootViewModel : Conductor<Screen>.Collection.OneActive
             if (!packageInspection.MatchedPattern)
             {
                 // zip 扫描开销较高（万级 entry），放到后台线程避免卡 UI
-                var (isResourcePackage, resourceDateTime) = await Task.Run(() =>
-                {
+                var (isResourcePackage, resourceDateTime) = await Task.Run(() => {
                     bool result = ResourceUpdater.IsResourcePackage(packagePath, out DateTimeOffset dt);
                     return (result, dt);
                 });
@@ -360,6 +451,19 @@ public class RootViewModel : Conductor<Screen>.Collection.OneActive
                 }
 
                 ShowUnsupportedPackageWarning(packagePath, currentVersion, normalizedArchitecture);
+                return;
+            }
+
+            // 资源损坏/上次更新失败期间 OTA 增量只含差异文件，修不好残留的不一致文件，拖入入口同样只接受完整包
+            if (packageInspection.Status == PendingUpdateApplier.PackageInspectionStatus.OtaSupported
+                && forceFullPackageUpdate)
+            {
+                _logger.Information("Dropped OTA package rejected while installation is broken: {PackagePath}", packagePath);
+                MessageBoxHelper.Show(
+                    LocalizationHelper.GetString("OtaPackageRejectedByBrokenInstall"),
+                    LocalizationHelper.GetString("Warning"),
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
                 return;
             }
 
@@ -441,8 +545,7 @@ public class RootViewModel : Conductor<Screen>.Collection.OneActive
         string currentVersion,
         string normalizedArchitecture)
     {
-        var (isResource, resourceDateTime) = await Task.Run(() =>
-        {
+        var (isResource, resourceDateTime) = await Task.Run(() => {
             bool ok = ResourceUpdater.IsResourcePackage(packagePath, out var dt);
             return (ok, dt);
         });

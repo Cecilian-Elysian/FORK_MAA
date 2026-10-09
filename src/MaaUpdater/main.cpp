@@ -154,6 +154,10 @@ static constexpr int PROGRESS_BAR_CONTROL_ID = 1004;
 static constexpr DWORD LEGACY_DWMWA_USE_IMMERSIVE_DARK_MODE = 19;
 static constexpr wchar_t MUTEX_NAME_ARG[] = L"--mutex-name";
 static constexpr DWORD UPDATE_MUTEX_TIMEOUT_MS = 3000;
+// 等待 MAA 主程序退出：先静默等待 fast-wait 时限（不弹窗，避免与正在退出的 MAA 抢前台），
+// 超时后弹窗并进入倒计时；倒计时归零仍未退出则强制结束主程序，防止挂死的进程把更新无限期卡住
+static constexpr DWORD PARENT_EXIT_FAST_WAIT_MS = 15000;
+static constexpr DWORD PARENT_EXIT_COUNTDOWN_MS = 60000;
 #define PENDING_DELETE_SUFFIX L".pendingdelete"
 static constexpr int FILE_OP_MAX_RETRIES = 5;
 static constexpr DWORD FILE_OP_INITIAL_DELAY_MS = 200;
@@ -1875,6 +1879,11 @@ int wmain(int argc, wchar_t* argv[])
     bool shouldRelaunch = false;
     bool success = false;
     std::wstring failureReason;
+    // 是否已开始改动安装文件（备份旧文件 / 写入新文件）；预检失败未动任何文件时保持
+    // false。进入应用阶段后不再回退该标志，失败后回滚无论是否完整恢复均按已改动处理
+    bool installationModified = false;
+    // 因另一 MAA 实例占用更新互斥锁而失败：临时性失败，保留更新包供关闭其他实例后重试
+    bool updateMutexBlocked = false;
     HANDLE hUpdateMutex = nullptr;
     // Copied from plan for CreateProcess after a successful update.
     std::vector<std::wstring> relaunchArgs;
@@ -1883,19 +1892,52 @@ int wmain(int argc, wchar_t* argv[])
     // Wait for parent process to exit
     // 进度窗口延后到主程序退出后再显示，避免与正在退出的 MAA 抢前台
     // ------------------------------------------------------------------
+    // 只申请 SYNCHRONIZE 保证能等待；PROCESS_TERMINATE 到强制结束时单独申请，
+    // 避免权限不足时连等待句柄都拿不到而直接开始安装
     HANDLE hParent = OpenProcess(SYNCHRONIZE, FALSE, parentPid);
     if (hParent != nullptr) {
         WriteLog((L"Waiting for parent process to exit, PID=" + std::to_wstring(parentPid)).c_str());
         // 快路径：15 秒内父进程退出则不弹窗，避免与正在退出的 MAA 抢前台；
-        // 超时后创建进度窗口并泵消息继续等待，防止父进程退出卡住时 Updater
-        // 变成不可见、永不退出的幽灵进程
-        if (WaitForSingleObject(hParent, 15000) == WAIT_TIMEOUT) {
+        // 超时后创建进度窗口并进入倒计时，归零仍未退出则强制结束父进程，
+        // 防止父进程退出卡住时更新被无限期挂起
+        if (WaitForSingleObject(hParent, PARENT_EXIT_FAST_WAIT_MS) == WAIT_TIMEOUT) {
             InitializeProgressUi();
-            SetProgressUiStatus(
-                L"正在准备更新... | Preparing update...",
-                L"等待 MAA 主程序退出 | Waiting for the main MAA process to exit");
+            int remainingSeconds = static_cast<int>(PARENT_EXIT_COUNTDOWN_MS / 1000);
+            auto buildCountdownDetail = [&]() {
+                std::wstring secondsText = std::to_wstring(remainingSeconds);
+                return L"MAA 主程序未正常退出，" + secondsText + L" 秒后强制结束 | MAA exit timeout, forcing in " + secondsText + L"s";
+            };
+            SetProgressUiStatus(L"正在准备更新... | Preparing update...", buildCountdownDetail());
+            DWORD elapsedMs = 0;
             while (WaitForSingleObject(hParent, 100) == WAIT_TIMEOUT) {
                 PumpProgressUiMessages();
+                elapsedMs += 100;
+                if (elapsedMs < PARENT_EXIT_COUNTDOWN_MS) {
+                    int newRemainingSeconds = static_cast<int>((PARENT_EXIT_COUNTDOWN_MS - elapsedMs) / 1000);
+                    if (newRemainingSeconds != remainingSeconds) {
+                        remainingSeconds = newRemainingSeconds;
+                        SetProgressUiStatus(L"正在准备更新... | Preparing update...", buildCountdownDetail());
+                    }
+                    continue;
+                }
+
+                WriteLog(L"Parent exit wait timed out, terminating the parent process.");
+                HANDLE hTerminate = OpenProcess(PROCESS_TERMINATE, FALSE, parentPid);
+                bool terminated = hTerminate != nullptr && TerminateProcess(hTerminate, EXIT_FAILURE);
+                if (hTerminate != nullptr) {
+                    CloseHandle(hTerminate);
+                }
+                if (terminated) {
+                    // TerminateProcess 异步生效，等待进程对象真正有信号后再继续安装
+                    WaitForSingleObject(hParent, 5000);
+                    WriteLog(L"Parent process forcibly terminated.");
+                    break;
+                }
+
+                // 失败通常是父进程恰好自行退出；拿不到 PROCESS_TERMINATE 权限时同样只能继续等待，
+                // 重置倒计时，避免父进程未退出就带文件占用开始安装
+                WriteLog((L"TerminateProcess failed, error=" + std::to_wstring(GetLastError()) + L", restarting the countdown.").c_str());
+                elapsedMs = 0;
             }
         }
         CloseHandle(hParent);
@@ -1919,6 +1961,7 @@ int wmain(int argc, wchar_t* argv[])
     if (!mutexName.empty()) {
         hUpdateMutex = AcquireUpdateMutex(mutexName);
         if (hUpdateMutex == nullptr) {
+            updateMutexBlocked = true;
             failureReason =
                 L"检测到另一个 MAA 实例正在运行，无法执行更新。请关闭所有 MAA 窗口后重试。\n\n"
                 L"Another MAA instance is running. Please close all MAA windows and try again.";
@@ -2008,6 +2051,7 @@ int wmain(int argc, wchar_t* argv[])
             }
 
             WriteLog((L"Removing and backing up: " + targetPath + L" -> " + backupPath).c_str());
+            installationModified = true;
             bool backupOk = isFullPackage
                 ? RecycleAndBackupPath(targetPath, backupPath)
                 : MoveExistingPathToBackup(targetPath, backupPath);
@@ -2043,6 +2087,7 @@ int wmain(int argc, wchar_t* argv[])
                 }
 
                 WriteLog((L"Backing up existing entry: " + targetPath).c_str());
+                installationModified = true;
                 bool backupOk = IsRecycleAndReplaceDirectory(rel)
                     ? RecycleAndBackupDirectory(targetPath, backupPath)
                     : MoveExistingPathToBackup(targetPath, backupPath);
@@ -2060,11 +2105,21 @@ int wmain(int argc, wchar_t* argv[])
             bool isSourceFile = (sourceAttr != INVALID_FILE_ATTRIBUTES) &&
                                 !(sourceAttr & FILE_ATTRIBUTE_DIRECTORY);
 
+            // 源存在（文件或目录）才会真正开始改动安装；源缺失（如被杀软隔离）的条目
+            // 最多创建空父目录即失败，不置位以免误写失败标志，让完好的安装被 GUI 误判为资源损坏
+            if (sourceAttr != INVALID_FILE_ATTRIBUTES) {
+                installationModified = true;
+            }
+
             if (isSourceFile) {
                 // Use atomic file replacement for individual files
                 installOk = InstallFileAtomic(sourcePath, targetPath);
             } else {
-                // Directories: use the original move logic
+                // Directories: use the original move logic.
+                // Nested entries (e.g. Res\Video) may target a parent directory that is
+                // missing from the old install (files deleted by antivirus, etc.); create
+                // it before moving, otherwise MoveFileExW fails with ERROR_PATH_NOT_FOUND.
+                EnsureParentDirectory(targetPath);
                 auto moveOp = [&]() -> bool {
                     return MoveFileExW(sourcePath.c_str(), targetPath.c_str(),
                                        MOVEFILE_REPLACE_EXISTING) != FALSE;
@@ -2109,28 +2164,32 @@ int wmain(int argc, wchar_t* argv[])
     apply_failed:
         success = false;
 
-        // Attempt rollback: restore files that were already backed up
-        WriteLog(L"Update failed, attempting rollback from backup directory.");
-        for (const std::wstring& rel : removeList) {
-            std::wstring targetPath, backupPath;
-            if (!TryResolvePathUnderRoot(rootDir, rel, targetPath) ||
-                !TryResolvePathUnderRoot(backupDir, rel, backupPath)) {
-                continue;
+        // 回滚只回滚本次动过的内容；未动过文件（如路径非法在处理任何条目前失败）时
+        // .old 里的内容是更早一轮中断的遗留，还原会与已就位的新位置文件构成重复
+        if (installationModified) {
+            // Attempt rollback: restore files that were already backed up
+            WriteLog(L"Update failed, attempting rollback from backup directory.");
+            for (const std::wstring& rel : removeList) {
+                std::wstring targetPath, backupPath;
+                if (!TryResolvePathUnderRoot(rootDir, rel, targetPath) ||
+                    !TryResolvePathUnderRoot(backupDir, rel, backupPath)) {
+                    continue;
+                }
+                if (PathExistsW(backupPath) && !PathExistsW(targetPath)) {
+                    WriteLog((L"Rollback: restoring " + backupPath + L" -> " + targetPath).c_str());
+                    MovePathEntry(backupPath, targetPath);
+                }
             }
-            if (PathExistsW(backupPath) && !PathExistsW(targetPath)) {
-                WriteLog((L"Rollback: restoring " + backupPath + L" -> " + targetPath).c_str());
-                MovePathEntry(backupPath, targetPath);
-            }
-        }
-        for (const std::wstring& rel : moveList) {
-            std::wstring targetPath, backupPath;
-            if (!TryResolvePathUnderRoot(rootDir, rel, targetPath) ||
-                !TryResolvePathUnderRoot(backupDir, rel, backupPath)) {
-                continue;
-            }
-            if (PathExistsW(backupPath) && !PathExistsW(targetPath)) {
-                WriteLog((L"Rollback: restoring " + backupPath + L" -> " + targetPath).c_str());
-                MovePathEntry(backupPath, targetPath);
+            for (const std::wstring& rel : moveList) {
+                std::wstring targetPath, backupPath;
+                if (!TryResolvePathUnderRoot(rootDir, rel, targetPath) ||
+                    !TryResolvePathUnderRoot(backupDir, rel, backupPath)) {
+                    continue;
+                }
+                if (PathExistsW(backupPath) && !PathExistsW(targetPath)) {
+                    WriteLog((L"Rollback: restoring " + backupPath + L" -> " + targetPath).c_str());
+                    MovePathEntry(backupPath, targetPath);
+                }
             }
         }
     } while (false);
@@ -2139,10 +2198,23 @@ int wmain(int argc, wchar_t* argv[])
     // On failure: write failure status
     // ------------------------------------------------------------------
     if (!success && !failureReason.empty()) {
-        // Convert wstring reason to UTF-8 for file
-        std::string utf8Reason;
-        if (TryConvertWideToUtf8(failureReason, utf8Reason)) {
-            WriteUtf8File(failureStatusFile, utf8Reason);
+        // 失败标志仅用于标记安装可能已损坏（半更新状态）；预检失败（未动任何文件）不写，
+        // 避免完好的安装被 GUI 误判为资源损坏后拦截全部任务
+        if (installationModified) {
+            // Convert wstring reason to UTF-8 for file
+            std::string utf8Reason;
+            if (TryConvertWideToUtf8(failureReason, utf8Reason)) {
+                WriteUtf8File(failureStatusFile, utf8Reason);
+            }
+        } else if (!updateMutexBlocked && PathExistsW(packagePath)) {
+            // 不写失败标志时 GUI 不会清空待更新包，保留包会让下次启动拿同一个包反复委托、反复失败，
+            // 因此直接删包；互斥锁被占用属临时性失败，保留包重试。
+            // 用 ForceDeleteFile 应对杀软扫描等临时占用：删不掉时改名腾出原路径，同样能让 GUI 检测不到待更新包
+            if (ForceDeleteFile(packagePath)) {
+                WriteLog((L"Deleted update package after pre-apply failure: " + packagePath).c_str());
+            } else {
+                WriteLog((L"Failed to delete update package after pre-apply failure: " + packagePath).c_str());
+            }
         }
         if (PathExistsW(successStatusFile))
             DeleteFileW(successStatusFile.c_str());

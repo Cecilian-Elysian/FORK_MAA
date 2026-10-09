@@ -17,7 +17,7 @@ JSONファイルはコメントをサポートしておらず、テキスト内�
 
 ## タスク エンドポイントを取得する
 
-MAA は、エンドポイントを 1 秒間隔で継続的にポーリングして、実行するタスクを取得しようとし、取得したリストの順序で実行します。
+MAA は、固定間隔でこのエンドポイントを継続的にポーリングし（デフォルトは 1 秒、設定で変更可能）、実行するタスクを取得しようとし、取得したリストの順序で実行します。
 
 エンドポイント パスは任意ですが、http(s) エンドポイントである必要があります。 たとえば：`https://your-control-host.net/maa/getTask`
 
@@ -58,7 +58,7 @@ MAA は、エンドポイントを 1 秒間隔で継続的にポーリングし�
         },
         {
             "id": "b353c469-b902-4357-bd8f-d133199eea31",   //タスクの一意の ID である文字列型、タスクがデブリーフィングされるのときに使用されます
-            "type": "Settings-ConnectionAddress",           //構成項目を変更するタスク、ConfigurationHelper.SetValue("ConnectionAddress", params) を実行することと同じです; セキュリティ上の理由から、すべての構成を変更できるわけではなく、変更できる構成を以下に詳しく説明します。
+            "type": "Settings-ConnectAddress",              //構成項目を変更するタスク、接続設定の ConnectAddress プロパティを設定することと同じです; セキュリティ上の理由から、すべての構成を変更できるわけではなく、変更できる構成を以下に詳しく説明します。
             "params": "value"                               //要修改的值
         },
         // タスクの即時実行: 次のタスクは、順次実行タスク実行で実行でき、MAA は、通常、リモートコントロール機能自体を制御するために使用される、次のタスクのいずれかができるだけ早く結果を返すことを保証します。
@@ -85,7 +85,7 @@ MAA は、エンドポイントを 1 秒間隔で継続的にポーリングし�
 ::: note
 
 - LinkStart-[TaskName] タイプのタスクtypeのオプション値は LinkStart-Base，LinkStart-WakeUp，LinkStart-Combat，LinkStart-Recruiting，LinkStart-Mall，LinkStart-Mission，LinkStart-AutoRoguelike，LinkStart-Reclamation
-- Settings-[SettingsName] タイプのタスクtypeのオプション値は Settings-ConnectionAddress, Settings-Stage1
+- Settings-[SettingsName] タイプのタスクtypeのオプション値は Settings-ConnectAddress, Settings-Stage1
 - Settings シリーズのタスクは、タスクを受け取ったときにすぐに実行するのではなく、前のタスクの後ろに配置されています。
 - すぐに実行される複数のタスクも送信順序で実行されますが、これらのタスクの実行速度は速いため、通常、彼らの順序に注目する必要はありません。
 
@@ -112,7 +112,7 @@ MAAは、タスクの実行を終了するたびに、エンドポイントを�
 }
 ```
 
-エンドポイントは任意に戻りますが、 200OK を返さない場合は、 MAA 側に `アップロードに失敗しました` という通知がポップアップ表示されます
+エンドポイントの戻り値は任意です。MAA は戻り値を読み取らず、ステータスコードも検証しません。報告リクエストが失敗した場合、MAA はログにエラーを記録するだけです
 
 ## ワークフローの例 - QQBot を使用した MAA の制御
 

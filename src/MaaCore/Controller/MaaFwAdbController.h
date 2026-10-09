@@ -31,9 +31,9 @@ public:
 
     virtual const std::string& get_uuid() const override;
 
-    virtual size_t get_pipe_data_size() const noexcept override { return 114514; }
+    virtual size_t get_pipe_data_size() const noexcept override { return 114'514; }
 
-    virtual size_t get_version() const noexcept override { return 114514; }
+    virtual size_t get_version() const noexcept override { return 114'514; }
 
     virtual bool screencap(cv::Mat& image_payload, bool allow_reconnect = false) override;
 
@@ -46,7 +46,7 @@ public:
         const Point& p1,
         const Point& p2,
         int duration = 0,
-        bool extra_swipe = false,
+        SwipeExtraDirection extra_swipe = SwipeExtraDirection::None,
         double slope_in = 1,
         double slope_out = 1,
         bool with_pause = false) override;
@@ -69,7 +69,7 @@ private:
     AsstCallback m_callback = nullptr;
     void callback(AsstMsg msg, const json::value& details);
 
-    // MaaFramework/source/include/ControlUnit/AdbControlUnitAPI.h
+    // MaaFramework/include/MaaControlUnit/AdbControlUnitAPI.h
     using GetVersionFunc = const char*();
     using CreateFunc = MaaFwAdbControlUnitAPI*(const char*, const char*, uint64_t, uint64_t, const char*, const char*);
     using DestroyFunc = void(MaaFwAdbControlUnitAPI*);

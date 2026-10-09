@@ -325,11 +325,17 @@ public class StageManager
     {
         var entries = new List<MiniGameEntry>
         {
-            new() { Display = LocalizationHelper.GetString("MiniGameNameSsStore"), DisplayKey = "MiniGameNameSsStore", Value = "SS@Store@Begin", TipKey = "MiniGameNameSsStoreTip" },
-            new() { Display = LocalizationHelper.GetString("MiniGameNameGreenTicketStore"), DisplayKey = "MiniGameNameGreenTicketStore", Value = "GreenTicket@Store@Begin", TipKey = "MiniGameNameGreenTicketStoreTip" },
-            new() { Display = LocalizationHelper.GetString("MiniGameNameYellowTicketStore"), DisplayKey = "MiniGameNameYellowTicketStore", Value = "YellowTicket@Store@Begin", TipKey = "MiniGameNameYellowTicketStoreTip" },
-            new() { Display = LocalizationHelper.GetString("MiniGameNameRAStore"), DisplayKey = "MiniGameNameRAStore", Value = "RA@Store@Begin", TipKey = "MiniGameNameRAStoreTip" },
+            // 常驻活动
             new() { Display = LocalizationHelper.GetString("MiniGame@SecretFront"), DisplayKey = "MiniGame@SecretFront", Value = "MiniGame@SecretFront", TipKey = "MiniGame@SecretFrontTip" },
+
+            // 撒尿牛丸
+            new() { Display = LocalizationHelper.GetString("MiniGameNameSsStore"), DisplayKey = "MiniGameNameSsStore", Value = "SS@Store@Begin", TipKey = "MiniGameNameSsStoreTip", CategoryKey = "MiniGameCategoryPermanentFeature" },
+            new() { Display = LocalizationHelper.GetString("MiniGameNameGreenTicketStore"), DisplayKey = "MiniGameNameGreenTicketStore", Value = "GreenTicket@Store@Begin", TipKey = "MiniGameNameGreenTicketStoreTip", CategoryKey = "MiniGameCategoryPermanentFeature" },
+            new() { Display = LocalizationHelper.GetString("MiniGameNameYellowTicketStore"), DisplayKey = "MiniGameNameYellowTicketStore", Value = "YellowTicket@Store@Begin", TipKey = "MiniGameNameYellowTicketStoreTip", CategoryKey = "MiniGameCategoryPermanentFeature" },
+            new() { Display = LocalizationHelper.GetString("MiniGameNameRAStore"), DisplayKey = "MiniGameNameRAStore", Value = "RA@Store@Begin", TipKey = "MiniGameNameRAStoreTip", CategoryKey = "MiniGameCategoryPermanentFeature" },
+            new() { Display = LocalizationHelper.GetString("MiniGame@AutoRaisePotential"), DisplayKey = "MiniGame@AutoRaisePotential", Value = "MiniGame@AutoRaisePotential@Begin", TipKey = "MiniGame@AutoRaisePotentialTip", CategoryKey = "MiniGameCategoryPermanentFeature" },
+            new() { Display = LocalizationHelper.GetString("MiniGame@MaterialSynthesis"), DisplayKey = "MiniGame@MaterialSynthesis", Value = "MiniGame@MaterialSynthesis@Begin", TipKey = "MiniGame@MaterialSynthesisTip", CategoryKey = "MiniGameCategoryPermanentFeature" },
+            new() { Display = LocalizationHelper.GetString("MiniGame@CursedRelic"), DisplayKey = "MiniGame@CursedRelic", Value = "MiniGame@CursedRelic@Begin", TipKey = "MiniGame@CursedRelicTip", CategoryKey = "MiniGameCategoryPermanentFeature" },
         };
 
         return entries;
@@ -355,7 +361,10 @@ public class StageManager
             var value = token["Value"]?.ToString() ?? token["value"]?.ToString();
             var tip = token["Tip"]?.ToString();
             var tipKey = token["TipKey"]?.ToString();
+            var category = token["Category"]?.ToString();
+            var categoryKey = token["CategoryKey"]?.ToString();
             var minimumRequired = token["MinimumRequired"]?.ToString();
+            var activity = token["Activity"]?.ToString();
 
             string finalDisplay = string.Empty;
             if (!string.IsNullOrEmpty(display))
@@ -426,7 +435,10 @@ public class StageManager
                 Value = value,
                 Tip = tip,
                 TipKey = tipKey,
+                Category = category,
+                CategoryKey = categoryKey,
                 MinimumRequired = minimumRequired,
+                Activity = activity,
                 UtcStartTime = utcStart,
                 UtcExpireTime = utcExpire,
             };
@@ -773,6 +785,19 @@ public class StageManager
             if (!string.IsNullOrEmpty(activity?.StageName) && shownSideStories.Add(activity.StageName))
             {
                 lines.Add($"｢{activity.StageName}｣ {LocalizationHelper.GetString("DaysLeftOpen")}{GetDaysLeftText(activity.UtcExpireTime, now)}");
+
+                var affiliatedGames = _miniGameEntries
+                    .Where(g => g.Activity == activity.StageName && g.BeingOpen)
+                    .ToList();
+                if (affiliatedGames.Count > 0)
+                {
+                    lines.AddRange(affiliatedGames.Select(game => {
+                        var gameName = string.IsNullOrEmpty(game.DisplayKey)
+                            ? game.Display
+                            : (LocalizationHelper.TryGetString(game.DisplayKey, out var loc) ? loc : game.Display);
+                        return $"{LocalizationHelper.GetString("Toolbox")}→{LocalizationHelper.GetString("MiniGame")}→{gameName}";
+                    }));
+                }
             }
 
             // Side story Drop item tips

@@ -25,15 +25,15 @@ using static MaaWpfGui.ViewModels.UI.OverlayViewModel;
 
 namespace MaaWpfGui.Configuration.Global;
 
-public class Gui : INotifyPropertyChanged
+public class Gui : NotifyPropertyChangedWithValue
 {
-    public event PropertyChangedEventHandler? PropertyChanged;
-
     public DarkModeType DarkMode { get; set; } = DarkModeType.SyncWithOs;
 
     public bool UseNotify { get; set; } = true;
 
     public bool MainTasksInvertNullFunction { get; set; }
+
+    public bool HideHoverActionButtons { get; set; }
 
     public string Localization { get; set; } = LocalizationHelper.DefaultLanguage;
 
@@ -60,6 +60,8 @@ public class Gui : INotifyPropertyChanged
     public bool SaveWindowPlacement { get; set; } = true;
 
     public InverseClearType InverseClearMode { get; set; } = InverseClearType.Clear;
+
+    public TransitionSpeedType TransitionSpeed { get; set; } = TransitionSpeedType.Normal;
 
     public bool TaskQueueInverseMode { get; set; }
 
@@ -111,11 +113,10 @@ public class Gui : INotifyPropertyChanged
     /// </summary>
     public string BackgroundMonetCachedColor { get; set; } = string.Empty;
 
-    [UsedImplicitly]
-    public void OnPropertyChanged(string propertyName, object before, object after)
-    {
-        PropertyChanged?.Invoke(this, new PropertyChangedEventDetailArgs(propertyName, before, after));
-    }
+    /// <summary>
+    /// 莫奈取色时背景/遮罩系 brush 是否保持主题默认中性色（不施加颜色遮罩）。
+    /// </summary>
+    public bool BackgroundMonetKeepMaskNeutral { get; set; }
 
     /// <summary>
     /// 表示深色模式的类型。
@@ -170,5 +171,26 @@ public class Gui : INotifyPropertyChanged
         /// 用户手动选择颜色。
         /// </summary>
         Custom,
+    }
+
+    /// <summary>
+    /// 表示界面过渡动画的速度档位。
+    /// </summary>
+    public enum TransitionSpeedType
+    {
+        /// <summary>
+        /// 原速。
+        /// </summary>
+        Normal = 0,
+
+        /// <summary>
+        /// 快速。
+        /// </summary>
+        Fast,
+
+        /// <summary>
+        /// 无动画。
+        /// </summary>
+        None,
     }
 }

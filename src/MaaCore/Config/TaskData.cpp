@@ -55,7 +55,7 @@ asst::TaskPtr asst::TaskData::get(std::string_view name_view)
         return nullptr;
     }
 
-    constexpr size_t MAX_TASKS_SIZE = 65535;
+    constexpr size_t MAX_TASKS_SIZE = 65'535;
     if (m_all_tasks_info.size() < MAX_TASKS_SIZE) [[likely]] {
         // 保存最终生成的任务，下次查询时可以直接返回
         return insert_or_assign_task(name, task).first->second;
@@ -120,7 +120,7 @@ bool asst::TaskData::lazy_parse(const json::value& json)
             validity &= syntax_check(name, task_json);
         }
 
-        const size_t MAX_CHECKING_SIZE = 10000;
+        const size_t MAX_CHECKING_SIZE = 10'000;
         while (!task_queue.empty() && checking_task_set.size() <= MAX_CHECKING_SIZE) {
             std::string name = std::move(task_queue.front());
             task_queue.pop();
@@ -189,14 +189,19 @@ bool asst::TaskData::lazy_parse(const json::value& json)
             // 用于解决 a8d68dd72df6eef1d2f8feed3883299922ec1a17 类似的潜在regex非法问题
             if (auto ocr_task = std::dynamic_pointer_cast<OcrTaskInfo>(task);
                 task->algorithm == AlgorithmType::OcrDetect) {
-                for (const auto& [regex, new_str] : ocr_task->replace_map) {
-                    try {
-                        boost::regex _(regex);
-                    }
-                    catch (const boost::regex_error& e) {
-                        Log.error("Task", name, "has invalid regex:", regex, ":", e.what());
-                        validity = false;
-                        break;
+                static boost::regex regex_valid;
+                for (const auto& [pattern, new_str] : ocr_task->replace_map) {
+                    regex_valid.assign(pattern, boost::regex::no_except);
+                    if (regex_valid.status() != boost::regex_constants::error_ok) {
+                        try {
+                            boost::regex _(pattern);
+                        }
+                        catch (const boost::regex_error& e) {
+                            LogError << __FUNCTION__ << "Task" << name << "has invalid regex:" << pattern << ":"
+                                     << e.what();
+                            validity = false;
+                            break;
+                        }
                     }
                 }
             }
@@ -661,8 +666,9 @@ asst::TaskPtr asst::TaskData::generate_match_task_info(
         Log.error("Invalid mask_range type in task", name, ", should be `array<int, 2>`");
         return nullptr;
     }
-    else if (auto mask_array = mask_opt->as_array();
-             mask_array.size() == 2 && mask_array[0].is_number() && mask_array[1].is_number()) {
+    else if (
+        auto mask_array = mask_opt->as_array();
+        mask_array.size() == 2 && mask_array[0].is_number() && mask_array[1].is_number()) {
         match_task_info_ptr->mask_ranges.emplace_back(
             MatchTaskInfo::GrayRange { mask_array[0].as_integer(), mask_array[1].as_integer() });
     }
@@ -678,8 +684,9 @@ asst::TaskPtr asst::TaskData::generate_match_task_info(
         Log.error("Invalid color_scales type in task", name);
         return nullptr;
     }
-    else if (auto color_array = color_opt->as_array();
-             color_array.size() == 2 && color_array[0].is_number() && color_array[1].is_number()) {
+    else if (
+        auto color_array = color_opt->as_array();
+        color_array.size() == 2 && color_array[0].is_number() && color_array[1].is_number()) {
         // gray scale, color_array is array<int, 2>
         Log.debug("Deprecated GrayRange color_scales in task", name, ", should be `list<pair<int, int>>`");
         match_task_info_ptr->color_scales.emplace_back(
@@ -766,6 +773,13 @@ asst::TaskPtr asst::TaskData::generate_match_task_info(
         match_task_info_ptr->pure_color,
         default_ptr->pure_color);
 
+    utils::get_and_check_value_or(
+        name,
+        task_json,
+        "nmsDistance",
+        match_task_info_ptr->nms_distance,
+        default_ptr->nms_distance);
+
     return match_task_info_ptr;
 }
 
@@ -789,6 +803,28 @@ asst::TaskPtr asst::TaskData::generate_ocr_task_info(
 #endif
     utils::get_and_check_value_or(name, task_json, "fullMatch", ocr_task_info_ptr->full_match, default_ptr->full_match);
     utils::get_and_check_value_or(name, task_json, "isAscii", ocr_task_info_ptr->is_ascii, default_ptr->is_ascii);
+    std::string order_by_str;
+    utils::get_and_check_value_or(name, task_json, "orderBy", order_by_str, std::string());
+    if (order_by_str.empty()) {
+        ocr_task_info_ptr->order_by = default_ptr->order_by;
+    }
+    else if (order_by_str == "None") {
+        // 显式写 None = 不重排（按识别顺序）；省略是继承 base，显式 None 才能把 base 已设的排序覆盖回来
+        ocr_task_info_ptr->order_by = ResultOrderBy::None;
+    }
+    else if (order_by_str == "Horizontal") {
+        ocr_task_info_ptr->order_by = ResultOrderBy::Horizontal;
+    }
+    else if (order_by_str == "Vertical") {
+        ocr_task_info_ptr->order_by = ResultOrderBy::Vertical;
+    }
+    else if (order_by_str == "Score") {
+        ocr_task_info_ptr->order_by = ResultOrderBy::Score;
+    }
+    else {
+        Log.error("Invalid orderBy value", order_by_str, "in task", name);
+        return nullptr;
+    }
     utils::get_and_check_value_or(
         name,
         task_json,
@@ -1073,7 +1109,7 @@ bool asst::TaskData::syntax_check(const std::string& task_name, const json::valu
               // specific
               "cache",         "colorScales",   "colorWithClose",  "maskRange",      "method",
               "rectMove",      "roi",           "specialParams",   "templThreshold", "template",
-              "pureColor",
+              "pureColor",     "nmsDistance",
           } },
         { AlgorithmType::OcrDetect,
           {
@@ -1085,7 +1121,7 @@ bool asst::TaskData::syntax_check(const std::string& task_name, const json::valu
               // specific
               "cache",         "fullMatch",   "isAscii",         "ocrReplace",   "rectMove",
               "replaceFull",   "roi",         "text",            "withoutDet",   "useRaw",
-              "binThreshold",
+              "binThreshold",  "orderBy",
           } },
         { AlgorithmType::FeatureMatch,
           {

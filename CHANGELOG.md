@@ -1,81 +1,86 @@
-## v6.14.0-fork.20260807
+## v6.18.0-beta.1（已合入 staging，未晋升 branch）
 
-基于上游 v6.16.5（master-v2 `a02e95a9af`），本仓 fork 累积下游增强：
+> 本仓库为 [MaaAssistantArknights/MaaAssistantArknights](https://github.com/MaaAssistantArknights/MaaAssistantArknights) 的本地增强型分叉，跟随上游 `master-v2`。
+> 与上游 v6.17.0 → v6.18.0-beta.1 的三方合并已于 2026-09-16 以 merge `6d32144858` 合入 staging，Fork 私有功能保持兼容。
+> 详细工作流与差异说明见 [`README.md`](./README.md)、[`AGENTS.md`](./AGENTS.md) 和 [`WORKFLOW.md`](./WORKFLOW.md)。
 
-### 新增 fork 特性
+### Fork 增量（随 merge `6d32144858` 保留）
 
-- 多账号自动轮换日常任务（`feat/account_rotation`）
-- 肉鸽与生息演算延后到所有账号基础任务完成后执行（`feat/defer-rogue`）
-- 公招加急门槛：仅在确认最低星级 ≥ 阈值时使用加急许可（`feat/expedite-threshold`）
-- 抽 `AccountCycleOrchestrator` 单一职责类（`feat/account-cycle-refactor`）
-- StartUp OCR 失败熔断（`feat/startup-restart-breaker`）
-- 诊断包导出（`feat/diagnostic-export`）
-- 下游改动清单自动生成器（`feat/downstream-changes`）
-- 外部通知服务（Bark / Discord / DingTalk / Gotify / Qmsg / ServerChan / Smtp / Telegram / Custom Webhook）
-- 本地构建脚本 SDK 锁死修复（`tools/local-install*.bat`）
+- 多账号自动轮换日常任务（`feat/account_rotation`），肉鸽与生息演算延后到最后（`feat/defer-rogue`）
+- 公招加急门槛（`feat/expedite-threshold`）：`expedite_min_level` Fork 协议字段，与上游 `expedite` / `expedite_times` 并存
+- 公招加急按目标槽位点击（`fix/recruit-expedite-slot-target`），避免多槽位串位
+- 干员 / 仓库识别数据按账号分桶（`feat/account-scoped-recognition-data`），切号即切桶
+- 「生成诊断报告」重构（`fix/diagnostic-export-refactor`）：分卷导出 + 系统信息收集
+- 会客室线索快捷置入失败回退 legacy 循环（`fix/reception-clue-restore`）：修复上游 issue #16165
+- 账号轮换 UI 整理与启动竞态保护（`fix/account-rotation-supersede-switcher`、`fix/account-cycle-start-race`）
+- 仓库识别特别纪念 tab 修复（`fix/depot-special-memorial-tab`）：与上游 `da5ccfe4ed` 在 v6.18 自然收敛
+- 切号异步丢失保护（`fix/account-switch-retry`），增量本地构建与 NetBeauty2 文档补齐
+- 本地构建脚本强化、`tools/local-install-staging.bat` 与便携 MSVC（C:\msvc-portable）兼容路径
 
-### 2026-08-07 master-v2 基线对齐（fork 私有代码回归）
+### v6.18 上游新功能（master-v2 v6.17.0 → v6.18.0-beta.1，随 merge 接入）
 
-- **放弃全部 fork 私有 C++ 修改**回归 master-v2（commit `c951f239c1`）：`src/MaaCore/` 与上游 v6.16.5 一致
-- **tasks.json account-switch 区块回归 master**（commit `c34403ac94`）：删除 fork `AccountManagerPageConfirm` task + 模板（该补丁在 v6.16.5 基线下导致官服切号误匹配失败）
-- **恢复 fork 公招加急阈值 C++**（`3904577917`）：`expedite_min_level` 加急判定（confirm() 后单次 `recruit_now()`，失败回落 9h）对齐 fork WPF UI
-- 保留 WPF 侧账号轮换编排（`AccountCycleOrchestrator` / `AccountCycleStep` / StartUpSettings 配置）
+- 运行时重构：`RunningState` → `RunControlState` + `RunOwner`，所有 Idle/Inited/Stopping 公开属性收敛到 `Run.*`
+- 三方服务设置页（Yituliu OpenAPI Token / Penguin.id 迁移）
+- 基建副手换班（`InfrastAssistantChangeTask`）与 MaterialSynthesis 自动合成
+- Roguelike 黑流树海适配（v6.17.0 已含，beta.1 跟进）
+- GPU 驱动信息展示、`Achievement` 成就等次要功能
+- 切主题（`SwitchTheme`）自动切换
 
-### 已回退 / 已删除（2026-08-07 随 master-v2 基线重建）
 
-| 分支 | 说明 |
-|------|------|
-| `feat/auto-recruit-3star-to-4star` | 3★→4★ 自动升级：未充分验证（2026-08-06 清理） |
-| `fix/auto-recruit-expedite-original-level` | 随上一项删除而冗余（2026-08-06 清理） |
-| `feat/recruit-result-display` | 招募结果干员识别：2026-08-02 回退 |
-| `feat/recruit-history-tab` | 公招历史 Tab：依赖已回退的 callback |
-| `fix/account-official-recognize` | 官服账号界面识别补全：2026-08-07 回归 master |
-| `fix/account-switch-retry` | 切号 LoginOther OCR 模板兜底：2026-08-07 回归 master |
-| `fix/account-switch-template-missing` | 资源补图：2026-08-07 回归 master |
+> 本仓库为 [`MaaAssistantArknights/MaaAssistantArknights`](https://github.com/MaaAssistantArknights/MaaAssistantArknights) 的本地增强型分叉，跟随上游 `master-v2`。
+> 与上游 v6.17.0 的同步已在 `a92a8a9124` 完成，Fork 私有功能保持兼容。
+> 详细工作流与差异说明见 [`README.md`](./README.md)、[`AGENTS.md`](./AGENTS.md) 和 [`WORKFLOW.md`](./WORKFLOW.md)。
 
-### 协议字段双轨
+### Fork 增量（持续累积）
 
-公招参数 fork 扩展字段 `expedite_min_level`（最低 N 星才加急，0 = 所有星级）与上游 `expedite` / `expedite_times` 并存，5 语种 `docs/{lang}/protocol/integration.md` 双轨呈现。
+- 多账号自动轮换日常任务（`feat/account_rotation`），肉鸽与生息演算延后到最后（`feat/defer-rogue`）
+- 公招加急门槛（`feat/expedite-threshold`）：`expedite_min_level` Fork 协议字段，与上游 `expedite` / `expedite_times` 并存
+- 公招加急按目标槽位点击（`fix/recruit-expedite-slot-target`），避免多槽位串位
+- 干员 / 仓库识别数据按账号分桶（`feat/account-scoped-recognition-data`），切号即切桶
+- 「生成诊断报告」重构（`fix/diagnostic-export-refactor`）：分卷导出 + 系统信息收集
+- 会客室线索快捷置入失败回退 legacy 循环（`fix/reception-clue-restore`）：修复上游 issue #16165
+- 账号轮换 UI 整理与启动竞态保护（`fix/account-rotation-supersede-switcher`、`fix/account-cycle-start-race`）
+- 账号切号异步丢失保护（`fix/account-switch-retry`），增量本地构建与 NetBeauty2 文档补齐
+- 本地构建脚本强化、`tools/local-install-staging.bat` 与 VS 2022 BuildTools 兼容路径
 
-## v6.16.5
-## v6.14.0
+## v6.18.0
 
 ### Highlights
 
-#### 适配新代理倍率
+#### 一图流练度数据读取
 
-游戏代理倍率上限已提升至 10 倍。本版本全面适配新的倍率列表界面与识别逻辑，支持最高 10 倍连战，并移除此前因未适配而临时锁定的限制，AUTO 与手动倍率切换可正常使用。
+设置新增 ｢三方服务｣ 栏，干员识别支持填写一图流 OpenAPI Token 后直接读取一图流保存的练度快照，小工具的干员识别不再需要连接模拟器。相比本地截图识别，一图流数据还可额外获取技能等级、专精等级与模组信息。
 
-#### 背景选择器增强
+#### 更新失败自动修复
 
-背景设置支持树形结构选择与缩略图预览，自定义界面更方便。
+更新失败后会拦截任务启动，并在弹窗中提供自动修复，自动下载完整包后在本地安装；暂不修复也可正常进入主界面，通过设置检查更新或拖入本地完整包完成更新。
 
-#### 更新后自动运行可控
+#### 牛杂新增多项实用工具
 
-新增「更新后立即重启时不自动运行」选项；启动自动运行任务或模拟器前增加 10 秒倒计时确认，避免更新重启后非预期地直接开跑。
+牛杂新增 ｢自动提升潜能｣ ｢缺口材料合成｣ ｢刷傀影维多利亚皇冠｣ 等多项工具；列表同时新增 ｢常驻功能｣ 分组，常驻功能与当期活动分列展示。
 
-#### 库存保持任务增强
+#### 从 beta.3 更新的用户请注意
 
-库存保持任务 UI 重构：新增理智药/源石全局开关与临期药支持，并提供芯片、龙门币、采购凭证、技巧概要等刷图预设，计划管理更方便。
+beta.3 曾短暂移除基建设置中的 ｢训练完成后继续尝试专精当前技能｣ 选项，现已恢复；升级 beta.3 后原开关状态已被重置，需要继续专精的话请重新开启。
 
 <details>
 <summary><b>English</b></summary>
 
-#### New Series Multiplier Support
+#### Operator Recognition via Yituliu OpenAPI
 
-In-game series (proxy) multiplier cap is now up to 10x. This version fully adapts to the new series list UI and recognition logic, supports up to 10x consecutive battles, and removes the temporary lock used before adaptation so AUTO and manual multiplier switching work normally again.
+A new "Third-Party Services" settings section lets operator recognition read the proficiency snapshot stored on Yituliu via an OpenAPI token, and the toolbox's operator recognition no longer requires a connected emulator. Unlike screenshot recognition, the Yituliu data also includes skill levels, masteries, and module information.
 
-#### Enhanced Background Picker
+#### Auto Repair for Failed Updates
 
-Background settings now support a tree-style picker with thumbnail previews for easier customization.
+After a failed update, task startup is blocked and the dialog offers automatic repair, which downloads the full package and installs it locally; postponing the repair still opens the main window normally, where you can check for updates in Settings or drop in a local full package to complete the update.
 
-#### Controllable Auto-Run After Update
+#### New Useful Tasks
 
-Added an option to skip auto-run after an immediate post-update restart, plus a 10-second countdown confirmation before automatically starting tasks or the emulator, preventing unexpected runs after update restarts.
+Several new useful tasks are added, including Auto Potential Up, Missing Material Synthesis, and a Victoria Crown reroll tool for the Phantom roguelike; the list also gains a "Permanent Features" group separating permanent tools from event ones.
 
-#### Enhanced Depot Maintain Task
+#### Notice for beta.3 upgraders
 
-Refactored the depot maintain task UI with global medicine/originium toggles and expiring-medicine support, plus farming presets for chips, LMD, certificates, and skill summaries for easier plan management.
+The "keep training the current skill after completion" option in Base settings was briefly removed in v6.18.0-beta.3 and is now restored. Upgrading to beta.3 already reset the original toggle state — re-enable the option if you want mastery training to continue.
 
 </details>
 
@@ -84,123 +89,116 @@ Refactored the depot maintain task UI with global medicine/originium toggles and
 以下是详细内容：
 
 <details open>
-<summary><b>v6.16.5 (2026-08-06)</b></summary>
+<summary><b>v6.18.0 (2026-09-22)</b></summary>
 
 ### 新增 | New
 
-* 支持拖入资源包更新资源版本，并收窄完整包/OTA 包识别以避免误匹配；拖入检测改为异步避免卡 UI，导入失败时显示提示 ([#17569](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/17569)) @ABA2396
+* 牛杂新增 ｢自动提升潜能｣：从干员列表界面启动，自动提升所有带提示标记干员的潜能，中坚信物不足时可选择使用普通信物 ([#18268](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/18268) [#18137](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/18137)) @Lancarus @youzibigg @HX3N @Constrat @status102 @Manicsteiner @momomochi987
+* 牛杂新增 ｢缺口材料合成｣：从培养页面（精英化、专精、模组升级等）的缺少材料弹窗跳转到加工站合成页后启动，递归合成可加工的下级材料，任务页内附演示视频 @Lancarus @ABA2396
+* 牛杂常驻功能新增 ｢刷傀影维多利亚皇冠｣：从傀影肉鸽主菜单启动，反复开始探索检查开局收藏品，未刷到 ｢维多利亚王冠｣ 时放弃重开并等待冷却，刷到后自动停止 ([#18285](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/18285)) @Constrat @Manicsteiner @HX3N
+* 设置新增 ｢三方服务｣ 栏（企鹅物流上报设置迁入其中），干员识别支持填写一图流 OpenAPI Token 后改为读取一图流保存的练度快照，小工具的干员识别不再需要连接模拟器，数据更新任务的干员识别在连接模拟器后立即并行拉取，不等待其他任务完成 ([#18187](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/18187)) @ABA2396
+* 肉鸽开局招募的 3 名干员可分别指定，每个可独立选择是否借助战；未招募到指定干员时该次按默认优先级补位（黑流树海主题下仅第 1 个指定干员生效）([#18235](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/18235)) @ABA2396
+* Copilot 作业协议新增 Click 与 Swipe 动作，MoveCamera 动作新增 keep_kills 参数；字段与既有动作同填时改为警告并按优先级取值，location 支持 [0, 0]，结构校验前置至解析层 ([#18303](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/18303)) @ABA2396
+* Copilot 作业协议新增 ｢设置单位坐标｣（SetUnitLocation）动作，仅更新作战内部记录的单位坐标、不执行点击；name 与 location 均必填，缺失或值畸形时作业加载期报错 ([#18316](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/18316)) @ABA2396
+* 任务设置新增运行时长上限，到达后自动停止任务 ([#18167](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/18167)) @Aliothmoon @ABA2396
+* 基建换班新增副手换人流程，基建设施列表新增 ｢基建副手｣，可自动更换进驻的副手干员 ([#17943](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/17943)) @Lancarus
+* 完成后动作新增 ｢任务出错时跳过｣ 选项：勾选后任务列表中有任务出错时跳过全部完成后动作，仅统计任务列表中的任务；任务完成通知会汇总本轮出错的任务 @XXLC @hhhhcxy
+* 领取奖励新增自动领取限时签到活动，默认关闭，可在领取设置中开启；仅适配通用横向版型，新春等特殊版型暂不支持 ([#16989](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/16989)) @momomochi987 @Constrat @HX3N @Manicsteiner
+* 公招设置新增 ｢3 星保留招聘许可｣：剩余招聘许可小于等于保留值时跳过 3 星招募，许可数量识别失败时同样跳过以保护许可 @moranfanhua
+* PC 端直连新增 ｢任务运行时游戏静音｣ 选项（连接设置 - Win32 附加选项，默认关闭），仅静音游戏进程音频、不影响系统音量，任务停止后自动恢复 ([#18040](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/18040)) @H2O-MERO
+* 黑流树海肉鸽零件箱超载时自动丢弃零件 ([#18065](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/18065)) @ZiyinLin
+* 界面设置新增 ｢悬停主任务时隐藏操作按钮｣ 选项，隐藏后运行一次/复制/重命名/删除等功能可通过任务右键菜单使用 @ABA2396
+* ProcessTask 新增 override_next 接口，支持运行时覆盖指定任务的 next 列表 ([#18152](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/18152)) @status102
+* 莫奈取色新增 ｢遮罩保持中性｣ 开关 ([#18262](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/18262)) @WSMTBG
+* 基建换班新增 ｢满血 252（2 赤金）一天 3 换｣ 排班表 ([#17188](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/17188)) @ntgmc
+* 新增 ｢牛牛表情包 3 - 正弦线｣ 壁纸，更新理智上限背景图 @ABA2396
+* YostarEN/JP/KR add AssistantConfirm template for the infrast assistant swap flow @Constrat @Manicsteiner @HX3N
 
 ### 改进 | Improved
 
-* 更新器进度窗口延后至主窗口退出后再显示，避免与正在退出的 MAA 抢占前台；等待超时后自动弹出窗口并提示等待状态，防止主进程退出卡住时更新器变成不可见进程 @ABA2396
+* 对齐 ADB、Win32、MuMu、Minitouch、PlayTools 等各控制器滑动与点击的触控节奏和收尾行为，补齐 Win32 控制器的滑动暂停支持；PC 端鼠标输入方式切换为 PostMessage 变体，SendMessage 变体因延迟过高从界面移除，历史配置自动迁移至对应 PostMessage 变体 ([#18256](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/18256)) @ABA2396
+* 导航目标与上一次作战相同时跳过完整导航流程，直接进入作战 ([#18265](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/18265)) @ABA2396 @Acture
+* OCR 正则匹配时 ｢.｣ 不再默认匹配换行符，提升替换性能，并同步适配既有正则规则 ([#18248](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/18248)) @status102
+* 更新 MaaFramework 依赖至 v5.13.0，PC 端直连支持对游戏公告的独立 WebView 窗口截图，任务更不易被公告弹窗卡住 ([#18127](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/18127)) @SweetSmellFox
+* 干员识别使用一图流数据时，已拥有干员卡片新增展示技能等级、专精等级与模组，CSV/Markdown 导出新增技能等级列 ([#18231](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/18231)) @ABA2396
+* Copilot 作业的自定义干员支持填写国际服干员名（英/日/韩/繁中），自动换算为对应干员 ([#18180](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/18180)) @HX3N
+* Copilot 作业的技能、撤退、子弹时间、技能用法动作同时填写干员与位置时统一按位置执行，Click 动作同时填写像素区域与位置时按像素区域执行；加载作业时自动移除被覆盖的干员或位置字段并输出警告，与 Core 的执行优先级保持一致 @status102 @ABA2396
+* 重构升变阿米娅的干员名匹配，移除内部职业后缀，借助战与肉鸽招募、战斗统一按名字与职业匹配，降低错配风险；修复干员识别将升变阿米娅判为未拥有的问题 ([#18190](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/18190)) @status102 @ABA2396
+* ｢无限吃理智药｣ 的过期阈值从小时改为天，天数支持手动输入 @soundofautumn
+* 牛杂列表新增 ｢常驻功能｣ 分组，常驻功能与当期活动分列展示 ([#18269](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/18269)) @H2O-MERO @ABA2396
+* SR 关卡导航支持 ｢殡仪堂｣ 二期入口识别 @ABA2396
+* 更新弹窗的更新日志为贡献者显示 GitHub 头像，并修复当前版本内容始终显示为折叠的问题 @ABA2396
+* 更新日志中贡献者头像与用户名合并为整体，行宽不足时不再被换行拆到两行 @ABA2396
+* 任务队列至多添加一个开始唤醒任务，重复添加的入口自动禁用 @ABA2396
+* 任务被跳过时提示跳过原因并记入日志（周计划与库存保持、关卡计划为空或无当日开放关卡、未达到触发间隔等） @ABA2396
+* 优化任务加载性能，复用 Regex 验证实例避免重复编译 @status102
+* 优化黑流树海肉鸽的终止原因提示，未知终止时引导前往 ｢设置 - 问题反馈｣ @ABA2396
+* 修正黑流树海机械师策略提示的前置条件（须使用精二机械师，并解锁 ｢招募精通 II｣ 天赋的 ｢效果提升 II｣ 后开局才携带 ｢结构性原理｣） @ABA2396
+* 补充干员 ｢机械师｣ 制造站技能 ｢我睡过了｣ 的效率数据，基建排班正确将其编入制造站 ([#17884](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/17884)) @Artoria2e5
+* 调整基建办公室加速干员的编入逻辑，补充部分干员与技能的基建效率数据 @Lancarus @ABA2396
+* 肉鸽设置 ｢月度小队通讯｣ 选项新增悬停说明，说明勾选后的小队切换与结束行为 ([#18228](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/18228)) @youzibigg
+* 清空图片缓存与生成日志压缩包改为后台执行，执行期间禁用按钮防重复触发 @ABA2396
+* Copilot 作业输入解析加入取消令牌，不再逐字符触发网络请求 @ABA2396
+* PC 端截图测试显示截图用时，并可触发 ｢截图挑战｣ 成就，同步更新成就描述 ([#17874](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/17874)) @H2O-MERO
+* 热键注册失败时弹出提示并标红输入框 @ABA2396
+* 删除配置前增加确认弹窗 @ABA2396
+* 繁中服优化 OCR 替换规则与公招标签容错，修正生息演算简体字残留，界面用词调整为台湾惯用语 ([#18232](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/18232)) @momomochi987
+* 推理加速启用时若 GPU 驱动信息不可读则输出警告，便于排查加速不生效的问题 @ABA2396
+* 点击任务列表项的空白区域即可切换到对应任务设置 @ABA2396
+* YostarEN/JP/KR preload PA navigation @Constrat @HX3N @Manicsteiner
 
 ### 修复 | Fix
 
-* 倒计时、关闭模拟器、完成后脚本等非可打断期间阻止自动更新重启 ([#17566](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/17566)) @ABA2396
-* 修复刷理智未能关闭代理倍率列表的问题 @status102
-* 修复悖论自动战斗作业使用本地文件时始终读取临时文件的问题 @status102
-* 修复干员 `sortIndex` 缺失时误用默认值 0 导致排序错误的问题 @ABA2396
-* 修复中断锁引用计数下溢时钳制操作的竞态，避免误抹合法锁 @ABA2396
-* YostarJP fix OCR replace chain mangling operator names (e.g. FEater) and TA single-character rules ([#17516](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/17516)) @Ronnoc @Manicsteiner
+* 修复更新失败提示仅首次启动生效、被忽略后不再拦截的问题，现在更新失败后会拦截任务启动，弹窗中提供自动修复，自动下载完整包后在本地安装；暂不修复时可正常进入主界面，通过设置检查更新或拖入本地完整包完成更新 ([#18170](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/18170) [#18204](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/18204)) @ABA2396
+* 资源损坏或上次更新失败期间，检查更新强制改走完整包，已是最新版本时也会重装同版本完整包；拖入 OTA 增量包会被拒绝并提示改用完整安装包，同版本完整包可直接拖入修复 ([#18215](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/18215)) @ABA2396
+* 修复开始唤醒遇到掉线弹窗时直接停止的问题，现在会点击确认重连并继续启动流程；重连尝试达到上限后停止任务，避免频繁登录触发验证码 ([#18257](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/18257)) @XXLC
+* 修复退出 MAA 后 MaaCore 未正确销毁的问题 ([#17148](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/17148)) @VisoTC
+* 修复 Telegram 通知内容超长时整条发送失败的问题 ([#18281](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/18281)) @XXLC
+* 修复 Windows 下局域网连接设备时 RawByNc 截图方式不可用的问题 ([#18179](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/18179)) @Aliothmoon
+* 修复绿票、黄票商店任务必须从主界面启动的问题 ([#18237](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/18237)) @ModerRAS
+* 调整绿票商店赤金匹配阈值，修复一层赤金未识别导致二层未解锁、任务却显示完成的问题 ([#18223](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/18223)) @moranfanhua
+* 修复黑流树海肉鸽展开关卡信息时 ｢未知的凶戾｣（隐藏作战节点）被误判为普通作战的问题 ([#18208](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/18208)) @ZiyinLin
+* 修复黑流树海肉鸽内部错误停止时直接放弃当局退回主界面的问题，现在保留报错现场画面（含加工品识别失败时的加工品面板）便于截图反馈 ([#18319](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/18319)) @ZiyinLin
+* 修复公招未勾选自动确认 3/4 星招募结果时仍会自动确认的问题 ([#18176](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/18176)) @Aliothmoon
+* 修复 RunningState 计时器并发操作可能引发空引用异常的问题 ([#18202](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/18202)) @ABA2396
+* 修复切换界面语言后设置页过渡动画下拉选项停留旧语言的问题 @ABA2396
+* 修复彩虹文字动画在切换页面后转为静态的问题 ([#18318](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/18318)) @H2O-MERO
+* 外部通知请求日志中的 URL 截断到域名，避免 token 等凭据随日志泄漏 @ABA2396
+* 修复语言热切换后多处界面文本残留旧语言的问题（含小工具导出选项与干员识别页签计数），并补齐硬编码英文文案的本地化 @ABA2396
+* 修复任务运行中干员培养任务面板未被正确禁用的问题 @ABA2396
+* 修复 ADB 强制替换流程的问题：下载期间禁用按钮防重复触发，路径选择弹窗排除空路径 @ABA2396
+* 修复日志卡片边框在窗口尺寸变化时闪动或消失的问题 ([#18266](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/18266)) @H2O-MERO
+* 降低 PC 端商店投资系统的匹配阈值，提高识别容错 ([#18267](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/18267)) @moranfanhua
+* 修复任务添加菜单缺少调试任务项的问题 @status102
+* 修复 Friston-3 被识别为 EFriston-3 导致匹配失败的问题 @ABA2396
+* YostarEN/KR update ocr regex for incoming alter operators @Constrat @HX3N
+* YostarEN fix Catapult alter regex @Constrat
+* YostarKR adjust ocr regex for PA @HX3N
+* YostarKR fix ocr regex for Eyjafjalla alter, full name no longer mangled by fuzzy rules @HX3N
 
 ### 文档 | Docs
 
-* 新增库存保持与更新数据文档，补充手动更新、代理倍率、定时执行与剿灭等说明，并同步各语言文档 ([#17576](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/17576)) @ABA2396
+* 更新 Linux 编译教程与设备文档 ([#18184](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/18184)) @satgo1546
+* 添加基建排班工具 RIIC.Autos 的相关链接 ([#18033](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/18033)) @BrKDDD @Rbqwow
+* 手动更新数据的流程中，将更换主题步骤移至更新数据之后 ([#18173](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/18173)) @youzibigg
+* 优化非 Windows 模拟器与容器说明，并补齐其余四语言 @SherkeyXD @ABA2396
+* 补全五语言手册的 3 星保留招聘许可与安装不完整期间更新限制说明 @ABA2396
+* 修正协议文档中 highResolutionSwipeFix 的描述 @ABA2396
 
-</details>
+### 其他 | Other
 
-<details>
-<summary><b>v6.16.4 (2026-08-04)</b></summary>
+* 新增本地图片离线识别评估工具（DebugTask 评估原语与 maa_core_eval.py）([#18181](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/18181)) @ABA2396 @status102
+* 新增 README 截图演示模式，并重新生成 README 五语言演示截图 ([#18323](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/18323)) @ABA2396
 
-### 修复 | Fix
+### MaaMacGui
 
-* 修复 Win32IO 竞争条件导致的 `am start` 误判失败，并修正超时路径的异步 I/O 取消与资源释放 ([#17545](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/17545)) @ABA2396
-* 修复 SplitButton 在亮色模式下显示异常 @ABA2396
-* YostarJP fix TA (SS) activity OCR mismatch causing wrong activity navigation @Jason's-Miku
+#### 新增 | New
 
-</details>
+* 刷理智设置页新增今日关卡小提示 ([#122](https://github.com/MaaAssistantArknights/MaaMacGui/pull/122)) @zhangweijian97
+* 新增更换主题任务，同步 WPF 端的 SwitchTheme ([#126](https://github.com/MaaAssistantArknights/MaaMacGui/pull/126)) @zhangweijian97
 
-<details>
-<summary><b>v6.16.3 (2026-08-03)</b></summary>
+#### 修复 | Fix
 
-### 改进 | Improved
-
-* 重构库存保持计划项为独立 ViewModel，按索引同步任务配置 ([#17468](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/17468)) @status102
-* 优化库存保持预设按钮：左侧区域可点击展开下拉，并统一 SplitButton 背景样式 @ABA2396
-* 更新进度窗口不再强制置顶，仅在开始更新时前置一次，避免打断全屏游戏或其他操作 ([#17525](https://github.com/MaaAssistantArknights/MaaAssistantArknights/issues/17525)) @ABA2396
-* 统一配置与启动设置下拉列表中的删除按钮样式 @ABA2396
-
-### 修复 | Fix
-
-* 修复刷理智选择代理倍率后未关闭次数列表的问题 @status102
-* 修复 iOS/PlayCover 基建办公室入口模板阈值过高导致识别失败的问题 ([#17527](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/17527)) @Rememorio
-
-</details>
-
-<details>
-<summary><b>v6.16.2 (2026-08-02)</b></summary>
-
-### 新增 | New
-
-* 库存保持任务 UI 重构：新增理智药/源石全局开关与临期药支持，并提供芯片、龙门币、采购凭证、技巧概要等刷图预设 ([#17512](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/17512)) @ABA2396
-
-### 改进 | Improved
-
-* 优化库存保持界面布局与显示，清空计划时增加确认弹窗 @ABA2396
-
-### 修复 | Fix
-
-* 修复库存保持界面未选择掉落物时切换语言无法正确显示的问题 @ABA2396
-* YostarEN fix Mountain OCR regex matching @Constrat
-
-</details>
-
-<details>
-<summary><b>v6.16.1 (2026-08-02)</b></summary>
-
-~~MAA不会在周██凌晨更新。如果收到更新提示，请忽略，不要查看更新公告，直到周██。~~
-
-### 改进 | Improved
-
-* 更新后自动运行倒计时弹窗移除关闭按钮，避免误关后仍继续自动运行 @ABA2396
-
-### 修复 | Fix
-
-* 使用 DXGI 适配器 LUID 解析 GPU OCR 设备，避免多显卡环境下绑定错误 GPU；解析失败或执行提供程序不可用时回退 CPU ([#17488](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/17488)) @GSY707
-* 修复 MuMu display id 在 fallback 时被错误缓存，避免连接时游戏未启动导致截图/触控锁死在错误窗口 @ABA2396
-* 修复「直到大地变成一颗酸橙」活动上次战斗关卡未在后三关结束时关卡导航错误 @ABA2396
-* 修复 FightTask 在新代理倍率列表下无法指定 7~10 倍的参数校验 @status102
-
-</details>
-
-<details>
-<summary><b>v6.16.0 (2026-08-01)</b></summary>
-
-### 新增 | New
-
-* 适配游戏新代理倍率设置与列表界面，支持最高 10 倍连战，并移除临时锁定限制 ([#17500](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/17500)) @status102 @ABA2396
-* 背景设置支持树形选择器与缩略图预览 @ABA2396
-* 新增「更新后立即重启时不自动运行」选项，启动自动运行前增加 10 秒倒计时确认 ([#17483](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/17483)) @ABA2396
-* 新增「直到大地变成一颗酸橙」活动关卡导航 @ABA2396
-
-### 改进 | Improved
-
-* 增强 MouseWheelHelper：弹层打开时隔离外层页面滚动，避免滚动穿透 @ABA2396
-* 库存保持任务先比较库存数量再判断关卡开放状态，已满足目标时直接跳过 @ABA2396
-* MuMu / Win32 触控对齐 minitouch 默认延迟，提升点击稳定性 @ABA2396
-* 优化自动战斗新活动关卡提示文案 @ABA2396
-* 优化库存保持 Item 初始化与作业解析干员属性要求默认值处理 @status102
-
-### 修复 | Fix
-
-* 修复未开启截图增强时 MuMu 后台保活检测失效的问题 @ABA2396
-* 修复开启自动检测连接时无法修改 Extra 配置的问题 ([#17480](https://github.com/MaaAssistantArknights/MaaAssistantArknights/issues/17480)) @ABA2396
-* 修复更新数据任务仅勾选仓库识别时被跳过的问题 ([#17482](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pull/17482)) @2436238575 @ABA2396
-* 修复自动战斗多作业模式超长关卡名显示异常 @ABA2396
-* 修复自动战斗添加作业时地图信息不存在的提示错误使用 stageCode 的问题 @status102
-* 修复「直到大地变成一颗酸橙」关卡 OCR 可能将 TO 识别为 T0 的问题 @ABA2396
-* 修复 BadModules 在注入环境下弹窗崩溃，回退至 Win32 MessageBox @ABA2396
-* 修正 PC 端推荐分辨率文案为 1280x720 / 1920x1080 @ABA2396
-* YostarKR add BattleQuickFormationClear2 for Vector Breakthrough @HX3N
+* 恢复单作业模式的循环次数选项，并统一循环次数入口 @hguandl
 
 </details>

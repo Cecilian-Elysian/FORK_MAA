@@ -128,6 +128,18 @@ bool asst::FightTimesTaskPlugin::_run()
         Log.info(__FUNCTION__, "fight times reached max");
         fight["details"]["finished"] = true;
     }
+    else if (m_medicine == 0 && m_stone == 0 && sanity->current < *sanity_cost) {
+        // 无药无源石预算, 理智不足本轮消耗, 跳过战斗
+        m_task_ptr->set_enable(false);
+        Log.info(
+            __FUNCTION__,
+            "sanity insufficient (",
+            sanity->current,
+            " < ",
+            *sanity_cost,
+            "), no medicine/stone budget, skip fight");
+        fight["details"]["finished"] = true;
+    }
     callback(AsstMsg::SubTaskExtraInfo, fight);
     return true;
 }
@@ -185,10 +197,14 @@ std::optional<int> asst::FightTimesTaskPlugin::change_series_new(int sanity_curr
 {
     int fight_times_remain = std::min(m_fight_times_max - m_fight_times, 10);
     if (!m_has_used_medicine && !m_is_medicine_exhausted) {
-        if (fight_times_remain != series) {
-            return select_series_new(fight_times_remain); // 调整到剩余次数
+        if (m_medicine != 0 || m_stone != 0) {
+            if (fight_times_remain != series) {
+                return select_series_new(fight_times_remain) ? fight_times_remain : std::optional<int>(); // 调整到剩余次数
+            }
+            return series;
         }
-        return series;
+        // 无药无源石预算: 理智是唯一约束, 落到下方按理智计算 target_times 自适应倍率,
+        // 避免盲目选满剩余次数后因理智不足被跳过 (fork fix/sanity-auto-series-adapt)
     }
 
     if (m_has_used_medicine) {               // 用过药品, 认为已选择最大可用次数
@@ -339,7 +355,7 @@ bool asst::FightTimesTaskPlugin::select_series_new(int times)
         if (std::abs(dis) > 4) {
             if (dis > 0) {
                 const auto& task = Task.get("FightSeries-List-SlideUp");
-                ctrler()->swipe(task->specific_rect, task->rect_move, 300, false, 3.7, 0.1);
+                ctrler()->swipe(task->specific_rect, task->rect_move, 300, SwipeExtraDirection::None, 3.7, 0.1);
                 sleep(task->post_delay);
                 if (!reanalyze()) {
                     return false;
@@ -347,7 +363,7 @@ bool asst::FightTimesTaskPlugin::select_series_new(int times)
             }
             else if (dis < 0) {
                 const auto& task = Task.get("FightSeries-List-SlideDown");
-                ctrler()->swipe(task->specific_rect, task->rect_move, 300, false, 3.7, 0.1);
+                ctrler()->swipe(task->specific_rect, task->rect_move, 300, SwipeExtraDirection::None, 3.7, 0.1);
                 sleep(task->post_delay);
                 if (!reanalyze()) {
                     return false;

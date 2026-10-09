@@ -12,12 +12,14 @@ icon: material-symbols:u-turn-left
 ## 回呼函式原型
 
 ```cpp
-typedef void(ASST_CALL* AsstCallback)(int msg, const char* details, void* custom_arg);
+typedef void(ASST_CALL* AsstApiCallback)(AsstMsgId msg, const char* details_json, void* custom_arg);
 ```
+
+其中 `AsstMsgId` 為 `int32_t` 的別名。
 
 ## 參數總覽
 
-- `int msg`  
+- `AsstMsgId msg`  
    消息類型
 
   ```cpp
@@ -28,7 +30,7 @@ typedef void(ASST_CALL* AsstCallback)(int msg, const char* details, void* custom
    InitFailed        = 1,           // 初始化失敗
    ConnectionInfo    = 2,           // 連線相關資訊
    AllTasksCompleted = 3,           // 全部任務完成
-   AsyncCallInfo     = 4,           // 外部非同步調用資訊
+   AsyncCallInfo     = 4,           // 外部非同步呼叫資訊
    Destroyed         = 5,           // 執行個體已銷毀
 
    /* TaskChain Info */
@@ -53,7 +55,7 @@ typedef void(ASST_CALL* AsstCallback)(int msg, const char* details, void* custom
 - `const char* details`  
    消息詳情，json 字串，詳見 [欄位解釋](#欄位解釋)
 - `void* custom_arg`  
-   調用端自定義參數。會原樣傳出 `AsstCreateEx` 介面中的 `custom_arg` 參數，C 系語言可利用此參數傳出 `this` 指標。
+   呼叫端自訂參數。會原樣傳出 `AsstCreateEx` 介面中的 `custom_arg` 參數，C 系語言可利用此參數傳出 `this` 指標。
 
 ## 欄位解釋
 
@@ -64,13 +66,19 @@ typedef void(ASST_CALL* AsstCallback)(int msg, const char* details, void* custom
 ### InitFailed
 
 :::: field-group
-::: field name="what" type="string" required
+::: field what
+@type string
+@required
 錯誤類型。
 :::  
-::: field name="why" type="string" required
+::: field why
+@type string
+@required
 錯誤原因。
 :::  
-::: field name="details" type="object" required
+::: field details
+@type object
+@required
 錯誤詳情。
 :::  
 ::::
@@ -78,16 +86,23 @@ typedef void(ASST_CALL* AsstCallback)(int msg, const char* details, void* custom
 ### ConnectionInfo
 
 :::: field-group
-::: field name="what" type="string" required
+::: field what
+@type string
+@required
 資訊類型。
 :::
-::: field name="why" type="string" required
+::: field why
+@type string
+@required
 資訊原因。
 :::
-::: field name="uuid" type="string"
+::: field uuid
+@type string
 設備唯一碼（連線失敗時為空）。
 :::
-::: field name="details" type="object" required
+::: field details
+@type object
+@required
 連線詳情。其結構如下：
 
 - `adb` (string, required): `AsstConnect` 介面 `adb_path` 參數。
@@ -119,8 +134,16 @@ typedef void(ASST_CALL* AsstCallback)(int msg, const char* details, void* custom
    截圖失敗（adb / 模擬器 炸了），並重試失敗
 - `TouchModeNotAvailable`  
    不支援的觸控模式
+- `MuMuExtrasInputStatus`  
+   MuMu 觸控增強的實際生效狀態，`details` 結構如下：
+  - `available` (boolean, required): 是否已生效。
+  - `deferred` (boolean, required): 是否尚未判定（連線時遊戲尚未開始渲染，會在開始渲染後自動重試）。
 - `ResolutionGot`  
    已獲取到解析度
+- `ResolutionChanged`  
+   執行中解析度被修改，連線已斷開並中斷目前任務，`details` 結構如下：
+  - `width` (number, required): 目前寬度。
+  - `height` (number, required): 目前高度。
 - `FastestWayToScreencap`  
    已找到最快的截圖方式，`details` 結構如下：
   - `method` (string, required): 最快的截圖方式。
@@ -142,20 +165,29 @@ typedef void(ASST_CALL* AsstCallback)(int msg, const char* details, void* custom
 ### AsyncCallInfo
 
 :::: field-group
-::: field name="uuid" type="string" required
+::: field uuid
+@type string
+@required
 設備唯一碼。
 :::
-::: field name="what" type="string" required
-回呼類型，例如 `Connect` | `Click` | `Screencap` 等。
+::: field what
+@type string
+@required
+回呼類型，例如 `Connect` | `AttachWindow` | `Click` | `Screencap` 等。
 :::
-::: field name="async_call_id" type="number" required
-非同步請求 ID，即調用 `AsstAsyncXXX` 時的回傳值。
+::: field async_call_id
+@type number
+@required
+非同步請求 ID，即呼叫 `AsstAsyncXXX` 時的回傳值。
 :::
-::: field name="details" type="object" required
-非同步調用詳情。其結構如下：
+::: field details
+@type object
+@required
+非同步呼叫詳情。其結構如下：
 
-- `ret` (boolean, required): 實際調用的回傳值。
+- `ret` (boolean, required): 實際呼叫的回傳值。
 - `cost` (number, required): 耗時，單位毫秒。
+- `error` (string): 未處理例外的類型（僅呼叫因未處理例外失敗時存在）。
 
 :::
 ::::
@@ -163,13 +195,24 @@ typedef void(ASST_CALL* AsstCallback)(int msg, const char* details, void* custom
 ### AllTasksCompleted
 
 :::: field-group
-::: field name="taskchain" type="string" required
-最後的任务鏈。
+::: field taskchain
+@type string
+@required
+最後的任務鏈。
 :::
-::: field name="uuid" type="string" required
+::: field taskid
+@type number
+@required
+最後一條任務鏈對應的任務 TaskId。
+:::
+::: field uuid
+@type string
+@required
 設備唯一碼。
 :::
-::: field name="finished_tasks" type="array<number>" required
+::: field finished_tasks
+@type array<number>
+@required
 已經執行過的任務 ID 列表。
 :::
 ::::
@@ -196,6 +239,8 @@ typedef void(ASST_CALL* AsstCallback)(int msg, const char* details, void* custom
    自動抄作業
 - `SSSCopilot`  
    自動抄保全作業
+- `ParadoxCopilot`  
+   自動抄悖論模擬作業
 - `Depot`  
    倉庫辨識
 - `OperBox`  
@@ -203,7 +248,7 @@ typedef void(ASST_CALL* AsstCallback)(int msg, const char* details, void* custom
 - `Reclamation`  
    生息演算
 - `Custom`  
-   自定義任務
+   自訂任務
 - `SingleStep`  
    單步任務
 - `VideoRecognition`  
@@ -213,41 +258,69 @@ typedef void(ASST_CALL* AsstCallback)(int msg, const char* details, void* custom
 
 ### TaskChain 相關消息
 
+`TaskChainError` / `TaskChainStart` / `TaskChainCompleted` / `TaskChainExtraInfo` / `TaskChainStopped` 共用以下欄位：
+
 :::: field-group
-::: field name="taskchain" type="string" required
+::: field taskchain
+@type string
+@required
 目前的任務鏈。
 :::
-::: field name="taskid" type="number" required
+::: field taskid
+@type number
+@required
 目前任務 TaskId。
 :::
-::: field name="uuid" type="string" required
+::: field uuid
+@type string
+@required
 設備唯一碼。
 :::
 ::::
 
+其中 `TaskChainError` 在任務鏈因未處理異常中斷時會額外攜帶 `details` 欄位：
+
+- `error` (string, required): 異常類型，取值為 `OpenCVException` | `OutOfMemory` | `UnhandledException` | `UnknownException`。
+
 ### TaskChainExtraInfo
 
-`details` 欄位為空。
+預設僅攜帶上述公共欄位。肉鴿（界園主題）路徑規劃判定無法避開過多戰鬥而主動重開時，訊息會額外攜帶：
+
+- `what` (string, required): 固定為 `RoutingRestart`。
+- `why` (string, required): 固定為 `TooManyBattlesAhead`。
+- `node_cost` (number, required): 規劃得到的下一節點代價。
 
 ### SubTask 相關消息
 
 :::: field-group
-::: field name="subtask" type="string" required
+::: field subtask
+@type string
+@required
 子任務名稱。
 :::
-::: field name="class" type="string" required
+::: field class
+@type string
+@required
 子任務符號名稱。
 :::
-::: field name="taskchain" type="string" required
+::: field taskchain
+@type string
+@required
 目前任務鏈。
 :::
-::: field name="taskid" type="number" required
+::: field taskid
+@type number
+@required
 目前任務 TaskId。
 :::
-::: field name="details" type="object" required
+::: field details
+@type object
+@required
 詳情。
 :::
-::: field name="uuid" type="string" required
+::: field uuid
+@type string
+@required
 設備唯一碼。
 :::
 ::::
@@ -255,26 +328,47 @@ typedef void(ASST_CALL* AsstCallback)(int msg, const char* details, void* custom
 #### 常見 `subtask` 欄位
 
 - `ProcessTask`  
-  `details` 欄位内容如下：
+  `details` 欄位內容如下：
 
   :::: field-group
-  ::: field name="task" type="string" required
+  ::: field task
+  @type string
+  @required
   任務名稱。
   :::
-  ::: field name="action" type="number" required
-  Action ID。
+  ::: field action
+  @type string
+  @required
+  動作名稱，例如 `ClickSelf` | `DoNothing` | `Swipe`。
   :::
-  ::: field name="exec_times" type="number" required
+  ::: field exec_times
+  @type number
+  @required
   已執行次數。
   :::
-  ::: field name="max_times" type="number" required
+  ::: field max_times
+  @type number
+  @required
   最大執行次數。
   :::
-  ::: field name="algorithm" type="number" required
-  辨識算法。
+  ::: field algorithm
+  @type string
+  @required
+  辨識演算法名稱，例如 `MatchTemplate` | `OcrDetect` | `FeatureMatch` | `JustReturn`。
+  :::
+  ::: field result
+  @type object
+  @required
+  本次辨識結果，各演算法結構不同；無辨識結果時為空物件。
   :::
   ::::
 
+  此外，當任務執行次數達到上限時，會先回傳一條 `SubTaskExtraInfo` 訊息，`what` 為 `ExceededLimit`，`details` 包含 `task`（任務名稱）、`exec_times`（已執行次數）、`max_times`（最大執行次數）。
+
+- `ReportToPenguinStats` / `ReportToYituliu`  
+  彙報戰鬥掉落到企鵝數據統計 / 一圖流大數據（上報失敗時以 `SubTaskError` 回傳）。
+- `StartGameTask`  
+  打開用戶端失敗（設定檔與傳入 `client_type` 不匹配）。
 - Todo 其他
 
 ##### 常見 `task` 欄位
@@ -283,8 +377,6 @@ typedef void(ASST_CALL* AsstCallback)(int msg, const char* details, void* custom
    開始戰鬥
 - `MedicineConfirm`  
    使用理智藥
-- `ExpiringMedicineConfirm`  
-   使用即將過期的理智藥
 - `StoneConfirm`  
    碎石
 - `RecruitRefreshConfirm`  
@@ -293,12 +385,8 @@ typedef void(ASST_CALL* AsstCallback)(int msg, const char* details, void* custom
    公招確認招募
 - `RecruitNowConfirm`  
    公招使用加急許可
-- `ReportToPenguinStats`  
-   匯報到企鵝數據統計
-- `ReportToYituliu`  
-   匯報到一圖流大數據
 - `InfrastDormDoubleConfirmButton`  
-   基建宿舍的二次確認按鈕。僅當幹員衝突時才會出現，請提示使用者。
+   基建的二次確認按鈕。僅當待進駐幹員已進駐其他設施時才會出現（MAA 將自動點擊確認），請提示使用者。
 - `StartExplore`  
    肉鴿開始探索
 - `StageTraderInvestConfirm`  
@@ -323,26 +411,34 @@ typedef void(ASST_CALL* AsstCallback)(int msg, const char* details, void* custom
    肉鴿關卡：緊急作戰
 - `StageDreadfulFoe`  
    肉鴿關卡：險路惡敵
-- `StartGameTask`
-  打開客戶端失敗（設定檔與傳入 client_type 不匹配）
 - Todo 其他
 
 ### SubTaskExtraInfo
 
 :::: field-group
-::: field name="taskchain" type="string" required
+::: field taskchain
+@type string
+@required
 目前任務鏈。
 :::
-::: field name="class" type="string" required
+::: field class
+@type string
+@required
 子任務類型。
 :::
-::: field name="what" type="string" required
+::: field what
+@type string
+@required
 資訊類型。
 :::
-::: field name="details" type="object" required
+::: field details
+@type object
+@required
 資訊詳情。
 :::
-::: field name="uuid" type="string" required
+::: field uuid
+@type string
+@required
 設備唯一碼。
 :::
 ::::
@@ -364,12 +460,16 @@ typedef void(ASST_CALL* AsstCallback)(int msg, const char* details, void* custom
     - `itemName` (string, required)：材料名稱。
     - `quantity` (number, required)：總計數量。
     - `addQuantity` (number, required)：本次新增的掉落數量。
+  - `cur_times` (number, optional)：結算畫面辨識到的連戰次數（辨識到時存在）。
+  - `annihilation_weekly_process` (array, optional)：剿滅模式的本週獲取進度，格式為 `[已完成數, 上限]`（僅剿滅關卡存在）。
 
 - `RecruitTagsDetected`  
   公招辨識到了 Tags。`details` 欄位內容如下：
 
   :::: field-group
-  ::: field name="tags" type="array<string>" required
+  ::: field tags
+  @type array<string>
+  @required
   辨識到的 Tag 列表。
   :::
   ::::
@@ -378,7 +478,9 @@ typedef void(ASST_CALL* AsstCallback)(int msg, const char* details, void* custom
   公招辨識到了特殊 Tag。`details` 欄位內容如下：
 
   :::: field-group
-  ::: field name="tag" type="string" required
+  ::: field tag
+  @type string
+  @required
   特殊 Tag 名稱，例如 高級資深幹員。
   :::
   ::::
@@ -387,7 +489,9 @@ typedef void(ASST_CALL* AsstCallback)(int msg, const char* details, void* custom
    公招辨識到了已設定為保留的 Tag。`details` 欄位內容如下：
 
   :::: field-group
-  ::: field name="tag" type="string" required
+  ::: field tag
+  @type string
+  @required
   觸發保留的 Tag 名稱，例如 `支援機械`。
   :::
   ::::
@@ -400,6 +504,7 @@ typedef void(ASST_CALL* AsstCallback)(int msg, const char* details, void* custom
     - `tags` (array, required)：參與組合的 tags。
     - `level` (number, required)：這組 tags 的星級。
     - `opers` (array, required)：可能招募到的幹員，陣列每一項包含：
+      - `id` (string, required)：幹員 ID。
       - `name` (string, required)：幹員名稱。
       - `level` (number, required)：幹員星級。
 
@@ -407,10 +512,14 @@ typedef void(ASST_CALL* AsstCallback)(int msg, const char* details, void* custom
   公招刷新了 Tags。`details` 欄位內容如下：
 
   :::: field-group
-  ::: field name="count" type="number" required
+  ::: field count
+  @type number
+  @required
   目前槽位已刷新次數。
   :::
-  ::: field name="refresh_limit" type="number" required
+  ::: field refresh_limit
+  @type number
+  @required
   目前槽位刷新次數上限。
   :::
   ::::
@@ -419,34 +528,53 @@ typedef void(ASST_CALL* AsstCallback)(int msg, const char* details, void* custom
   公招無招聘許可。`details` 欄位內容如下：
 
   :::: field-group
-  ::: field name="continue" type="boolean" required
+  ::: field continue
+  @type boolean
+  @required
   是否繼續刷新。
   :::
   ::::
+
+- `RecruitPermitReserved`
+  目前招聘許可數量小於等於為 3 星招募設定的保留值，因此跳過目前欄位。`details` 欄位內容如下：
+
+  :::: field-group
+  ::: field current
+  @type number
+  @required
+  目前招聘許可數量。
+  :::
+  ::::
+
+- `RecruitPermitCountRecognitionFailed`
+  啟用 3 星招聘許可保留後，招聘許可數量辨識失敗，因此跳過目前欄位。`details` 欄位為空。
 
 - `RecruitTagsSelected`  
   公招選擇了 Tags。`details` 欄位內容如下：
 
   :::: field-group
-  ::: field name="tags" type="array<string>" required
+  ::: field tags
+  @type array<string>
+  @required
   選擇的 Tag 列表。
   :::
   ::::
 
-- `RecruitSlotCompleted`  
-  目前公招槽位任務完成。`details` 欄位為空。
-
 - `RecruitError`  
-  公招辨識錯誤。`details` 欄位為空。
+  公招辨識錯誤。`details` 欄位為空；若因目前槽位刷新次數達到上限觸發，則包含 `refresh_limit`（槽位刷新次數上限）。
 
 - `EnterFacility`  
   基建進入了設施。`details` 欄位內容如下：
 
   :::: field-group
-  ::: field name="facility" type="string" required
+  ::: field facility
+  @type string
+  @required
   設施名稱。
   :::
-  ::: field name="index" type="number" required
+  ::: field index
+  @type number
+  @required
   設施序號。
   :::
   ::::
@@ -455,10 +583,14 @@ typedef void(ASST_CALL* AsstCallback)(int msg, const char* details, void* custom
   基建可用幹員不足。`details` 欄位內容如下：
 
   :::: field-group
-  ::: field name="facility" type="string" required
+  ::: field facility
+  @type string
+  @required
   設施名稱。
   :::
-  ::: field name="index" type="number" required
+  ::: field index
+  @type number
+  @required
   設施序號。
   :::
   ::::
@@ -467,13 +599,19 @@ typedef void(ASST_CALL* AsstCallback)(int msg, const char* details, void* custom
   基建產物。`details` 欄位內容如下：
 
   :::: field-group
-  ::: field name="product" type="string" required
+  ::: field product
+  @type string
+  @required
   產物名稱。
   :::
-  ::: field name="facility" type="string" required
+  ::: field facility
+  @type string
+  @required
   設施名稱。
   :::
-  ::: field name="index" type="number" required
+  ::: field index
+  @type number
+  @required
   設施序號。
   :::
   ::::
@@ -482,34 +620,36 @@ typedef void(ASST_CALL* AsstCallback)(int msg, const char* details, void* custom
   自動作戰關卡資訊。`details` 欄位內容如下：
 
   :::: field-group
-  ::: field name="name" type="string" required
+  ::: field name
+  @type string
+  @required
   關卡名稱。
+  :::
+  ::: field size
+  @type number
+  @required
+  地圖格點數量。
   :::
   ::::
 
 - `StageInfoError`  
   自動作戰關卡辨識錯誤。`details` 欄位為空。
 
-- `PenguinId`  
-  企鵝物流 ID。`details` 欄位內容如下：
-
-  :::: field-group
-  ::: field name="id" type="string" required
-  企鵝物流 ID。
-  :::
-  ::::
-
-- `Depot`  
+- `DepotInfo`  
   倉庫辨識結果。`details` 欄位結構如下：
   - `done` (boolean, required)：是否已經辨識完了，為 false 表示仍在辨識中（過程中的數據）。
-  - `data` (string, required)：json 字串，格式為 {"物品ID": 數量, ...}，例如 {"2001":18000,"31043":317}。
+  - `data` (string, required)：JSON 字串，格式為 `{"物品ID": 數量, ...}`，例如 `{"2001":18000,"31043":317}`。
 
-- `OperBox`  
+- `OperBoxInfo`  
   幹員辨識結果。`details` 欄位結構如下：
   - `done` (boolean, required)：是否已經辨識完了，為 false 表示仍在辨識中（過程中的數據）。
-  - `all_oper` (array, required)：全幹員列表，陣列每一項包含：
+  - `all_opers` (array, required)：全幹員列表，陣列每一項包含：
     - `id` (string, required)：幹員 ID。
     - `name` (string, required)：幹員名稱。
+    - `name_en` (string, required)：幹員英文名稱。
+    - `name_jp` (string, required)：幹員日文名稱。
+    - `name_kr` (string, required)：幹員韓文名稱。
+    - `name_tw` (string, required)：幹員繁中名稱。
     - `own` (boolean, required)：是否擁有。
     - `rarity` (number, required)：幹員稀有度 [1, 6]。
   - `own_opers` (array, required)：已擁有幹員的詳細資訊列表，陣列每一項包含：
@@ -522,23 +662,39 @@ typedef void(ASST_CALL* AsstCallback)(int msg, const char* details, void* custom
     - `rarity` (number, required)：幹員稀有度 [1, 6]。
 
 - `UnsupportedLevel`  
-  自動抄作業，不支援的關卡名稱。`details` 欄位為空。
+  自動抄作業，不支援的關卡名稱。`details` 欄位內容如下：
+
+  :::: field-group
+  ::: field level
+  @type string
+  @required
+  不支援的關卡名稱。
+  :::
+  ::::
 
 ### ReportRequest
 
 該欄位主要用於核心模組向 UI 層傳遞網路請求資訊，UI 負責執行具體的 HTTP 彙報操作。
 
 :::: field-group
-::: field name="url" type="string" required
+::: field url
+@type string
+@required
 請求的完整 URL，例如 `https://penguin-stats.io/PenguinStats/api/v2/report`。
 :::
-::: field name="headers" type="object" required
+::: field headers
+@type object
+@required
 請求 Headers 的 Key-Value 設定（不包含 `Content-Type`，由 UI 層自行加入）。
 :::
-::: field name="body" type="string" required
+::: field body
+@type string
+@required
 請求 Body 內容（通常為 json 格式的字串）。
 :::
-::: field name="subtask" type="string" required
+::: field subtask
+@type string
+@required
 子任務名稱，辨識具體彙報任務，如 `ReportToPenguinStats`、`ReportToYituliu`。
 :::
 ::::

@@ -9,6 +9,8 @@ Automatically starts the emulator, launches the client, and enters the game.
 
 Automatic emulator startup requires additional configuration in the startup settings and enabling `Retry launching the emulator when ADB connection fails` in the connection settings.
 
+If the game is showing the disconnection popup, Startup taps confirm to reconnect and then continues into the game.
+
 ## Account Switch
 
 This feature needs to be used together with configuration switching or scheduled execution. An account switch operation will be performed each time the `Startup` task is executed.
@@ -19,6 +21,7 @@ Only supports switching to already logged-in accounts, using the login name for 
   - Official server: `123****8901` can be entered as `123****8901`, `123`, `8901`, or `3****8`
   - Bilibili server: `Zhang San` can be entered as `Zhang San`, `Zhang`, or `San`
   - Traditional Chinese server: Email-based, e.g. `ab****01@gmail.com`. Entering the plain-text portion without asterisks is recommended, e.g. `01@gmail`
+  - YostarKR server: Email-based, e.g. `ab****01@gmail.com`. Entering the plain-text portion without asterisks is recommended, e.g. `01@gmail`
 
 ## Connection Settings
 

@@ -53,6 +53,9 @@ jobs:
           fetch-depth: 0
           show-progress: false
 
+      - name: Check stub localization
+        run: python3 tools/CheckStubLocalization.py
+
       - name: Set tag
         id: set_tag
         run: |
@@ -142,7 +145,7 @@ jobs:
         uses: robinraju/release-downloader@v1
         with:
           repository: MaaXYZ/MaaFramework
-          tag: v5.9.2
+          tag: v5.13.0
           fileName: ${{ matrix.arch == 'arm64' && '*win-aarch64*.zip' || '*win-x86_64*.zip' }}
           extract: true
           out-file-path: MaaFramework-temp
@@ -231,7 +234,20 @@ jobs:
           rm -rf install/*.h
           rm -rf install/*.bak
 
+          # 用原生启动器替换 SDK apphost：MAA.exe 被单独拖出文件夹时给出错误提示
+          # MAA.dll 缺失可能来自 continue-on-error 的 publish，静默保留 apphost；stub 缺失属于构建异常，直接失败
+          if [ ! -f build/bin/RelWithDebInfo/MaaAppHostStub.exe ]; then
+              echo "::error::MaaAppHostStub.exe missing from build output"
+              exit 1
+          fi
+          if [ -f install/MAA.dll ]; then
+              cp build/bin/RelWithDebInfo/MaaAppHostStub.exe install/MAA.exe
+          fi
+
           cp tools/DependencySetup_依赖库安装.bat install
+
+      - name: Generate file list
+        run: pwsh tools/GenerateFileList.ps1 -InstallDir install
 
       - name: Zip files
         run: |
@@ -609,9 +625,9 @@ jobs:
       - name: Build MAA
         run: |
           if ${{ startsWith(github.ref, 'refs/tags/v') }}; then
-            xcodebuild -scheme MAA archive -archivePath MAA.xcarchive
+            xcodebuild -skipMacroValidation -scheme MAA archive -archivePath MAA.xcarchive
           else
-            xcodebuild CODE_SIGNING_ALLOWED=NO -scheme MAA archive -archivePath MAA.xcarchive
+            xcodebuild -skipMacroValidation CODE_SIGNING_ALLOWED=NO -scheme MAA archive -archivePath MAA.xcarchive
           fi
         working-directory: src/MaaMacGui
 
@@ -828,7 +844,7 @@ jobs:
           find . -type f | while read f; do mv -fvt . $f; done
 
       - name: Publish release to GitHub
-        uses: softprops/action-gh-release@v3.0.2
+        uses: softprops/action-gh-release@v3.0.3
         with:
           body_path: CHANGELOG.md
           files: |

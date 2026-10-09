@@ -43,7 +43,7 @@ const fullySupport = [
         {
             name: 'Tencent App Store',
             link: 'https://sj.qq.com/',
-            note: 'Supports versions after 5.10.56.xx. Select `Tencent App Store` connection configuration in `Settings` - `Connection Settings`. Known to be compatible with Hyper-V.\n\n- ADB port is `127.0.0.1:5555`.\n- ADB path example: `C:\\Program Files\\Tencent\\Androws\\Application\\<version>\\adb.exe`.\n\n- You need to first [enable ADB debugging](https://sj.qq.com/faq/3878) in the app.',
+            note: 'Supports versions after 5.10.56.xx. Select `Androws` connection configuration in `Settings` - `Connection Settings`. Known to be compatible with Hyper-V.\n\n- ADB port is `127.0.0.1:5555`.\n- ADB path example: `C:\\Program Files\\Tencent\\Androws\\Application\\<version>\\adb.exe`.\n\n- You need to first [enable ADB debugging](https://sj.qq.com/faq/3878) in the app.',
         },
         {
             name: 'Nox Player',
@@ -67,7 +67,7 @@ const partiallySupport = shuffleArray([
     {
         name: 'Windows Subsystem for Android™ (WSA)',
         link: 'https://learn.microsoft.com/en-us/windows/android/wsa/',
-        note: 'Support has been dropped since MAA v5.2.0, and Microsoft stopped maintaining it on March 5, 2025.\n\n- Requires using [custom connection](../connection.html) method.\n- For WSA 2204 or later versions (version number can be found in subsystem settings under `About`), select `General Configuration` for connection configuration.\n- For WSA 2203 or older versions (version number appears at the top of subsystem settings page), select `WSA Older Versions` for connection configuration.\n- Since MAA only properly supports `16:9` resolutions of 720p or higher, please manually adjust the window size to be as close to 16:9 ratio as possible. (If your monitor is 16:9, you can press `F11` for fullscreen).\n- During task execution, try to ensure Arknights remains in the foreground with no other Android apps running simultaneously, otherwise the game may pause or task recognition may fail.\n- WSA sometimes inexplicably captures white screens during screenshots, causing recognition issues. Not recommended for use.',
+        note: 'Support has been dropped since MAA v5.2.0, and Microsoft stopped maintaining it on March 5, 2025.\n\n- Requires using [custom connection](../connection.html) method.\n- For WSA 2204 or later versions (version number can be found in subsystem settings under `About`), select `General Mode` for connection configuration.\n- For WSA 2203 or older versions (version number appears at the top of subsystem settings page), select `WSA Older Versions` for connection configuration.\n- Since MAA only properly supports `16:9` resolutions of 720p or higher, please manually adjust the window size to be as close to 16:9 ratio as possible. (If your monitor is 16:9, you can press `F11` for fullscreen).\n- During task execution, try to ensure Arknights remains in the foreground with no other Android apps running simultaneously, otherwise the game may pause or task recognition may fail.\n- WSA sometimes inexplicably captures white screens during screenshots, causing recognition issues. Not recommended for use.',
     },
     {
         name: 'AVD',

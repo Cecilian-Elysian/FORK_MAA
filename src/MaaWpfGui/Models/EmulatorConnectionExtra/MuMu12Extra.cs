@@ -15,12 +15,13 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using System.Windows;
+using MaaWpfGui.Configuration.Factory;
 using MaaWpfGui.Constants.Enums;
 using MaaWpfGui.Extensions;
 using MaaWpfGui.Helper;
+using MaaWpfGui.Utilities;
 using MaaWpfGui.ViewModels.UI;
 using MaaWpfGui.ViewModels.UserControl.Settings;
 using Microsoft.Win32;
@@ -29,38 +30,18 @@ using Serilog;
 
 namespace MaaWpfGui.Models.EmulatorConnectionExtra;
 
-public class MuMu12Extra() : ExtraConfig, IJsonOnDeserialized
+public class MuMu12Extra() : ExtraConfig
 {
     private static readonly ILogger _logger = Log.ForContext<MuMu12Extra>();
 
-    public MuMu12Extra(bool isEnabled, string emulatorPath, bool enableBridgeConnection, int instanceIndex, bool enableTouch = false)
-        : this()
-    {
-        _enable = isEnabled;
-        _emulatorPath = emulatorPath;
-        _enableBridgeConnection = enableBridgeConnection;
-        _instanceIndex = instanceIndex;
-        _enableTouch = enableTouch;
-    }
-
-    public void OnDeserialized()
-    {
-        _emulatorPath = Directory.Exists(_emulatorPath) ? _emulatorPath : string.Empty;
-    }
-
-    [JsonInclude]
-    [JsonPropertyName("IsEnabled")]
-    private bool _enable;
-
-    [JsonIgnore]
     public bool Enable
     {
-        get => _enable;
-        set {
-            if (!SetAndNotify(ref _enable, value))
+        get; set {
+            if (!SetAndNotify(ref field, value))
             {
                 return;
             }
+            ConfigFactory.CurrentConfig.Gui.ConnectSettings.Extras.Mumu12.IsEnabled = value;
 
             if (value)
             {
@@ -71,11 +52,11 @@ public class MuMu12Extra() : ExtraConfig, IJsonOnDeserialized
             ConnectSettingsUserControlModel.Instance.OnMuMuExtrasEnableChanged(value);
             Instances.AsstProxy.Connected = false;
         }
-    }
+    } = ConfigFactory.CurrentConfig.Gui.ConnectSettings.Extras.Mumu12.IsEnabled;
 
     private void AutoDetectEmulatorPath()
     {
-        MessageBoxHelper.Show(LocalizationHelper.GetString("MuMu12ExtrasEnabledTip"));
+        MessageBoxHelper.Show(LocalizationHelper.GetRawString("MuMu12ExtrasEnabledTip"));
 
         // 读取mumu注册表地址 并填充GUI
         if (!string.IsNullOrEmpty(EmulatorPath))
@@ -157,22 +138,16 @@ public class MuMu12Extra() : ExtraConfig, IJsonOnDeserialized
         }
     }
 
-    [JsonInclude]
-    [JsonPropertyName("EmulatorPath")]
-    private string _emulatorPath = string.Empty;
-
     /// <summary>
     /// Gets or sets a value indicating the path of the emulator.
     /// </summary>
-    [JsonIgnore]
     public string EmulatorPath
     {
-        get => _emulatorPath;
-        set {
+        get; set {
             if (Enable && !string.IsNullOrEmpty(value) && !Directory.Exists(value))
             {
                 MessageBoxHelper.Show(LocalizationHelper.GetString("MuMuEmulatorPathNotFound"));
-                MessageBoxHelper.Show(LocalizationHelper.GetString("MuMu12ExtrasEnabledTip"));
+                MessageBoxHelper.Show(LocalizationHelper.GetRawString("MuMu12ExtrasEnabledTip"));
                 return;
             }
 
@@ -190,26 +165,21 @@ public class MuMu12Extra() : ExtraConfig, IJsonOnDeserialized
                 if (!candidateRelativePaths.Any(relPath => File.Exists(Path.Combine(value, relPath))))
                 {
                     MessageBoxHelper.Show(LocalizationHelper.GetString("MuMuExternalRendererMissing"));
-                    MessageBoxHelper.Show(LocalizationHelper.GetString("MuMu12ExtrasEnabledTip"));
+                    MessageBoxHelper.Show(LocalizationHelper.GetRawString("MuMu12ExtrasEnabledTip"));
                     return;
                 }
             }
 
             Instances.AsstProxy.Connected = false;
-            SetAndNotify(ref _emulatorPath, value);
+            ConfigFactory.CurrentConfig.Gui.ConnectSettings.Extras.Mumu12.EmulatorPath = value;
+            SetAndNotify(ref field, value);
         }
-    }
+    } = Directory.Exists(ConfigFactory.CurrentConfig.Gui.ConnectSettings.Extras.Mumu12.EmulatorPath) ? ConfigFactory.CurrentConfig.Gui.ConnectSettings.Extras.Mumu12.EmulatorPath : string.Empty;
 
-    [JsonInclude]
-    [JsonPropertyName("EnableBridgeConnection")]
-    private bool _enableBridgeConnection;
-
-    [JsonIgnore]
     public bool EnableBridgeConnection
     {
-        get => _enableBridgeConnection;
-        set {
-            if (_enableBridgeConnection == value)
+        get; set {
+            if (field == value)
             {
                 return;
             }
@@ -228,29 +198,22 @@ public class MuMu12Extra() : ExtraConfig, IJsonOnDeserialized
                 }
             }
 
-            SetAndNotify(ref _enableBridgeConnection, value);
+            ConfigFactory.CurrentConfig.Gui.ConnectSettings.Extras.Mumu12.EnableBridgeConnection = value;
+            SetAndNotify(ref field, value);
             Instances.AsstProxy.Connected = false;
         }
-    }
-
-    [JsonInclude]
-    [JsonPropertyName("EnableTouch")]
-    private bool _enableTouch;
+    } = ConfigFactory.CurrentConfig.Gui.ConnectSettings.Extras.Mumu12.EnableBridgeConnection;
 
     /// <summary>
     /// Gets or sets a value indicating whether MuMu extras is also used for touch input, not just screencap.
-    /// 勾选时自动切换触控模式为 MuMu 触控，取消勾选时回到默认 Minitouch。
+    /// TouchMode 的投影，无独立存储：勾选即切 MuMu 触控，取消时仅在仍处于 MuMu 触控的情况下回退默认 Minitouch；
+    /// 通知由 PropertyDependsOn 跨实例依赖自动转发，无需手动补发。
     /// </summary>
-    [JsonIgnore]
+    [PropertyDependsOn(typeof(ConnectSettingsUserControlModel), nameof(ConnectSettingsUserControlModel.TouchMode))]
     public bool EnableTouch
     {
-        get => _enableTouch;
+        get => ConnectSettingsUserControlModel.Instance.TouchMode == TouchMode.MumuExtras;
         set {
-            if (!SetAndNotify(ref _enableTouch, value))
-            {
-                return;
-            }
-
             if (value)
             {
                 ConnectSettingsUserControlModel.Instance.TouchMode = TouchMode.MumuExtras;
@@ -264,24 +227,18 @@ public class MuMu12Extra() : ExtraConfig, IJsonOnDeserialized
         }
     }
 
-    [JsonInclude]
-    [JsonPropertyName("InstanceIndex")]
-    private int _instanceIndex;
-
     /// <summary>
     /// Gets or sets the index of the emulator.
     /// </summary>
-    [JsonIgnore]
     public int InstanceIndex
     {
-        get => _instanceIndex;
-        set {
+        get; set {
             Instances.AsstProxy.Connected = false;
-            SetAndNotify(ref _instanceIndex, value);
+            ConfigFactory.CurrentConfig.Gui.ConnectSettings.Extras.Mumu12.InstanceIndex = value;
+            SetAndNotify(ref field, value);
         }
-    }
+    } = ConfigFactory.CurrentConfig.Gui.ConnectSettings.Extras.Mumu12.InstanceIndex;
 
-    [JsonIgnore]
     public string Config
     {
         get {

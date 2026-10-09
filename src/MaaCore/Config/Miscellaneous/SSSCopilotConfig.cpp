@@ -22,7 +22,12 @@ bool asst::SSSCopilotConfig::parse(const json::value& json)
     clear();
 
     m_data.info = CopilotConfig::parse_basic_info(json);
-    m_data.groups = CopilotConfig::parse_groups(json);
+    if (auto groups = CopilotConfig::parse_groups(json)) {
+        m_data.groups = *groups;
+    }
+    else {
+        return false;
+    }
 
     m_data.buff = json.get("buff", std::string());
     m_data.strategy = json.get("strategy", std::string());
@@ -61,7 +66,12 @@ bool asst::SSSCopilotConfig::parse(const json::value& json)
         stage_data.info = CopilotConfig::parse_basic_info(stage);
         stage_data.draw_as_possible = stage.at("draw_as_possible").as_boolean();
 
-        stage_data.actions = CopilotConfig::parse_actions(stage);
+        if (auto actions = CopilotConfig::parse_actions(stage)) {
+            stage_data.actions = std::move(*actions);
+        }
+        else {
+            return false;
+        }
         stage_data.groups = m_data.groups;
         stage_data.order_of_drops = m_data.order_of_drops;
         stage_data.retry_times = stage.get("retry_times", 0);

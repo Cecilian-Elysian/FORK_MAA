@@ -50,7 +50,7 @@ public:
         const Point& p1,
         const Point& p2,
         int duration = 0,
-        bool extra_swipe = false,
+        SwipeExtraDirection extra_swipe = SwipeExtraDirection::None,
         double slope_in = 1,
         double slope_out = 1,
         bool with_pause = false) override;
@@ -73,7 +73,7 @@ private:
     AsstCallback m_callback = nullptr;
     void callback(AsstMsg msg, const json::value& details) const;
 
-    // MaaFramework/source/include/MaaControlUnit/AndroidNativeControlUnitAPI.h
+    // MaaFramework/include/MaaControlUnit/AndroidNativeControlUnitAPI.h
     using GetVersionFunc = const char*();
     using CreateFunc = MaaFwAndroidNativeControlUnitAPI*(const char*);
     using DestroyFunc = void(MaaFwAndroidNativeControlUnitAPI*);

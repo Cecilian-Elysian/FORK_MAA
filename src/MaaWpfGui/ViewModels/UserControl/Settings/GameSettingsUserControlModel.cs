@@ -66,14 +66,18 @@ public class GameSettingsUserControlModel : PropertyChangedBase
         (ClientType.KR, "YoStarKR"),
         (ClientType.Txwy, "Txwy"));
 
+    private ClientType _clientType = ConfigFactory.CurrentConfig.Gui.RuntimeSettings.ClientType;
+
     /// <summary>
     /// Gets or sets the client type.
+    /// 写入配置并联动刷新关卡列表；跨资源组切换（官服/B 服互切除外）时重载 Core 资源并询问重启。
     /// </summary>
     public ClientType ClientType
     {
-        get; set {
-            var oldValue = field;
-            if (!SetAndNotify(ref field, value))
+        get => _clientType;
+        set {
+            var oldValue = _clientType;
+            if (!SetAndNotify(ref _clientType, value))
             {
                 return;
             }
@@ -86,6 +90,7 @@ public class GameSettingsUserControlModel : PropertyChangedBase
 
             if (!NeedRestartAfterClientTypeChange(oldValue, value))
             {
+                Instances.AsstProxy.Connected = false;
                 return;
             }
 
@@ -93,7 +98,19 @@ public class GameSettingsUserControlModel : PropertyChangedBase
 
             SettingsViewModel.AskRestartToApplySettings(value is ClientType.EN);
         }
-    } = ConfigFactory.CurrentConfig.Gui.RuntimeSettings.ClientType;
+    }
+
+    /// <summary>
+    /// 绕开 <see cref="ClientType"/> 属性 setter 的副作用（资源重载、联网刷新与重启询问），
+    /// 仅写配置与后备字段，并以全量属性变更通知刷新绑定。仅供 README 截图演示模式使用。
+    /// </summary>
+    /// <param name="clientType">目标客户端类型。</param>
+    public void SetClientTypeQuietly(ClientType clientType)
+    {
+        ConfigFactory.CurrentConfig.Gui.RuntimeSettings.ClientType = clientType;
+        _clientType = clientType;
+        Refresh();
+    }
 
     private static bool NeedRestartAfterClientTypeChange(ClientType oldType, ClientType newType)
     {
@@ -264,44 +281,6 @@ public class GameSettingsUserControlModel : PropertyChangedBase
         }
     } = ConfigFactory.CurrentConfig.Gui.RuntimeSettings.BlockSleepWithScreenOn;
 
-    #region 企鹅和一图流上报
-
-    /// <summary>
-    /// Gets or sets the id of PenguinStats.
-    /// </summary>
-    public string PenguinId
-    {
-        get; set {
-            SetAndNotify(ref field, value);
-            ConfigFactory.CurrentConfig.Gui.RuntimeSettings.PenguinId = value;
-        }
-    } = ConfigFactory.CurrentConfig.Gui.RuntimeSettings.PenguinId;
-
-    /// <summary>
-    /// Gets or sets a value indicating whether to enable penguin upload.
-    /// </summary>
-    public bool EnablePenguin
-    {
-        get; set {
-            SetAndNotify(ref field, value);
-            ConfigFactory.CurrentConfig.Gui.RuntimeSettings.ReportToPenguin = value;
-        }
-    } = ConfigFactory.CurrentConfig.Gui.RuntimeSettings.ReportToPenguin;
-
-    /// <summary>
-    /// Gets or sets a value indicating whether to enable yituliu upload.
-    /// </summary>
-    public bool EnableYituliu
-    {
-        get;
-        set {
-            SetAndNotify(ref field, value);
-            ConfigFactory.CurrentConfig.Gui.RuntimeSettings.ReportToYituliu = value;
-        }
-    } = ConfigFactory.CurrentConfig.Gui.RuntimeSettings.ReportToYituliu;
-
-    #endregion 企鹅和一图流上报
-
     #region 任务超时
 
     /// <summary>
@@ -338,6 +317,43 @@ public class GameSettingsUserControlModel : PropertyChangedBase
             ConfigFactory.CurrentConfig.Gui.RuntimeSettings.StallTimeoutReminderIntervalMinutes = value;
         }
     } = ConfigFactory.CurrentConfig.Gui.RuntimeSettings.StallTimeoutReminderIntervalMinutes;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether 是否启用运行时长上限，null 为右键半选，仅生效一次
+    /// </summary>
+    public bool? EnableRunDurationLimit
+    {
+        get; set {
+            SetAndNotify(ref field, value);
+            NotifyOfPropertyChange(nameof(RunDurationLimitActive));
+            ConfigFactory.CurrentConfig.Gui.RuntimeSettings.EnableRunDurationLimit = value;
+        }
+    } = ConfigFactory.CurrentConfig.Gui.RuntimeSettings.EnableRunDurationLimit;
+
+    /// <summary>
+    /// Gets a value indicating whether 运行时长上限生效（勾选或右键半选）
+    /// </summary>
+    public bool RunDurationLimitActive => EnableRunDurationLimit != false;
+
+    public int RunDurationLimitMinutes
+    {
+        get; set {
+            value = value.Clamp(1, TimeoutMaxMinutes);
+            SetAndNotify(ref field, value);
+            ConfigFactory.CurrentConfig.Gui.RuntimeSettings.RunDurationLimitMinutes = value;
+        }
+    } = ConfigFactory.CurrentConfig.Gui.RuntimeSettings.RunDurationLimitMinutes;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether 到达运行时长上限停止后是否执行完成后动作
+    /// </summary>
+    public bool RunDurationLimitExecutePostActions
+    {
+        get; set {
+            SetAndNotify(ref field, value);
+            ConfigFactory.CurrentConfig.Gui.RuntimeSettings.RunDurationLimitExecutePostActions = value;
+        }
+    } = ConfigFactory.CurrentConfig.Gui.RuntimeSettings.RunDurationLimitExecutePostActions;
 
     #endregion 任务超时
 

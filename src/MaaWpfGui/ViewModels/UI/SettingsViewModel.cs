@@ -21,6 +21,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Threading;
 using HandyControl.Controls;
 using HandyControl.Data;
 using JetBrains.Annotations;
@@ -49,9 +50,12 @@ namespace MaaWpfGui.ViewModels.UI;
 /// </summary>
 public class SettingsViewModel : Screen
 {
-    private readonly RunningState _runningState;
-
     private static readonly ILogger _logger = Log.ForContext<SettingsViewModel>();
+
+    /// <summary>
+    /// Gets the shared run control state for run-state bindings.
+    /// </summary>
+    public RunControlState Run => RunControlState.Instance;
 
     /// <summary>
     /// Gets the visibility of task setting views.
@@ -120,6 +124,11 @@ public class SettingsViewModel : Screen
     /// </summary>
     public static AchievementSettingsUserControlModel AchievementSettings { get; } = AchievementSettingsUserControlModel.Instance;
 
+    /// <summary>
+    /// Gets 三方服务 model
+    /// </summary>
+    public static ThirdPartyServiceSettingsUserControlModel ThirdPartyServiceSettings { get; } = ThirdPartyServiceSettingsUserControlModel.Instance;
+
     #endregion 设置界面 Model
 
     /// <summary>
@@ -131,13 +140,7 @@ public class SettingsViewModel : Screen
 
         Init();
 
-        _runningState = RunningState.Instance;
-        _runningState.StateChanged += (_, e) => {
-            Idle = e.NewState.Idle;
-
-            // Inited = e.Inited;
-            // Stopping = e.Stopping;
-        };
+        ResetGuideDemoTasks();
 
         LocalizationHelper.LanguageChanged += RefreshLocalization;
     }
@@ -152,17 +155,6 @@ public class SettingsViewModel : Screen
     }
 
     #region Init
-
-    private bool _idle;
-
-    /// <summary>
-    /// Gets or sets a value indicating whether it is idle.
-    /// </summary>
-    public bool Idle
-    {
-        get => _idle;
-        set => SetAndNotify(ref _idle, value);
-    }
 
     private void Init()
     {
@@ -198,6 +190,8 @@ public class SettingsViewModel : Screen
     public SettingItemViewModel BackgroundSettingsSetting => GetSettingItemByKey("BackgroundSettings");
 
     public SettingItemViewModel ExternalNotificationSettingsSetting => GetSettingItemByKey("ExternalNotificationSettings");
+
+    public SettingItemViewModel ThirdPartyServiceSettingsSetting => GetSettingItemByKey("ThirdPartyServiceSettings");
 
     public SettingItemViewModel HotKeySettingsSetting => GetSettingItemByKey("HotKeySettings");
 
@@ -495,16 +489,69 @@ public class SettingsViewModel : Screen
         set => SetHotKey(MaaHotKeyAction.LinkStart, value);
     }
 
+    /// <summary>
+    /// Gets a value indicating whether the ShowGui hotkey failed to register, to mark the editor in the UI.
+    /// The manager is the single source of truth; UI reads it when the binding initializes.
+    /// </summary>
+    public bool HotKeyShowGuiRegistrationFailed => Instances.MaaHotKeyManager?.IsRegistrationFailed(MaaHotKeyAction.ShowGui) ?? false;
+
+    /// <summary>
+    /// Gets a value indicating whether the LinkStart hotkey failed to register, to mark the editor in the UI.
+    /// The manager is the single source of truth; UI reads it when the binding initializes.
+    /// </summary>
+    public bool HotKeyLinkStartRegistrationFailed => Instances.MaaHotKeyManager?.IsRegistrationFailed(MaaHotKeyAction.LinkStart) ?? false;
+
     private static void SetHotKey(MaaHotKeyAction action, MaaHotKey? value)
     {
         if (value != null)
         {
-            Instances.MaaHotKeyManager.TryRegister(action, value);
+            var result = Instances.MaaHotKeyManager.TryRegister(action, value);
+            if (result == MaaHotKeyRegistrationResult.DuplicateHotKey)
+            {
+                Growl.Warning(LocalizationHelper.GetString("HotKeyRegistrationFailedDuplicate"));
+            }
+            else if (result == MaaHotKeyRegistrationResult.OccupiedByOtherApp)
+            {
+                Growl.Warning(LocalizationHelper.GetString("HotKeyRegistrationFailedOccupied"));
+            }
         }
         else
         {
             Instances.MaaHotKeyManager.UnRegister(action);
         }
+
+        NotifyHotKeyRegistrationChanged(action);
+    }
+
+    private static void NotifyHotKeyRegistrationChanged(MaaHotKeyAction action)
+    {
+        var settingsViewModel = Instances.SettingsViewModel;
+        if (settingsViewModel == null)
+        {
+            return;
+        }
+
+        switch (action)
+        {
+            case MaaHotKeyAction.ShowGui:
+                settingsViewModel.OnHotKeyShowGuiRegistrationChanged();
+                break;
+            case MaaHotKeyAction.LinkStart:
+                settingsViewModel.OnHotKeyLinkStartRegistrationChanged();
+                break;
+        }
+    }
+
+    /// <summary>Notifies the UI to re-read the ShowGui registration state after a register/unregister attempt.</summary>
+    private void OnHotKeyShowGuiRegistrationChanged()
+    {
+        NotifyOfPropertyChange(nameof(HotKeyShowGuiRegistrationFailed));
+    }
+
+    /// <summary>Notifies the UI to re-read the LinkStart registration state after a register/unregister attempt.</summary>
+    private void OnHotKeyLinkStartRegistrationChanged()
+    {
+        NotifyOfPropertyChange(nameof(HotKeyLinkStartRegistrationFailed));
     }
 
     #endregion HotKey
@@ -600,6 +647,17 @@ public class SettingsViewModel : Screen
     [UsedImplicitly]
     public void DeleteConfiguration(CombinedData delete)
     {
+        var result = MessageBoxHelper.Show(
+            LocalizationHelper.GetStringFormat("ConfirmDeleteConfigurationMessage", delete.Display),
+            LocalizationHelper.GetString("ConfirmDeleteTask"),
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning);
+
+        if (result != MessageBoxResult.Yes)
+        {
+            return;
+        }
+
         if (ConfigFactory.DeleteConfiguration(delete.Display))
         {
             ConfigurationList.Remove(delete);
@@ -621,8 +679,55 @@ public class SettingsViewModel : Screen
         get; set {
             ConfigFactory.Root.Gui.GuideStep = value;
             SetAndNotify(ref field, value);
+            if (value == GuideMaxStep - 1)
+            {
+                StartGuideConfirmDelay();
+            }
+            else
+            {
+                _guideConfirmTimer?.Stop();
+                GuideConfirmEnabled = true;
+            }
         }
     } = ConfigFactory.Root.Gui.GuideStep;
+
+    private bool _guideConfirmEnabled = true;
+
+    public bool GuideConfirmEnabled
+    {
+        get => _guideConfirmEnabled;
+        set => SetAndNotify(ref _guideConfirmEnabled, value);
+    }
+
+    // 最后一步停留 5 秒后才允许点完成，避免一路连点跳过说明
+    private const int GuideConfirmDelaySeconds = 5;
+
+    private DispatcherTimer? _guideConfirmTimer;
+
+    private int _guideConfirmCountdown;
+
+    public int GuideConfirmCountdown
+    {
+        get => _guideConfirmCountdown;
+        set => SetAndNotify(ref _guideConfirmCountdown, value);
+    }
+
+    private void StartGuideConfirmDelay()
+    {
+        GuideConfirmEnabled = false;
+        GuideConfirmCountdown = GuideConfirmDelaySeconds;
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+        timer.Tick += (_, _) =>
+        {
+            if (--GuideConfirmCountdown <= 0)
+            {
+                timer.Stop();
+                GuideConfirmEnabled = true;
+            }
+        };
+        timer.Start();
+        _guideConfirmTimer = timer;
+    }
 
     private string _guideTransitionMode = "Bottom2Top";
 
@@ -670,6 +775,167 @@ public class SettingsViewModel : Screen
         if (result == MessageBoxResult.OK)
         {
             Bootstrapper.ShutdownAndRestartWithoutArgs();
+        }
+    }
+
+    /// <summary>
+    /// 演示列表容纳的任务数上限，超出后提示不要继续添加。
+    /// </summary>
+    private const int GuideDemoTaskLimit = 5;
+
+    /// <summary>
+    /// 弹窗提示演示任务列表已满。
+    /// </summary>
+    private void NotifyGuideDemoTaskLimit()
+    {
+        MessageBoxHelper.Show(
+            LocalizationHelper.GetString("GuideDemoTaskAddLimitTip"),
+            LocalizationHelper.GetString("Tip"),
+            MessageBoxButton.OK,
+            MessageBoxImage.Information);
+    }
+
+    /// <summary>
+    /// Gets the demo task list for the ｢任务设置｣ guide step's interactive simulation.
+    /// </summary>
+    public ObservableCollection<GuideDemoTaskItem> GuideDemoTasks { get; } = new();
+
+    private bool _guideDemoAdvancedSettings;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether the demo settings column shows advanced entries，由常规/高级设置按钮组切换。
+    /// </summary>
+    public bool GuideDemoAdvancedSettings
+    {
+        get => _guideDemoAdvancedSettings;
+        set => SetAndNotify(ref _guideDemoAdvancedSettings, value);
+    }
+
+    /// <summary>
+    /// 重置指引演示任务列表为初始任务。名称项只存类型资源 key，显示名随语言热切换刷新。
+    /// </summary>
+    public void ResetGuideDemoTasks()
+    {
+        foreach (var task in GuideDemoTasks)
+        {
+            (task as IDisposable)?.Dispose();
+        }
+
+        GuideDemoTasks.Clear();
+        foreach (var key in new[] { "Fight", "Infrast", "Award" })
+        {
+            GuideDemoTasks.Add(new GuideDemoTaskItem { LocalizationKey = key });
+        }
+    }
+
+    // UI 绑定的方法
+    [UsedImplicitly]
+    public void AddGuideDemoTask(Type taskType)
+    {
+        if (GuideDemoTasks.Count >= GuideDemoTaskLimit)
+        {
+            NotifyGuideDemoTaskLimit();
+            return;
+        }
+
+        // 任务类型资源 key 与类型名同构（XxxTask → Xxx）
+        var key = taskType.Name.EndsWith("Task", StringComparison.Ordinal) ? taskType.Name[..^"Task".Length] : taskType.Name;
+        GuideDemoTasks.Add(new GuideDemoTaskItem { LocalizationKey = key });
+    }
+
+    // UI 绑定的方法
+    [UsedImplicitly]
+    public void CopyGuideDemoTask(GuideDemoTaskItem taskItem)
+    {
+        if (taskItem == null)
+        {
+            return;
+        }
+
+        var index = GuideDemoTasks.IndexOf(taskItem);
+        if (index < 0)
+        {
+            return;
+        }
+
+        if (GuideDemoTasks.Count >= GuideDemoTaskLimit)
+        {
+            NotifyGuideDemoTaskLimit();
+            return;
+        }
+
+        // 与真实 CopyTask 一致：副本为自定义名（原显示名 + " (2)"）、插在原项后、继承勾选状态
+        var newName = taskItem.Name + " (2)";
+        GuideDemoTasks.Insert(index + 1, new GuideDemoTaskItem { Name = newName, IsChecked = taskItem.IsChecked });
+    }
+
+    // UI 绑定的方法
+    [UsedImplicitly]
+    public void RenameGuideDemoTask(GuideDemoTaskItem taskItem)
+    {
+        if (taskItem == null)
+        {
+            return;
+        }
+
+        var dialog = new Views.Dialogs.TextDialogView(
+            LocalizationHelper.GetString("RenameTask"),
+            LocalizationHelper.GetString("RenameTaskPrompt"),
+            taskItem.Name)
+        {
+            Owner = Application.Current.MainWindow,
+        };
+
+        if (dialog.ShowDialog() != true || string.IsNullOrWhiteSpace(dialog.InputText))
+        {
+            return;
+        }
+
+        var newName = dialog.InputText.Trim().Replace("\r", string.Empty).Replace("\n", string.Empty);
+        taskItem.Name = newName;
+    }
+
+    // UI 绑定的方法
+    [UsedImplicitly]
+    public void RemoveGuideDemoTask(GuideDemoTaskItem taskItem)
+    {
+        if (taskItem == null)
+        {
+            return;
+        }
+
+        GuideDemoTasks.Remove(taskItem);
+        (taskItem as IDisposable)?.Dispose();
+    }
+
+    // UI 绑定的方法
+    [UsedImplicitly]
+    public void StartGuideDemo()
+    {
+        MessageBoxHelper.Show(
+            LocalizationHelper.GetString("StartGuideDemo"),
+            LocalizationHelper.GetString("Tip"),
+            MessageBoxButton.OK,
+            MessageBoxImage.Information);
+    }
+
+    // UI 绑定的方法
+    [UsedImplicitly]
+    public void SelectAllGuideDemoTasks()
+    {
+        foreach (var task in GuideDemoTasks)
+        {
+            task.IsChecked = true;
+        }
+    }
+
+    // UI 绑定的方法
+    [UsedImplicitly]
+    public void ClearGuideDemoTasks()
+    {
+        foreach (var task in GuideDemoTasks)
+        {
+            task.IsChecked = false;
         }
     }
 
@@ -748,7 +1014,7 @@ public class SettingsViewModel : Screen
                 return;
             }
 
-            if (value < 0 || value > DividerVerticalOffsetList.Count)
+            if (value < 0 || value >= DividerVerticalOffsetList.Count)
             {
                 return;
             }
@@ -759,7 +1025,7 @@ public class SettingsViewModel : Screen
                     _notifySource = NotifyType.SelectedIndex;
                     SetAndNotify(ref _selectedIndex, value);
 
-                    ScrollOffset = DividerVerticalOffsetList[value];
+                    ScrollAnimationTarget = DividerVerticalOffsetList[value];
 
                     ResetNotifySource();
                     break;
@@ -788,6 +1054,16 @@ public class SettingsViewModel : Screen
         set {
             if (!AllowScrollOffsetChange)
             {
+                return;
+            }
+
+            // 平滑滚动动画落地的回写（ScrollViewerBinding 在动画结束后把目标值路由回绑定源）：
+            // 与动画目标一致说明本次滚动源于导航定位，同步值即可，不反向重算导航高亮——
+            // 目标偏移被 ScrollViewer 钳制时（分节下方内容不足一屏，实际停不到目标），
+            // 回写会命中下方“滚到底选最后一项”的分支，高亮跳离所点击的分节
+            if (Math.Abs(value - ScrollAnimationTarget) < 1)
+            {
+                SetAndNotify(ref _scrollOffset, value);
                 return;
             }
 
@@ -834,6 +1110,18 @@ public class SettingsViewModel : Screen
     }
 
     public bool AllowScrollOffsetChange { get; set; } = true;
+
+    private double _scrollAnimationTarget = double.NaN;
+
+    /// <summary>
+    /// Gets or sets the target offset of the smooth scroll animation,
+    /// which is performed by <see cref="Styles.Properties.ScrollViewerBinding"/> on the UI side.
+    /// </summary>
+    public double ScrollAnimationTarget
+    {
+        get => _scrollAnimationTarget;
+        set => SetAndNotify(ref _scrollAnimationTarget, value);
+    }
 
     #endregion 设置页面列表和滚动视图联动绑定
 
@@ -912,6 +1200,12 @@ public class SettingsViewModel : Screen
     {
         get => GetExpanderState(SettingKey.ExternalNotificationSettings);
         set => SetExpanderState(SettingKey.ExternalNotificationSettings, value);
+    }
+
+    public bool IsThirdPartyServiceSettingsExpanded
+    {
+        get => GetExpanderState(SettingKey.ThirdPartyServiceSettings);
+        set => SetExpanderState(SettingKey.ThirdPartyServiceSettings, value);
     }
 
     public bool IsHotKeySettingsExpanded
@@ -1086,13 +1380,34 @@ public class SettingsViewModel : Screen
             }
         }
 
-        string resourceVersionDisplay = !string.IsNullOrEmpty(VersionUpdateSettings.ResourceVersion)
-            ? $" - {LocalizationHelper.FormatVersion(VersionUpdateSettings.ResourceVersion, VersionUpdateSettings.ResourceDateTime)}"
-            : string.Empty;
-        string uiVersionDisplay = LocalizationHelper.FormatVersion(uiVersion, VersionUpdateSettingsUserControlModel.BuildDateTime);
+        string resourceVersionDisplay = DemoWindowTitleResourceVersionOverride is { Length: > 0 } demoResVersion
+            ? $" - {demoResVersion}"
+            : !string.IsNullOrEmpty(EffectiveResourceVersion)
+                ? $" - {LocalizationHelper.FormatVersion(EffectiveResourceVersion, VersionUpdateSettings.ResourceDateTime)}"
+                : string.Empty;
+        string uiVersionDisplay = DemoWindowTitleVersionOverride is { Length: > 0 } demoUiVersion
+            ? demoUiVersion
+            : LocalizationHelper.FormatVersion(uiVersion, VersionUpdateSettingsUserControlModel.BuildDateTime);
         string adminTag = Bootstrapper.IsAdministratorWithUac() ? $" ({LocalizationHelper.GetString("Administrator")})" : string.Empty;
         rvm.WindowTitle = $"{prefix}MAA{adminTag}{currentConfiguration} - {uiVersionDisplay}{resourceVersionDisplay}{connectConfigName}{connectAddress}{clientName}";
     }
+
+    /// <summary>
+    /// README 截图演示模式的窗口标题 UI 版本段覆盖。null 表示字段缺省走原行为（真实构建版本），
+    /// 仅 <see cref="Main.Bootstrapper.IsDemoMode"/> 流程会设置。
+    /// </summary>
+    internal static string? DemoWindowTitleVersionOverride { get; set; }
+
+    /// <summary>
+    /// README 截图演示模式的窗口标题资源版本段覆盖。null 走原行为，空串隐藏整段，
+    /// 非 null 时替代真实资源版本参与拼接（一并消除 culture 相关的日期格式差异）。仅演示流程会设置。
+    /// </summary>
+    internal static string? DemoWindowTitleResourceVersionOverride { get; set; }
+
+    /// <summary>
+    /// Gets 标题拼接实际使用的资源版本：演示覆盖优先于真实资源版本。
+    /// </summary>
+    private static string EffectiveResourceVersion => DemoWindowTitleResourceVersionOverride ?? VersionUpdateSettings.ResourceVersion;
 
     /// <summary>
     /// Gets the client type.

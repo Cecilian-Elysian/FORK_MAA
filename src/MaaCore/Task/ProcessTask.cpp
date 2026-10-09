@@ -1,12 +1,15 @@
 #include "ProcessTask.h"
 
+#include <array>
 #include <chrono>
 #include <random>
+#include <string_view>
 #include <unordered_set>
 
 #include <meojson/json.hpp>
 
 #include "Config/GeneralConfig.h"
+#include "Config/ResourceLoader.h"
 #include "Config/TaskData.h"
 #include "Controller/Controller.h"
 #include "Status.h"
@@ -14,6 +17,53 @@
 #include "Vision/Miscellaneous/PipelineAnalyzer.h"
 
 using namespace asst;
+
+namespace
+{
+// 主界面入口按钮，用于提取当前主题
+// 资源重载后 ResourceLoader 会生成新的 uuid，这里通过比对 uuid 判断是否需要重新缓存
+const std::unordered_set<std::string>& get_main_screen_entry_tasks()
+{
+    // 需要在主界面进行识别的任务，用于PC端
+    constexpr std::array<std::string_view, 9> MainScreenEntryPrefixes = {
+        "Friends", "Task", "Terminal", "Mall", "Infrast", "Recruit", "Depot", "OperBox", "Gacha",
+    };
+
+    static std::unordered_set<std::string> tasks;
+    static std::string cached_uuid;
+
+    const auto& current_uuid = ResourceLoader::get_instance().get_uuid();
+    if (current_uuid != cached_uuid) {
+        tasks.clear();
+        for (const auto& prefix : MainScreenEntryPrefixes) {
+            if (auto entry_task = Task.get(std::string(prefix) + "-Entry"); entry_task != nullptr) {
+                tasks.insert(entry_task->next.cbegin(), entry_task->next.cend());
+            }
+        }
+        cached_uuid = current_uuid;
+    }
+
+    return tasks;
+}
+
+bool is_main_screen_recognition(const std::string& name)
+{
+    // 任务链中位于主界面的入口
+    if (name == "Award" || name == "Mall" || name == "Visit" || name == "Infrast" || name == "Recruit" ||
+        name == "Fight" || name == "Depot" || name == "OperBox" || name == "Gacha") {
+        return true;
+    }
+    // 主界面入口按钮及其主题变体
+    return get_main_screen_entry_tasks().contains(name);
+}
+
+bool is_main_screen_recognition(const TaskList& list)
+{
+    return std::any_of(list.cbegin(), list.cend(), [](const std::string& name) {
+        return is_main_screen_recognition(name);
+    });
+}
+} // namespace
 
 ProcessTask::ProcessTask(const AbstractTask& abs, std::vector<std::string> tasks_name) :
     AbstractTask(abs),
@@ -63,6 +113,39 @@ ProcessTask& ProcessTask::set_reusable_image(const cv::Mat& reusable)
     return *this;
 }
 
+ProcessTask& asst::ProcessTask::set_override_next(std::unordered_map<std::string, TaskList> next_override)
+{
+    m_next_override = std::move(next_override);
+    return *this;
+}
+
+bool asst::ProcessTask::override_next(std::string_view name, std::vector<std::string> next_tasks)
+{
+    if (Task.get(name) == nullptr) {
+        LogError << __FUNCTION__ << "task not found:" << name;
+        return false;
+    }
+    for (const auto& task_name : next_tasks) {
+        if (Task.get(task_name) == nullptr) {
+            LogError << __FUNCTION__ << "task not found:" << task_name;
+            return false;
+        }
+    }
+    LogInfo << __FUNCTION__ << "override next for task" << name << "to" << next_tasks;
+    m_next_override.insert_or_assign(std::string(name), std::move(next_tasks));
+    return true;
+}
+
+bool asst::ProcessTask::remove_override_next(std::string_view name)
+{
+    if (Task.get(name) == nullptr) {
+        LogError << __FUNCTION__ << "task not found:" << name;
+        return false;
+    }
+    m_next_override.erase(std::string(name));
+    return true;
+}
+
 bool ProcessTask::run()
 {
     LogTraceFunction;
@@ -100,7 +183,13 @@ bool ProcessTask::run()
             break;
         case NodeStatus::Success:
             // 成功匹配且执行成功，下一个匹配列表是 next
-            to_be_recognized = next_task_ptr->next;
+            if (auto it = m_next_override.find(next_task_ptr->name); it != m_next_override.end()) {
+                LogTrace << "found in override" << next_task_ptr->name << ", next:" << it->second;
+                to_be_recognized = it->second;
+            }
+            else {
+                to_be_recognized = next_task_ptr->next;
+            }
             break;
         case NodeStatus::Interrupted:
             // need_exit() or Stop action
@@ -150,8 +239,21 @@ ProcessTask::HitDetail ProcessTask::find_first(const TaskList& list) /* const, e
         return { .task_ptr = std::move(task_ptr) };
     }
 
+    // 告知本次截图是否用于主界面识别，然后决定鼠标位置
+    ControllerAPI* underlying = nullptr;
+    if (is_main_screen_recognition(list)) {
+        underlying = ctrler()->get_underlying();
+        if (underlying != nullptr) {
+            underlying->set_main_screen_recognition(true);
+        }
+    }
+
     cv::Mat image = m_reusable.empty() ? ctrler()->get_image() : m_reusable;
     m_reusable = cv::Mat();
+
+    if (underlying != nullptr) {
+        underlying->set_main_screen_recognition(false);
+    }
     PipelineAnalyzer analyzer(image, Rect(), m_inst);
     analyzer.set_tasks(list);
 
@@ -212,13 +314,14 @@ ProcessTask::NodeStatus ProcessTask::run_action(const HitDetail& hits) const
     case ProcessTaskAction::Swipe: {
         size_t param_size = task->special_params.size();
         // Warning: 这里的后两个参数 slope_in 和 slope_out 是 double 类型，但是在 json 中是 int 类型
+        // specialParams: [duration, extra_swipe 方向(0 不启用, 1/2/3/4 为上/下/左/右), slope_in, slope_out]
         exec_swipe_task(
             task->specific_rect,
             task->rect_move,
             (param_size > 0) ? task->special_params.at(0) : 0,
-            (param_size > 1) ? task->special_params.at(1) : false,
-            (param_size > 2) ? task->special_params.at(2) : 1,
-            (param_size > 3) ? task->special_params.at(3) : 1,
+            (param_size > 1) ? to_swipe_extra_direction(task->special_params.at(1)) : SwipeExtraDirection::None,
+            (param_size > 2) ? task->special_params.at(2) / 10.0 : 1,
+            (param_size > 3) ? task->special_params.at(3) / 10.0 : 1,
             task->high_resolution_swipe_fix);
         return NodeStatus::Success;
     }
@@ -299,7 +402,7 @@ ProcessTask::NodeStatus ProcessTask::run_task(const HitDetail& hits)
 
     for (const std::string& sub : task->sub) {
         LogTraceScope("Sub: " + sub);
-        bool sub_ret = ProcessTask(*this, { sub }).run();
+        bool sub_ret = ProcessTask(*this, { sub }).set_override_next(m_next_override).run();
         if (!sub_ret && !task->sub_error_ignored) {
             Log.error("Sub error and not ignored", sub);
             // 感觉应该把 run 改成 NodeStatus 类型，这样可以知道 sub 的具体执行结果
@@ -431,7 +534,7 @@ void ProcessTask::exec_swipe_task(
     const Rect& r1,
     const Rect& r2,
     int duration,
-    bool extra_swipe,
+    SwipeExtraDirection extra_swipe,
     double slope_in,
     double slope_out,
     bool high_resolution_swipe_fix) const

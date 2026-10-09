@@ -17,7 +17,7 @@ icon: mdi:remote-desktop
 
 ## 获取任务端点
 
-MAA 会以 1 秒的间隔持续轮询这个端点，尝试获取他要执行的任务，并按照获取到的列表按顺序执行。
+MAA 会以固定间隔持续轮询这个端点（默认 1 秒，可在设置中调整），尝试获取他要执行的任务，并按照获取到的列表按顺序执行。
 
 端点路径随意，但是必须是 http(s) 端点。比如：`https://your-control-host.net/maa/getTask`
 
@@ -58,7 +58,7 @@ MAA 会以 1 秒的间隔持续轮询这个端点，尝试获取他要执行的�
         },
         {
             "id": "b353c469-b902-4357-bd8f-d133199eea31",   //任务的唯一id，字符串类型，在汇报任务时会使用
-            "type": "Settings-ConnectionAddress",           //修改配置项的任务，等同于执行ConfigurationHelper.SetValue("ConnectionAddress", params); 为了安全起见，不是每个配置都可以修改，能修改的配置详见下述。
+            "type": "Settings-ConnectAddress",              //修改配置项的任务，等同于设置连接设置的 ConnectAddress 属性; 为了安全起见，不是每个配置都可以修改，能修改的配置详见下述。
             "params": "value"                               //要修改的值
         },
         // 立即执行任务：下面这些任务可以在顺序执行任务运行中执行，并且MAA保证下面的任何一个任务都会尽快返回结果，通常用于对远程控制功能本身的控制。
@@ -85,7 +85,7 @@ MAA 会以 1 秒的间隔持续轮询这个端点，尝试获取他要执行的�
 ::: note
 
 - LinkStart-[TaskName] 型的任务 type 的可选值为 LinkStart-Base，LinkStart-WakeUp，LinkStart-Combat，LinkStart-Recruiting，LinkStart-Mall，LinkStart-Mission，LinkStart-AutoRoguelike，LinkStart-Reclamation
-- Settings-[SettingsName] 型的任务的 type 的可选值为 Settings-ConnectionAddress, Settings-Stage1
+- Settings-[SettingsName] 型的任务的 type 的可选值为 Settings-ConnectAddress, Settings-Stage1
 - Settings 系列任务仍然是要按顺序执行的，并不会在收到任务的时候立刻执行，而是排在上一个任务的后面
 - 多个立即执行的任务也会按下发顺序执行，只不过这些任务的执行速度都很快，通常来说，并不需要关注他们的顺序。
 
@@ -112,7 +112,7 @@ MAA 会以 1 秒的间隔持续轮询这个端点，尝试获取他要执行的�
 }
 ```
 
-该端点的返回内容任意，但是如果你不返回 200OK，会在 MAA 端弹出一个 Notification，显示 `上传失败`
+该端点的返回内容任意，MAA 不会读取返回内容，也不校验状态码；汇报请求失败时 MAA 只会在日志中记录错误。
 
 ## 范例工作流-用 QQBot 控制 MAA
 

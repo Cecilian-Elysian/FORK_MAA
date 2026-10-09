@@ -30,7 +30,7 @@ public:
         const Point& p1,
         const Point& p2,
         int duration = 0,
-        bool extra_swipe = false,
+        SwipeExtraDirection extra_swipe = SwipeExtraDirection::None,
         double slope_in = 1,
         double slope_out = 1,
         bool with_pause = false) override;
@@ -47,9 +47,14 @@ public:
 protected:
     virtual std::optional<std::string> reconnect(const std::string& cmd, int64_t timeout, bool recv_by_socket) override;
 
+    virtual void on_display_rotated() override;
+
     bool call_and_hup_minitouch();
 
     bool probe_minitouch();
+
+    // 读取设备当前屏幕方向，仅在输出为 0-3 时更新，失败或解析失败时保留旧值
+    void read_orientation();
 
     bool input_to_minitouch(const std::string& cmd);
     void release_minitouch(bool force = false);
@@ -85,10 +90,6 @@ protected:
         using InputFunc = std::function<bool(const std::string&)>;
 
     public:
-        static constexpr int DefaultClickDelay = 50;
-        static constexpr int DefaultSwipeDelay = 2;
-        static constexpr int ExtraDelay = 0;
-
         Minitoucher(InputFunc func, const MinitouchProps& props) :
             m_input_func(func),
             m_props(props)
@@ -102,27 +103,27 @@ protected:
 
         [[nodiscard]] bool commit() { return m_input_func(commit_cmd()); }
 
-        [[nodiscard]] bool down(int x, int y, int wait_ms = DefaultClickDelay, bool with_commit = true, int contact = 0)
+        [[nodiscard]] bool down(int x, int y, int wait_ms = TouchHoldMs, bool with_commit = true, int contact = 0)
         {
             return m_input_func(down_cmd(x, y, wait_ms, with_commit, contact));
         }
 
-        [[nodiscard]] bool move(int x, int y, int wait_ms = DefaultSwipeDelay, bool with_commit = true, int contact = 0)
+        [[nodiscard]] bool move(int x, int y, int wait_ms = SwipeIntervalMs, bool with_commit = true, int contact = 0)
         {
             return m_input_func(move_cmd(x, y, wait_ms, with_commit, contact));
         }
 
-        [[nodiscard]] bool up(int wait_ms = DefaultClickDelay, bool with_commit = true, int contact = 0)
+        [[nodiscard]] bool up(int wait_ms = TouchHoldMs, bool with_commit = true, int contact = 0)
         {
             return m_input_func(up_cmd(wait_ms, with_commit, contact));
         }
 
-        [[nodiscard]] bool key_down(int key_code, int wait_ms = DefaultClickDelay, bool with_commit = true)
+        [[nodiscard]] bool key_down(int key_code, int wait_ms = TouchHoldMs, bool with_commit = true)
         {
             return m_input_func(key_down_cmd(key_code, wait_ms, with_commit));
         }
 
-        [[nodiscard]] bool key_up(int key_code, int wait_ms = DefaultClickDelay, bool with_commit = true)
+        [[nodiscard]] bool key_up(int key_code, int wait_ms = TouchHoldMs, bool with_commit = true)
         {
             return m_input_func(key_up_cmd(key_code, wait_ms, with_commit));
         }
@@ -142,7 +143,7 @@ protected:
 #pragma warning(disable: 4996)
 #endif
         [[nodiscard]] std::string
-            down_cmd(int x, int y, int wait_ms = DefaultClickDelay, bool with_commit = true, int contact = 0)
+            down_cmd(int x, int y, int wait_ms = TouchHoldMs, bool with_commit = true, int contact = 0)
         {
             auto [c_x, c_y] = scale(x, y);
             std::string str = std::format("d {} {} {} {}\n", contact, c_x, c_y, m_props.max_pressure);
@@ -157,7 +158,7 @@ protected:
         }
 
         [[nodiscard]] std::string
-            move_cmd(int x, int y, int wait_ms = DefaultSwipeDelay, bool with_commit = true, int contact = 0)
+            move_cmd(int x, int y, int wait_ms = SwipeIntervalMs, bool with_commit = true, int contact = 0)
         {
             auto [c_x, c_y] = scale(x, y);
             std::string str = std::format("m {} {} {} {}\n", contact, c_x, c_y, m_props.max_pressure);
@@ -171,7 +172,7 @@ protected:
             return str;
         }
 
-        [[nodiscard]] std::string up_cmd(int wait_ms = DefaultClickDelay, bool with_commit = true, int contact = 0)
+        [[nodiscard]] std::string up_cmd(int wait_ms = TouchHoldMs, bool with_commit = true, int contact = 0)
         {
             std::string str = std::format("u {}\n", contact);
 
@@ -184,7 +185,7 @@ protected:
             return str;
         }
 
-        [[nodiscard]] std::string key_down_cmd(int key_code, int wait_ms = DefaultClickDelay, bool with_commit = true)
+        [[nodiscard]] std::string key_down_cmd(int key_code, int wait_ms = TouchHoldMs, bool with_commit = true)
         {
             std::string str = std::format("k {} d\n", key_code);
 
@@ -197,7 +198,7 @@ protected:
             return str;
         }
 
-        [[nodiscard]] std::string key_up_cmd(int key_code, int wait_ms = DefaultClickDelay, bool with_commit = true)
+        [[nodiscard]] std::string key_up_cmd(int key_code, int wait_ms = TouchHoldMs, bool with_commit = true)
         {
             std::string str = std::format("k {} u\n", key_code);
 
@@ -255,7 +256,7 @@ protected:
 
         const std::function<bool(const std::string&)> m_input_func = nullptr;
         const MinitouchProps& m_props;
-        int m_wait_ms_count = ExtraDelay;
+        int m_wait_ms_count = 0;
     };
 };
 } // namespace asst

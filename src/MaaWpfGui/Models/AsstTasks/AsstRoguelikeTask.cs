@@ -13,6 +13,7 @@
 
 #nullable enable
 using System.Collections.Generic;
+using System.Linq;
 using MaaWpfGui.Configuration.Single.MaaTask;
 using MaaWpfGui.Services;
 using Newtonsoft.Json.Linq;
@@ -100,9 +101,9 @@ public class AsstRoguelikeTask : AsstBaseTask
     public string Roles { get; set; } = string.Empty;
 
     /// <summary>
-    /// Gets or sets 开局干员名
+    /// Gets or sets 开局干员顺位列表，按顺序招募
     /// </summary>
-    public string CoreChar { get; set; } = string.Empty;
+    public List<AsstRoguelikeCoreChar> CoreCharList { get; set; } = [];
 
     /// <summary>
     /// Gets or sets a value indicating whether 是否凹开局直升
@@ -145,11 +146,6 @@ public class AsstRoguelikeTask : AsstBaseTask
     public List<string> ExpectedCollapsalParadigms { get; set; } = [];
 
     /// <summary>
-    /// Gets or sets a value indicating whether 是否core_char使用好友助战
-    /// </summary>
-    public bool UseSupport { get; set; }
-
-    /// <summary>
     /// Gets or sets a value indicating whether 是否允许使用非好友助战
     /// </summary>
     public bool UseSupportNonFriend { get; set; }
@@ -185,6 +181,11 @@ public class AsstRoguelikeTask : AsstBaseTask
     public RoguelikeBoskySubNodeType FindPlaytimeTarget { get; set; } = RoguelikeBoskySubNodeType.Ling;
 
     /// <summary>
+    /// Gets or sets 刷襁褓动物模式的目标品种
+    /// </summary>
+    public RoguelikeBlackFlowCultivationTarget BlackFlowCultivationTarget { get; set; } = RoguelikeBlackFlowCultivationTarget.Cat;
+
+    /// <summary>
     /// Gets or sets a value indicating whether 是否在五层BOSS前停下来
     /// </summary>
     public bool StopAtFinalBoss { get; set; }
@@ -210,6 +211,19 @@ public class AsstRoguelikeTask : AsstBaseTask
             ["investment_enabled"] = InvestmentEnabled,
         };
 
+        if (Theme == RoguelikeTheme.BlackFlow && Mode == RoguelikeMode.BlackFlowBabyAnimal)
+        {
+            taskParams["blackflow_strategy"] = "baby_animal";
+            taskParams["blackflow_cultivation_target"] = BlackFlowCultivationTarget switch
+            {
+                RoguelikeBlackFlowCultivationTarget.Cat => "swaddled_cat",
+                RoguelikeBlackFlowCultivationTarget.FeatheredSerpent => "swaddled_feathered_serpent",
+                RoguelikeBlackFlowCultivationTarget.Dog => "swaddled_dog",
+                RoguelikeBlackFlowCultivationTarget.Cerberus => "swaddled_cerberus",
+                _ => "swaddled_cat",
+            };
+        }
+
         if (InvestmentEnabled)
         {
             taskParams["investment_with_more_score"] = InvestmentWithMoreScore;
@@ -227,9 +241,13 @@ public class AsstRoguelikeTask : AsstBaseTask
             taskParams["roles"] = Roles;
         }
 
-        if (CoreChar.Length > 0)
+        if (CoreCharList.Count > 0)
         {
-            taskParams["core_char"] = CoreChar;
+            taskParams["core_char_list"] = new JArray(CoreCharList.Select(i => new JObject
+            {
+                ["name"] = i.Name,
+                ["use_support"] = i.UseSupport,
+            }));
         }
 
         if (Mode == RoguelikeMode.Exp)
@@ -278,7 +296,6 @@ public class AsstRoguelikeTask : AsstBaseTask
             taskParams["expected_collapsal_paradigms"] = JArray.FromObject(ExpectedCollapsalParadigms);
         }
 
-        taskParams["use_support"] = UseSupport;
         taskParams["use_nonfriend_support"] = UseSupportNonFriend;
         taskParams["refresh_trader_with_dice"] = Theme == RoguelikeTheme.Mizuki && RefreshTraderWithDice;
         if (!string.IsNullOrEmpty(StartWithSeed))
@@ -287,5 +304,21 @@ public class AsstRoguelikeTask : AsstBaseTask
         }
 
         return (TaskType, taskParams);
+    }
+
+    /// <summary>
+    /// 开局干员顺位项
+    /// </summary>
+    public class AsstRoguelikeCoreChar
+    {
+        /// <summary>
+        /// Gets or sets 干员名
+        /// </summary>
+        public string Name { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Gets or sets a value indicating whether 该位干员是否使用助战
+        /// </summary>
+        public bool UseSupport { get; set; }
     }
 }

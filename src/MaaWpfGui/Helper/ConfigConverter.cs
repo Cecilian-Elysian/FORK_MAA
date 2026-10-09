@@ -21,11 +21,12 @@ using System.Windows.Media;
 using MaaWpfGui.Configuration.Factory;
 using MaaWpfGui.Configuration.Global;
 using MaaWpfGui.Configuration.Single.MaaTask;
+using MaaWpfGui.Configuration.Single.Settings.ConnectionExtra;
 using MaaWpfGui.Constants;
 using MaaWpfGui.Constants.Enums;
+using MaaWpfGui.Constants.Enums.Core;
 using MaaWpfGui.Extensions;
 using MaaWpfGui.Models;
-using MaaWpfGui.Models.EmulatorConnectionExtra;
 using MaaWpfGui.Services.HotKeys;
 using MaaWpfGui.ViewModels.Items;
 using MaaWpfGui.ViewModels.UserControl.Settings;
@@ -36,7 +37,6 @@ using Serilog;
 using static MaaWpfGui.Configuration.Global.Gui;
 using static MaaWpfGui.Configuration.Single.Settings.ExternalNotification;
 using static MaaWpfGui.Models.AsstTasks.AsstCopilotTask;
-using static MaaWpfGui.Models.EmulatorConnectionExtra.Win32Extra;
 using static MaaWpfGui.Models.PostActionSetting;
 using static MaaWpfGui.ViewModels.UI.CopilotViewModel;
 using static MaaWpfGui.ViewModels.UI.OverlayViewModel;
@@ -104,7 +104,7 @@ public class ConfigConverter
         {
             if (!ConfigurationHelper.SwitchConfiguration(configName))
             {
-                _logger.Error("配置迁移失败，无法切换到old配置: {ConfigName}", configName);
+                _logger.Error("Config migration failed, unable to switch to old config: {ConfigName}", configName);
                 continue;
             }
             if (ConfigFactory.Root.Configurations.ContainsKey(configName))
@@ -112,14 +112,14 @@ public class ConfigConverter
             }
             else if (ConfigFactory.AddConfiguration(configName) is false)
             {
-                _logger.Error("配置迁移失败，无法添加配置: {ConfigName}", configName);
-                throw new Exception($"配置迁移失败，无法添加配置{configName}");
+                _logger.Error("Config migration failed, unable to add config: {ConfigName}", configName);
+                throw new Exception($"Config migration failed, unable to add config: {configName}");
             }
 
             if (!ConfigFactory.SwitchConfig(configName))
             {
-                _logger.Error("配置迁移失败，无法切换到配置: {ConfigName}", configName);
-                throw new Exception($"配置迁移失败，无法切换到配置{configName}");
+                _logger.Error("Config migration failed, unable to switch to config: {ConfigName}", configName);
+                throw new Exception($"Config migration failed, unable to switch to config: {configName}");
             }
 
             // 删除旧的配置
@@ -287,7 +287,7 @@ public class ConfigConverter
                     }
                     else
                     {
-                        _logger.Error("Enum.TryParse<InfrastRoomType> 失败，room: {Room}", room);
+                        _logger.Error("Enum.TryParse<InfrastRoomType> failed, room: {Room}", room);
                     }
                 }
 
@@ -366,7 +366,12 @@ public class ConfigConverter
                 roguelikeTask.Theme = ConfigurationHelper.GetValue(ConfigurationKeys.RoguelikeTheme, RoguelikeTheme.Sarkaz);
                 roguelikeTask.Difficulty = ConfigurationHelper.GetValue(ConfigurationKeys.RoguelikeDifficulty, int.MaxValue);
                 roguelikeTask.Mode = ConfigurationHelper.GetValue(ConfigurationKeys.RoguelikeMode, RoguelikeMode.Exp);
-                roguelikeTask.CoreChar = ConfigurationHelper.GetValue(ConfigurationKeys.RoguelikeCoreChar, string.Empty);
+                var legacyCoreChar = ConfigurationHelper.GetValue(ConfigurationKeys.RoguelikeCoreChar, string.Empty);
+                var legacyUseSupport = ConfigurationHelper.GetValue(ConfigurationKeys.RoguelikeUseSupportUnit, false);
+                if (!string.IsNullOrEmpty(legacyCoreChar) || legacyUseSupport)
+                {
+                    roguelikeTask.StartingOpers = [new() { Name = legacyCoreChar, UseSupport = legacyUseSupport }];
+                }
                 roguelikeTask.Squad = ConfigurationHelper.GetValue(ConfigurationKeys.RoguelikeSquad, string.Empty);
                 roguelikeTask.SquadCollectible = ConfigurationHelper.GetValue(ConfigurationKeys.RoguelikeCollectibleModeSquad, string.Empty);
                 roguelikeTask.Roles = ConfigurationHelper.GetValue(ConfigurationKeys.RoguelikeRoles, string.Empty);
@@ -376,7 +381,6 @@ public class ConfigConverter
                 roguelikeTask.InvestWithMoreScore = ConfigurationHelper.GetValue(ConfigurationKeys.RoguelikeInvestmentEnterSecondFloor, false);
                 roguelikeTask.StopWhenDepositFull = ConfigurationHelper.GetValue(ConfigurationKeys.RoguelikeStopWhenInvestmentFull, false);
                 roguelikeTask.StopAtFinalBoss = ConfigurationHelper.GetValue(ConfigurationKeys.RoguelikeStopAtFinalBoss, false);
-                roguelikeTask.UseSupport = ConfigurationHelper.GetValue(ConfigurationKeys.RoguelikeUseSupportUnit, false);
                 roguelikeTask.UseSupportNonFriend = ConfigurationHelper.GetValue(ConfigurationKeys.RoguelikeEnableNonfriendSupport, false);
                 roguelikeTask.RefreshTraderWithDice = ConfigurationHelper.GetValue(ConfigurationKeys.RoguelikeRefreshTraderWithDice, false);
                 roguelikeTask.StartWithEliteTwo = ConfigurationHelper.GetValue(ConfigurationKeys.RoguelikeStartWithEliteTwo, false);
@@ -547,13 +551,13 @@ public class ConfigConverter
         {
             if (!ConfigurationHelper.SwitchConfiguration(configName))
             {
-                _logger.Error("配置迁移失败，无法切换到old配置: {ConfigName}", configName);
+                _logger.Error("Config migration failed, unable to switch to old config: {ConfigName}", configName);
                 continue;
             }
             if (!ConfigFactory.SwitchConfig(configName))
             {
-                _logger.Error("配置迁移失败，无法切换到配置: {ConfigName}", configName);
-                throw new Exception($"配置迁移失败，无法切换到配置{configName}");
+                _logger.Error("Config migration failed, unable to switch to config: {ConfigName}", configName);
+                throw new Exception($"Config migration failed, unable to switch to config: {configName}");
             }
 
             // 性能设置
@@ -748,9 +752,9 @@ public class ConfigConverter
                 ConfigFactory.CurrentConfig.Gui.RuntimeSettings.ExecuteScriptOnManualStop = ConfigurationHelper.GetValue(ConfigurationKeys.ManualStopWithScript, false);
                 ConfigFactory.CurrentConfig.Gui.RuntimeSettings.BlockSleep = ConfigurationHelper.GetValue(ConfigurationKeys.BlockSleep, false);
                 ConfigFactory.CurrentConfig.Gui.RuntimeSettings.BlockSleepWithScreenOn = ConfigurationHelper.GetValue(ConfigurationKeys.BlockSleepWithScreenOn, true);
-                ConfigFactory.CurrentConfig.Gui.RuntimeSettings.ReportToPenguin = ConfigurationHelper.GetValue(ConfigurationKeys.EnablePenguin, true);
-                ConfigFactory.CurrentConfig.Gui.RuntimeSettings.ReportToYituliu = ConfigurationHelper.GetValue(ConfigurationKeys.EnableYituliu, true);
-                ConfigFactory.CurrentConfig.Gui.RuntimeSettings.PenguinId = ConfigurationHelper.GetValue(ConfigurationKeys.PenguinId, string.Empty);
+                ConfigFactory.CurrentConfig.Gui.ThirdParty.ReportToPenguin = ConfigurationHelper.GetValue(ConfigurationKeys.EnablePenguin, true);
+                ConfigFactory.CurrentConfig.Gui.ThirdParty.ReportToYituliu = ConfigurationHelper.GetValue(ConfigurationKeys.EnableYituliu, true);
+                ConfigFactory.CurrentConfig.Gui.ThirdParty.PenguinId = ConfigurationHelper.GetValue(ConfigurationKeys.PenguinId, string.Empty);
                 ConfigFactory.CurrentConfig.Gui.RuntimeSettings.EnableStallTimeout = ConfigurationHelper.GetValue(ConfigurationKeys.StallTimeoutEnabled, true);
                 ConfigFactory.CurrentConfig.Gui.RuntimeSettings.StallTimeoutMinutes = ConfigurationHelper.GetValue(ConfigurationKeys.StallTimeoutMinutes, 25).Clamp(0, GameSettingsUserControlModel.TimeoutMaxMinutes);
                 ConfigFactory.CurrentConfig.Gui.RuntimeSettings.StallTimeoutReminderIntervalMinutes = ConfigurationHelper.GetValue(ConfigurationKeys.ReminderIntervalMinutes, 30).Clamp(1, GameSettingsUserControlModel.TimeoutMaxMinutes);
@@ -770,10 +774,9 @@ public class ConfigConverter
                 ConfigurationHelper.DeleteValue(ConfigurationKeys.StallTimeoutEnabled);
                 ConfigurationHelper.DeleteValue(ConfigurationKeys.StallTimeoutMinutes);
                 ConfigurationHelper.DeleteValue(ConfigurationKeys.ReminderIntervalMinutes);
-
-                ConfigFactory.CurrentConfig.Gui.RuntimeSettings.AutoRestartOnDrop = ConfigurationHelper.GetValue(ConfigurationKeys.AutoRestartOnDrop, true);
-                ConfigFactory.CurrentConfig.Gui.RuntimeSettings.RoguelikeDelayAbortUntilCombatComplete = ConfigurationHelper.GetValue(ConfigurationKeys.RoguelikeDelayAbortUntilCombatComplete, false);
                 ConfigurationHelper.DeleteValue(ConfigurationKeys.AutoRestartOnDrop);
+
+                ConfigFactory.CurrentConfig.Gui.RuntimeSettings.RoguelikeDelayAbortUntilCombatComplete = ConfigurationHelper.GetValue(ConfigurationKeys.RoguelikeDelayAbortUntilCombatComplete, false);
                 ConfigurationHelper.DeleteValue(ConfigurationKeys.RoguelikeDelayAbortUntilCombatComplete);
             }
 
@@ -819,26 +822,33 @@ public class ConfigConverter
                 ConfigurationHelper.DeleteValue(ConfigurationKeys.AdbLiteEnabled);
                 ConfigurationHelper.DeleteValue(ConfigurationKeys.KillAdbOnExit);
                 {
-                    var extra = new MuMu12Extra(
-                        ConfigurationHelper.GetValue(ConfigurationKeys.MuMu12ExtrasEnabled, false),
-                        ConfigurationHelper.GetValue(ConfigurationKeys.MuMu12EmulatorPath, string.Empty),
-                        ConfigurationHelper.GetValue(ConfigurationKeys.MumuBridgeConnection, false),
-                        ConfigurationHelper.GetValue(ConfigurationKeys.MuMu12Index, 0));
-                    ConfigFactory.CurrentConfig.Gui.ConnectSettings.Extras.MuMuEmulator12 = extra;
+                    var extra = new Mumu12Extra {
+                        IsEnabled = ConfigurationHelper.GetValue(ConfigurationKeys.MuMu12ExtrasEnabled, false),
+                        EmulatorPath = ConfigurationHelper.GetValue(ConfigurationKeys.MuMu12EmulatorPath, string.Empty),
+                        EnableBridgeConnection = ConfigurationHelper.GetValue(ConfigurationKeys.MumuBridgeConnection, false),
+                        InstanceIndex = ConfigurationHelper.GetValue(ConfigurationKeys.MuMu12Index, 0),
+                    };
+                    ConfigFactory.CurrentConfig.Gui.ConnectSettings.Extras.Mumu12 = extra;
                 }
                 {
-                    var extra = new LDPlayerExtra(
-                        ConfigurationHelper.GetValue(ConfigurationKeys.LdPlayerExtrasEnabled, false),
-                        ConfigurationHelper.GetValue(ConfigurationKeys.LdPlayerEmulatorPath, string.Empty),
-                        ConfigurationHelper.GetValue(ConfigurationKeys.LdPlayerManualSetIndex, false),
-                        ConfigurationHelper.GetValue(ConfigurationKeys.LdPlayerIndex, 0));
+                    var extra = new LdPlayerExtra {
+                        IsEnabled = ConfigurationHelper.GetValue(ConfigurationKeys.LdPlayerExtrasEnabled, false),
+                        EmulatorPath = ConfigurationHelper.GetValue(ConfigurationKeys.LdPlayerEmulatorPath, string.Empty),
+                        ManualSetIndex = ConfigurationHelper.GetValue(ConfigurationKeys.LdPlayerManualSetIndex, false),
+                        InstanceIndex = ConfigurationHelper.GetValue(ConfigurationKeys.LdPlayerIndex, 0),
+                    };
                     ConfigFactory.CurrentConfig.Gui.ConnectSettings.Extras.LDPlayer = extra;
                 }
                 {
-                    var extra = new Win32Extra(
-                         ConfigurationHelper.GetValue(ConfigurationKeys.AttachWindowScreencapMethod, AsstWin32ScreencapMethod.FramePool),
-                         ConfigurationHelper.GetValue(ConfigurationKeys.AttachWindowMouseMethod, AsstWin32InputMethod.SendMessageWithCursorPos),
-                         ConfigurationHelper.GetValue(ConfigurationKeys.AttachWindowKeyboardMethod, AsstWin32KeyboardInputMethod.SendMessage));
+                    var extra = new Win32Extra {
+                        ScreencapMethod = ConfigurationHelper.GetValue(ConfigurationKeys.AttachWindowScreencapMethod, AsstWin32ScreencapMethod.PrintWindow),
+                        MouseMethod = ConfigurationHelper.GetValue(ConfigurationKeys.AttachWindowMouseMethod, AsstWin32InputMethod.PostMessageWithWindowPos) switch {
+                            AsstWin32InputMethod.SendMessage or AsstWin32InputMethod.PostMessage or AsstWin32InputMethod.SendMessageWithCursorPos => AsstWin32InputMethod.PostMessageWithCursorPos,
+                            AsstWin32InputMethod.SendMessageWithWindowPos => AsstWin32InputMethod.PostMessageWithWindowPos,
+                            var method => method,
+                        },
+                        KeyboardMethod = ConfigurationHelper.GetValue(ConfigurationKeys.AttachWindowKeyboardMethod, AsstWin32KeyboardInputMethod.SendMessage),
+                    };
                     ConfigFactory.CurrentConfig.Gui.ConnectSettings.Extras.Win32Extra = extra;
                 }
                 ConfigurationHelper.DeleteValue(ConfigurationKeys.MuMu12ExtrasEnabled);
@@ -986,7 +996,7 @@ public class ConfigConverter
             ConfigFactory.Root.Update.VersionType = ConfigurationHelper.GetGlobalValue(ConfigurationKeys.VersionType, UpdateVersionType.Stable);
             ConfigFactory.Root.Update.AllowNightlyUpdates = ConfigurationHelper.GetGlobalValue(ConfigurationKeys.AllowNightlyUpdates, false);
             ConfigFactory.Root.Update.HasAcknowledgedNightlyWarning = ConfigurationHelper.GetGlobalValue(ConfigurationKeys.HasAcknowledgedNightlyWarning, false);
-            ConfigFactory.Root.Update.UpdateSource = ConfigurationHelper.GetGlobalValue(ConfigurationKeys.UpdateSource, "Github");
+            ConfigFactory.Root.Update.UpdateSource = ConfigurationHelper.GetGlobalValue(ConfigurationKeys.UpdateSource, UpdateSource.GitHub);
             ConfigFactory.Root.Update.ForceGithubGlobalSource = ConfigurationHelper.GetGlobalValue(ConfigurationKeys.ForceGithubGlobalSource, false);
             ConfigFactory.Root.Update.MirrorChyanCdk = ConfigurationHelper.GetGlobalValue(ConfigurationKeys.MirrorChyanCdk, string.Empty);
             ConfigFactory.Root.Update.MirrorChyanCdkExpiredTime = ConfigurationHelper.GetGlobalValue(ConfigurationKeys.MirrorChyanCdkExpiredTime, 0L);
@@ -1211,7 +1221,7 @@ public class ConfigConverter
         }
         catch (Exception ex)
         {
-            _logger.Error(ex, "备份配置失败: {Message}", ex.Message);
+            _logger.Error(ex, "Failed to backup config: {Message}", ex.Message);
         }
     }
 }

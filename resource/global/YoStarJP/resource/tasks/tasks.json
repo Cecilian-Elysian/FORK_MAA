@@ -1038,7 +1038,7 @@
             ["ラテラーノのクリップ", "拉特兰桥夹"],
             ["迷彩ヘルメット", "伪装服"],
             ["擬態物質", "拟态物质"],
-            ["携帯式アーツバリア", "奥术法阵"],
+            ["秘術法陣", "奥术法阵"],
             ["エーギルのいかり", "阿戈尔重刃"],
             ["ヴィクトリアの鉄鎚・加速", "加速维式重锤"],
             ["強襲用グレネード", "突袭手雷"],
@@ -1062,12 +1062,12 @@
             ["不屈の射出装置", "不屈弹射器"],
             ["シールドドローン", "护盾无人机"],
             ["「ダブルリッズ」", "“双眼皮”"],
-            ["ヴィクトリアの鉄鎚・不動", "坚固维式重锤"],
+            ["ヴィクトリアの鉄鎚・堅牢", "坚固维式重锤"],
             ["銃騎士の威光", "铳骑之威"],
             ["変異細胞", "突变细胞"],
             ["速攻用レーション", "迅捷作战粮"],
-            ["ヴィクトリアの鉄鎚", "维式重锤"],
-            ["幸運のコイン", "盟约之币"],
+            ["ヴィクトリアの鉄鎚$", "维式重锤"],
+            ["盟約のコイン", "盟约之币"],
             ["ヴィクトリアの鉄鎚・灼熱", "灼燃维式重锤"],
             ["サルゴンの渋茶", "萨尔贡浓茶"],
             ["氷結波動モジュール", "冰浪脉冲模块"],
@@ -1096,7 +1096,26 @@
             ["^キリ$", "断"],
             ["^(「友|友[」\\]]|友$)", "友字"],
             ["^(「食|食[」\\]]|食$)", "食字"],
-            ["赤刃明霄チェン?", "赤刃明霄陈"]
+            ["赤刃明霄チェン?", "赤刃明霄陈"],
+            ["^絆", "牵绊"],
+            ["ベッローネ", "贝洛内"],
+            ["リプレーザ", "复奏"],
+            ["シラクーザの正装", "叙拉古正装"],
+            ["ペガサスの兜", "天马之盔"],
+            ["ペガサスの槍", "天马之枪"],
+            ["ネームタグ", "随身身份牌"],
+            ["カジミエーシュの競技旗", "卡西米尔竞技旗"],
+            ["ファミリーのバッジ", "家族徽章"],
+            ["簡易通信機", "简易通讯机"],
+            ["騎士の貯金箱", "骑士储蓄罐"],
+            ["騎士の戒律", "骑士戒律"],
+            ["緊急派遣券", "紧急调度券"],
+            ["監禁施設", "禁闭所"],
+            ["警備塔", "警戒塔"],
+            ["煙玉", "伪装工具"],
+            ["ボタニ", "伯塔尼"],
+            ["ウクシク", "乌啾"],
+            ["怒潮ズィマー", "怒潮凛冬"]
         ]
     },
     "GameStartCheckResourceOCR": {
@@ -1130,10 +1149,11 @@
         "text": ["切替"]
     },
     "FightSeries-Opened": {
+        "maskRange": [1, 255],
+        "templThreshold": 0.9,
         "template": "FightSeries-Indicator.png",
         "roi": [940, 190, 80, 380],
-        "templThreshold": 0.9,
-        "maskRange": [1, 255]
+        "method": "Ccoeff"
     },
     "FightSeries-Close": {
         "baseTask": "FightSeries-Icon",
@@ -1222,6 +1242,15 @@
     "SpecialAccessActivitiesConfirm": {
         "text": ["受け取る"]
     },
+    "SignInEventEnter": {
+        "text": ["スタンプ"]
+    },
+    "SignInEventInPopup": {
+        "text": ["終了時間"]
+    },
+    "SignInEventEarnRewards": {
+        "text": ["物資獲得", "物資", "獲得"]
+    },
     "NoFriends": {
         "text": ["戦友があリませれ"]
     },
@@ -1273,6 +1302,12 @@
     "InfrastTrainingIdle": {
         "text": ["待機中"],
         "roi": [325, 637, 180, 50]
+    },
+    "InfrastTrainingMasteryPage": {
+        "text": ["協力者"]
+    },
+    "InfrastTrainingMasterybusy": {
+        "text": ["訓練中"]
     },
     "InfrastTrainingProcessing": {
         "text": ["訓練進捗"]
@@ -1643,6 +1678,14 @@
     "BattleDeployWhenPause": {
         "specialParams": [0]
     },
+    "DepotMaterialTab": {
+        "Doc": "This task should be removed when updating the Depot UI. da5ccfe4edcc3fae14d8a91ec2e19ea6b8241bf2",
+        "roi": [1026, 0, 254, 138]
+    },
+    "DepotMaterialTabClicked": {
+        "Doc": "This task should be removed when updating the Depot UI. da5ccfe4edcc3fae14d8a91ec2e19ea6b8241bf2",
+        "roi": [1026, 0, 254, 138]
+    },
     "OperBoxSortTabSelect": {
         "text": ["レベル"]
     },
@@ -1680,7 +1723,8 @@
             ["軽量型距離計", "轻型瞄准测距仪"],
             ["天工夜行セット", "天工夜行套装"],
             ["カウンターアーマーセット", "反制装甲套组"],
-            ["[寒塞]冷弾発射装置", "冷爆机"]
+            ["[寒塞]冷弾発射装置", "冷爆机"],
+            ["高性能空域制御器", "智能空域控制机"]
         ],
         "roi": [0, 136, 1280, 162]
     },
@@ -1732,5 +1776,23 @@
     },
     "YellowTicket@Store@Purchase": {
         "text": ["購入"]
+    },
+    "RedTicket@Store@ChooseTicketType": {
+        "text": ["購買資格証"]
+    },
+    "RedTicket@Store@ChooseTicketTypeSelected": {
+        "text": ["購買資格証"]
+    },
+    "RedTicket@Store@Purchase": {
+        "text": ["購入"]
+    },
+    "OperProgress@OperBoxRoleFiltered": {
+        "text": ["先鋒", "前衛", "重装", "狙撃", "術師", "医療", "補助", "特殊"]
+    },
+    "OperProgress@OperBoxRoleFilteredOpen": {
+        "text": ["先鋒", "前衛", "重装", "狙撃", "術師", "医療", "補助", "特殊"]
+    },
+    "OperProgress@OperBoxSortTabs": {
+        "text": ["レベル", "レア度", "入手時間"]
     }
 }

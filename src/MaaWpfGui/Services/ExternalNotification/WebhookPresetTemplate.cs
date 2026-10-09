@@ -43,6 +43,28 @@ public class WebhookPresetTemplate
         },
         new()
         {
+            Id = "Discord Webhook",
+            Name = "Discord Webhook",
+            Body = $"{{\"content\": \"{{content}}\"}}",
+        },
+        new()
+        {
+            Id = "Kook Channel",
+            Name = "KOOK Channel",
+            Url = "https://www.kookapp.cn/api/v3/message/create",
+            Headers = "Authorization: Bot <bot_token>",
+            Body = @"{""type"": 9, ""target_id"": ""<channel_id>"", ""content"": ""**{title}**\n{content}""}",
+        },
+        new()
+        {
+            Id = "Kook Direct",
+            Name = "KOOK Direct",
+            Url = "https://www.kookapp.cn/api/v3/direct-message/create",
+            Headers = "Authorization: Bot <bot_token>",
+            Body = @"{""type"": 9, ""target_id"": ""<user_id>"", ""content"": ""**{title}**\n{content}""}",
+        },
+        new()
+        {
             Id = "meow",
             NameResourceKey = "ExternalNotificationCustomWebhook.TemplateMeoW",
             Url = "https://api.chuckfang.com/<nickname>",
@@ -50,9 +72,17 @@ public class WebhookPresetTemplate
         },
         new()
         {
-            Id = "Discord Webhook",
-            Name = "Discord Webhook",
-            Body = $"{{\"content\": \"{{content}}\"}}",
+            Id = "ntfy",
+            Name = "ntfy",
+            Url = "https://ntfy.sh/<topic>",
+            Body = @"{""message"": ""{content}"", ""title"": ""{title}""}",
+        },
+        new()
+        {
+            Id = "WeCom",
+            Name = "WeCom",
+            Url = "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=<key>",
+            Body = @"{""msgtype"": ""text"", ""text"": {""content"": ""{content}""}}",
         },
     ];
 

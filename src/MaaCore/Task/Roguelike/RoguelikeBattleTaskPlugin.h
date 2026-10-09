@@ -40,6 +40,7 @@ protected:
     struct DeployPlanInfo
     {
         // int oper_priority;                         // 干员招募优先级
+        battle::Role role = battle::Role::Unknown;    // 干员职业
         std::string oper_name;                        // 干员名称
         int oper_order_in_group {};                   // 干员在干员组中排名
         int rank {};                                  // 干员组在部署指令扁平化后的排名
@@ -60,8 +61,7 @@ protected:
     std::optional<size_t> check_urgent(
         const std::unordered_set<std::string>& pre_cooling,
         const std::unordered_set<std::string>& cur_cooling,
-        const std::map<std::string, Point>& pre_battlefield);
-
+        const std::map<battle::OperNameTag, Point>& pre_battlefield);
     std::optional<battle::DeploymentOper> calc_best_oper() const;
 
     struct DeployInfo
@@ -94,8 +94,6 @@ protected:
     void check_drone_tiles();
     void wait_until_start_button_clicked();
 
-    std::string oper_name_in_config(const battle::DeploymentOper& oper) const;
-    battle::LocationType get_oper_location_type(const battle::DeploymentOper& oper) const;
     std::vector<Point> available_locations(const battle::DeploymentOper& oper) const;
     std::vector<Point> available_locations(battle::LocationType type) const;
     bool get_position_full(const battle::DeploymentOper& oper) const;
@@ -163,7 +161,7 @@ protected:
     std::priority_queue<DroneTile> m_need_clear_tiles;
     std::unordered_map<std::string, std::vector<battle::roguelike::DeployInfoWithRank>> m_deploy_plan;
     std::vector<battle::roguelike::DeployInfoWithRank> m_retreat_plan;
-    std::unordered_map<std::string, std::chrono::steady_clock::time_point> m_deployed_time;
+    std::unordered_map<battle::OperNameTag, std::chrono::steady_clock::time_point> m_deployed_time;
 
     // 缓存干员精英
     std::unordered_map<std::string, int64_t> m_oper_elite;

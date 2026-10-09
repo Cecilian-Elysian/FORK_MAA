@@ -12,12 +12,14 @@ icon: material-symbols:u-turn-left
 ## 콜백 함수 프로토타입
 
 ```cpp
-typedef void(ASST_CALL* AsstCallback)(int msg, const char* details, void* custom_arg);
+typedef void(ASST_CALL* AsstApiCallback)(AsstMsgId msg, const char* details_json, void* custom_arg);
 ```
+
+여기서 `AsstMsgId`는 `int32_t`의 별칭입니다.
 
 ## 파라미터 개요
 
-- `int msg`  
+- `AsstMsgId msg`  
   메시지 유형
 
   ```cpp
@@ -64,13 +66,19 @@ typedef void(ASST_CALL* AsstCallback)(int msg, const char* details, void* custom
 ### InitFailed
 
 :::: field-group
-::: field name="what" type="string" required
+::: field what
+@type string
+@required
 오류 유형
 :::  
-::: field name="why" type="string" required
+::: field why
+@type string
+@required
 오류 원인
 :::  
-::: field name="details" type="object" required
+::: field details
+@type object
+@required
 오류 상세
 :::  
 ::::
@@ -78,16 +86,23 @@ typedef void(ASST_CALL* AsstCallback)(int msg, const char* details, void* custom
 ### ConnectionInfo
 
 :::: field-group
-::: field name="what" type="string" required
+::: field what
+@type string
+@required
 정보 유형
 :::
-::: field name="why" type="string" required
+::: field why
+@type string
+@required
 정보 원인
 :::
-::: field name="uuid" type="string"
+::: field uuid
+@type string
 장치 고유 코드(UUID) (연결 실패 시 비어 있음)
 :::
-::: field name="details" type="object" required
+::: field details
+@type object
+@required
 연결 상세 정보. 구조는 다음과 같습니다:
 
 - `adb` (string, required): `AsstConnect` 인터페이스의 `adb_path` 파라미터.
@@ -119,8 +134,16 @@ typedef void(ASST_CALL* AsstCallback)(int msg, const char* details, void* custom
   스크린샷 실패 (adb / 에뮬레이터 충돌), 재시도 실패
 - `TouchModeNotAvailable`  
   지원하지 않는 터치 모드
+- `MuMuExtrasInputStatus`  
+  MuMu 터치 강화의 실제 적용 상태, `details` 구조:
+  - `available` (boolean, required): 적용되었는지 여부.
+  - `deferred` (boolean, required): 아직 판정되지 않았는지 여부 (연결 시 게임이 렌더링되지 않아 렌더링 시작 후 자동으로 다시 판정됨).
 - `ResolutionGot`  
   해상도를 획득함
+- `ResolutionChanged`  
+  실행 중 해상도가 변경되어 연결이 무효화되고 현재 작업이 중단됨, `details` 구조:
+  - `width` (number, required): 현재 너비.
+  - `height` (number, required): 현재 높이.
 - `FastestWayToScreencap`  
   가장 빠른 스크린샷 방식을 찾음, `details` 구조:
   - `method` (string, required): 가장 빠른 스크린샷 방식.
@@ -142,20 +165,29 @@ typedef void(ASST_CALL* AsstCallback)(int msg, const char* details, void* custom
 ### AsyncCallInfo
 
 :::: field-group
-::: field name="uuid" type="string" required
+::: field uuid
+@type string
+@required
 장치 고유 코드
 :::
-::: field name="what" type="string" required
-콜백 유형, 예: `Connect` | `Click` | `Screencap` 등
+::: field what
+@type string
+@required
+콜백 유형, 예: `Connect` | `AttachWindow` | `Click` | `Screencap` 등
 :::
-::: field name="async_call_id" type="number" required
+::: field async_call_id
+@type number
+@required
 비동기 요청 id, 즉 `AsstAsyncXXX` 호출 시 반환값
 :::
-::: field name="details" type="object" required
+::: field details
+@type object
+@required
 비동기 호출 상세. 구조는 다음과 같습니다:
 
 - `ret` (boolean, required): 실제 호출의 반환값.
 - `cost` (number, required): 소요 시간, 단위 밀리초.
+- `error` (string): 처리되지 않은 예외의 유형 (처리되지 않은 예외로 호출이 실패한 경우에만 존재).
 
 :::
 ::::
@@ -163,13 +195,19 @@ typedef void(ASST_CALL* AsstCallback)(int msg, const char* details, void* custom
 ### AllTasksCompleted
 
 :::: field-group
-::: field name="taskchain" type="string" required
+::: field taskchain
+@type string
+@required
 마지막 작업 체인
 :::
-::: field name="uuid" type="string" required
+::: field uuid
+@type string
+@required
 장치 고유 코드
 :::
-::: field name="finished_tasks" type="array<number>" required
+::: field finished_tasks
+@type array<number>
+@required
 이미 실행된 작업 id 목록
 :::
 ::::
@@ -214,40 +252,62 @@ typedef void(ASST_CALL* AsstCallback)(int msg, const char* details, void* custom
 ### TaskChain 관련 메시지
 
 :::: field-group
-::: field name="taskchain" type="string" required
+::: field taskchain
+@type string
+@required
 현재 작업 체인
 :::
-::: field name="taskid" type="number" required
+::: field taskid
+@type number
+@required
 현재 작업 TaskId
 :::
-::: field name="uuid" type="string" required
+::: field uuid
+@type string
+@required
 장치 고유 코드
 :::
 ::::
 
 ### TaskChainExtraInfo
 
-`details` 필드는 비어 있습니다.
+기본적으로 위의 공통 필드만 포함됩니다. 통합 전략(쉐이 테마)에서 경로 계획 결과 피할 수 없는 전투가 너무 많다고 판단되어 능동적으로 재시작하는 경우, 메시지에 추가로 다음이 포함됩니다:
+
+- `what` (string, required): `RoutingRestart`로 고정.
+- `why` (string, required): `TooManyBattlesAhead`로 고정.
+- `node_cost` (number, required): 계획된 다음 노드의 비용.
 
 ### SubTask 관련 메시지
 
 :::: field-group
-::: field name="subtask" type="string" required
+::: field subtask
+@type string
+@required
 서브 작업명
 :::
-::: field name="class" type="string" required
+::: field class
+@type string
+@required
 서브 작업 심볼명
 :::
-::: field name="taskchain" type="string" required
+::: field taskchain
+@type string
+@required
 현재 작업 체인
 :::
-::: field name="taskid" type="number" required
+::: field taskid
+@type number
+@required
 현재 작업 TaskId
 :::
-::: field name="details" type="object" required
+::: field details
+@type object
+@required
 상세 정보
 :::
-::: field name="uuid" type="string" required
+::: field uuid
+@type string
+@required
 장치 고유 코드
 :::
 ::::
@@ -258,20 +318,30 @@ typedef void(ASST_CALL* AsstCallback)(int msg, const char* details, void* custom
   `details` 필드 내용은 다음과 같습니다:
 
   :::: field-group
-  ::: field name="task" type="string" required
+  ::: field task
+  @type string
+  @required
   작업명
   :::
-  ::: field name="action" type="number" required
-  Action ID
+  ::: field action
+  @type string
+  @required
+  동작 이름, 예: `ClickSelf` | `DoNothing` | `Swipe`
   :::
-  ::: field name="exec_times" type="number" required
+  ::: field exec_times
+  @type number
+  @required
   실행된 횟수
   :::
-  ::: field name="max_times" type="number" required
+  ::: field max_times
+  @type number
+  @required
   최대 실행 횟수
   :::
-  ::: field name="algorithm" type="number" required
-  인식 알고리즘
+  ::: field algorithm
+  @type string
+  @required
+  인식 알고리즘 이름, 예: `MatchTemplate` | `OcrDetect` | `FeatureMatch` | `JustReturn`
   :::
   ::::
 
@@ -283,8 +353,6 @@ typedef void(ASST_CALL* AsstCallback)(int msg, const char* details, void* custom
   작전 시작
 - `MedicineConfirm`  
   이성 회복제 사용 확인
-- `ExpiringMedicineConfirm`  
-  만료 임박한 이성 회복제 사용 확인
 - `StoneConfirm`  
   오리지늄 사용 확인
 - `RecruitRefreshConfirm`  
@@ -293,12 +361,8 @@ typedef void(ASST_CALL* AsstCallback)(int msg, const char* details, void* custom
   공개모집 채용 확인
 - `RecruitNowConfirm`  
   공개모집 즉시 완료 허가증 사용 확인
-- `ReportToPenguinStats`  
-  펭귄 물류 데이터 통계 보고
-- `ReportToYituliu`  
-  Yituliu 빅데이터 보고
 - `InfrastDormDoubleConfirmButton`  
-  기반시설 숙소의 2차 확인 버튼, 오퍼레이터 충돌 시에만 나타남, 사용자에게 알림 필요
+  기반시설의 2차 확인 버튼, 배치할 오퍼레이터가 이미 다른 시설에 근무 중인 경우에만 나타남(MAA가 자동으로 클릭), 사용자에게 알림 필요
 - `StartExplore`  
   통합 전략 탐험 시작
 - `StageTraderInvestConfirm`  
@@ -323,26 +387,34 @@ typedef void(ASST_CALL* AsstCallback)(int msg, const char* details, void* custom
   통합 전략 노드: 긴급 작전
 - `StageDreadfulFoe`  
   통합 전략 노드: 험난한 길
-- `StartGameTask`
-  클라이언트 실행 실패 (설정 파일과 입력된 client_type 불일치)
 - Todo 기타
 
 ### SubTaskExtraInfo
 
 :::: field-group
-::: field name="taskchain" type="string" required
+::: field taskchain
+@type string
+@required
 현재 작업 체인
 :::
-::: field name="class" type="string" required
+::: field class
+@type string
+@required
 서브 작업 유형
 :::
-::: field name="what" type="string" required
+::: field what
+@type string
+@required
 정보 유형
 :::
-::: field name="details" type="object" required
+::: field details
+@type object
+@required
 정보 상세
 :::
-::: field name="uuid" type="string" required
+::: field uuid
+@type string
+@required
 장치 고유 코드
 :::
 ::::
@@ -369,7 +441,9 @@ typedef void(ASST_CALL* AsstCallback)(int msg, const char* details, void* custom
   공개모집 태그를 식별했습니다. `details` 필드 내용은 다음과 같습니다:
 
   :::: field-group
-  ::: field name="tags" type="array<string>" required
+  ::: field tags
+  @type array<string>
+  @required
   식별된 태그 목록
   :::
   ::::
@@ -378,7 +452,9 @@ typedef void(ASST_CALL* AsstCallback)(int msg, const char* details, void* custom
   공개모집 특수 태그를 식별했습니다. `details` 필드 내용은 다음과 같습니다:
 
   :::: field-group
-  ::: field name="tag" type="string" required
+  ::: field tag
+  @type string
+  @required
   특수 태그 명칭, 예: `고급 특별 채용`
   :::
   ::::
@@ -387,7 +463,9 @@ typedef void(ASST_CALL* AsstCallback)(int msg, const char* details, void* custom
   공개모집에서 보류 대상으로 설정된 태그를 식별했습니다. `details` 필드 내용은 다음과 같습니다:
 
   :::: field-group
-  ::: field name="tag" type="string" required
+  ::: field tag
+  @type string
+  @required
   보류를 트리거한 태그 명칭, 예: `지원 기계`
   :::
   ::::
@@ -407,10 +485,14 @@ typedef void(ASST_CALL* AsstCallback)(int msg, const char* details, void* custom
   공개모집 태그를 갱신했습니다. `details` 필드 내용은 다음과 같습니다:
 
   :::: field-group
-  ::: field name="count" type="number" required
+  ::: field count
+  @type number
+  @required
   현재 슬롯 갱신 횟수
   :::
-  ::: field name="refresh_limit" type="number" required
+  ::: field refresh_limit
+  @type number
+  @required
   현재 슬롯 갱신 횟수 상한
   :::
   ::::
@@ -419,34 +501,53 @@ typedef void(ASST_CALL* AsstCallback)(int msg, const char* details, void* custom
   모집 허가증이 없습니다. `details` 필드 내용은 다음과 같습니다:
 
   :::: field-group
-  ::: field name="continue" type="boolean" required
+  ::: field continue
+  @type boolean
+  @required
   계속 갱신할지 여부
   :::
   ::::
+
+- `RecruitPermitReserved`
+  현재 모집 허가증 수가 ★3 모집에 설정한 보유 수량 이하이므로 현재 슬롯을 건너뜁니다. `details` 필드 내용은 다음과 같습니다:
+
+  :::: field-group
+  ::: field current
+  @type number
+  @required
+  현재 모집 허가증 수
+  :::
+  ::::
+
+- `RecruitPermitCountRecognitionFailed`
+  ★3 모집 허가증 보유 기능이 활성화된 상태에서 허가증 수량 인식에 실패하여 현재 슬롯을 건너뜁니다. `details` 필드는 비어 있습니다.
 
 - `RecruitTagsSelected`  
   공개모집 태그를 선택했습니다. `details` 필드 내용은 다음과 같습니다:
 
   :::: field-group
-  ::: field name="tags" type="array<string>" required
+  ::: field tags
+  @type array<string>
+  @required
   선택한 태그 목록
   :::
   ::::
 
-- `RecruitSlotCompleted`  
-  현재 공개모집 슬롯 작업 완료. `details` 필드는 비어 있습니다
-
 - `RecruitError`  
-  공개모집 식별 오류. `details` 필드는 비어 있습니다
+  공개모집 식별 오류. `details` 필드는 비어 있으며, 현재 슬롯의 갱신 횟수가 상한에 도달하여 발생한 경우 `refresh_limit`(슬롯 갱신 횟수 상한)가 포함됩니다
 
 - `EnterFacility`  
   기반시설 시설에 진입했습니다. `details` 필드 내용은 다음과 같습니다:
 
   :::: field-group
-  ::: field name="facility" type="string" required
+  ::: field facility
+  @type string
+  @required
   시설명
   :::
-  ::: field name="index" type="number" required
+  ::: field index
+  @type number
+  @required
   시설 순서(인덱스)
   :::
   ::::
@@ -455,10 +556,14 @@ typedef void(ASST_CALL* AsstCallback)(int msg, const char* details, void* custom
   기반시설 가용 오퍼레이터 부족. `details` 필드 내용은 다음과 같습니다:
 
   :::: field-group
-  ::: field name="facility" type="string" required
+  ::: field facility
+  @type string
+  @required
   시설명
   :::
-  ::: field name="index" type="number" required
+  ::: field index
+  @type number
+  @required
   시설 순서
   :::
   ::::
@@ -467,13 +572,19 @@ typedef void(ASST_CALL* AsstCallback)(int msg, const char* details, void* custom
   기반시설 생산물. `details` 필드 내용은 다음과 같습니다:
 
   :::: field-group
-  ::: field name="product" type="string" required
+  ::: field product
+  @type string
+  @required
   생산물명
   :::
-  ::: field name="facility" type="string" required
+  ::: field facility
+  @type string
+  @required
   시설명
   :::
-  ::: field name="index" type="number" required
+  ::: field index
+  @type number
+  @required
   시설 순서
   :::
   ::::
@@ -482,7 +593,9 @@ typedef void(ASST_CALL* AsstCallback)(int msg, const char* details, void* custom
   자동 작전 노드 정보. `details` 필드 내용은 다음과 같습니다:
 
   :::: field-group
-  ::: field name="name" type="string" required
+  ::: field name
+  @type string
+  @required
   노드명
   :::
   ::::
@@ -490,24 +603,15 @@ typedef void(ASST_CALL* AsstCallback)(int msg, const char* details, void* custom
 - `StageInfoError`  
   자동 작전 노드 식별 오류. `details` 필드는 비어 있습니다
 
-- `PenguinId`  
-  펭귄 물류 ID. `details` 필드 내용은 다음과 같습니다:
-
-  :::: field-group
-  ::: field name="id" type="string" required
-  펭귄 물류 ID
-  :::
-  ::::
-
-- `Depot`  
+- `DepotInfo`  
   창고 인식 결과. `details` 필드 구조는 다음과 같습니다:
   - `done` (boolean, required): 인식 완료 여부, `false`는 아직 인식 중임(진행 중 데이터)을 의미
   - `data` (string, required): JSON 문자열, 형식은 `{"아이템ID": 수량, ...}`, 예: `{"2001":18000,"31043":317}`
 
-- `OperBox`  
+- `OperBoxInfo`  
   오퍼레이터 보관함 인식 결과. `details` 필드 구조는 다음과 같습니다:
   - `done` (boolean, required): 인식 완료 여부, `false`는 아직 인식 중임(진행 중 데이터)을 의미
-  - `all_oper` (array, required): 전체 오퍼레이터 목록, 배열의 각 항목:
+  - `all_opers` (array, required): 전체 오퍼레이터 목록, 배열의 각 항목:
     - `id` (string, required): 오퍼레이터 ID
     - `name` (string, required): 오퍼레이터 명칭
     - `own` (boolean, required): 보유 여부
@@ -522,23 +626,39 @@ typedef void(ASST_CALL* AsstCallback)(int msg, const char* details, void* custom
     - `rarity` (number, required): 오퍼레이터 레어도 [1, 6]
 
 - `UnsupportedLevel`  
-  자동지휘, 지원하지 않는 노드명. `details` 필드는 비어 있습니다
+  자동지휘, 지원하지 않는 노드명. `details` 필드 내용은 다음과 같습니다:
+
+  :::: field-group
+  ::: field level
+  @type string
+  @required
+  지원하지 않는 노드명
+  :::
+  ::::
 
 ### ReportRequest
 
 이 필드는 주로 코어 모듈이 UI 계층에 네트워크 요청 정보를 전달하는 데 사용되며, UI가 구체적인 HTTP 보고(Report) 작업을 수행합니다
 
 :::: field-group
-::: field name="url" type="string" required
+::: field url
+@type string
+@required
 요청 전체 URL, 예: `https://penguin-stats.io/PenguinStats/api/v2/report`
 :::
-::: field name="headers" type="object" required
+::: field headers
+@type object
+@required
 요청 헤더 키-값 쌍 (`Content-Type` 미포함, UI 계층에서 자동 추가)
 :::
-::: field name="body" type="string" required
+::: field body
+@type string
+@required
 요청 본문 내용 (일반적으로 JSON 형식의 문자열)
 :::
-::: field name="subtask" type="string" required
+::: field subtask
+@type string
+@required
 서브 작업명, 구체적인 상보 임무 식별, 예: `ReportToPenguinStats`, `ReportToYituliu`
 :::
 ::::

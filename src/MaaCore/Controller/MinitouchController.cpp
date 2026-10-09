@@ -127,6 +127,7 @@ void asst::MinitouchController::set_swipe_with_pause(bool enable) noexcept
 
 bool asst::MinitouchController::use_swipe_with_pause() const noexcept
 {
+    // pause 依赖 adb 的 press_esc 命令配置存在，或 maatouch 自带的 key 通道，故做通道前置检查
     return m_swipe_with_pause_enabled && (!m_adb.press_esc.empty() || m_use_maa_touch);
 }
 
@@ -155,7 +156,7 @@ bool asst::MinitouchController::swipe(
     const Point& p1,
     const Point& p2,
     int duration,
-    bool extra_swipe,
+    SwipeExtraDirection extra_swipe,
     double slope_in,
     double slope_out,
     bool with_pause)
@@ -182,14 +183,13 @@ bool asst::MinitouchController::swipe(
         return false;
     }
 
-    constexpr int TimeInterval = Minitoucher::DefaultSwipeDelay;
-
     bool need_pause = with_pause && use_swipe_with_pause();
     const auto& opt = Config.get_options();
     std::future<void> pause_future;
 
+    // 输入坐标是屏幕坐标，与设备触控上限（max_x/max_y）分属两个坐标系，按屏幕尺寸校验
     auto bounds_check = [this](int x, int y) {
-        return x >= 0 && x <= m_minitouch_props.max_x && y >= 0 && y <= m_minitouch_props.max_y;
+        return x >= 0 && x < m_width && y >= 0 && y < m_height;
     };
 
     auto move_func = [this](int x, int y) {
@@ -220,7 +220,7 @@ bool asst::MinitouchController::swipe(
                 _x2,
                 _y2,
                 _duration,
-                TimeInterval,
+                SwipeIntervalMs,
                 slope_in,
                 slope_out,
                 move_func,
@@ -239,7 +239,7 @@ bool asst::MinitouchController::swipe(
                 _x2,
                 _y2,
                 _duration,
-                TimeInterval,
+                SwipeIntervalMs,
                 slope_in,
                 slope_out,
                 move_func,
@@ -247,16 +247,21 @@ bool asst::MinitouchController::swipe(
         }
     };
 
+    // 中途失败也必须尽力抬手，否则手指会一直按在屏幕上，后续操作全部失效
     if (!minitouch_move(x1, y1, x2, y2, duration ? duration : opt.minitouch_swipe_default_duration)) {
+        (void)m_minitoucher->up();
         return false;
     }
 
-    if (extra_swipe && opt.minitouch_extra_swipe_duration > 0) {
-        if (!m_minitoucher->wait(opt.minitouch_swipe_extra_end_delay)) {
-            return false;
+    if (extra_swipe != SwipeExtraDirection::None && opt.minitouch_extra_swipe_duration > 0) {
+        bool extra_ok = m_minitoucher->wait(opt.minitouch_swipe_extra_end_delay);
+        if (extra_ok) {
+            const auto offset = extra_swipe_offset(extra_swipe, opt.minitouch_extra_swipe_dist);
+            extra_ok = minitouch_move(x2, y2, x2 + offset.x, y2 + offset.y, opt.minitouch_extra_swipe_duration);
         }
-        if (!minitouch_move(x2, y2, x2, y2 - opt.minitouch_extra_swipe_dist, opt.minitouch_extra_swipe_duration)) {
-            return false;
+        if (!extra_ok) {
+            // extra 是主滑成功后的补偿段，失败不判整体失败，避免上层无谓重试
+            LogWarn << "failed during extra swipe movement";
         }
     }
     if (!m_minitoucher->up()) {
@@ -317,6 +322,28 @@ void asst::MinitouchController::clear_info() noexcept
     m_minitouch_props = decltype(m_minitouch_props)();
 }
 
+void asst::MinitouchController::on_display_rotated()
+{
+    LogTraceFunction;
+
+    if (!m_use_maa_touch) {
+        // 重读设备当前方向，避免把旧值写入旋转后的所有坐标换算
+        read_orientation();
+    }
+    call_and_hup_minitouch();
+}
+
+void asst::MinitouchController::read_orientation()
+{
+    std::string orientation_str = call_command(m_conn_ctx.replace_cmd(m_conn_ctx.adb_cfg.orientation)).value_or("");
+    if (!orientation_str.empty()) {
+        char first = orientation_str.front();
+        if (first == '0' || first == '1' || first == '2' || first == '3') {
+            m_minitouch_props.orientation = static_cast<int>(first - '0');
+        }
+    }
+}
+
 bool asst::MinitouchController::probe_minitouch()
 {
     LogTraceFunction;
@@ -336,13 +363,7 @@ bool asst::MinitouchController::probe_minitouch()
                 break;
             }
         }
-        std::string orientation_str = call_command(m_conn_ctx.replace_cmd(adb_cfg.orientation)).value_or("0");
-        if (!orientation_str.empty()) {
-            char first = orientation_str.front();
-            if (first == '0' || first == '1' || first == '2' || first == '3') {
-                m_minitouch_props.orientation = static_cast<int>(first - '0');
-            }
-        }
+        read_orientation();
     }
     Log.info("touch_program", touch_program, "orientation", m_minitouch_props.orientation);
 

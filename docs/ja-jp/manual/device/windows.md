@@ -43,7 +43,7 @@ const fullySupport = [
         {
             name: 'テンセントアプリストア',
             link: 'https://sj.qq.com/',
-            note: 'バージョン 5.10.56.xx 以降をサポートしています。`設定` - `接続設定` で `テンセントアプリストア` 接続設定を選択してください。Hyper-V との互換性が確認されています。\n\n- ADB ポートは `127.0.0.1:5555` です。\n- ADB パス例：`C:\\Program Files\\Tencent\\Androws\\Application\\バージョン番号\\adb.exe`。\n\n- 事前にアプリストアで [ADB デバッグを有効化](https://sj.qq.com/faq/3878) する必要があります。',
+            note: 'バージョン 5.10.56.xx 以降をサポートしています。`設定` - `接続設定` で `Androws` 接続設定を選択してください。Hyper-V との互換性が確認されています。\n\n- ADB ポートは `127.0.0.1:5555` です。\n- ADB パス例：`C:\\Program Files\\Tencent\\Androws\\Application\\バージョン番号\\adb.exe`。\n\n- 事前にアプリストアで [ADB デバッグを有効化](https://sj.qq.com/faq/3878) する必要があります。',
         },
         {
             name: 'NOX',
@@ -77,7 +77,7 @@ const partiallySupport = shuffleArray([
     {
         name: 'Google Play ゲーム（開発者）',
         link: 'https://developer.android.com/games/playgames/emulator?hl=zh-cn',
-        note: '理論上サポートされています。Hyper-Vを有効にし、Googleアカウントにログインする必要があります。\n\n- [カスタム接続](../connection.html)を使用して接続する必要があり、ADBポートは `6520` です。\n- Android 10以降のSELinuxポリシーにより、Minitouchは正常に動作しないため、他のタッチモードに切り替えてください。\n- エミュレーターを起動した後の初回接続は毎回失敗するため、`接続失敗後にADBプロセスを閉じて再起動する`をチェックする必要があります。',
+        note: '理論上サポートされています。Hyper-Vを有効にし、Googleアカウントにログインする必要があります。\n\n- [カスタム接続](../connection.html)を使用して接続する必要があり、ADBポートは `6520` です。\n- Android 10以降のSELinuxポリシーにより、Minitouchは正常に動作しないため、他のタッチモードに切り替えてください。\n- エミュレーターを起動した後の初回接続は毎回失敗するため、`接続失敗後にADBプロセスの再起動を試みる`をチェックする必要があります。',
     },
 ]);
 

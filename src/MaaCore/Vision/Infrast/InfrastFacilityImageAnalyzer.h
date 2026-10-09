@@ -6,6 +6,13 @@ namespace asst
 class InfrastFacilityImageAnalyzer final : public VisionHelper
 {
 public:
+    enum class ViewType
+    {
+        Unknown = -1,
+        Normal,
+        Mini,
+    };
+
     using VisionHelper::VisionHelper;
     virtual ~InfrastFacilityImageAnalyzer() override = default;
     InfrastFacilityImageAnalyzer(const cv::Mat& image, const Rect& roi) = delete;
@@ -41,6 +48,8 @@ public:
 
     const std::unordered_map<std::string, std::vector<MatchRect>>& get_result() const noexcept { return m_result; }
 
+    ViewType get_view_type() const noexcept { return m_view_type; }
+
 private:
     // 该分析器不支持外部设置ROI
     using VisionHelper::set_roi;
@@ -49,5 +58,6 @@ private:
     std::unordered_map<std::string, std::vector<MatchRect>> m_result;
     // 需要识别的设施名
     std::vector<std::string> m_to_be_analyzed;
+    ViewType m_view_type = ViewType::Unknown;
 };
 }

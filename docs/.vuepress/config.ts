@@ -57,7 +57,7 @@ export default defineUserConfig({
 
     docsRepo: 'MaaAssistantArknights/MaaAssistantArknights',
     docsDir: '/docs',
-    docsBranch: 'dev',
+    docsBranch: 'dev-v2',
 
     editLink: true,
     lastUpdated: false,
@@ -81,6 +81,7 @@ export default defineUserConfig({
       },
 
       icon: { provider: 'iconify' },
+      math: { type: 'katex' },
       plot: true,
       field: true,
       bilibili: true,

@@ -11,7 +11,9 @@ icon: material-symbols:view-quilt-rounded
 请注意 JSON 文件是不支持注释的，文本中的注释仅用于演示，请勿直接复制使用
 :::
 
-[可视化排班生成工具](https://ark.yituliu.cn/tools/schedule)
+[可视化排班生成工具](https://ark.yituliu.cn/tools/scheduleV3)
+
+[自动生成基建排班表工具](https://riic.autos/)
 
 ## 完整字段一览
 

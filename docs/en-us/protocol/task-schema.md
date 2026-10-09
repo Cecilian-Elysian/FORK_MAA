@@ -74,9 +74,9 @@ Please note that JSON files do not support comments. The comments in this docume
                                             // Auto-scales to 1280 * 720 resolution; default [0, 0, 1280, 720] when not specified
                                             // Try to specify this to reduce recognition area, improve performance and recognition speed
 
-        "cache": true,                      // Optional, whether to use cache for this task, default true
-                                            // After first recognition, will always check at same position, greatly improves performance
-                                            // Only suitable for targets whose position never changes, set false if target position may change
+        "cache": false,                     // Optional, whether to use cache for this task, default false
+                                            // When enabled, after the first recognition the task will always check at the same position as the first recognition, greatly improves performance
+                                            // Only suitable for targets whose position never changes, keep the default false if the target position may change
 
         "rectMove": [0, 0, 0, 0],           // Optional, target movement after recognition, not recommended. Auto-scales to 1280 * 720
                                             // For example, if A is recognized but actual click target is 10 pixels below in 5 * 2 area,
@@ -91,10 +91,11 @@ Please note that JSON files do not support comments. The comments in this docume
                                             // Required when action is ClickRect, indicates specified click area (random point within)
                                             // Required when action is Swipe, indicates starting point
                                             // Auto-scales to 1280 * 720 resolution
-                                            // When algorithm is "OcrDetect", specificRect[0] and specificRect[1] represent grayscale threshold limits
 
         "specialParams": [int, ...],        // Parameters for special recognizers
-                                            // Optional when action is Swipe, [0] for duration, [1] for extra swipe toggle
+                                            // Optional when action is Swipe, [0] for duration, [1] for the extra swipe direction (0 disabled, 1/2/3/4 for up/down/left/right),
+                                            // [2] and [3] for the ease-in and ease-out slopes of the swipe trajectory, need to be multiplied by 10, both default to 10
+                                            // If you want normal ease-in and ease-out, [2] and [3] are recommended to be 37 and 1 respectively
 
         "highResolutionSwipeFix": false,    // Optional, whether to enable high-resolution swipe fix
                                             // Currently only needed for stage navigation which doesn't use unity swipe method
@@ -130,6 +131,10 @@ Please note that JSON files do not support comments. The comments in this docume
                                             // Suitable for scenarios where color features are distinct but template matching performs poorly
                                             // When using this option, it is recommended to correspondingly increase the templThreshold
 
+        "nmsDistance": 0,                   // Optional, deduplication radius for multiple template matching results, in pixels, default 0
+                                            // When both horizontal and vertical coordinate differences of two hits are less than this value, only the highest-scoring one is kept
+                                            // 0 or unset means half of the shorter side of the template
+
         "method": "Ccoeff",                 // Optional, template matching algorithm, can be list
                                             // Default is Ccoeff when not specified
                                             //      - Ccoeff:       Color-insensitive template matching, corresponds to cv::TM_CCOEFF_NORMED
@@ -152,8 +157,17 @@ Please note that JSON files do not support comments. The comments in this docume
                                             // When false, substring is sufficient: e.g., text: [ "开始" ], recognized "开始行动" is success
                                             // When true, must recognize exactly "开始", not one character more
 
+        "replaceFull": false,               // Optional, whether ocrReplace replaces the entire recognized text on match, default false
+                                            // When false, only the matched substring is replaced; when true, if the entire text matches any replacement rule, the whole text is replaced with that rule's replacement value
+
         "isAscii": false,                   // Optional, whether text content is ASCII characters
                                             // Default false
+
+        "orderBy": "None",                  // Optional, ordering of results when there are multiple matches (omit to inherit baseTask; no base = no reorder, recognition order)
+                                            //      - None:         no reorder (recognition order); write explicitly to override an ordering set by base
+                                            //      - Horizontal:   row-major (left-to-right within a row)
+                                            //      - Vertical:     column-major (top-to-bottom within a column)
+                                            //      - Score:        by score from high to low
 
         "withoutDet": false,                // Optional, whether to skip detection model
                                             // Default false

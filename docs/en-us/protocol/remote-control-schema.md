@@ -17,7 +17,7 @@ Please note that JSON files do not support comments. The comments in this docume
 
 ## Task Retrieval Endpoint
 
-MAA continuously polls this endpoint at 1-second intervals, attempting to retrieve tasks to execute and executing them in the order received.
+MAA continuously polls this endpoint at a fixed interval (1 second by default, adjustable in the settings), attempting to retrieve tasks to execute and executing them in the order received.
 
 The endpoint path is arbitrary but must be an HTTP(S) endpoint. For example: `https://your-control-host.net/maa/getTask`
 
@@ -58,7 +58,7 @@ This endpoint must return a JSON-formatted response that meets at least the foll
         },
         {
             "id": "b353c469-b902-4357-bd8f-d133199eea31",   // Unique task ID, string type, used when reporting task status
-            "type": "Settings-ConnectionAddress",           // Configuration modification task, equivalent to ConfigurationHelper.SetValue("ConnectionAddress", params); For security, not all settings can be modified, see below for allowed settings
+            "type": "Settings-ConnectAddress",              // Configuration modification task, equivalent to setting the ConnectAddress property in connection settings; For security, not all settings can be modified, see below for allowed settings
             "params": "value"                               // Value to modify
         },
         // Immediate execution tasks: these tasks can execute during sequential tasks and MAA guarantees any of these will return results quickly, typically used for controlling the remote control function itself
@@ -85,7 +85,7 @@ The endpoint should be reentrant and repeatedly return tasks to execute, as MAA 
 ::: note
 
 - LinkStart-[TaskName] task types include LinkStart-Base, LinkStart-WakeUp, LinkStart-Combat, LinkStart-Recruiting, LinkStart-Mall, LinkStart-Mission, LinkStart-AutoRoguelike, LinkStart-Reclamation
-- Settings-[SettingsName] task types include Settings-ConnectionAddress, Settings-Stage1
+- Settings-[SettingsName] task types include Settings-ConnectAddress, Settings-Stage1
 - Settings series tasks still execute sequentially rather than immediately, queuing behind previous tasks
 - Multiple immediate execution tasks also execute in issued order, though since these tasks execute quickly, their order generally doesn't matter
 
@@ -112,7 +112,7 @@ This endpoint must accept a POST request with `Content-Type=application/json` an
 }
 ```
 
-This endpoint's response content is arbitrary, but if not returning 200 OK, a notification will appear in MAA displaying "Upload failed"
+The response content of this endpoint is arbitrary; MAA does not read it and does not check the status code. When a report request fails, MAA only logs the error.
 
 ## Example Workflow - Controlling MAA with QQ Bot
 

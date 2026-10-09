@@ -36,8 +36,6 @@
                 dd:DragDrop.IsDropTarget="True"
                 BorderThickness="0"
                 ClipToBounds="False"
-                IsHitTestVisible="{c:Binding !IsCurrentTaskRunning,
-                                             Source={x:Static ui_vms:TaskQueueViewModel.TaskSettingVisibilities}}"
                 ItemsSource="{Binding Path=PlanList}"
                 PreviewMouseWheel="{s:Action RouteMouseWheelToParentExceptScrollable,
                                              Target={x:Type helper:MouseWheelHelper}}">
@@ -189,10 +187,18 @@
                                             <ColumnDefinition Width="*" />
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
-                                        <CheckBox
-                                            Grid.Column="0"
-                                            Content="{DynamicResource UseSanityPotion}"
-                                            IsChecked="{Binding UseMedicine}" />
+                                        <StackPanel Grid.Column="0" Orientation="Horizontal">
+                                            <CheckBox
+                                                MaxWidth="110"
+                                                VerticalAlignment="Center"
+                                                IsChecked="{Binding UseMedicine}">
+                                                <TextBlock Text="{DynamicResource UseSanityPotion}" TextWrapping="Wrap" />
+                                            </CheckBox>
+                                            <controls:TooltipBlock
+                                                Margin="3,0,0,0"
+                                                VerticalAlignment="Center"
+                                                TooltipText="{DynamicResource DepotPlanBudgetTip}" />
+                                        </StackPanel>
                                         <hc:NumericUpDown
                                             Grid.Column="1"
                                             Width="70"
@@ -209,10 +215,18 @@
                                             <ColumnDefinition Width="*" />
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
-                                        <CheckBox
-                                            Grid.Column="0"
-                                            Content="{DynamicResource UseOriginitePrime}"
-                                            IsChecked="{Binding UseStone}" />
+                                        <StackPanel Grid.Column="0" Orientation="Horizontal">
+                                            <CheckBox
+                                                MaxWidth="110"
+                                                VerticalAlignment="Center"
+                                                IsChecked="{Binding UseStone}">
+                                                <TextBlock Text="{DynamicResource UseOriginitePrime}" TextWrapping="Wrap" />
+                                            </CheckBox>
+                                            <controls:TooltipBlock
+                                                Margin="3,0,0,0"
+                                                VerticalAlignment="Center"
+                                                TooltipText="{DynamicResource DepotPlanBudgetTip}" />
+                                        </StackPanel>
                                         <hc:NumericUpDown
                                             Grid.Column="1"
                                             Width="70"
@@ -234,31 +248,23 @@
                     Margin="0,0,-1,0"
                     hc:BorderElement.CornerRadius="4,0,0,4"
                     Command="{s:Action CollapseAll}"
-                    Content="{DynamicResource CollapseAll}"
-                    IsHitTestVisible="{c:Binding !IsCurrentTaskRunning,
-                                                 Source={x:Static ui_vms:TaskQueueViewModel.TaskSettingVisibilities}}" />
+                    Content="{DynamicResource CollapseAll}" />
                 <Button
                     MinWidth="50"
                     Margin="0,0,-1,0"
                     hc:BorderElement.CornerRadius="0"
                     Command="{s:Action ClearPlans}"
-                    Content="{DynamicResource ClearPlans}"
-                    IsHitTestVisible="{c:Binding !IsCurrentTaskRunning,
-                                                 Source={x:Static ui_vms:TaskQueueViewModel.TaskSettingVisibilities}}" />
+                    Content="{DynamicResource ClearPlans}" />
                 <Button
                     MinWidth="50"
                     Margin="0,0,-1,0"
                     hc:BorderElement.CornerRadius="0"
                     Command="{s:Action AddPlan}"
-                    Content="{DynamicResource AddPlan}"
-                    IsHitTestVisible="{c:Binding !IsCurrentTaskRunning,
-                                                 Source={x:Static ui_vms:TaskQueueViewModel.TaskSettingVisibilities}}" />
+                    Content="{DynamicResource AddPlan}" />
                 <hc:SplitButton
                     hc:BorderElement.CornerRadius="0,4,4,0"
                     Click="PresetSplitButton_Click"
-                    Content="{DynamicResource DepotPreset}"
-                    IsHitTestVisible="{c:Binding !IsCurrentTaskRunning,
-                                                 Source={x:Static ui_vms:TaskQueueViewModel.TaskSettingVisibilities}}">
+                    Content="{DynamicResource DepotPreset}">
                     <hc:SplitButton.DropDownContent>
                         <Menu ItemsSource="{Binding PresetList, Source={x:Static taskQueue_vms:DepotMaintainTaskUserControlModel.Instance}}" MenuItem.Click="{s:Action PresetMenuClick}">
                             <Menu.ItemsPanel>
@@ -292,6 +298,10 @@
                 Margin="0,6,0,0"
                 Content="{DynamicResource DepotSkipDuringResourceCollection}"
                 IsChecked="{Binding SkipDuringResourceCollection}" />
+            <StackPanel Margin="0,6,0,0" Orientation="Horizontal">
+                <CheckBox Content="{DynamicResource DepotOnlyFirstInsufficientPlan}" IsChecked="{Binding OnlyFirstInsufficientPlan}" />
+                <controls:TooltipBlock Margin="3,0,0,0" TooltipText="{DynamicResource DepotOnlyFirstInsufficientPlanTip}" />
+            </StackPanel>
 
             <hc:Divider Margin="0,12,0,0" Content="{DynamicResource DepotGroupStageAndBattle}" />
             <StackPanel Margin="0,6,0,0" Orientation="Horizontal">
@@ -312,10 +322,10 @@
                 Margin="0,6,0,0"
                 Content="{DynamicResource DepotEnableUseStone}"
                 IsChecked="{Binding UseStone}" />
-            <CheckBox
-                Margin="0,6,0,0"
-                Content="{DynamicResource DepotUseExpiringMedicine}"
-                IsChecked="{Binding UseExpiringMedicine}" />
+            <StackPanel Margin="0,6,0,0" Orientation="Horizontal">
+                <CheckBox Content="{DynamicResource DepotUseExpiringMedicine}" IsChecked="{Binding UseExpiringMedicine}" />
+                <controls:TooltipBlock Margin="3,0,0,0" TooltipText="{DynamicResource DepotUseExpiringMedicineTip}" />
+            </StackPanel>
         </StackPanel>
     </Grid>
 </UserControl>

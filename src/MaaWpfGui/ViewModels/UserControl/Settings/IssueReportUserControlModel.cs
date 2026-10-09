@@ -40,6 +40,8 @@ namespace MaaWpfGui.ViewModels.UserControl.Settings;
 /// </summary>
 public class IssueReportUserControlModel : PropertyChangedBase
 {
+    private static readonly ILogger _logger = Log.ForContext<IssueReportUserControlModel>();
+
     static IssueReportUserControlModel()
     {
         Instance = new();
@@ -150,8 +152,8 @@ public class IssueReportUserControlModel : PropertyChangedBase
         }
         catch (Exception ex)
         {
-            ToastNotification.ShowDirect($"Failed to open debug folder\n{ex.Message}");
-            Log.Error(ex, "Failed to open debug folder");
+            ToastNotification.ShowDirect(LocalizationHelper.GetStringFormat("FailedToOpenFolder", ex.Message));
+            _logger.Error(ex, "Failed to open debug folder");
         }
     }
 
@@ -168,17 +170,36 @@ public class IssueReportUserControlModel : PropertyChangedBase
         }
         catch (Exception ex)
         {
-            ToastNotification.ShowDirect($"Failed to open reports folder\n{ex.Message}");
-            Log.Error(ex, "Failed to open reports folder");
+            ToastNotification.ShowDirect(LocalizationHelper.GetStringFormat("FailedToOpenFolder", ex.Message));
+            _logger.Error(ex, "Failed to open reports folder");
         }
     }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether 图片缓存清空中。
+    /// </summary>
+    public bool IsClearingImageCache
+    {
+        get; set {
+            if (SetAndNotify(ref field, value))
+            {
+                NotifyOfPropertyChange(nameof(CanClearImageCache));
+            }
+        }
+    }
+
+    /// <summary>
+    /// Gets a value indicating whether 当前可清空图片缓存（非清空中）。
+    /// </summary>
+    public bool CanClearImageCache => !IsClearingImageCache;
 
     /// <summary>
     /// 清空图片缓存 仅删除 cache 目录和 debug 目录中的图片文件，保留文件夹结构。
     /// 注：下方 MessageBoxHelper.Show 调用 HandyControl 自定义按钮文案机制 — <c>yes:</c> 参数对应 MessageBoxResult.Yes 按钮文案、<c>no:</c> 对应 No 按钮文案。
     /// 当前 yes=Cancel / no=Confirm 是有意为之（用户习惯「确认删除」放主按钮位即 No 位），改回 yes=Confirm/no=Cancel 会导致用户点击主按钮反而放弃删除，引入回归风险。
     /// </summary>
-    public static void ClearImageCache()
+    /// <returns>Task</returns>
+    public async Task ClearImageCache()
     {
         var result = MessageBoxHelper.Show(
             LocalizationHelper.GetString("ClearImageCacheTip"),
@@ -192,6 +213,7 @@ public class IssueReportUserControlModel : PropertyChangedBase
             return;
         }
 
+        IsClearingImageCache = true;
         try
         {
             var imageExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
@@ -199,17 +221,23 @@ public class IssueReportUserControlModel : PropertyChangedBase
                 ".jpg", ".jpeg", ".png",
             };
 
-            int deletedCount = 0;
-
-            if (Directory.Exists(PathsHelper.CacheDir))
+            // 枚举与删除为纯 IO，移入后台线程避免文件多时冻结 UI；结束后需回 UI 线程展示结果，故不加 ConfigureAwait(false)
+            int deletedCount = await Task.Run(() =>
             {
-                deletedCount += DeleteImageFiles(PathsHelper.CacheDir, imageExtensions);
-            }
+                int count = 0;
 
-            if (Directory.Exists(PathsHelper.DebugDir))
-            {
-                deletedCount += DeleteImageFiles(PathsHelper.DebugDir, imageExtensions);
-            }
+                if (Directory.Exists(PathsHelper.CacheDir))
+                {
+                    count += DeleteImageFiles(PathsHelper.CacheDir, imageExtensions);
+                }
+
+                if (Directory.Exists(PathsHelper.DebugDir))
+                {
+                    count += DeleteImageFiles(PathsHelper.DebugDir, imageExtensions);
+                }
+
+                return count;
+            });
 
             if (deletedCount > 0)
             {
@@ -223,7 +251,11 @@ public class IssueReportUserControlModel : PropertyChangedBase
         catch (Exception ex)
         {
             ShowGrowl($"{LocalizationHelper.GetString("ClearImageCacheException")}\n{ex.Message}");
-            Log.Error(ex, "Failed to clear image cache");
+            _logger.Error(ex, "Failed to clear image cache");
+        }
+        finally
+        {
+            IsClearingImageCache = false;
         }
     }
 
@@ -245,7 +277,7 @@ public class IssueReportUserControlModel : PropertyChangedBase
                 }
                 catch (Exception ex)
                 {
-                    Log.Warning(ex, $"Failed to delete image file: {file}");
+                    _logger.Warning(ex, "Failed to delete image file: {File}", file);
                 }
             }
         }
@@ -490,6 +522,7 @@ public class IssueReportUserControlModel : PropertyChangedBase
             currentSize = 0;
             partNumber++;
         }
+
 
         foreach (var fi in allFiles)
         {

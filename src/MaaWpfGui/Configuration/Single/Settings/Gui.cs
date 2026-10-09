@@ -12,7 +12,7 @@
 // </copyright>
 #nullable enable
 using System.Text.Json.Serialization;
-using PropertyChanged;
+using MaaWpfGui.Models;
 using static MaaWpfGui.Configuration.Factory.ConfigFactory;
 using static MaaWpfGui.Configuration.Single.Settings.ExternalNotification;
 using static MaaWpfGui.Models.PostActionSetting;
@@ -22,8 +22,7 @@ namespace MaaWpfGui.Configuration.Single.Settings;
 /// <summary>
 /// Wpf相关设置
 /// </summary>
-[AddINotifyPropertyChangedInterface]
-public partial class Gui
+public partial class Gui : NotifyPropertyChangedWithValue
 {
     public void EventBinding(string prefix)
     {
@@ -33,6 +32,7 @@ public partial class Gui
         ExternalNotification.Configs.CollectionChanged += Handler.OnCollectionChangedFactory<Base>(prefix + nameof(ExternalNotification) + ".");
         RemoteControl.PropertyChanged += Handler.OnPropertyChangedFactory(prefix + nameof(RemoteControl) + ".");
         RuntimeSettings.PropertyChanged += Handler.OnPropertyChangedFactory(prefix + nameof(RuntimeSettings) + ".");
+        ThirdParty.PropertyChanged += Handler.OnPropertyChangedFactory(prefix + nameof(ThirdParty) + ".");
         ConnectSettings.EventBinding(prefix + nameof(ConnectSettings) + ".");
         StartUpSettings.PropertyChanged += Handler.OnPropertyChangedFactory(prefix + nameof(StartUpSettings) + ".");
     }
@@ -51,6 +51,9 @@ public partial class Gui
 
     [JsonInclude]
     public RuntimeSettings RuntimeSettings { get; private set; } = new();
+
+    [JsonInclude]
+    public ThirdParty ThirdParty { get; private set; } = new();
 
     [JsonInclude]
     public StartUpSettings StartUpSettings { get; private set; } = new();

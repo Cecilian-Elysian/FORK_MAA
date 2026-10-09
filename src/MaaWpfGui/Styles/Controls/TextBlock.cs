@@ -27,12 +27,10 @@ public class TextBlock : System.Windows.Controls.TextBlock
         DefaultStyleKeyProperty.OverrideMetadata(typeof(TextBlock), new FrameworkPropertyMetadata(typeof(TextBlock)));
     }
 
-    public static readonly DependencyProperty CustomForegroundProperty = DependencyProperty.Register(nameof(CustomForeground), typeof(Brush), typeof(TextBlock), new PropertyMetadata(ThemeHelper.DefaultBrush));
-
-    public Brush CustomForeground
+    public TextBlock()
     {
-        get { return (Brush)GetValue(CustomForegroundProperty); }
-        set { SetValue(CustomForegroundProperty, value); }
+        Loaded += (_, _) => TryStartRainbowAnimation();
+        Unloaded += (_, _) => StopRainbowAnimation();
     }
 
     public static readonly DependencyProperty ForegroundKeyProperty = DependencyProperty.Register(nameof(ForegroundKey), typeof(string), typeof(TextBlock), new PropertyMetadata(ThemeHelper.DefaultKey, OnForegroundKeyChanged));
@@ -48,13 +46,11 @@ public class TextBlock : System.Windows.Controls.TextBlock
 
     public string ForegroundKey
     {
-        get
-        {
+        get {
             return (string)GetValue(ForegroundKeyProperty);
         }
 
-        set
-        {
+        set {
             SetValue(ForegroundKeyProperty, value);
 
             // `Application.Current.Resources.Contains(key)` 不会递归检查 MergedDictionaries，
@@ -62,7 +58,11 @@ public class TextBlock : System.Windows.Controls.TextBlock
             if (TryFindResource(value) is Brush)
             {
                 SetResourceReference(ForegroundProperty, value);
-                TryStartRainbowAnimation();
+                if (IsLoaded)
+                {
+                    TryStartRainbowAnimation();
+                }
+
                 return;
             }
 
@@ -84,14 +84,21 @@ public class TextBlock : System.Windows.Controls.TextBlock
             return;
         }
 
-        var anim = new DoubleAnimation
-        {
+        var anim = new DoubleAnimation {
             From = 0,
-            To = 4000,
-            Duration = new Duration(System.TimeSpan.FromSeconds(100)),
-            RepeatBehavior = RepeatBehavior.Forever,
+            To = 2000,
+            Duration = new Duration(System.TimeSpan.FromSeconds(60)),
+            EasingFunction = new PowerEase { Power = 3, EasingMode = EasingMode.EaseOut },
         };
         translate.BeginAnimation(TranslateTransform.XProperty, anim);
+    }
+
+    private void StopRainbowAnimation()
+    {
+        if (Foreground is LinearGradientBrush { Transform: TranslateTransform translate })
+        {
+            translate.BeginAnimation(TranslateTransform.XProperty, null);
+        }
     }
 
     public static readonly DependencyProperty BindableInlinesProperty =

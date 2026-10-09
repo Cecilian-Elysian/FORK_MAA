@@ -22,6 +22,7 @@ public:
 
     AutoRecruitTask& set_select_level(std::vector<int> select_level) noexcept;
     AutoRecruitTask& set_confirm_level(std::vector<int> confirm_level) noexcept;
+    AutoRecruitTask& set_level3_recruitment_permit_reserve(int reserve) noexcept;
     AutoRecruitTask& set_need_refresh(bool need_refresh) noexcept;
     AutoRecruitTask& set_max_times(int max_times) noexcept;
     AutoRecruitTask& set_use_expedited(bool use_or_not) noexcept;
@@ -168,6 +169,7 @@ protected:
 
     std::vector<int> m_select_level;
     std::vector<int> m_confirm_level;
+    int m_level3_recruitment_permit_reserve = 0;
     bool m_need_refresh = false;
     bool m_use_expedited = false;       // 是否使用加急许可
     int m_expedite_min_level = 0;       // 加急门槛：≥ 此星级才加急，0 = 所有星级均加急

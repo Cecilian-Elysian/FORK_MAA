@@ -104,8 +104,8 @@
                 },
                 "cache": {
                     "type": "boolean",
-                    "default": true,
-                    "description": "Optional, indicates whether the task uses caching, default is true;\nAfter the first recognition, the subsequent recognition will always be carried out only in the location of the first recognition, enabling this can greatly save performance\nBut it is only applicable for tasks where the target position will not change at all, if the target position to be recognised will change, please set it to false"
+                    "default": false,
+                    "description": "Optional, indicates whether the task uses caching, default is false\nWhen enabled, after the first recognition, the subsequent recognition will always be carried out only in the location of the first recognition, enabling this can greatly save performance\nBut it is only applicable for tasks where the target position will not change at all, if the target position to be recognised will change, please keep the default value false"
                 },
                 "rectMove": {
                     "$ref": "#/definitions/Rectangle",
@@ -254,6 +254,11 @@
                     "default": false,
                     "description": "Optional when method is HSVCount or RGBCount, default false\nWhether to use only color counting without template matching\nSuitable for scenarios with obvious color features but poor template matching performance\nWhen using this option, it is recommended to appropriately increase the templThreshold threshold"
                 },
+                "nmsDistance": {
+                    "type": "integer",
+                    "default": 0,
+                    "description": "Optional, deduplication radius for multiple template matching results, in pixels, default 0\nWhen both horizontal and vertical coordinate differences of two hits are less than this value, only the highest-scoring one is kept\n0 or unset means half of the shorter side of the template"
+                },
                 "method": {
                     "oneOf": [
                         {
@@ -337,6 +342,12 @@
                     },
                     "default": [140, 255],
                     "description": "Optional, threshold for grayscale binarisation (default [140, 255]).\nPixels with a grayscale value out of range will be considered background and excluded from the text region.\nThis is only effective when algorithm is OcrDetect and withoutDet is false."
+                },
+                "orderBy": {
+                    "type": "string",
+                    "enum": ["None", "Horizontal", "Vertical", "Score"],
+                    "default": "None",
+                    "description": "Optional, sorting method for results when there are multiple matches (refer to MaaFramework order_by):\nNone: keep recognition order (no reorder); Horizontal: row-major (left-to-right within a row); Vertical: column-major (top-to-bottom within a column); Score: by score from high to low.\nIf omitted, inherits the baseTask's setting (None when there is no base); to override a base's ordering back to no-reorder, set None explicitly. This is only effective when algorithm is OcrDetect."
                 }
             },
             "required": ["algorithm", "text"],

@@ -16,10 +16,11 @@ Some features on this page are implemented by the UI layer (such as Target Inven
   - `Use Originium` specifies how many Originium to use (one at a time). Originium won't be used if sanity potions are available.
   - `Perform Battles` specifies the number of battles to complete (e.g., "stop after 15 runs").
   - `Material` specifies how many of a specific material to obtain (e.g., "stop after getting 5 Orirock"), with two counting modes:
-    - `Drop Quantity`: Counts the number of that material dropped during this task.
-    - `Target Inventory`: References the depot data saved in [Depot Recognition](./tools.md#depot-recognition) and only farms up to the set inventory level. Requires depot data obtained via [Update Doctor Data](./user-data-update.md) or [Depot Recognition](./tools.md#depot-recognition). This mode is implemented by the UI (Core only supports drop quantity mode).
+    - `Farm`: Counts the number of that material dropped during this task.
+    - `Target Inventory`: References the depot data saved in [Depot Recognition](./tools.md#depot-recognition) and only farms up to the set inventory level. Requires depot data obtained via [Update Doctor Data](./user-data-update.md) or [Depot Recognition](./tools.md#depot-recognition). This mode is implemented by the UI (Core only supports Farm mode).
 
 - `Material` and `Stage Selection` are independent options. `Material` only uses the material count as a stopping condition and doesn't automatically navigate to stages that drop that material.
+- The `Target Inventory` mode shares the start-time check with [Depot Maintain](./depot-maintain.md): when the task starts, the shortfall is recalculated with the latest depot data, and the task is skipped entirely if already reached. It is also skipped if some fight in this queue run has reported sanity and the current sanity estimated from the report time (1 point per 6 minutes, fractions of 6 minutes count as a full 6 minutes, capped at the sanity limit) is below the stage's minimum entry cost, the task has no potion/Originium budget, and expiring potions are used up (proof conditions: [Depot Maintain · Use expiring sanity potions within 48 hours](./depot-maintain.md#use-expiring-sanity-potions-within-48-hours)). Neither case enters the stage.
 - To manage multiple material inventory targets at once, use the [Depot Maintain](./depot-maintain.md) task, which supports multiple plans farmed in sequence.
 - `Use Originium` is only checked after `Use Sanity Potion`. Since MAA only uses Originium when no sanity potions remain, checking `Use Originium` will automatically set `Use Sanity Potion` to 999, ensuring all potions are used first.
 
@@ -106,15 +107,16 @@ Example: Alternative Stages are `CE-6/5`, `1-7` and `LS-6/5`:
 MAA will use the specified Series setting:
 
 - **AUTO mode** (0):
-  - Automatically identifies and uses the maximum possible multiplier without wasting sanity
+  - Automatically selects a multiplier based on remaining battle count (capped at the stage's maximum); reduces medicine usage to avoid sanity overflow, while Originium is used one at a time per setting
+  - If sanity is insufficient for a full run of that multiplier, recovers sanity as configured (medicines first, then Originium); ends the task if none are set or exhausted
 
 - **Fixed value mode** (1-10 for CN, 1-6 for overseas servers):
   - Uses exactly the specified multiplier
-  - If current sanity is insufficient for the set multiplier (e.g., only enough for 5× but set to 6×), ends the task
+  - If current sanity is insufficient for a full run of the set multiplier (e.g., only enough for 5× but set to 6×), recovers sanity as configured (medicines first, then Originium); ends the task if none are set or exhausted
 
 - **Disabled mode** (-1):
   - Doesn't change the in-game multiplier setting
-  - If sanity is insufficient for the current in-game multiplier setting, ends the task
+  - If sanity is insufficient for a full run of the current in-game multiplier, recovers sanity as configured (medicines first, then Originium); ends the task if none are set or exhausted
 
 ### Perform Battles
 
@@ -133,6 +135,5 @@ Example: Assuming you have 100 sanity, the stage costs 6 sanity, and the stage m
 ## Error Handling
 
 - Automatically checks `Auto Deploy` if it's available.
-- Automatically reconnects and continues tasks after disconnections or the daily 4 AM server reset.
 - Continues tasks after level-ups.
 - If auto-deploy fails, abandons the current operation and retries the battle.

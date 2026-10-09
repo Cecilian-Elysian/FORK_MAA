@@ -20,6 +20,7 @@ Please note that JSON files do not support comments. The comments in this docume
         // Specified operators
         {
             "name": "重岳", // Operator name ("重岳" = "Chongyue")
+            "role": "guard", // Operator role. Optional, used to distinguish operators with the same name; English role names should be used, case-insensitive
             "skill": 3, // Skill number. Optional, default is 0, range [0, 3]
             "skill_usage": 2, // Skill usage method. Optional, default is 0
             // 0 - Do not use automatically (depends on "actions" field)
@@ -29,13 +30,13 @@ Please note that JSON files do not support comments. The comments in this docume
             // For auto-trigger skills, use 0
             "skill_times": 5, // Number of skill activations. Optional, default is 1
             "requirements": {
-                // Level requirements. Reserved interface, not yet implemented. Optional, default is empty
-                "elite": 2, // Elite level. Optional, default is 0, no elite requirement
-                "level": 90, // Operator level. Optional, default is 0
-                "skill_level": 10, // Skill level. Optional, default is 0
-                "module": 1, // Module number. Optional, default is 0
-                "module_level": 3, // Module level. Optional, default is 0
-                "potential": 1 // Potential requirement. Optional, default is 0
+                // Level requirements, validated during auto-formation. Optional, default is empty
+                "elite": 2, // Elite level. Optional, default is -1, i.e., no requirement
+                "level": 90, // Operator level. Optional, default is -1, i.e., no requirement
+                "skill_level": 10, // Skill level. Optional, default is -1, i.e., no requirement
+                "module": 1, // Module number. Optional, default is -1, i.e., no requirement; 0 means no module, 1-5 correspond to the χ, γ, α, Δ, β modules respectively
+                "module_level": 3, // Module level. Not yet supported
+                "potential": 1 // Potential requirement. Not yet supported
             }
         }
     ],
@@ -62,8 +63,8 @@ Please note that JSON files do not support comments. The comments in this docume
         // Combat operations. Ordered, executes the next one only after completing the previous one. Required
         {
             "type": "部署", // Operation type, optional, default is "Deploy" ("部署" = "Deploy")
-            // "Deploy" | "Skill" | "Retreat" | "SpeedUp" | "BulletTime" | "SkillUsage" | "Output" | "SkillDaemon" | "MoveCamera" | "ResetStopwatch"
-            // "部署"   |  "技能"  |  "撤退"   | "二倍速"   |  "子弹时间"  |  "技能用法"   | "打印"  |  "摆完挂机" | "移动镜头" | "重置全局计时器"
+            // "Deploy" | "Skill" | "Retreat" | "SpeedUp" | "BulletTime" | "SkillUsage" | "Output" | "SkillDaemon" | "MoveCamera" | "ResetStopwatch" | "Click" | "Swipe" | "SetUnitLocation"
+            // "部署"   |  "技能"  |  "撤退"   | "二倍速"   |  "子弹时间"  |  "技能用法"   | "打印"  |  "摆完挂机" | "移动镜头" | "重置全局计时器" | "点击" | "滑动" | "设置单位坐标"
             // Both English and Chinese are supported (e.g., "部署" for "Deploy")
             // For "Deploy", waits until enough DP is available (unless timeout)
             // For "Skill", waits until skill is ready (unless timeout)
@@ -75,7 +76,15 @@ Please note that JSON files do not support comments. The comments in this docume
             // "Output" doesn't show this step in UI, used only to output doc content (for subtitles, etc.)
             // "SkillDaemon" only uses "use when ready" skills, does nothing else until battle ends
             // "MoveCamera" for Guide mode, requires the distance field
-            // "ResetStopwatch" — Resets the global stopwatch. Please refer to the “time_elapsed” condition.
+            // "ResetStopwatch" — Resets the global stopwatch. Please refer to the “elapsed_time” condition.
+            // "Click" directly clicks the pixel rect specified by "rect" or the battlefield tile specified by "location", without any recognition; empty tiles can also be clicked
+            //      At least one of "rect" or "location" must be set; the copilot fails to load (parse-time error) if neither is set; when both are set, "rect" takes priority (a warning is logged)
+            // "Swipe" swipes from the "begin" rect to the "end" rect, directly issuing the underlying swipe command; the copilot fails to load if either is missing
+            // "SetUnitLocation" sets the tile coordinate of a battlefield unit: both "name" and "location" are required; the copilot fails to load if either is missing or malformed ("name" must be a non-empty string, "location" must be a 2-element numeric array)
+            //      Only updates MAA's internal record of the unit's position; performs no operation on the game
+            //      Used to correct an operator's position after it moves, so that subsequent "Skill" / "Retreat" / "SkillUsage" actions by "name" target the new tile;
+            //      also used to register on-field devices and facilities, combined with "SkillUsage" and "SkillDaemon" to auto-cast device skills;
+            //      if the "name" is already on the field its position is updated; otherwise it is registered as a new unit ("role" is optional, default is role-agnostic)
             // Currently the five conditions below use AND relationship
             "kills": 0, // Kill count condition, waits until reached. Optional, default is 0, executes immediately
             "costs": 50, // DP condition, waits until reached. Optional, default is 0, executes immediately
@@ -87,13 +96,14 @@ Please note that JSON files do not support comments. The comments in this docume
             // Supports negative values (e.g., when operators like Jaye reduce DP)
             // Recognition is more accurate for two-digit DP; three-digit DP may be misrecognized, not recommended
             "cooling": 2, // Number of operators on cooldown condition, waits until reached. Optional, default is -1, no recognition
-            "time_elapsed": 1000, // Global timing condition in milliseconds. If the specified time has not elapsed, the action will keep waiting. Optional, default is 0, executes immediately
+            "elapsed_time": 1000, // Global timing condition in milliseconds. If the specified time has not elapsed, the action will keep waiting. Optional, default is 0, executes immediately
             // Note: the time is measured from the last action with type: ResetStopwatch
             // You must execute an action with type: ResetStopwatch beforehand to reset the stopwatch; otherwise, it will get stuck.
             // TODO: Other conditions
             // TODO: "condition_type": 0,    // Relationship between execution conditions, optional, default is 0
             //                        // 0 - AND; 1 - OR
-            "name": "棘刺", // Operator name or group name, required when type is "Deploy", optional for "Skill"|"Retreat" ("棘刺" = "Thorns")
+            "name": "棘刺", // Operator name or group name, required when type is "Deploy", optional for "Skill"|"Retreat", required for "SetUnitLocation" ("棘刺" = "Thorns")
+            "role": "guard", // Operator role. Optional, used to distinguish operators with the same name; English role names should be used, case-insensitive
             "location": [
                 5,
                 5
@@ -102,11 +112,21 @@ Please note that JSON files do not support comments. The comments in this docume
             // Optional when type is "Skill"|"Retreat".
             // "Skill": Recommended only for automatic devices on the field, use location without name to activate skill. For normal deployed operators, use name
             // "Retreat": Recommended only when multiple summons share the same name, use location without name to retreat. For normal deployed operators, use name
+            // When type is "Skill"|"Retreat"|"SkillUsage" and both name and location are set, location takes priority
+            // When type is "SetUnitLocation", this is required; sets the position of the "name" unit to this tile; any valid tile coordinate is accepted, including [0, 0]
+            // When type is "Click", at least one of this and "rect" must be set; directly clicks this tile; any valid tile coordinate is accepted, including [0, 0]
+            "rect": [
+                100,
+                100,
+                50,
+                50
+            ], // At least one of this and "location" must be set when type is "Click"; "rect" takes priority if both are set; pixel rect based on 720p [x, y, w, h]
+            // The click point is randomly picked within the rect and automatically scaled to the current resolution
             "direction": "左", // Operator facing direction. Required when type is "Deploy" ("左" = "Left")
             // "Left" | "Right" | "Up" | "Down" | "None"
             // "左"   |  "右"   | "上"  | "下"   |  "无"
             // Both English and Chinese are supported (e.g., "左" for "Left")
-            "skip_if_not_ready": false, // Only effective when type is "Skill". Allows skipping the current action if the skill is not ready, mainly used to disable unfinished ammo skills. Optional, defaults to false.
+            // "skip_if_not_ready": false, DEPRECATED, please use "timeout": 0 instead
             "skill_usage": 1, // Change skill usage method. Required when type is "SkillUsage"
             // Example: Initially need Myrtle to help attack without using skill, later need auto skill activation
             // Can set to 1 at the appropriate time
@@ -115,16 +135,40 @@ Please note that JSON files do not support comments. The comments in this docume
             // After all conditions for the current action are met, starts timing, executes the corresponding action when timing ends
             "post_delay": 0, // Post-delay. Optional, default is 0, unit is milliseconds
             // After the current action is executed, starts timing, begins next action when timing ends
-            //
-            // "timeout": 999999999,   // Reserved field, not yet implemented.
-            // Timeout. Optional when type is "Deploy"|"Skill". Default INT_MAX, unit is milliseconds
-            // Abandons current action and executes next action when timeout occurs
+            "timeout": 999999999, // Timeout. Optional when type is "Skill". Default -1, no limit, unit is milliseconds
+            // Starts timing after the conditions and pre_delay are met, abandons the current action and executes the next one when timeout occurs; only checks once when set to 0
             "distance": [
                 4.5,
                 0
             ], // Required when type is "MoveCamera"
             // [x movement in tiles, y movement in tiles], can be decimal
             // Note that during "MoveCamera", operators on field cannot be recognized, need to use sleep to cover entire animation
+            "keep_kills": false, // Whether to keep the kill count when moving the camera. Optional, default is false; when true, the camera move does not wait for the current wave to end and the kill count is not reset, for moving the camera within the same wave
+            "begin": [
+                100,
+                100,
+                50,
+                50
+            ], // Required when type is "Swipe"; start rect of the swipe, pixel rect based on 720p [x, y, w, h]; the start point is randomly picked within the rect and automatically scaled to the current resolution
+            "end": [
+                400,
+                400,
+                50,
+                50
+            ], // Required when type is "Swipe"; end rect of the swipe, pixel rect based on 720p [x, y, w, h]; the end point is randomly picked within the rect and automatically scaled to the current resolution
+            "duration": 200, // Swipe duration. Optional, default is 0, unit is milliseconds
+            "extra_swipe": 1, // Direction of the compensating swipe appended after the main swipe. Optional, default is 0, disabled
+            // 0 disables it, 1/2/3/4 are up/down/left/right respectively
+            // A short swipe in the given direction is appended after the main swipe, to cancel the inertia along the main swipe direction after the finger is released
+            // e.g. after swiping a list horizontally, appending a short vertical swipe prevents the list from keep scrolling past on release
+            "slope_in": 10, // Start slope of the swipe. Optional, default is 10; stored as an integer multiplied by 10, so 10 means 1.0
+            "slope_out": 10, // End slope of the swipe. Optional, default is 10; stored as an integer multiplied by 10, so 10 means 1.0
+            "with_pause": false, // Whether to pause the game while swiping (for cases that need to swipe while paused). Optional, default is false; only supported by some touch modes
+            "high_resolution_swipe_fix": false, // Whether to enable the high-resolution swipe fix. Optional, default is false. Rarely needed: this fix targets interfaces that do not use Unity swipe handling (currently only the chapter swipe in mainline stage navigation requires it), which auto-battle swipes never touch
+            // duration, extra_swipe, slope_in, and slope_out share the same value semantics as the first four elements
+            // of special_params of the Swipe task in tasks.json; high_resolution_swipe_fix corresponds to the standalone
+            // highResolutionSwipeFix task field in tasks.json; with_pause is unique to this schema (tasks.json has no
+            // counterpart — whether pipeline swipes pause the game is a global setting, not per-task)
             "doc": "下棘刺了！", // Description, optional. Displayed in UI, no actual function ("下棘刺了！" = "Deploying Thorns!")
             "doc_color": "orange" // Description text color, optional, default is gray. Displayed in UI, no actual function
         },
@@ -171,4 +215,4 @@ Please note that JSON files do not support comments. The comments in this docume
 
 ## Examples
 
-[OF-1](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/master/resource/copilot/OF-1_credit_fight.json)
+[OF-1](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/resource/copilot/OF-1_credit_fight.json)

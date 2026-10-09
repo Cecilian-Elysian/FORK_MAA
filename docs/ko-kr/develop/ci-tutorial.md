@@ -17,7 +17,6 @@ MAA는 GitHub Action을 활용하여 웹사이트 구축, 자동 리소스 업�
 
 - [코드 테스트](#코드-테스트)
 - [코드 빌드](#코드-빌드)
-- [코드 보안 스캔](#코드-보안-스캔)
 - [버전 릴리즈](#버전-릴리즈)
 - [리소스 업데이트](#리소스-업데이트)
 - [웹사이트 구축](#웹사이트-구축)
@@ -42,25 +41,9 @@ MAA는 GitHub Action을 활용하여 웹사이트 구축, 자동 리소스 업�
 
 이 워크플로우는 코드의 전체 빌드 작업을 담당하며, MAA의 모든 구성 요소를 포함합니다. 빌드 결과물은 실행 가능한 MAA입니다.
 
-필수적인 MaaCore 외에, Windows 빌드 결과물에는 MaaWpfGui가, macOS 빌드 결과물에는 MaaMacGui가, Linux 빌드 결과물에는 MaaCLI가 포함됩니다.
+필수적인 MaaCore 외에, Windows 빌드 결과물에는 MaaWpfGui가, macOS 빌드 결과물에는 MaaMacGui가, Linux 빌드 결과물에는 maa-cli가 포함되며, Android용 MaaCore도 함께 빌드됩니다.
 
-이 워크플로우는 새로운 Commit이나 PR이 발생할 때마다 자동으로 실행되며, 릴리즈 PR에 의해 트리거될 때는 이번 빌드 결과물이 직접 릴리즈에 사용되고 Release가 생성됩니다.
-
-## 코드 보안 스캔
-
-코드 보안 스캔은 CodeQL을 사용하여 코드와 워크플로우에 대한 보안 분석을 수행하며, 다음 워크플로우들이 있습니다:
-
-`codeql-core.yml`
-
-이 워크플로우는 MaaCore와 MaaWpfGui의 C++ 및 C# 코드에 대한 보안 분석을 담당하며, 잠재적인 보안 취약점을 탐지합니다.
-
-이 워크플로우는 관련 소스 코드를 수정하는 PR에서 자동으로 실행되며, 매일 UTC 시간 11:45에 정기 검사를 실행합니다.
-
-`codeql-wf.yml`
-
-이 워크플로우는 GitHub Actions 워크플로우 파일 자체에 대한 보안 분석을 담당하며, CI/CD 프로세스의 보안을 보장합니다.
-
-이 워크플로우는 워크플로우 파일을 수정하는 PR에서 자동으로 실행되며, 매일 UTC 시간 12:00에 정기 검사를 실행합니다.
+이 워크플로우는 소스 코드나 빌드 스크립트에 변경이 있는 `dev-v2` 브랜치의 새 커밋과 PR에서 자동으로 실행됩니다. 버전 태그(릴리즈 PR 병합 후 `pr-auto-tag.yml`가 생성)에 의해 트리거될 때는 이번 빌드 결과물이 직접 릴리즈에 사용되고 Release가 생성됩니다.
 
 ## 버전 릴리즈
 
@@ -87,11 +70,11 @@ MAA는 GitHub Action을 활용하여 웹사이트 구축, 자동 리소스 업�
 
 이 두 채널의 릴리즈 과정은 상대적으로 복잡합니다. 릴리즈 단계를 시뮬레이션하여 각 워크플로우의 역할을 설명하겠습니다:
 
-1. `dev-v2`에서 `master` 브랜치로의 PR을 생성하며, 해당 PR의 이름은 `Release v******` 형식이어야 합니다
+1. `dev-v2`에서 `master-v2` 브랜치로의 PR을 생성하며, 해당 PR의 이름은 `Release v******` 형식이어야 합니다
 2. `release-preparation.yml`이 최근 정식 버전/공개 베타 버전부터 현재 버전까지의 changelog를 생성합니다(새로운 PR 형태로)
 3. changelog를 수동으로 조정하고 간단한 설명을 추가합니다
 4. PR을 병합하면 `pr-auto-tag.yml`이 트리거되어 tag를 생성하고 브랜치를 동기화합니다
-5. Release 이벤트가 `release-ota.yml`을 트리거하여 master에 tag를 생성한 후 ota 패키지 빌드 및 첨부파일 업로드를 진행합니다
+5. Release 이벤트가 `release-ota.yml`을 트리거하여 master-v2에 tag를 생성한 후 ota 패키지 빌드 및 첨부파일 업로드를 진행합니다
 
 ## 리소스 업데이트
 
@@ -122,13 +105,13 @@ MAA는 GitHub Action을 활용하여 웹사이트 구축, 자동 리소스 업�
 
 `stale.yml`
 
-90일 이상 활동이 없는 Bug Issue를 검사하여 표시하고 알림을 보내며, 7일 후에도 활동이 없으면 닫습니다.
+90일 이상 활동이 없는 Issue(Pull Request는 제외하며, `keep-open`, `MAA Team`, `enhancement` 라벨이 붙은 Issue는 면제)를 검사하여 표시하고 알림을 보내며, 7일 후에도 활동이 없으면 닫습니다.
 
 ## Pull Requests 관리
 
 `pr-checker.yml`
 
-이 워크플로우는 PR의 Commit Message가 [관례적 커밋](https://www.conventionalcommits.org/ko/v1.0.0/)을 준수하는지, 그리고 Merge Commit을 포함하는지 검사하며, 위 조건에 해당하면 알림을 제공합니다.
+이 워크플로우는 PR의 Commit Message가 [관례적 커밋](https://www.conventionalcommits.org/ko/v1.0.0/)을 준수하는지, 그리고 Merge Commit을 포함하는지 검사하며, 요구 사항을 충족하지 않는 커밋이 있으면 댓글로 알리고 해당 검사를 실패 처리합니다.
 
 ## MirrorChyan 관련
 

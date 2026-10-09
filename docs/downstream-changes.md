@@ -18,7 +18,7 @@
 py tools/gen-downstream-changes.py
 ```
 
-共扫描 470 个表格行，聚合出 62 个唯一源文件路径。
+共扫描 499 个表格行，聚合出 72 个唯一源文件路径。
 
 ## 仓库根（2 个文件）
 
@@ -56,7 +56,7 @@ py tools/gen-downstream-changes.py
 |------|------|
 | 双轨字段 | fork `expedite_min_level` 扩展段 + 上游 `expedite`/`expedite_times` |
 
-### [HOT] `docs/downstream-changes.md` (x13)
+### [HOT] `docs/downstream-changes.md` (x14)
 
 | 操作 | 说明 |
 |------|------|
@@ -73,6 +73,7 @@ py tools/gen-downstream-changes.py
 | `py tools/gen-downstream-changes.py` | 自动刷新清单（51 文件，352 LOG.md 表格行） |
 | 重生成 | `py tools/gen-downstream-changes.py`：366→392 表格行、52→58 文件（commit `16a40b0442`） |
 | 自动 | gen-downstream-changes.py 重生成 |
+| 重新生成 | 474 表格行 / 65 唯一路径；tasks.json x7→x8，新增 template/Depot 3 张 PNG 条目 |
 
 ### [TGT] `docs/en-us/protocol/integration.md` (x2)
 
@@ -110,7 +111,7 @@ py tools/gen-downstream-changes.py
 | 淇敼 | 浜旇鍚屾锛氱箒涓? |
 | 同上（繁体） | 同上 |
 
-## `resource/`（3 个文件）
+## `resource/`（6 个文件）
 
 ### [TGT] `resource/minitouch/x86/minitouch` 
 
@@ -118,7 +119,7 @@ py tools/gen-downstream-changes.py
 |------|------|
 | 补图 | 34260 B，fork Initial commit 起缺失；`git checkout master --` 恢复（commit `bc3f4a2a2a`） |
 
-### [HOT] `resource/tasks/tasks.json` (x7)
+### [HOT] `resource/tasks/tasks.json` (x8)
 
 | 操作 | 说明 |
 |------|------|
@@ -129,6 +130,25 @@ py tools/gen-downstream-changes.py
 | 寰呬慨鏀? | `AccountManagerOfficial` 琛?OcrDetect 璇嗗埆銆岀櫥褰曡褰曘€? |
 | 淇敼 | `AccountManagerOfficial` 鐢?`{"roi":[570,165,140,80]}` 琛ュ叏涓?`{"Doc":"瀹樻柟鏈嶈处鍙峰垏鎹㈢晫闈㈣瘑鍒紝涓?B 鏈嶇粺涓€ OCR銆岀櫥褰曡褰曘€?,"algorithm":"OcrDetect","text":["鐧诲綍璁板綍"],"roi":[237,50,771,242]}`锛堜笌 B 鏈?`AccountManagerBili` 瀵归綈锛? |
 | 恢复 master | `git checkout master --` 账号切换区块：LoginOther.next 移除 AccountManagerPageConfirm，删除该任务定义，AccountManagerOfficial 还原为纯 roi 模板匹配（整文件与 master 仅此区块差异，已验 0 diff） |
+| 修改 ROI（+7 -7） | DepotAllTab `[452,0,281,134]`→`[450,0,300,138]`；DepotMaterialTab `[1026,0,254,138]`→`[945,0,300,138]`；DepotMaterialTabClicked `[1026,0,254,138]`→`[945,0,300,138]`；与上游 `da5ccfe4ed` diff 逐值一致；JSON 校验通过（941 tasks） |
+
+### [TGT] `resource/template/Depot/DepotAllTab.png` 
+
+| 操作 | 说明 |
+|------|------|
+| 上游重截替换 | 2116 B → 2061 B，181x34 → 77x34（取上游 `30ff4de669` 优化终版） |
+
+### [TGT] `resource/template/Depot/DepotMaterialTab.png` 
+
+| 操作 | 说明 |
+|------|------|
+| 上游重截替换 | 6366 B → 4171 B，170x38 → 131x33（同上） |
+
+### [TGT] `resource/template/Depot/DepotMaterialTabClicked.png` 
+
+| 操作 | 说明 |
+|------|------|
+| 上游重截替换 | 1482 B → 1636 B，165x40 → 120x34（同上） |
 
 ### [TGT] `resource/template/WakeUp/AccountManager/AccountManagerPageConfirm.png` 
 
@@ -136,13 +156,26 @@ py tools/gen-downstream-changes.py
 |------|------|
 | 删除 | fork 独有占位模板（AccountManagerListAccount.png 复制品），master 无此文件，已验模板目录与 master 对齐 |
 
-## `src/`（42 个文件）
+## `src/`（49 个文件）
 
 ### [TGT] `src/MaaCore/Assistant.cpp` 
 
 | 操作 | 说明 |
 |------|------|
 | 淇敼 | `AllTasksCompleted` 鍚庣珛鍗宠 `m_thread_idle=true`锛屼慨澶嶇浜岃疆 `AsstStart` 鍥犵珵鎬佽繑鍥?false 鐨?bug |
+
+### [TGT] `src/MaaCore/Task/Fight/FightTimesTaskPlugin.cpp` (x2)
+
+| 操作 | 说明 |
+|------|------|
+| 修改 (+12 行) | line 130 后: `else if (m_medicine == 0 && m_stone == 0 && sanity->current < *sanity_cost)` 短路 → `m_task_ptr->set_enable(false)` + Log.info `sanity insufficient (N < M), no medicine/stone budget, skip fight` + finished=true |
+| 修改 (+7 -3) | `change_series_new` (line 198-209): 第一分支改 `if (m_medicine != 0 \|\| m_stone != 0)` 包裹原选满逻辑; 零预算落穿注释; line 201 修正为 `select_series_new(remain) ? remain : std::optional<int>()` (对齐 line 224/229 既有 idiom) |
+
+### [TGT] `src/MaaCore/Task/Fight/FightTimesTaskPlugin.h` 
+
+| 操作 | 说明 |
+|------|------|
+| 修改 (+5 行) | line 46-47: `set_medicine`/`set_stone` setter (noexcept); line 85-86: `m_medicine`/`m_stone` 字段 (INT_MAX 缺省 = 用户未配置 = 不短路, 兼容上游调用方与既有 WPF 配置迁移) |
 
 ### [HOT] `src/MaaCore/Task/Infrast/InfrastReceptionTask.cpp` (x3)
 
@@ -151,6 +184,12 @@ py tools/gen-downstream-changes.py
 | 接上游 + cherry-pick | 上游已含 No1..No7（#16054）；保留 fork `vacancy_cnt==0` 早返回 |
 | 修改 | `proc_clue_vacancy` 控制流改造 — `vacancy_cnt==0` 提前 `return true`；`confirm_task != nullptr` 单独判断；引入 `click_performed` 仅真实点击时 `return true`；OCR analyze 失败 / `chars_to_number` 解析失败 / `available != vacancy_cnt` / `confirm_task` 缺失各打 `Log.warn` + fallback 到 legacy 循环 |
 | legacy 循环强化 | 迭代顶部加 `image = ctrler()->get_image()` 防陈旧截图；放置线索后 `Matcher(InfrastReceptionIcon)` 检测关闭右侧面板 |
+
+### [TGT] `src/MaaCore/Task/Interface/FightTask.cpp` 
+
+| 操作 | 说明 |
+|------|------|
+| 修改 (+3 行) | line 192 前: 注入 `medicine`/`stone` 到 `m_fight_times_prt` (与既有 `m_sidestory_reopen_task_ptr` set_medicine/stone 对齐) |
 
 ### [HOT] `src/MaaCore/Task/Interface/RecruitTask.cpp` (x7)
 
@@ -431,6 +470,13 @@ py tools/gen-downstream-changes.py
 | 淇敼 | 鐗堟湰姣旇緝鏃?`uiVersion` 涔?`TrimStart('v', 'V')`锛屼慨澶?UI 鍜?Core 鐗堟湰鍙蜂竴鑷翠粛寮硅鍛婄殑 bug |
 | 淇敼 | 鐗堟湰姣旇緝蹇界暐 `v` 鍓嶇紑 |
 
+### [TGT] `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.AccountCycle.cs` (x2)
+
+| 操作 | 说明 |
+|------|------|
+| 修改（待实施） | Fix-4: ReanchorDataAccountToConfigured()（回锚轮换列表首个非空账号），步骤耗尽/启动失败/异常三处调用；手动停止不回锚 |
+| 修改 | Fix-4: 新增 `ReanchorDataAccountToConfigured()`（回锚 `AccountNames` 首个非空账号），步骤耗尽/启动失败/异常 catch 三处调用；手动停止不回锚保留查看桶 |
+
 ### [HOT] `src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs` (x33)
 
 | 操作 | 说明 |
@@ -469,7 +515,14 @@ py tools/gen-downstream-changes.py
 | 修改 | `LinkStart` 运行前锚定（downstream [HOT x30]：曾被 feat/account_rotation、fix/account_rotation/6、fix/account-cycle-start-race 改动；本次仅加锚定调用，不动既有逻辑） |
 | 修改 | `AdvanceAccountCycle` 切号即切桶（同上敏感文件说明） |
 
-### [HOT] `src/MaaWpfGui/ViewModels/UI/ToolboxViewModel.cs` (x10)
+### [TGT] `src/MaaWpfGui/ViewModels/UI/ToolboxViewModel.AccountScopedData.cs` (x2)
+
+| 操作 | 说明 |
+|------|------|
+| 修改（待实施） | Fix-1: 新增 LastOperBoxSyncTimeAccountedText / LastDepotSyncTimeAccountedText 派生属性（`时间 (账号名)`，双依赖 PropertyDependsOn） |
+| 修改 | Fix-1: `using MaaWpfGui.Utilities;` + 新增 `LastOperBoxSyncTimeAccountedText` / `LastDepotSyncTimeAccountedText` 派生属性（单 attribute 双依赖 `[PropertyDependsOn(nameof(X), nameof(Y))]`，PropertyDependsOnAttribute.cs:56 原生支持；格式 `时间 (账号名)`） |
+
+### [HOT] `src/MaaWpfGui/ViewModels/UI/ToolboxViewModel.cs` (x12)
 
 | 操作 | 说明 |
 |------|------|
@@ -483,6 +536,8 @@ py tools/gen-downstream-changes.py
 | 修改 | `StartDepot` 手动识别前 `SwitchDataAccount(ResolveConfiguredAccountName())` |
 | 修改 | `SaveOperBoxDetails` 嵌 `account` 字段 + 按桶保存 + 新桶注册；`LoadOperBoxDetails` 从 `OperBoxBucketKey` 加载 |
 | 修改 | `StartOperBox` 手动识别前锚定 |
+| 修改（待实施） | Fix-3: StartOperBoxFromYituliuApiAsync 入口捕获发起时桶 key，拉取成功后桶已变则丢弃 + 告警，不重置内存不落盘 |
+| 修改 | Fix-3: `StartOperBoxFromYituliuApiAsync` 入口捕获 `originDataAccountKey`；拉取成功后桶已变则 logger Warning + AddLog 告警 + 返回 false，不 Reset 不落盘（堵 fire-and-forget 跨账号桶竞态） |
 
 ### [HOT] `src/MaaWpfGui/ViewModels/UserControl/Settings/IssueReportUserControlModel.cs` (x30)
 
@@ -527,6 +582,13 @@ py tools/gen-downstream-changes.py
 | +`ExpediteMinLevelList` / `UseExpeditedMinLevel` / `UseExpeditedMinLevelVisible` | ViewModel |
 | 新增 VM 属性 `AutoUpgrade3StarWith4Star` + `SerializeTask()` 写入 | 双向绑定 |
 
+### [TGT] `src/MaaWpfGui/ViewModels/UserControl/TaskQueue/StartUpSettingsUserControlModel.AccountCycle.cs` (x2)
+
+| 操作 | 说明 |
+|------|------|
+| 修改（待实施） | Fix-5: AddAccountAfter / RemoveAccount / 改名回调三处编辑点后 RefreshDataAccountList() |
+| 修改 | Fix-5: 改名回调 / AddAccountAfter / RemoveAccount 三处编辑点后 `Instances.ToolboxViewModel.RefreshDataAccountList()` |
+
 ### [HOT] `src/MaaWpfGui/ViewModels/UserControl/TaskQueue/StartUpSettingsUserControlModel.cs` (x13)
 
 | 操作 | 说明 |
@@ -557,13 +619,15 @@ py tools/gen-downstream-changes.py
 |------|------|
 | 保留 fork UI | `PasteClipboardCopilotSet` 按钮 + 3 个 TooltipBlock |
 
-### [TGT] `src/MaaWpfGui/Views/UI/TaskQueueView.xaml` 
+### [HOT] `src/MaaWpfGui/Views/UI/TaskQueueView.xaml` (x3)
 
 | 操作 | 说明 |
 |------|------|
 | **不动** | 仍引用 `CurrentAccountLabel` (TODO deferred: 5 语 xaml 全缺, 不在本 fix 范围) |
+| 修改（待实施） | Fix-1: 任务队列页库存更新提示时间换 Accounted 属性绑定 |
+| 修改 | Fix-1: 任务队列页右下「库存更新」提示时间换绑 `LastDepotSyncTimeAccountedText` |
 
-### [HOT] `src/MaaWpfGui/Views/UI/ToolboxView.xaml` (x4)
+### [HOT] `src/MaaWpfGui/Views/UI/ToolboxView.xaml` (x6)
 
 | 操作 | 说明 |
 |------|------|
@@ -571,6 +635,8 @@ py tools/gen-downstream-changes.py
 | 修改 | downstream: 该文件曾被 feat/recruit-history-tab 改动，本次改动原因：OperBox/Depot 两个 Tab 各加账号查看下拉 |
 | 修改 | OperBox Tab Row0 改横向 StackPanel：同步时间 + 账号下拉（downstream: 曾被 feat/recruit-history-tab 改动，本次仅加查看下拉） |
 | 修改 | Depot Tab 同款账号下拉 |
+| 修改（待实施） | Fix-2: 305/665 行 `Idle and Inited` → `Run.Idle and Run.Inited`（悬空绑定修复；工具箱两 Tab 已有账号名标注不重复加） |
+| 修改 | Fix-2: 账号下拉锁 `Idle and Inited` → `Run.Idle and Run.Inited`（`91cdccbb17` RunningState→RunControlState 重构移除 VM 级 `Idle`/`Inited` 后的悬空绑定回归，运行中下拉实际未锁） |
 
 ### [HOT] `src/MaaWpfGui/Views/UserControl/Settings/IssueReportUserControl.xaml` (x5)
 
@@ -602,6 +668,13 @@ py tools/gen-downstream-changes.py
 | 修改 | 删单账号 section (原 26-54);轮换 CheckBox 加 `AccountCycleTip` tooltip |
 | 修改 | 每项模板简化: 删 `AddAccountAfter` 按钮 + `ShowAddMode`/`ShowDeleteMode` visibility;`RemoveAccount` 按钮 tooltip 改 `AccountCycleRemoveTip` 并永久可见 |
 | 新增 | 末尾 `[+ 添加账号]` 按钮, `CommandParameter={x:Null}` 走 `AddAccountAfter` null 分支 |
+
+### [TGT] `src/MaaWpfGui/Views/UserControl/TaskQueue/UserDataUpdateSettingsUserControl.xaml` (x2)
+
+| 操作 | 说明 |
+|------|------|
+| 修改（待实施） | Fix-1: 干员/仓库两处时间换 Accounted 属性绑定（含 Visibility 条件同步） |
+| 修改 | Fix-1: 「数据更新」设置面板干员/仓库两处时间换绑 Accounted 属性（Visibility 条件同步换 `.Length > 0`） |
 
 ## `tools/`（7 个文件）
 

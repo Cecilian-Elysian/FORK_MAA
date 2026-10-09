@@ -1,6 +1,7 @@
 #include "CopilotConfig.h"
 
 #include <meojson/json.hpp>
+#include <set>
 
 #include "Config/Miscellaneous/BattleDataConfig.h"
 #include "TilePack.h"
@@ -21,8 +22,18 @@ bool asst::CopilotConfig::parse(const json::value& json)
     clear();
 
     m_data.info = parse_basic_info(json);
-    m_data.groups = parse_groups(json);
-    m_data.actions = parse_actions(json);
+    if (auto groups = parse_groups(json)) {
+        m_data.groups = *groups;
+    }
+    else {
+        return false;
+    }
+    if (auto actions = parse_actions(json)) {
+        m_data.actions = std::move(*actions);
+    }
+    else {
+        return false;
+    }
 
     return true;
 }
@@ -43,7 +54,95 @@ asst::battle::copilot::BasicInfo asst::CopilotConfig::parse_basic_info(const jso
     return info;
 }
 
-asst::battle::copilot::OperUsageGroups asst::CopilotConfig::parse_groups(const json::value& json)
+std::optional<asst::battle::OperUsage> asst::CopilotConfig::parse_oper_usage(const json::value& json)
+{
+    OperUsage oper;
+    auto role = json.get("role", std::string());
+    oper.role = battle::parse_role_type(role, battle::Role::Unknown);
+    oper.name = json.at("name").as_string();
+    oper.skill = json.get("skill", 0);
+    oper.skill_usage = static_cast<battle::SkillUsage>(json.get("skill_usage", 0));
+    oper.skill_times = json.get("skill_times", 1); // 使用技能的次数，默认为 1，兼容曾经的作业
+
+    // 非召唤物/装置且多稀有度时, 跳过检查
+    std::shared_ptr<OperProps> oper_props = nullptr;
+    std::set<int> rarity_set;
+    for (const auto& props : BattleData.find_opers(oper.role, oper.name)) {
+        if (oper_props == nullptr || props->rarity > oper_props->rarity) {
+            oper_props = props;
+        }
+        if (props->role != battle::Role::Drone) {
+            rarity_set.emplace(props->rarity);
+        }
+    }
+    if (!oper_props || (oper_props->role == battle::Role::Drone && rarity_set.size() > 1)) { // 找不到干员时跳过检查
+        LogError << __FUNCTION__ << "| Oper" << oper.name << "with role" << enum_to_string(oper.role) << "found"
+                 << rarity_set.size() << "in BattleData.";
+        if (auto req_opt = json.find("requirements")) {
+            oper.requirements.elite = req_opt->get("elite", 0);
+            oper.requirements.level = req_opt->get("level", 0);
+            oper.requirements.skill_level = req_opt->get("skill_level", 0);
+            oper.requirements.module = req_opt->get("module", -1);
+        }
+        return oper;
+    }
+    { // 兼容古早旧作业中非法的技能选择
+        int rarity = oper_props->rarity;
+        if (oper.skill == 3 && rarity < 6 && oper_props->id != "char_002_amiya") {
+            LogError << __FUNCTION__ << "| Oper " << oper.name << " with rarity " << rarity
+                     << " cannot use skill index 3, set to 0.";
+            oper.skill = 0;
+        }
+        else if (oper.skill == 2 && rarity < 4) {
+            LogError << __FUNCTION__ << "| Oper " << oper.name << " with rarity " << rarity
+                     << " cannot use skill index 2, set to 0.";
+            oper.skill = 0;
+        }
+        else if (oper.skill == 1 && rarity < 3) {
+            LogError << __FUNCTION__ << "| Oper " << oper.name << " with rarity " << rarity
+                     << " cannot use skill index 1, set to 0.";
+            oper.skill = 0;
+        }
+    }
+
+    int elite_require = oper.skill - 1;
+    // 解析练度需求并检查非法设置
+    if (auto req_opt = json.find("requirements")) {
+        oper.requirements.level = req_opt->get("level", 0);
+        // oper.requirements.potentiality = req_opt->get("potentiality", 0);
+
+        if (auto skill_level_opt = req_opt->find<int>("skill_level"); !skill_level_opt) {
+            oper.requirements.skill_level = 0;
+        }
+        else {
+            oper.requirements.skill_level = *skill_level_opt;
+            if (*skill_level_opt > 7) {
+                elite_require = std::max(2, elite_require); // 技能专精要求精二
+            }
+            else if (*skill_level_opt > 4) {
+                elite_require = std::max(1, elite_require);
+            }
+        }
+        if (auto module_opt = req_opt->find<int>("module"); module_opt) {
+            oper.requirements.module = *module_opt;
+            if (*module_opt > 0) {
+                elite_require = std::max(2, elite_require); // 模组要求精2
+            }
+        }
+        if (auto elite_opt = req_opt->find<int>("elite"); elite_opt) {
+            if (elite_require > *elite_opt) {
+                LogError << __FUNCTION__ << "| Oper" << oper.name << "has higher elite requirement:" << elite_require
+                         << ", but elite requirement is set to" << *elite_opt;
+                return std::nullopt;
+            }
+            oper.requirements.elite = *elite_opt;
+        }
+    }
+
+    return oper;
+}
+
+std::optional<asst::battle::copilot::OperUsageGroups> asst::CopilotConfig::parse_groups(const json::value& json)
 {
     LogTraceFunction;
 
@@ -51,41 +150,18 @@ asst::battle::copilot::OperUsageGroups asst::CopilotConfig::parse_groups(const j
 
     if (auto opt = json.find<json::array>("opers")) {
         for (const auto& oper_info : opt.value()) {
-            OperUsage oper;
-            oper.name = oper_info.at("name").as_string();
-            oper.skill = oper_info.get("skill", 0);
-            oper.skill_usage = static_cast<battle::SkillUsage>(oper_info.get("skill_usage", 0));
-            oper.skill_times = oper_info.get("skill_times", 1); // 使用技能的次数，默认为 1，兼容曾经的作业
-
-            int rarity = BattleDataConfig::get_instance().get_rarity(oper.name); // 兼容古早旧作业中非法的技能选择
-            if (oper.skill == 3 && rarity < 6) {
-                LogError << __FUNCTION__ << "| Oper " << oper.name << " with rarity " << rarity
-                         << " cannot use skill index 3, set to 0.";
-                oper.skill = 0;
+            auto oper = parse_oper_usage(oper_info);
+            if (!oper) {
+                LogError << __FUNCTION__ << "| Failed to parse oper" << oper_info;
+                return std::nullopt;
             }
-            else if (oper.skill == 2 && rarity < 4) {
-                LogError << __FUNCTION__ << "| Oper " << oper.name << " with rarity " << rarity
-                         << " cannot use skill index 2, set to 0.";
-                oper.skill = 0;
-            }
-            else if (oper.skill == 1 && rarity < 3) {
-                LogError << __FUNCTION__ << "| Oper " << oper.name << " with rarity " << rarity
-                         << " cannot use skill index 1, set to 0.";
-                oper.skill = 0;
-            }
-
-            // 解析练度需求
-            if (auto req_opt = oper_info.find("requirements")) {
-                oper.requirements.elite = req_opt->get("elite", 0);
-                oper.requirements.level = req_opt->get("level", 0);
-                oper.requirements.skill_level = req_opt->get("skill_level", 0);
-                oper.requirements.module = req_opt->get("module", -1);
-                // oper.requirements.potentiality = req_opt->get("potentiality", 0);
-            }
-
             // 单个干员的，干员名直接作为组名
-            std::string group_name = oper.name;
-            groups.emplace_back(OperUsageGroup { std::move(group_name), std::vector { std::move(oper) } });
+            std::string group_name = oper->name;
+            groups.emplace_back(
+                OperUsageGroup { std::move(group_name),
+                                 oper->requirements.elite,
+                                 oper->requirements.level,
+                                 std::vector { std::move(*oper) } });
         }
     }
 
@@ -93,49 +169,31 @@ asst::battle::copilot::OperUsageGroups asst::CopilotConfig::parse_groups(const j
         for (const auto& group_info : opt.value()) {
             std::string group_name = group_info.at("name").as_string();
             std::vector<OperUsage> oper_vec;
+            int elite_min = 2;
+            int level_min = 90;
             for (const auto& oper_info : group_info.at("opers").as_array()) {
-                OperUsage oper;
-                oper.name = oper_info.at("name").as_string();
-                oper.skill = oper_info.get("skill", 0);
-                oper.skill_usage = static_cast<battle::SkillUsage>(oper_info.get("skill_usage", 0));
-                oper.skill_times = oper_info.get("skill_times", 1); // 使用技能的次数，默认为 1，兼容曾经的作业
-
-                int rarity = BattleDataConfig::get_instance().get_rarity(oper.name); // 兼容古早旧作业中非法的技能选择
-                if (oper.skill == 3 && rarity < 6) {
-                    LogError << __FUNCTION__ << "| Oper " << oper.name << " with rarity " << rarity
-                             << " cannot use skill index 3, set to 0.";
-                    oper.skill = 0;
+                auto oper = parse_oper_usage(oper_info);
+                if (!oper) {
+                    LogError << __FUNCTION__ << "| Failed to parse oper" << oper_info;
+                    return std::nullopt;
                 }
-                else if (oper.skill == 2 && rarity < 4) {
-                    LogError << __FUNCTION__ << "| Oper " << oper.name << " with rarity " << rarity
-                             << " cannot use skill index 2, set to 0.";
-                    oper.skill = 0;
+                if (oper->requirements.elite < elite_min) {
+                    elite_min = oper->requirements.elite;
+                    level_min = std::min(elite_min == 1 ? 80 : 70, oper->requirements.level);
                 }
-                else if (oper.skill == 1 && rarity < 3) {
-                    LogError << __FUNCTION__ << "| Oper " << oper.name << " with rarity " << rarity
-                             << " cannot use skill index 1, set to 0.";
-                    oper.skill = 0;
+                else if (oper->requirements.elite == elite_min) {
+                    level_min = std::min(level_min, oper->requirements.level);
                 }
-
-                // 解析练度需求
-                if (auto req_opt = oper_info.find("requirements")) {
-                    oper.requirements.elite = req_opt->get("elite", 0);
-                    oper.requirements.level = req_opt->get("level", 0);
-                    oper.requirements.skill_level = req_opt->get("skill_level", 0);
-                    oper.requirements.module = req_opt->get("module", -1);
-                    // oper.requirements.potentiality = req_opt->get("potentiality", 0);
-                }
-
-                oper_vec.emplace_back(std::move(oper));
+                oper_vec.emplace_back(std::move(*oper));
             }
-            groups.emplace_back(OperUsageGroup { std::move(group_name), std::move(oper_vec) });
+            groups.emplace_back(OperUsageGroup { std::move(group_name), elite_min, level_min, std::move(oper_vec) });
         }
     }
 
     return groups;
 }
 
-std::vector<asst::battle::copilot::Action> asst::CopilotConfig::parse_actions(const json::value& json)
+std::optional<std::vector<asst::battle::copilot::Action>> asst::CopilotConfig::parse_actions(const json::value& json)
 {
     LogTraceFunction;
 
@@ -217,6 +275,22 @@ std::vector<asst::battle::copilot::Action> asst::CopilotConfig::parse_actions(co
             { "resetstopwatch", ActionType::ResetStopwatch },
             { "Resetstopwatch", ActionType::ResetStopwatch },
             { "重置全局计时器", ActionType::ResetStopwatch },
+
+            { "Click", ActionType::Click },
+            { "click", ActionType::Click },
+            { "CLICK", ActionType::Click },
+            { "点击", ActionType::Click },
+
+            { "Swipe", ActionType::Swipe },
+            { "swipe", ActionType::Swipe },
+            { "SWIPE", ActionType::Swipe },
+            { "滑动", ActionType::Swipe },
+
+            { "SetUnitLocation", ActionType::SetUnitLocation },
+            { "Setunitlocation", ActionType::SetUnitLocation },
+            { "setunitlocation", ActionType::SetUnitLocation },
+            { "SETUNITLOCATION", ActionType::SetUnitLocation },
+            { "设置单位坐标", ActionType::SetUnitLocation },
         };
 
         std::string type_str = action_info.get("type", "Deploy");
@@ -228,14 +302,78 @@ std::vector<asst::battle::copilot::Action> asst::CopilotConfig::parse_actions(co
             Log.warn("Unknown action type:", type_str);
             continue;
         }
+
+        if (action.type == ActionType::Click) {
+            if (!action_info.contains("rect") && !action_info.contains("location")) {
+                LogError << __FUNCTION__ << "| Click action must specify one of 'rect' or 'location'";
+                return std::nullopt;
+            }
+            if (action_info.contains("rect") && action_info.contains("location")) {
+                LogWarn << __FUNCTION__ << "| Both rect and location are set for Click action, using rect";
+            }
+        }
+        else if (action.type == ActionType::Swipe) {
+            if (!action_info.contains("begin") || !action_info.contains("end")) {
+                LogError << __FUNCTION__ << "| Swipe action requires both 'begin' and 'end'";
+                return std::nullopt;
+            }
+        }
+        else if (action.type == ActionType::SetUnitLocation) {
+            if (!action_info.contains("name") || !action_info.contains("location")) {
+                LogError << __FUNCTION__ << "| SetUnitLocation action requires both 'name' and 'location'";
+                return std::nullopt;
+            }
+            // 值级校验：name 为非空字符串，location 为 2 元素整数数组；
+            // 畸形值（空串/null/元素不足/类型不符/小数）经分量 get 回退会静默落到 [0, 0]，
+            // 该记录写入位置表后，后续按名动作都会跟着错，须在解析期拦下
+            const auto& name_json = action_info.at("name");
+            if (!name_json.is_string() || name_json.as_string().empty()) {
+                LogError << __FUNCTION__ << "| SetUnitLocation action 'name' must be a non-empty string";
+                return std::nullopt;
+            }
+            const auto& location_json = action_info.at("location");
+            if (!location_json.is_array() || location_json.as_array().size() != 2) {
+                LogError << __FUNCTION__
+                         << "| SetUnitLocation action 'location' must be a 2-element integer "
+                            "array [x, y]";
+                return std::nullopt;
+            }
+            const auto& location_arr = location_json.as_array();
+            // is<int>() 同时要求是数字且可无损解析为 int，小数与字符串数字都会被拒绝
+            if (!location_arr[0].is<int>() || !location_arr[1].is<int>()) {
+                LogError << __FUNCTION__ << "| SetUnitLocation action 'location' elements must be integers";
+                return std::nullopt;
+            }
+        }
+        else if (
+            (action.type == ActionType::Retreat || action.type == ActionType::UseSkill ||
+             action.type == ActionType::SkillUsage) &&
+            action_info.contains("name") && action_info.contains("location")) {
+            LogWarn << __FUNCTION__ << "| Both name and location are set for" << type_str << "action, using location";
+        }
+
         action.kills = action_info.get("kills", 0);
         action.cost_changes = action_info.get("cost_changes", 0);
         action.costs = action_info.get("costs", 0);
         action.cooling = action_info.get("cooling", -1);
+        auto role = action_info.get("role", std::string());
+        action.role = battle::parse_role_type(role, battle::Role::Unknown);
         action.name = action_info.get("name", std::string());
 
-        action.location.x = action_info.get("location", 0, 0);
-        action.location.y = action_info.get("location", 1, 0);
+        if (action_info.contains("location")) {
+            action.location = Point { action_info.get("location", 0, 0), action_info.get("location", 1, 0) };
+        }
+        // Click 的点击区域，720p 基准像素矩形
+        action.rect.x = action_info.get("rect", 0, 0);
+        action.rect.y = action_info.get("rect", 1, 0);
+        action.rect.width = action_info.get("rect", 2, 0);
+        action.rect.height = action_info.get("rect", 3, 0);
+        // 值畸形（元素不足、空数组、null）时分量 get 回退为 0，解析出退化 Rect，需在此拦下
+        if (action.type == ActionType::Click && action_info.contains("rect") && action.rect.empty()) {
+            LogError << __FUNCTION__
+                     << "| Click action 'rect' must be a 4-element array [x, y, w, h] with non-zero width and height";
+            return std::nullopt;
+        }
         action.direction = string_to_direction(action_info.get("direction", "Right"));
 
         action.modify_usage = static_cast<battle::SkillUsage>(action_info.get("skill_usage", 0));
@@ -244,7 +382,7 @@ std::vector<asst::battle::copilot::Action> asst::CopilotConfig::parse_actions(co
         auto post_delay_opt = action_info.find<int>("post_delay");
         // 历史遗留字段，兼容一下
         action.post_delay = post_delay_opt ? *post_delay_opt : action_info.get("rear_delay", 0);
-        action.time_out = action_info.get("timeout", INT_MAX);
+        action.timeout_ms = action_info.get("timeout", -1);
         action.doc = action_info.get("doc", std::string());
         action.doc_color = action_info.get("doc_color", std::string());
 
@@ -256,14 +394,51 @@ std::vector<asst::battle::copilot::Action> asst::CopilotConfig::parse_actions(co
         else if (action.type == ActionType::MoveCamera) {
             auto dist_arr = action_info.at("distance").as_array();
             action.distance = std::make_pair(dist_arr[0].as_double(), dist_arr[1].as_double());
+            action.keep_kills = action_info.get("keep_kills", false);
         }
+
+        // Swipe 参数，均缺失时保持默认值
+        action.begin.x = action_info.get("begin", 0, 0);
+        action.begin.y = action_info.get("begin", 1, 0);
+        action.begin.width = action_info.get("begin", 2, 0);
+        action.begin.height = action_info.get("begin", 3, 0);
+        action.end.x = action_info.get("end", 0, 0);
+        action.end.y = action_info.get("end", 1, 0);
+        action.end.width = action_info.get("end", 2, 0);
+        action.end.height = action_info.get("end", 3, 0);
+        // 值畸形（元素不足、空数组、null）时分量 get 回退为 0，解析出退化 Rect，需在此拦下
+        if (action.type == ActionType::Swipe && (action.begin.empty() || action.end.empty())) {
+            LogError
+                << __FUNCTION__
+                << "| Swipe action 'begin' and 'end' must be 4-element arrays [x, y, w, h] with non-zero width and "
+                   "height";
+            return std::nullopt;
+        }
+        action.duration = action_info.get("duration", 0);
+        action.extra_swipe = to_swipe_extra_direction(action_info.get("extra_swipe", 0));
+        // slope 为 ×10 整数存储，10 即 1.0
+        action.slope_in = action_info.get("slope_in", 10);
+        action.slope_out = action_info.get("slope_out", 10);
+        action.with_pause = action_info.get("with_pause", false);
+        action.high_resolution_swipe_fix = action_info.get("high_resolution_swipe_fix", false);
 
         // ————————————————————————————————————————————————————————————————
         // 实验性功能
         // ————————————————————————————————————————————————————————————————
-        // 跳过使用未准备好的技能，主要用于关闭技能的场景
-        if (action.type == ActionType::UseSkill) {
-            action.skip_if_not_ready = action_info.get("skip_if_not_ready", false);
+        // 跳过使用未准备好的技能，主要用于关闭技能的场景 已废弃
+        if (action_info.contains("skip_if_not_ready")) {
+            LogWarn << "================  DEPRECATED  ================";
+            LogWarn << "The field 'skip_if_not_ready' is deprecated and will be removed in future versions.";
+            LogWarn << "================  DEPRECATED  ================";
+            if (action_info.contains("timeout")) {
+                LogError << __FUNCTION__ << "| Both 'timeout' and 'skip_if_not_ready' are setted. Ignore step";
+                continue;
+            }
+            else {
+                if (action_info.get("skip_if_not_ready", false)) {
+                    action.timeout_ms = 0;
+                }
+            }
         }
 
         // 计时器

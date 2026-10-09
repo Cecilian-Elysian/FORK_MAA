@@ -4,7 +4,7 @@
 
 分支的存在性与生命周期记录在 `§6` 与 `§7`；本仓库**不使用** feat / fix 工作笔记（无 `feat_<name>.md` / `fix_<name>[_<n>].md`），所有变更通过 commit message 与 `LOG.md` 跟踪。
 
-中文叙述为主，分支名 / 命令 / 协议字段等关键术语保留英文原文。无 emoji、无 vuepress 容器，遵循 `LOG.md` 既有的表格驱动风格。
+中文叙述为主，分支名 / 命令 / 协议字段等关键术语保留英文原文。无 emoji、无 vuepress 容器，遵循 `LOG.md` 既有的表格驱动风格。上游开发约定全文见 `§9`。
 
 > **重要约束**：拉取上游新功能（merge `upstream/master-v2`）**必须**按 [`WORKFLOW.md`](./WORKFLOW.md) 流程执行（§5 graft 假历史关联 + §6 合并手解 + §7 转 git replace + §8 编译验证）。该流程基于 2026-08-06 v6.16.5 合入经验总结，绕过 fork root 无父节点导致的 unrelated histories 问题。
 >
@@ -107,6 +107,9 @@ staging ──── feat/<name>, fix/<name> ← 从 staging 拉出
 - 2026-08-07 master-v2 对齐：`c951f239c1` 放弃全部 fork 私有 C++ 回归 master；`c34403ac94` tasks.json account-switch 区块回归 master（删除 fork `AccountManagerPageConfirm` task + 模板）；`3904577917` 仅恢复 expedite_min_level 阈值 C++（对齐 fork WPF UI）
 - 2026-08-08：`1ea65d0aed` 加急点击按槽位限定 RecruitNow roi（`RecruitNow@Slot0..3` 四变体）；`70b3d63770` fix/account-cycle-start-race 提交落地（AsstStart 竞态 AsstRunning 兜底 + AsstStop 清队列）
 - 2026-08-09：`265bd875a4` 恢复 ClipboardLinkSet20Regular Geometry 资源（修 CopilotView 启动闪退）
+- 2026-09-07：`f580d7ed6d` fix/depot-special-memorial-tab 手摘上游 `da5ccfe4ed` 仓库「特别纪念」tab 修复（§7.18）
+- 2026-09-16：`6d32144858` merge 上游 v6.18.0-beta.1（§7.22 阶段 0-10）；`ae24fd2851` 补 CurrentAccountLabel 5 语 key；`16b11a0e31` 清 ToolboxTabRecruitHistory dead key（§10.2）
+- 2026-09-25：`39a7b516e7` fix/sanity-auto-series-adapt（AUTO 倍率按理智自适应）；`0a3884231d` merge 上游 v6.18.0 release（134 commit，§7.22 阶段 11）+ `1b7b087aae` 编译修复三连；MaaUtils 子模块 bump `0c2556cf` → `6e9ba33`
 
 历史假关联：fork base `c8c8e75be5` 无父节点，通过 `git replace --graft` 接 `6147357bd0`（v6.14.0 upstream release），merge-base = `c8c8e75be5` 走 3-way 合并。
 
@@ -117,6 +120,8 @@ staging ──── feat/<name>, fix/<name> ← 从 staging 拉出
 | 2026-08-07 | `4d862ec98a` | （master-v2 基线重建首晋升） | 完整实测 | `c951f239c1` 放弃 fork C++ 回归 master |
 | 2026-08-13 | `1774d128a2` | 17 commit（4 修复 + 3 文档 + 10 间接） | trust staging | §7.10/§7.11/§7.12/§7.13 全部 fix 走 staging 验证流程后晋升 |
 | 2026-08-30 | `a0f530912c` | 20 commit（2 修复 + 1 feat + 3 工具/重构 + 14 间接） | trust staging | §7.14/§7.15/§7.16/§7.17 全部 fix/feat 走 staging 验证流程后晋升；install-staging 2026-08-28 09:28 内核指纹覆盖全部变更 |
+| 2026-09-16 | _待晋升_ | v6.17.0 → v6.18.0-beta.1 全量同步 merge `6d32144858`（staging 已含，branch 未晋升） | trust staging | §7.22 `feat/upstream-v618-sync` 合入 staging；§7.18 已先手摘上游 `da5ccfe4ed` depot 修复入 staging（9/7）；编译/冒烟/fork marker 全过 |
+| 2026-09-25 | _待晋升_ | v6.18.0 release 跟进 merge `0a3884231d` + `1b7b087aae`（staging 已含，branch 未晋升） | trust staging | §7.22 阶段 11-13：上游 134 commit + MaaUtils bump `6e9ba33` + 冒烟/总检全过；阶段 12 OOM 修复（第三方 DLL 半匹配同步）+ CPU/GPU OCR 双模式实测通过；阶段 13 编码事故修复（LOG 阶段 11 重建 / AGENTS §9 上游原文重写）+ WORKFLOW §9 错误 8-11 沉淀；晋升实测项与上行一致 |
 
 晋升后实测验证项（仅适用于 `staging → branch` 晋升决策；本次晋升 trust staging）：
 - 多账号切号（官服 + B 服，含新增繁中服支援）
@@ -172,6 +177,22 @@ staging ──── feat/<name>, fix/<name> ← 从 staging 拉出
 ### 3.4 本地化
 
 `src/MaaWpfGui/Res/Localizations/` 五语同步：zh-cn / zh-tw / en-us / ja-jp / ko-kr。新增 UI 文案 / ToolTip 同步在五份 xaml 中新增对应 string key。
+
+### 3.5 识别类故障排查 SOP：先查上游修复（2026-09-07 沉淀）
+
+**适用症状**：某识别 / 导航功能突然持续失败（多账号多主题全量复现），而 MAA 侧代码、模板、配置、分辨率均零改动。
+
+**排查顺序**（先 2 后 3，避免重复造轮子）：
+
+| # | 步骤 | 说明 |
+|---|------|------|
+| 1 | 本地排除 | 确认 install 与 repo 资源哈希一致、构建未变、分辨率 / 模拟器未变、cache 在线资源不含相关任务定义 → 锁定「游戏侧画面变了」 |
+| 2 | **查上游是否已修** | GitHub API 按路径过滤 commits（最高效）：`https://api.github.com/repos/MaaAssistantArknights/MaaAssistantArknights/commits?sha=dev-v2&path=resource/template/<功能目录>&per_page=10`，对比 commit 时间与故障起点；同时搜上游 issues（游戏 UI 改版通常会引发用户反馈）。修复常在故障起点 1~2 天内出现（上游维护者也在玩） |
+| 3 | 摘取或自截 | 上游已修 → 新建 fix 分支手动摘取（ROI 数值照抄 + raw.githubusercontent.com 下载 `<commit>/resource/template/...` PNG，优先取其后 Auto Templates Optimization 终版）；上游未修 → 从 `debug/interface/` 失败帧自截模板，并用 NCC 离线验证 ≥0.9 再部署 |
+
+**案例**：`fix/depot-special-memorial-tab`（§7.18）——游戏新增「特别纪念」tab 致仓库识别全挂，上游 `da5ccfe4ed` 在故障起点次日即修复（且不在 v6.17.0 release 内，master-v2 拿不到，必须手动摘）。注意：**模板 PNG 不走在线资源更新**（cache 仅 tasks.json），等自更新等不来模板修复。
+
+**离线验证技巧**：PowerShell + System.Drawing 自写 NCC（归一化互相关），对 `debug/interface/` 失败帧 × 新模板算分，部署前即可确认模板有效性；失败帧摄于「初始未点击」态时，选中态模板（如 `DepotAllTab`）测不出高分属正常，信任上游已实测路径。
 
 
 ## 4. 构建、部署与发布
@@ -277,7 +298,7 @@ Select-String -Path install-staging/MAA.runtimeconfig.json -Pattern "STARTUP_HOO
 
 | 分支 | 角色 | 修复目标 |
 |------|------|----------|
-| _无（2026-08-30 §7.14/§7.15/§7.16/§7.17 已晋升 branch；本节空）_ | | |
+| （无 — v6.18 beta.1/v6.18.0 同步均随 merge `6d32144858`/`0a3884231d` 直接落地 staging，无独立分支） | — | — |
 
 
 ## 7. 分支生命周期记录
@@ -480,7 +501,7 @@ Select-String -Path install-staging/MAA.runtimeconfig.json -Pattern "STARTUP_HOO
 | 生命周期 | 2026-08-16 创建（从 staging 拉出） → 2026-08-16 `--no-ff` 合入 `staging`（`9a46d7b4ce`） |
 | 关键 commit | `fa99387755`（fix(cycle): supersede single-account switcher with cycle，9 文件 +100 -194） |
 | 子修复分支 | 无 |
-| **已知 TODO**（不在本 fix 范围） | `CurrentAccountLabel` 在 `TaskQueueView.xaml:102` 引用但 5 语 xaml 全缺，Header 前缀空白。需 5 语 × 1 行 = 5 行修复，待后续 fix 单独处理 |
+| **已知 TODO**（不在本 fix 范围） | ~~`CurrentAccountLabel` 在 `TaskQueueView.xaml:102` 引用但 5 语 xaml 全缺，Header 前缀空白。需 5 语 × 1 行 = 5 行修复，待后续 fix 单独处理~~ **已修 2026-09-16**（commit `ae24fd2851`，5 语各 +1 行插于 AccountCycle key 前） |
 | 验证 | install-staging 部署（`MAA.exe` 2026/8/16 18:28，`MaaCore.dll` 4241920 B 与合并前一致因 C++ 无改动）；编译 0 错误 / 32 StyleCop warning（不阻断）；信任 staging 验证（无实测跑日常），因改动纯 UI 重构 + localization 字符串调整 |
 | 部署备注 | `tools/local-install-staging.bat` 触发 §4.1 已知 VS 2026 SDK bug，本次绕行（`MSBuildSDKsPath=C:\Program Files\dotnet\sdk\10.0.300\Sdks` + 单 `cmake --build --target MaaCore`） |
 | 作用域 | 仅本仓库 fork 私有，不推 upstream |
@@ -500,6 +521,86 @@ Select-String -Path install-staging/MAA.runtimeconfig.json -Pattern "STARTUP_HOO
 | 验证 | install-staging 部署（`MAA.exe` 时间戳与合并前一致因仅 C# / XAML 改动）；`dotnet build` 0 错误 / 60 warning（8 新增 CS8632 ×4 nullable 注解 + SA1516 ×4 + SA1512 ×2，52 预存 warning pre-existing）；信任 staging 验证（修改纯 WPF C# + XAML + 5 语 localization + DiagnosticInfo.cs 数据模型），后续 staging → branch 晋升需实测：启动不闪退 + 设置页问题反馈 Tab 渲染正常 + 点击生成诊断报告异步执行 + 大报告按大小统一切分 + 5 语 xaml 文案正确 |
 | 作用域 | 仅本仓库 fork 私有，不推 upstream |
 | 详见 | `LOG.md` 2026-08-16（fix/diagnostic-export-refactor 启动 / 实施完成 / 合入 staging 三段） |
+
+### 7.18 fix/depot-special-memorial-tab（2026-09-07 已合入 staging）
+
+| 项 | 内容 |
+|----|------|
+| 用途 | 修复「仓库识别」自 2026-09-05 起持续 TaskChainError：游戏在仓库页新增「特别纪念」tab 致标签栏重排，`DepotMaterialTab` / `DepotAllTab` 老模板与老 ROI 全部失配 |
+| 根因 | 游戏侧 2026-09-04 前后内容更新加 tab（非版本更新，用户无感知）；同一 09-03 18:19 构建二进制 09-03 18:42 成功（`DepotMaterialTab.png` 0.9927）、09-05 起全失败；NCC 实测失败帧老模板仅 0.4613 / 0.2504 且最高分位置仍在原 ROI 内 → 标签栏位置未变、像素内容已变 |
+| 修复 | 摘取上游 dev-v2 `da5ccfe4ed`（fix: 增加特别纪念 tab 后仓库识别报错，2026-09-04 16:48 +0800，**不在 v6.17.0 release 内**）+ `30ff4de669`（Auto Templates Optimization PNG 终版）：`tasks.json` 3 处 ROI（DepotAllTab `[452,0,281,134]`→`[450,0,300,138]`、DepotMaterialTab / DepotMaterialTabClicked `[1026,0,254,138]`→`[945,0,300,138]`）+ `resource/template/Depot/` 3 张 PNG 重截（77x34 / 131x33 / 120x34），仅资源零代码 |
+| 生命周期 | 2026-09-07 创建（从 staging 拉出） → 2026-09-07 `--no-ff` 合入 `staging`（`f580d7ed6d`） |
+| 关键 commit | `bba10f5675` |
+| 子修复分支 | 无（独立 fix） |
+| 验证 | 离线 NCC：新 `DepotMaterialTab` 对 09-05 / 09-07 失败帧均 0.9117（≥0.9 阈值）；`DepotAllTab` 失败帧摄于初始未点击态测不出高分属正常（信任上游实测）；部署后待实机跑「仓库识别」 |
+| 上游收敛 | 上游下个 release（v6.17.1+）携带同一改动，届时 WORKFLOW.md 同步自然收敛，无冲突风险 |
+| 作用域 | 仅资源同步上游修复，不推 upstream（上游已有） |
+| 详见 | `LOG.md` 2026-09-07（启动 / 实施完成 / 合入 staging 三段）；排查方法论沉淀于 §3.5 |
+
+### 7.19 feat/upstream-v617-sync（2026-08-13 已合入 staging，2026-08-30 晋升 branch）
+
+| 项 | 内容 |
+|----|------|
+| 用途 | 拉取上游 v6.16.5 → v6.17.0 共 4467 commit 三方合并（fork base `c8c8e75be5` 无父节点，通过 `git replace --graft` 接 `6147357bd0` v6.14.0 release 走 3-way 合并）；解决基线冲突 + 上游 dev-v2 → master-v2 全量切换 + fork 私有 C++ 整体回归 master |
+| 关键阶段 | Phase A 移除 `feat/auto-recruit-3star-to-4star` + Phase B AGENTS/CHANGELOG/csproj/.gitignore 清理 + Phase D 上游 4467 commit 合入；2026-08-07 master-v2 对齐放弃 fork 私有 C++ + tasks.json account-switch 区块回归 master + 恢复 expedite_min_level C++ |
+| 生命周期 | 2026-07-30 创建（从 staging 拉出）→ 2026-08-07 全量完成（8 commit + 1 PR） → 2026-08-13 `706f8babf4` merge 上游 v6.16.5 + 8/30 三个 fix |
+| 关键 commit | `a92a8a9124`（merge: upstream v6.17.0 三方合并 — 同步基线）→ `706f8babf4`（v6.16.5 跟进） → `a0f530912c`（staging → branch 晋升） |
+| 子修复分支 | 无（合并主线 + 8/30 三个独立 fix 走 §7.10/§7.11/§7.12/§7.13） |
+| 作用域 | 仅本仓库 fork 同步操作，不推 upstream |
+| 详见 | `LOG.md` 2026-07-30 ~ 2026-08-13 全部阶段；§2.4 staging 内容历史记录 |
+
+### 7.20 feat/sync-isolation（2026-09-03 已合入 staging）
+
+| 项 | 内容 |
+|----|------|
+| 用途 | 抽离 fork 私有逻辑到独立 partial class 文件 + 编写 `tools/inject-recruitnow-slot.py` 任务 JSON Slot 注入脚本；为 v6.18 同步准备最小冲突面 |
+| 关键实现 | `refactor(sync-isolation): 抽离 fork 私有逻辑到独立 partial class/脚本`（`9d79bc0dc4`，27 文件 +1289 -779）：C# 5 个 partial（`TaskQueueViewModel.AccountCycle.cs` / `ToolboxViewModel.AccountScopedData.cs` / `CopilotViewModel.CopilotSet.cs` / `RecruitTask.Expedite.cs` / `RecruitSettingsUserControlModel.Expedite.cs` / `StartUpSettingsUserControlModel.AccountCycle.cs`）+ WPF 配置向后兼容 + Python `tools/inject-recruitnow-slot.py`（pre-merge --remove + post-merge --inject）+ `tools/auto-resolve-xaml-conflict.py` 5-lang xaml 冲突自动处理 |
+| 生命周期 | 2026-08-31 创建（从 staging 拉出） → 2026-09-03 `--no-ff` 合入 `staging`（`0d55649f63`） |
+| 关键 commit | `9d79bc0dc4` |
+| 子修复分支 | 无 |
+| 验证 | `tools/auto-resolve-xaml-conflict.py` 跑通；`tools/inject-recruitnow-slot.py` remove/inject 单元级联测试通过；本仓库 fork 私有 C# 类全部移至独立 partial，主类可与 upstream 三方合并零冲突 |
+| 作用域 | 仅本仓库 fork 私有重构（partial class 拆解），不推 upstream |
+| 详见 | `LOG.md` 2026-09-03（启动 / 实施完成 / 合入 staging 三段） |
+
+### 7.21 feat/fork-externalization（2026-08-30 已合入 staging）
+
+| 项 | 内容 |
+|----|------|
+| 用途 | 上游/下游一键脚本（`update-upstream` + `update-downstream`）+ 流程文档命令补全；合并上游时减少手动 git 操作（重置 master / fetch / branch -f） |
+| 关键实现 | `tools: 上游/下游一键脚本 (update-upstream + update-downstream) + 流程文档命令补全`（`b8f975fbf8`）：3 个文件 +286（Python 脚本 + WORKFLOW.md 命令补全）；后随 `e079795071` 追加 AGENTS/LOG 文档同步 |
+| 生命周期 | 2026-08-25 创建（从 staging 拉出） → 2026-08-25 `--no-ff` 合入 `staging`（`52caa00cd6` merge） |
+| 关键 commit | `b8f975fbf8`（工具实现） + `e079795071`（AGENTS/LOG 同步，2026-09-16 cherry-pick 验证为空 commit） |
+| 子修复分支 | 无 |
+| 作用域 | 仅本仓库 fork 私有工具 + 文档，不推 upstream |
+| 详见 | `LOG.md` 2026-08-25（启动 / 实施完成 / 合入 staging 三段） |
+
+### 7.22 feat/upstream-v618-sync（beta.1 2026-09-16 合入 staging；v6.18.0 release 跟进 2026-09-25 合入 staging）
+
+| 项 | 内容 |
+|----|------|
+| 用途 | 拉取上游 v6.17.0 → v6.18.0-beta.1 共 170 commit 三方合并（master-v2 head `ec14df252ae` Release v6.18.0-beta.1）；含 12 项新功能（RunningState → RunControlState + RunOwner 运行时重构 / SwitchTheme / MaterialSynthesis / Yituliu OpenAPI / 基建副手换班 / Roguelike 黑流树海 / GPU 驱动信息 / Achievement 等） |
+| 关键策略 | 阶段 0 仓库卫生 + cherry-pick `e079795071`（验证为空，§7.21 早合）+ 删 feat/* 三个本地分支 + master reset upstream + 备份；阶段 4-6 三方合并 + 12 文件手解（实际冲突面远小于预估 30-50，fork partial class 隔离生效）+ fork marker 12 项验证；阶段 7 C# API 迁移（Idle→GetIdle / HandleStopping 无参化 / SetStopped() 签名对齐）+ C++ 编译环境重建（VS 2026 实例消失 → portable-msvc 14.51 到 C:\msvc-portable + Ninja）472/472 成功；阶段 8-10 部署 + 冒烟 + 文档 |
+| 关键冲突区 | HIGH: TaskQueueViewModel.cs / ToolboxViewModel.cs / IssueReportUserControlModel.cs（保留 fork §7.17 分卷重写）/ 5-lang xaml / tasks.json 11 处（Swipe specialParams ×8 + CharsNameOcrReplace + StartButton1 + InfrastSmiley + BattleSelectFormation + BattleAvatarDialog + 仓库 tab）/ AsstProxy→OnAllTasksCompleted 链路（WORKFLOW §6.5.5 直调描述过时） |
+| 生命周期 | 2026-09-16 创建（从 staging 拉出） → 2026-09-16 merge `6d32144858` 合入 staging → 2026-09-25 merge `0a3884231d`（v6.18.0 release，134 commit）+ `1b7b087aae`（编译修复三连）合入 staging |
+| 关键 commit | `6d32144858`（merge: upstream/master-v2 v6.18.0-beta.1 三方合并 — 同步基线）+ API 迁移修复 commit；`0a3884231d`（merge: upstream/master-v2 v6.18.0 → staging）+ `1b7b087aae`（fix(post-merge) 编译修复三连） |
+| 子修复分支 | 无 |
+| 验证 | dotnet build 0 错误；MaaCore 472/472 编译成功；install-staging 部署完成（STARTUP_HOOKS=libloader ✓）；启动冒烟 AsstLoadResource ret: true 无闪退；fork marker 12 项全命中；MaaCore.dll MD5 与 build 产物一致；8 项实机冒烟待用户日常验证。v6.18.0 跟进（09-25）：dotnet build 0 错误；MaaCore 249/249（含上游新增 AutoRaisePotentialTaskPlugin 等）；两轮冒烟（22:34/22:40）`ret: true` + 0 Unhandled/Fatal；merge-base = `23feeddc53` = 上游 release commit；阶段 12：三次 OOM（第三方 DLL 半匹配）→ 同步 5 DLL 后 CPU 模式 `det 1 rec 1 ocr 1`（3091ms）全任务链跑通 + GPU 模式 `det 1 rec 1 ocr 1`（3255ms）开始唤醒→基建链 0 错误；阶段 13：LOG 阶段 11 乱码重建 + AGENTS §9 用上游原文重写 + WORKFLOW §9 错误 8-11 沉淀；post-merge-validate 8/8（[8] 为新增 DLL 同步检查） |
+| 部署备注 | C++ 工具链实际位于 `E:\Tools\msvc-portable\msvc\`（`C:\msvc-portable` 为 junction 指向同处；MSVC 14.51.36231 + SDK 28000，env 模板 `setup_x64.bat` 以 `%~dp0` 自定位，两路径均可）；CMake 用 Ninja + cl（preset `windows-publish-x64` 会报 "generator platform: x64 Does not match"，须 `cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_{C,CXX}_COMPILER=cl`）；上游 release 窗口 bump 的子模块须在 MaaCore 打包前 `git submodule update`（否则 DLL 用旧 MaaUtils 编出），部署后跑 `tools/post-merge-validate.ps1` 第 [8] 项核对第三方 DLL 同步（见 WORKFLOW.md §9 错误 8） |
+| 作用域 | 仅本仓库 fork 三方同步操作，不推 upstream |
+| 详见 | `V618_SYNC_PLAN.md`（项目根，压缩执行计划）；`LOG.md` 2026-09-16 阶段 0-10 + 2026-09-25 阶段 11-13 全部记录；`WORKFLOW.md` §9 错误 8-11（合并问题复盘主体） |
+
+### 7.23 fix/data-account-ui-hardening（2026-10-05 已合入 staging）
+
+| 项 | 内容 |
+|----|------|
+| 用途 | 账号轮换数据归属 UI 加固 5 项：同步时间标账号（`LastOperBox/DepotSyncTimeAccountedText` 派生属性，任务队列页库存更新提示 + 数据更新设置面板 3 处换绑）+ 账号下拉运行中锁定失效修复（ToolboxView `Idle and Inited` → `Run.Idle and Run.Inited`，v6.18 `91cdccbb17` RunControlState 重构移除 VM 级 `Idle`/`Inited` 后的悬空绑定回归）+ 一图流 OpenAPI 干员同步跨账号桶竞态（`StartOperBoxFromYituliuApiAsync` 入口捕获桶 key，完成后桶已变则丢弃+告警，堵 fire-and-forget 轮换推进后写错桶）+ 轮换结束/失败/异常后数据桶回锚首个账号（`ReanchorDataAccountToConfigured`，手动停止不回锚）+ 轮换列表增删改后刷新工具箱账号下拉 |
+| 生命周期 | 2026-10-05 创建（从 staging 拉出） → 2026-10-05 `--no-ff` 合入 `staging`（`5862c1a5d5`） |
+| 关键 commit | `5b3bb1c1d9`（fix(data-account): 账号轮换数据归属 UI 加固，8 files +77 -7） |
+| 子修复分支 | 无（独立 fix） |
+| 验证 | dotnet build 0 错误 / 57 warning（均预存）；publish + nbeauty2 部署 install-staging（STARTUP_HOOKS 在位）；冒烟 `AsstLoadResource ret: true` + 0 Unhandled/Fatal + 进程存活；`c:Binding 'Idle` 0 残留。留用户实机：轮换跑批看时间带账号名跳变 + Yituliu 跨号丢弃告警 |
+| 边界 | 账号改名不迁移旧桶文件（§7.14 既有行为，下拉短暂新旧两行并存）；工具箱两 Tab 不加账号后缀（旁有账号名避免重复）；Yituliu token 单账号语义仅在丢弃时日志说明，轮换中禁用该模式属后续可选增强 |
+| 作用域 | 仅本仓库 fork 私有，不推 upstream |
+| 详见 | `LOG.md` 2026-10-05（启动 / 实施完成 / 合入 staging 三段） |
 
 
 ## 8. 关键参考链接
@@ -537,3 +638,192 @@ Select-String -Path install-staging/MAA.runtimeconfig.json -Pattern "STARTUP_HOO
 - 作业站后端：[ZootPlusBackend](https://github.com/ZOOT-Plus/ZootPlusBackend)
 - 官网前端：[maa-website](https://github.com/MaaAssistantArknights/maa-website)
 - 深度学习：[MaaAI](https://github.com/MaaAssistantArknights/MaaAI)
+
+
+## 9. 上游开发约定（v6.18.0-beta.1 新增，merge from upstream master-v2）
+
+> 本节为 v6.18 上游新增的「MAA 开发约定」全量同步（原文 = 上游 `23feeddc53:AGENTS.md`），与 fork §1-§8 工作流并存。  
+> 上游 pre-commit / StyleCop / clang-format 强约束，本仓库 pre-commit run --all-files 仍按 §5 既有规则运行。
+
+### MAA 开发约定
+
+格式由 `.pre-commit-config.yaml` 钩子机器强制，各钩子有 files 范围；本地不处理好的话 GitHub CI 会定时代跑并生成额外的机器修复 commit，为避免此副作用，改完文件后须本地跑对应格式化（如 C++ 的 clang-formatter）。
+
+### C++（MaaCore）
+
+- 格式化用 `python tools/ClangFormatter/clang-formatter.py --input=<改动文件或其所在子目录>`（`--input` 收目录递归或单个文件），只传本次改动的范围，确需全仓库批量时才传 `src/MaaCore`（全量幂等但白扫全仓库）；版本需求：clang-format 23.1.1（对齐 `.pre-commit-config.yaml` 锁定版本）；5 位以上整数字面量加千分位撇（`65'535`，存量尚有漏改，勿照抄）。
+- 日志用 `"Utils/Logger.hpp"`，日志走 `<<` 流式格式，正文一律英文。旧代码中存在使用函数式日志的情况，勿照抄。合理使用 `__FUNCTION__`、`LogTraceFunction` 标注当前函数，避免手动在日志中标记。避免匿名命名空间，会导致在日志中输出为 `<anonymous namespace>`，不利于定位。
+- 字符串一律 UTF-8 `std::string`，中文裸写、禁 `u8""` 前缀；文件路径必须经 `asst::utils::path()` 或 `"xxx"_p` 字面量构造，仅 Win32 API 边界转 `to_osstring`。
+- 错误处理返回 `bool` / `std::optional` / 空指针并记日志，常规任务与配置链路不用异常。
+- 避免返回裸指针，如有需要，使用引用或智能指针；引用返回值须保证生命周期，禁止返回局部变量引用。
+- Json 序列化用 `meojson`，`#include <meojson/json.hpp>`。简单结构可考虑使用 `MEO_JSONIZATION` 宏生成序列化函数，如有复杂需求则需手写 `to_json` / `check_json` / `from_json`。检查 Json 字段、类型、范围、枚举值等，应在 `check_json` 中完成，`from_json` 返回 false 则会直接抛出异常，目前无返回 false 的情况。meojson 支持枚举的忽略大小写反序列化，但是如有 `_` 分隔符，则需要手动编写 `json::_reflection::enum_name_storage` 进行映射。
+
+### C# / WPF（MaaWpfGui）
+
+- 新 `.cs` 文件必须带 `stylecop.json` 模板规定的版权头，`file=` 值须等于实际文件名。
+- MVVM 框架是 Stylet：对话框 VM 继承 `Screen`，Root 用 `Conductor<Screen>.Collection.OneActive`，UserControl 子模型与列表项继承 `PropertyChangedBase`，配置树类继承 `NotifyPropertyChangedWithValue`；交互用 `Command="{s:Action 方法名}"` 直绑 VM 方法，不自建 ICommand。
+- 派生属性标 `[PropertyDependsOn(nameof(X))]` 并在构造函数调 `PropertyDependsOnUtility.InitializePropertyDependencies(this)`。
+- `MaaWpfGui.Configuration.` 命名空间内的类用纯 auto-property（Fody PropertyChanged 织入通知），命名空间外织入不生效，必须手动 `SetAndNotify`，否则 UI 静默不刷新。
+- 配置持久化与迁移归口 `ConfigFactory`（全局 `Root.Gui.X`、当前档案 `CurrentConfig.X`，保存自动防抖）；GUI 设置值的读取一律走 `SettingsViewModel.XxxSettings.X`（设置 VM 属性与配置双向同步，static 属性类型名限定），直取 `CurrentConfig` 仅限 `TaskQueue` 任务对象（多任务间切换当前设置需直读配置，其余设置一律走设置 VM）；新任务类型须在 `BaseTask` 注册 `[JsonDerivedType(typeof(XxxTask), typeDiscriminator: nameof(XxxTask))]`。
+- 服务在 Bootstrapper 用 StyletIoC 显式注册，跨对象取用走 `Instances.Xxx` 静态定位器，不做构造函数注入。
+- 回 UI 线程用 Stylet 的 `Execute.OnUIThread`（同步）或 `Execute.OnUIThreadAsync`；纯后台链路 await 加 `ConfigureAwait(false)`，后续要碰 UI 的不加。
+- 日志用 Serilog `Log.ForContext<T>()`，结构化占位、消息英文；UI 可见日志另走 `Instances.TaskQueueViewModel.AddLog`（Copilot 相关链路用 `Instances.CopilotViewModel.AddLog`）。如有需要，类内声明`private static readonly ILogger _logger = Log.ForContext<T>();`，避免反复 `ForContext`。
+- View 与 VM 命名镜像由 Stylet 按约定解析，放错命名空间运行时找不到 View：`XxxView` 对应 `XxxViewModel`，`XxxUserControl` 对应 `XxxUserControlModel`（VM 类名以 Model 结尾）。
+- TaskQueue 任务对象类的命名参考为 `XxxTask`，VM 为 `XxxTaskViewModel`，View 为 `XxxTaskView`，UserControl 为 `XxxTaskUserControl`；Settings 配置类的命名参考为 `XxxSettings`，配置 VM 为 `XxxSettingsViewModel`，配置 View 为 `XxxSettingsView`。
+
+### XAML 与本地化
+
+- 界面文本一律用 `controls:TextBlock` 而非原版 `TextBlock`；例外是文本样式需跟随宿主控件模板的场景（超链接、下拉选中项、按钮 Content、DataTemplate 内部等），这些用原版 `TextBlock`，不要套统一样式，保持原生表现。
+- 本地化 key 与主题 Brush 一律 `{DynamicResource ...}`，StaticResource 在语言或主题热切换后不刷新；引用本仓库自定义样式等不随主题/语言热切换的资源时用 StaticResource。
+- 提示文案 key 加 `Tip` 后缀（`ForceScheduledStart` 与 `ForceScheduledStartTip`），句内复用其他 key 写 `{key=Xxx}` 内联。
+- `TooltipBlock` 长文案按句界显式换行，一句一行即可；无句界的长句不必强行拆，由 TooltipText 默认 MaxWidth 500 的软换行兜底。资源串内写 `&#10;` 或字面换行均可，且必须声明 `xml:space="preserve"`，否则换行符被 XAML 归一化；各语言在自己句界处换行，行数不要求一致。
+- 固定选项的下拉框用 `LocalizedObservableList<T>`（`src/MaaWpfGui/Utilities/ValueType/LocalizedObservableList.cs`），构造给 (值, 本地化 key)，勿手动 GetString 固化 Display（热切换语言后该项停留旧语言）；ViewModel 订阅 `LocalizationHelper.LanguageChanged` 并在回调里 `RefreshLocalization()`；增删用自带 Add/Remove/Insert/Clear，勿直接操作 Items。
+- 设置页新增区块复用 Expander + Border + UserControl 既有结构（样板见 `SettingsView.xaml`），否则破坏搜索过滤与折叠持久化。
+
+### 资源与工程文件
+
+- `resource/tasks/tasks.json` 字段须在 TaskData 白名单内，自定义字段须配 `xxx_Doc` 注释字段，校验只在 `ASST_DEBUG` 加载期（Release 静默）；`next` 列表特殊引用用 `#` 前缀（`#self` / `#next` / `#back`）。
+- MaaCore 源文件由 CMake `file(GLOB_RECURSE)` 自动收集，新增 `.h/.cpp` 无需登记 CMakeLists。
+- 改 `Res/Localizations/*.xaml` 中 stub 相关文案（如 ErrorCongratulations）须同步 `src/MaaAppHostStub/MaaAppHostStub.cpp`，CI 有硬校验。
+
+### 文档维护
+
+- 改任一语言后同步其余四语言（zh-cn/zh-tw/en-us/ja-jp/ko-kr）的对应段落（行号未必对应）：语义一致即可，某语言本就缺段落则保持现状但提示。
+- 文档中的 UI 均指 WPF UI，修改时不必处理 Avalonia（MAAUnified）等社区实现的相关描述；明日方舟 PC 端不进文档。
+- 新活动/模式尚无官方译名时以各语言 UI 显示为准（见 `Res/Localizations/*.xaml`），UI 也无译文则写中文并括号加描述，勿自行发明译名。
+- docs 新增文档须建五语言同名文件，frontmatter 带 `icon` 与 `order`（侧边栏排序）；站内链接用相对路径，CI 有死链检查。
+
+### 发布 / 打包
+
+- Windows 完整包由 `.github/workflows/ci.yml`（正式）与 `.github/workflows/release-nightly-ota.yml`（Nightly）两条工作流各自独立打包，凡改打包产物或发布流程**必须同时同步两条**；`release-ota.yml` / `release-package-distribution.yml` 只基于已上传产物做差分分发，通常无需随动。
+- 禁止裸 `dotnet build -o build\bin\Debug`（不带 -r）：该目录是自包含产物，framework-dependent 的 runtimeconfig 与残留自包含宿主混装会致启动报错；重建 GUI 用 `dotnet publish -r win-x64 --self-contained true` 或 `dotnet build -r win-x64`。`dotnet publish` 不重建 MaaCore.dll，需单独 CMake 编译后放置。
+- CHANGELOG 由发版时统一整理，日常改动勿自行添加条目。
+
+### 测试
+
+- MaaCore 本地测试一律 Debug 构建：加载期检查整体在 `ASST_DEBUG` 内，Release 下零错误是假象。
+- MSB3026/MSB3021 构建复制失败时，挡构建的是占用仓库构建版 `build\bin\Debug\MAA.exe` 的进程（与安装版无关），临时验证程序引用 MaaWpfGui 时同理。
+- 文档站在主仓库 `docs/` 下直接跑，日常验证改完文件看 `pnpm dev` 热重载即可，无必要不跑 build；非交互 install 加 `CI=true`。
+
+## 10. 通用踩坑（v6.18 沉淀）
+
+本节沉淀不专属于上游同步的踩坑事项，跨分支 / 跨场景复用。  
+上游同步专用 SOP 见 [`WORKFLOW.md`](./WORKFLOW.md)（§5 graft / §6.5.x 冲突地图 / §8.2.1 NetBeauty / §11.1 8 维度总检）。
+
+### 10.1 commit message 反斜杠转义陷阱
+
+**症状**：
+
+```
+fatal: /: '/' is outside repository at 'C:/Users/.../FORK_MAA'
+```
+
+**根因**：PowerShell 5.1 + bash 混用 shell 时，commit message 含 `"`（双引号转义）会被 git 解析为路径 `/`，触发"outside repository"错误。
+
+**触发场景**：commit message 内嵌文件路径或 key 字符串时，含 `"` 转义双引号。
+
+**修复**：用 PowerShell here-string（单引号 `@'...'@`）定义变量再 `git commit -m $var`：
+
+```powershell
+$msg = @'
+fix(localization): 补 CurrentAccountLabel 5 语 key
+
+- TaskQueueView.xaml:80 引用 CurrentAccountLabel
+- 5 语 xaml 各 +1 行 <system:String x:Key=CurrentAccountLabel>...</system:String>
+'@
+git commit -m $msg
+```
+
+**首次踩坑记录**：commit `16b11a0e31` 第一次尝试失败（消息含 `"ToolboxTabRecruitHistory"`），改用 here-string 后通过。
+
+### 10.2 dead key 清理 SOP（§7.9 类型遗留）
+
+**症状**：`tools/post-merge-validate.ps1` 报错 `ko-kr.xaml missing key: XxxXxx`，但 4/5 语 xaml 仍残留该 key。
+
+**根因模式**：被回退的 feat/*（如 §7.9 `feat/recruit-history-tab`，2026-08-02 `a13825c68f`）引入的 localization key，C# 代码零引用但 xaml 字符串保留。ko-kr 因后续 PR 重构被清掉，其他 4 语残留。
+
+**清理步骤**：
+
+| # | 操作 | 命令 |
+|---|------|------|
+| 1 | 全仓 grep 残留 | `git grep -n "XxxKey" -- src/MaaWpfGui tools docs`（应为 0 命中） |
+| 2 | 4 语 xaml 同步删除 | 逐语 `<script>` 工具脚本（参考 `tools/_add_current_account_label.py` 模式）或 `edit` 工具 |
+| 3 | 同步 stale 检查项 | `tools/post-merge-validate.ps1` 与 `tools/auto-resolve-xaml-conflict.py` 同步删除 key 检查项 |
+| 4 | 验证 | 重跑 `post-merge-validate.ps1` 应 0 missing key 报错；`git grep` 应仍 0 命中 |
+| 5 | 重新部署 | xaml 编译进程序集（BAML），必须 `dotnet publish + nbeauty2` 才生效 |
+
+**首次踩坑实例**：`ToolboxTabRecruitHistory`（§7.9 已回退 `feat/recruit-history-tab`）—— 2026-09-16 commit `16b11a0e31` 全清（4 语 xaml 各 -1 行 + 2 脚本 stale 项）。
+
+### 10.3 修后冒烟 SOP
+
+**触发条件**：任何改动 WPF xaml / C# 代码 / C++ 代码 / 资源 tasks.json 后，验证构建+运行无回归。
+
+**5 步模板**：
+
+| # | 步骤 | 预期 |
+|---|------|------|
+| 1 | 停旧进程 | `Get-Process MAA -ErrorAction SilentlyContinue \| Stop-Process -Force -ErrorAction SilentlyContinue` |
+| 2 | 重新部署（如改 WPF / C++） | 见 [`WORKFLOW.md`](./WORKFLOW.md) §8.2（dotnet publish + nbeauty2 --usepatch） |
+| 3 | 启动 | `Start-Process "install-staging\MAA.exe" -WorkingDirectory "install-staging"` |
+| 4 | 等待 | `Start-Sleep -Seconds 18`（足够 LoadResource + 网络请求 tasks.json） |
+| 5 | 验证三连 | `AsstLoadResource ret: true`（debug/gui.log 末行）+ 0 errors（`grep -c "Unhandled\|Fatal"`）+ 进程存活（`Get-Process MAA`） |
+| 6 | 收尾 | `Stop-Process -Name MAA -Force` |
+
+**首次踩坑实例**：2026-09-16 19:28 / 19:29 / 22:24 三次冒烟均通过 `ret: true`、0 错误、进程存活。
+
+### 10.4 MAA HttpClient 代理配置：gui.new.json vs gui.json 陷阱
+
+**症状**：设置了本地代理（Clash / SS / 其他）让 MAA 外部 HTTP（api.maa.plus / Penguin / Yituliu / GitHub）走代理，重启 MAA 后仍走默认直连；`gui.log` 无 `Rebuild HttpClient with proxy` 行；外部请求要么 `TaskCanceledException: Timeout 15s` 要么 `SSL EOF`。
+
+**根因模式**：MAA 的新配置实际读 `install-staging/config/gui.new.json`（System.Text.Json `Root` 对象，`ConfigFactory.cs:43`），**不是** `install-staging/config/gui.json`（legacy Newtonsoft 扁平 key-value）。两者并存但语义不同：
+
+| 文件 | 格式 | 读取方 | 代理字段路径 |
+|------|------|--------|------------|
+| `config/gui.new.json` | 嵌套对象（new） | `ConfigFactory.Root`（System.Text.Json，`ConfigFactory.cs:43`） | `Update.Proxy` / `Update.ProxyType`（顶层 `Update` 子对象） |
+| `config/gui.json` | 扁平 key-value（legacy） | `ConfigurationHelper`（Newtonsoft，`ConfigurationHelper.cs:317`） | `Global.VersionUpdate.Proxy` / `Global.VersionUpdate.ProxyType` |
+
+迁移代码（`Helper/ConfigConverter.cs:81-83`）只对 legacy 配置触发，不会把 `Global.VersionUpdate.Proxy` 自动搬到 `Root.Update.Proxy`。new-format 配置彻底绕过 migration。
+
+**正确做法**：
+
+| # | 操作 | 命令 |
+|---|------|------|
+| 1 | 启动 MAA 后查代理是否挂载 | `Select-String -Path install-staging/debug/gui.log -Pattern 'Rebuild HttpClient with proxy'` |
+| 2 | 若无日志，编辑正确文件 | `install-staging/config/gui.new.json`，找 `"Proxy": ""`，改为 `"Proxy": "127.0.0.1:7897"` |
+| 3 | JSON 不破坏校验 | `[System.IO.File]::ReadAllText('install-staging/config/gui.new.json') \| ConvertFrom-Json` 应成功，`$result.Update.Proxy` 应为代理地址 |
+| 4 | 重启 MAA | HttpService 是单例（`Bootstrapper.cs:902 InSingletonScope`），构造时一次挂代理；改配置必须重启 |
+| 5 | 验证 | 重启后 gui.log 应有 `[INF][HttpService] Rebuild HttpClient with proxy Http://127.0.0.1:7897` |
+
+**代理格式**：`Proxy` 不含 `://` 时自动加 `ProxyType + "://"` 前缀（`HttpService.cs:52`）。例：`"127.0.0.1:7897" + ProxyType="Http"` → `Http://127.0.0.1:7897`；SOCKS5 填 `127.0.0.1:7897` + `ProxyType=Socks5`。
+
+**首次踩坑记录**：2026-09-19 — fork 用户报 MAA 跑日常 Penguin/Yituliu 报数失败（直连 SSL EOF）。在 `gui.json` 的 `Global` 加 `VersionUpdate.Proxy` 键失败，日志无 `Rebuild HttpClient with proxy`。根因即上表 new vs legacy 路径混淆。改 `gui.new.json` 的 `Update.Proxy` 字段后 1 分钟内日志出现代理行，api.maa.plus 返回 304。**Proxy / ProxyType 字段位置在 `gui.new.json` 顶层 `"Update": { ... }` 子对象里，不是顶层散落，也不是 `Global` 子对象里**。
+
+### 10.5 MaaUtils 子模块 bump 与第三方 DLL 同步（2026-09-25 沉淀）
+
+**症状**：合并上游后新构建的 MAA 跑「开始唤醒」即 `TaskChainError OutOfMemory`（`Unhandled out of memory in task thread`），GPU / CPU 模式均复现；机器内存充裕（RAM 5.4/15.8 GB 空、VRAM 1183/8188 MiB），显非真 OOM。
+
+**根因**：第三方依赖 DLL 的真身在 **`src/MaaUtils` 子模块内**（`MaaUtils/MaaDeps/runtime/maa-x64-windows/`，vcpkg 安装树 `MaaUtils/MaaDeps/vcpkg/installed/maa-x64-windows/`）。子模块 bump（如 v6.18.0 同步 `0c2556cf` → `6e9ba33`）会**整套替换** onnxruntime / fastdeploy / opencv 的 ABI：新 MaaCore 链接新 import lib，而 `install-staging/` 若仍留旧 DLL（cmake --install 未生效或手动部署漏拷贝），运行时半匹配 → `OcrPack::check_and_load` 内 DBDetector/Recognizer 构造抛 `bad_alloc`。
+
+**定位技巧**（LogTraceFunction RAII 特性）：
+
+| # | 手段 | 判读 |
+|---|------|------|
+| 1 | 对比失败帧 `asst.log`：`check_and_load \| enter` 后无 `det 1 rec 1 ocr 1` | `LogTraceFunction` 是 RAII 析构打印，异常穿栈也打 leave；无 det/rec/ocr 行 = 异常抛在三个模型加载之内 |
+| 2 | `Compare-Object` build/bin 与 install-staging 的 DLL `Name+Length` | 尺寸差 = 部署漏同步（本次 onnxruntime 80,622,080 vs 18,998,784） |
+| 3 | 修复 | `Copy-Item build\bin\{onnxruntime_maa,fastdeploy_ppocr_maa,opencv_world4_maa,opencv_world4d_maa,DirectML}.dll install-staging\ -Force` 后重测 |
+
+**防复发**：`tools/post-merge-validate.ps1` 第 [8] 项已加入 7 个 DLL 尺寸一致性检查（含 MaaCore.dll / MaaUtils.dll）。凡动过 `src/MaaUtils` 子模块指针的合并，部署后必须重跑该脚本。
+
+**首次踩坑记录**：2026-09-25 v6.18.0 release 同步（阶段 12）——`0a3884231d` merge + 子模块 bump 后 22:49/22:59/23:01 三次 OOM；23:05 尺寸对比定位，23:09 同步 DLL 后 `det 1 rec 1 ocr 1`（3091ms）恢复，全任务链跑通。详见 `LOG.md` 2026-09-25 阶段 12。
+
+> 完整症状 / 诊断 / 修复流程与编码事故 SOP 见 [`WORKFLOW.md`](./WORKFLOW.md) §9 错误 8-11（WORKFLOW.md 为 fork 私有文件，合并上游时不会被覆盖；本文件上游有同路径文件，合并专项沉淀以 WORKFLOW.md 为准，此处仅存索引）。
+
+---
+
+**§10 与其它章节互引**：
+- §10.1 通用 → 所有 commit 操作前
+- §10.2 dead key → 任何 feat/* / fix/* 回退后
+- §10.3 冒烟 → 所有修改后必跑
+- §10.4 代理配置 → 任何「设置本地代理走 Clash」类需求
+- §10.5 子模块 bump → 任何 `git submodule update` / MaaUtils 指针变更后的部署与验证
+- 上游同步专项 → [`WORKFLOW.md`](./WORKFLOW.md)

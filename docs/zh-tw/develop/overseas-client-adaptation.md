@@ -9,7 +9,7 @@ icon: ri:earth-fill
 
 在開始本教學之前，請確保您已經：
 
-1. 安裝並正確配置所需軟體：請參考官服或對應客戶端的 `README.md`，確保目前支援的功能皆可正常執行。
+1. 安裝並正確配置所需軟體，確保目前支援的功能皆可正常執行。
 2. 閱讀 [任務流程協議](../protocol/task-schema.md)：對各欄位的含義與用法有基本了解，並理解 `@`、`#` 類型任務的定義。
 3. 理解資源覆蓋邏輯：外服的 `task.json` 與範本圖片中未提及或缺失的內容，會自動以官服內容作為備選；若外服的 `task.json` 中已定義相關欄位，則會覆蓋並重寫官服的設定。
 4. 具備基本英文能力：需能閱讀英文日誌（Log），並能透過日誌分析缺失的圖片或資訊。
@@ -26,7 +26,7 @@ icon: ri:earth-fill
 
 1. 使用模擬器內建的截圖工具進行擷取並儲存。
 2. 截圖尺寸需大於 `1280*720`，長寬比為 `16:9`。
-3. 截圖中不應包含無關內容（如：系統任務欄、狀態列、通知中心等）。
+3. 截圖中不應包含無關內容（如：系統工作列、狀態列、通知中心等）。
 4. 確保截圖涵蓋所有需要辨識的內容。
 
 為了裁剪圖片並獲取文字或圖片的 `ROI`，建議使用 `MaaAssistantArknights/tools/ImageCropper` 工具。
@@ -39,7 +39,7 @@ icon: ri:earth-fill
 
 ### 安裝依賴項目
 
-Windows 用戶推薦直接執行 `install.bat`，或手動安裝：
+Windows 使用者推薦直接執行 `install.bat`，或手動安裝：
 
 ```shell
 python -m pip install -r requirements.txt
@@ -99,8 +99,8 @@ amplified roi: 426, 272, 177, 201
 
 例如：
 
-- 美服的 `task.json` 位置為 `MaaAssistantArknights\resource\global\YoStarEN\resource\tasks.json`。
-- 官服的 `task.json` 位置為 `MaaAssistantArknights\resource\tasks.json`。
+- 美服的 `task.json` 位置為 `MaaAssistantArknights\resource\global\YoStarEN\resource\tasks\tasks.json`。
+- 官服的 `task.json` 位置為 `MaaAssistantArknights\resource\tasks\tasks.json`。
 
 找到對應任務後，將 `text` 欄位修改為該客戶端內顯示的內容。請注意，辨識內容可以是遊戲中完整內容的部分字串。
 
@@ -110,14 +110,14 @@ amplified roi: 426, 272, 177, 201
 
 ## 修改 ROI 範圍
 
-1. 開啟對應客戶端的 `task.json`（例如美服路徑： `MaaAssistantArknights\resource\global\YoStarEN\resource\tasks.json`）。
+1. 開啟對應客戶端的 `task.json`（例如美服路徑： `MaaAssistantArknights\resource\global\YoStarEN\resource\tasks\tasks.json`）。
 2. 找到對應需要修改 `roi` 範圍的任務，使用您準備好的外服截圖，根據 `amplified roi` 數值來調整 `roi` 的範圍大小。
 3. 通常情況下 `roi` 不需要修改，只有當辨識內容與官服的大小差距過大時才需要調整。
 4. 若外服客戶端的 `task.json` 中該任務不存在，則手動新增並填上 `roi` 欄位。
 
 ## 儲存設定並重新啟動軟體
 
-修改完成後，重新啟動軟體以載入文件並使修改生效。或者，您也可以在軟體目錄下新建一個 `DEBUG.txt` 再開啟軟體，如此一來每次點擊「Link Start」時程式都會重新載入範本與檔案，無需反覆重啟。
+修改完成後，重新啟動軟體以載入檔案並使修改生效。或者，您也可以在軟體目錄下新建一個 `DEBUG.txt` 再開啟軟體，如此一來每次點擊「Link Start」時程式都會重新載入範本與檔案，無需反覆重啟。
 
 檢查是否成功：
 
@@ -128,7 +128,7 @@ amplified roi: 426, 272, 177, 201
 
 有時候修改完 `task.json` 後發現程式仍無法正確執行，此時可以透過查看日誌來找出錯誤點，進而修改對應任務。
 
-日誌檔案位於軟體根目錄下，檔名為 `asst.log`。如果您是自行編譯 MAA，則日誌會在 `\x64\Release` 或 `x64\RelWithDebInfo` 資料夾中（具體路徑視編譯模式而定）。
+日誌檔案位於軟體根目錄的 `debug` 資料夾下，檔名為 `asst.log`。如果您是自行編譯 MAA，則日誌會在建置輸出目錄（如 `build\bin\RelWithDebInfo`）的 `debug` 資料夾中，具體取決於編譯時選擇的建置組態。
 
 以下是一段日誌範例：
 
@@ -156,7 +156,7 @@ amplified roi: 426, 272, 177, 201
 - `pre_task`：代表前一個執行的任務。
   此外，日誌還會記錄指令的執行狀況（如 `Call`）和 `OCR` 與 OCR 辨識資訊（如 `OcrPack::recognize`）。
 
-在範例日誌中，`"to_be_recognized"`,`"cur_retry":3,"retry_times":20` 表示已重複辨識 3 次（上限為 20 次），一旦達到上限就會跳過該任務並報錯。若先前的任務沒問題，基本可以確定是此處辨識出錯。此時應檢查日誌提到的任務，確認是否有對應的範本圖片檔案、`text` 文字是否正確、以及 `roi` 範圍是否精準？
+在範例日誌中，`"to_be_recognized"`、`"cur_retry":10,"retry_times":20` 表示已重複辨識 10 次（上限為 20 次），一旦達到上限就會跳過該任務並回報錯誤。若先前的任務沒問題，基本可以確定是此處辨識出錯。此時應檢查日誌提到的任務，確認是否有對應的範本圖片檔案、`text` 文字是否正確、以及 `roi` 範圍是否精準？
 
 透過檢查對應範本圖片，若發現外服範本資料夾中有該圖片，但尺寸明顯大於官服圖片，導致官服的 `roi` 設定無法正常辨識，此時就必須修改外服客戶端的 `task.json` 中的 `roi`，使其與外服圖片大小相符。
 

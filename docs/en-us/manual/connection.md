@@ -9,7 +9,7 @@ icon: mdi:plug
 
 MAA can automatically detect and fill in the ADB path, connection address, and connection configuration for a **single currently running emulator**.
 
-As of MAA v5.22.3, the following emulators and connection addresses are supported for detection:
+As of MAA v6.16.8, the following emulators and connection addresses are supported for detection:
 
 - BlueStacks 5: `127.0.0.1:5555/5556/5565/5575/5585/5595/5554`
 - MuMu Player: `127.0.0.1:16384/16416/16448/16480/16512/16544/16576`
@@ -165,7 +165,7 @@ For `C:\ProgramData\BlueStacks_nxt\bluestacks.conf`:
 
 ## Connection Configuration
 
-Select the configuration matching your emulator. If not listed, choose General Configuration. If that doesn't work, try any other available configuration.
+Select the configuration matching your emulator. If not listed, choose General Mode. If that doesn't work, try any other available configuration.
 
 For specific differences, see the [source code](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/dev-v2/resource/config.json#L57).
 
@@ -175,9 +175,11 @@ For specific differences, see the [source code](https://github.com/MaaAssistantA
 
 1. In `Settings` - `Connection Settings`, check `Enable MuMu Screenshot Enhanced Mode`. MAA will automatically try to get the installation path from the registry when you check this option.
 
-2. Enter the path to the `MuMu Player` or `MuMuPlayerGlobal-12.0` or `YXArkNights-12.0` folder in `MuMu Installation Path`, e.g., `C:\Program Files\Netease\MuMu Player`.
+2. Enter the root directory of the MuMu installation (i.e., the directory containing the `nx_device` or `shell` folder) in `MuMu Installation Path`, e.g., `C:\Program Files\Netease\MuMuPlayer`.
 
-3. If using MuMu Network Bridge, check `MuMu Network Bridge Mode` and manually enter the number of the corresponding emulator in the MuMu multi-instance manager, such as `0` for the main instance.
+3. If using MuMu Network Bridge, check `MuMu Network Bridge Mode` and manually enter the instance number of the corresponding emulator in the MuMu multi-instance manager, such as `0` for the main instance.
+
+**MuMu Touch Enhanced Mode**: Requires the official MuMu V6.3.2 or above; the Arknights-specific and Global editions are currently not supported. After `Enable MuMu Screenshot Enhanced Mode` is checked, check the `Enable MuMu Touch Enhancement` option below it to enable.
 
 ### LD Screenshot Enhanced Mode
 
@@ -197,14 +199,15 @@ AVD Screenshot Enhanced Mode is implemented in MaaFramework. Touch mode must be 
 
 1. In `Settings` - `Connection` - `Connection Preset`, select `Android Virtual Device (AVD)`.
 
-2. For `Touch Mode`, select `MaaFramework`.
+2. For `Touch Mode`, select `MaaFwAdb`.
 
 ## Touch Mode
 
-1. [Minitouch](https://github.com/DeviceFarmer/minitouch): An Android touch event handler written in C that operates on `evdev` devices and provides a Socket interface for external programs to trigger touch events and gestures. Starting with Android 10, Minitouch is no longer available when SELinux is in `Enforcing` mode.<sup>[source](https://github.com/DeviceFarmer/minitouch?tab=readme-ov-file#for-android-10-and-up)</sup>
-2. [MaaTouch](https://github.com/MaaAssistantArknights/MaaTouch): MAA's Java reimplementation of Minitouch that uses Android's native `InputDevice` and adds extra features. Compatibility with newer Android versions is still being tested. ~~Help us test it~~
-3. Adb Input: Directly calls ADB to use Android's `input` command for touch operations. Most compatible but slowest.
-4. [MaaFramework](https://maafw.com/): Delegates screenshot and touch commands to MaaFramework's control unit. Still being tested. ~~Help us test it x2~~
+1. [Minitouch](https://github.com/DeviceFarmer/minitouch): An Android touch event handler written in C that operates on `evdev` devices and provides a Socket interface for external programs to trigger touch events and gestures. Starting with Android 10, Minitouch is no longer available when SELinux is in `Enforcing` mode.<sup>[source](https://github.com/DeviceFarmer/minitouch?tab=readme-ov-file#for-android-10-and-up)</sup> (Default)
+2. [MaaTouch](https://github.com/MaaAssistantArknights/MaaTouch): MAA's Java reimplementation of Minitouch that uses Android's native `InputDevice` and adds extra features. (Experimental)
+3. ADB Input: Directly calls ADB to use Android's `input` command for touch operations. Only for physical devices running an older OS version; do not use it if other modes work. ADB Input swipes tend to drift — to avoid this, swipe speed is set very slow and swipe distances differ from other modes, so it cannot be used in scenarios requiring precise coordinate control. (Deprecated)
+4. [MaaFwAdb](https://maafw.com/): Delegates screenshot and touch commands to MaaFramework's control unit. Extra swipe is not supported: an extra swipe is a short "brake" swipe appended perpendicular to the end of the main swipe (tracing an L-shaped 90° turn), used to counteract list inertia, so pages that rely on it to prevent overshooting will overshoot in this mode. (Experimental)
+5. MuMu Touch Enhancement: Calls the touch interface of MuMu's external renderer process. Only appears in the touch mode dropdown after `Enable MuMu's screenshot enhancement mode` is checked, and automatically falls back to Minitouch when unavailable (experimental). Requires the official MuMu V6.3.2 or above; the Arknights-specific and Global editions are not supported yet. Supports operation in the MuMu "App Keep-Alive" (background keep-alive) scenario.
 
 ## ADB Lite
 

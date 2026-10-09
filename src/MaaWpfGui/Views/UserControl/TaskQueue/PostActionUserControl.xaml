@@ -58,12 +58,12 @@
                 <controls:TextBlock Text="{DynamicResource ExitSelf}" TextWrapping="Wrap" />
             </CheckBox>
             <hc:Divider />
-            <CheckBox
-                Margin="0,10"
-                IsChecked="{Binding IfNoOtherMaa}"
-                IsEnabled="{c:Binding 'Hibernate || Shutdown || Sleep'}">
-                <controls:TextBlock Text="{DynamicResource IfNoOtherMaa}" TextWrapping="Wrap" />
-            </CheckBox>
+            <StackPanel Margin="0,10" Orientation="Horizontal">
+                <CheckBox IsChecked="{Binding IfNoOtherMaa}" IsEnabled="{c:Binding 'Hibernate || Shutdown || Sleep'}">
+                    <controls:TextBlock Text="{DynamicResource IfNoOtherMaa}" TextWrapping="Wrap" />
+                </CheckBox>
+                <controls:TooltipBlock VerticalAlignment="Center" TooltipText="{DynamicResource IfNoOtherMaaTip}" />
+            </StackPanel>
 
             <CheckBox
                 Margin="0,10"
@@ -87,6 +87,17 @@
                 MouseRightButtonUp="{s:Action PostActionsAndOnce}">
                 <controls:TextBlock Text="{DynamicResource Shutdown}" TextWrapping="Wrap" />
             </CheckBox>
+
+            <hc:Divider />
+            <StackPanel
+                Margin="0,10"
+                HorizontalAlignment="Left"
+                Orientation="Horizontal">
+                <CheckBox IsChecked="{Binding SkipOnError}" MouseRightButtonUp="{s:Action PostActionsAndOnce}">
+                    <controls:TextBlock Text="{DynamicResource SkipPostActionOnError}" TextWrapping="Wrap" />
+                </CheckBox>
+                <controls:TooltipBlock TooltipText="{DynamicResource SkipPostActionOnErrorTip}" />
+            </StackPanel>
 
             <Button
                 Height="30"

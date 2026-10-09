@@ -28,7 +28,7 @@ namespace MaaWpfGui.ViewModels.UserControl.TaskQueue;
 /// <summary>
 /// 自动公招model
 /// </summary>
-public class RecruitSettingsUserControlModel : TaskSettingsViewModel, RecruitSettingsUserControlModel.ISerialize
+public partial class RecruitSettingsUserControlModel : TaskSettingsViewModel, RecruitSettingsUserControlModel.ISerialize
 {
     public const string LegacyRobotTag = "支援机械";
 
@@ -132,47 +132,8 @@ public class RecruitSettingsUserControlModel : TaskSettingsViewModel, RecruitSet
         set => SetTaskConfig<RecruitTask>(t => t.ForceRefresh == value, t => t.ForceRefresh = value);
     }
 
-    /// <summary>
-    /// Gets or sets 加急招募模式（合并总开关与星级门槛）：
-    /// 0 = 不使用加急；1 = 所有星级均加急；4/5/6 = 仅对应星级及以上使用加急
-    /// </summary>
-    public int ExpediteMode
-    {
-        get {
-            var config = GetTaskConfig<RecruitTask>();
-            if (config.UseExpedited is false) {
-                return 0;
-            }
-            return config.ExpediteMinLevel == 0 ? 1 : config.ExpediteMinLevel;
-        }
-        set {
-            bool expedited = value != 0;
-            bool? newUseExpedited = expedited;
-            int newMinLevel = value switch {
-                0 => 0,
-                1 => 0,
-                int v => v,
-            };
-
-            SetTaskConfig<RecruitTask>(
-                t => t.UseExpedited == newUseExpedited && t.ExpediteMinLevel == newMinLevel,
-                t => {
-                    t.UseExpedited = newUseExpedited;
-                    t.ExpediteMinLevel = newMinLevel;
-                });
-            NotifyOfPropertyChange(nameof(ExpediteMode));
-        }
-    }
-
-    /// <summary>
-    /// Gets 加急招募模式下拉框可选项。
-    /// </summary>
-    public LocalizedObservableList<int> ExpediteModeList { get; } = new(
-        (0, "ExpediteModeDisabled"),
-        (1, "ExpediteModeAll"),
-        (4, "ExpediteMode4"),
-        (5, "ExpediteMode5"),
-        (6, "ExpediteMode6"));
+    // feat/expedite-threshold: ExpediteMode 属性 + ExpediteModeList 下拉选项已下沉到 partial class
+    // RecruitSettingsUserControlModel.Expedite.cs. 减少与 upstream/master-v2 合并时本文件的冲突面。
 
     /// <summary>
     /// Gets the list of auto recruit selecting extra tags.
@@ -198,6 +159,31 @@ public class RecruitSettingsUserControlModel : TaskSettingsViewModel, RecruitSet
     {
         get => GetTaskConfig<RecruitTask>().Level3Choose;
         set => SetTaskConfig<RecruitTask>(t => t.Level3Choose == value, t => t.Level3Choose = value);
+    }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether 自动确认 3 星时保留招聘许可。
+    /// </summary>
+    public bool Level3RecruitmentPermitReserveEnabled
+    {
+        get => GetTaskConfig<RecruitTask>().Level3RecruitmentPermitReserveEnabled;
+        set => SetTaskConfig<RecruitTask>(
+            t => t.Level3RecruitmentPermitReserveEnabled == value,
+            t => t.Level3RecruitmentPermitReserveEnabled = value);
+    }
+
+    /// <summary>
+    /// Gets or sets 自动确认 3 星时保留的招聘许可数量。
+    /// </summary>
+    public int Level3RecruitmentPermitReserve
+    {
+        get => GetTaskConfig<RecruitTask>().Level3RecruitmentPermitReserve;
+        set {
+            value = Math.Clamp(value, 1, 999);
+            SetTaskConfig<RecruitTask>(
+                t => t.Level3RecruitmentPermitReserve == value,
+                t => t.Level3RecruitmentPermitReserve = value);
+        }
     }
 
     /// <summary>
@@ -302,7 +288,7 @@ public class RecruitSettingsUserControlModel : TaskSettingsViewModel, RecruitSet
     private void RefreshLocalization()
     {
         AutoRecruitSelectExtraTagsList.RefreshLocalization();
-        ExpediteModeList.RefreshLocalization();
+        ExpediteModeList.RefreshLocalization(); // feat/expedite-threshold: 见 partial class Expedite
     }
 
     private interface ISerialize : ITaskQueueModelSerialize
@@ -336,12 +322,14 @@ public class RecruitSettingsUserControlModel : TaskSettingsViewModel, RecruitSet
                 SelectExtraTags = recruit.ExtraTagMode,
                 Level3FirstList = firstTags,
                 PreserveTags = preserveTags,
+                Level3RecruitmentPermitReserve = recruit.Level3RecruitmentPermitReserveEnabled
+                    ? recruit.Level3RecruitmentPermitReserve
+                    : 0,
                 ChooseLevel3Time = recruit.Level3Time,
                 ChooseLevel4Time = recruit.Level4Time,
-                ReportToPenguin = SettingsViewModel.GameSettings.EnablePenguin,
-                ReportToYituliu = SettingsViewModel.GameSettings.EnableYituliu,
-                PenguinId = SettingsViewModel.GameSettings.PenguinId,
-                YituliuId = SettingsViewModel.GameSettings.PenguinId,
+                ReportToPenguin = SettingsViewModel.ThirdPartyServiceSettings.EnablePenguin,
+                ReportToYituliu = SettingsViewModel.ThirdPartyServiceSettings.EnableYituliu,
+                PenguinId = SettingsViewModel.ThirdPartyServiceSettings.PenguinId,
                 ServerType = Instances.SettingsViewModel.ServerType,
             };
 

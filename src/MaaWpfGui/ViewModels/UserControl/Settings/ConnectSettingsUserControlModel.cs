@@ -26,6 +26,7 @@ using JetBrains.Annotations;
 using MaaWpfGui.Configuration.Factory;
 using MaaWpfGui.Constants;
 using MaaWpfGui.Constants.Enums;
+using MaaWpfGui.Constants.Enums.Core;
 using MaaWpfGui.Extensions;
 using MaaWpfGui.Helper;
 using MaaWpfGui.Main;
@@ -52,11 +53,25 @@ public class ConnectSettingsUserControlModel : PropertyChangedBase
     {
         Instance = new();
         LocalizationHelper.LanguageChanged += Instance.RefreshLocalization;
+
+        // MuMu 触控勾选框的跨实例依赖须在 Instance 就绪后注册，
+        // 放进构造链会因静态构造重入拿到 null 的 Instance 而静默失败
+        PropertyDependsOnUtility.InitializePropertyDependencies(Instance.Extras.Mumu12);
     }
 
     private ConnectSettingsUserControlModel()
     {
         PropertyDependsOnUtility.InitializePropertyDependencies(this);
+
+        // 刷新截图方式选项的可用状态
+        Extras.Win32.UpdateScreencapMethodAvailability();
+
+        Extras.Win32.PropertyChanged += (_, e) => {
+            if (e.PropertyName == nameof(Win32Extra.MouseMethod))
+            {
+                NotifyOfPropertyChange(nameof(ShowWindowRestoreButton));
+            }
+        };
 
         // 从配置恢复时，若 MuMu 截图增强已启用，需将 MuMu 触控加入下拉列表
         if (ExtraConfig is MuMu12Extra { Enable: true })
@@ -194,7 +209,8 @@ public class ConnectSettingsUserControlModel : PropertyChangedBase
     public string AdbPath
     {
         get; set {
-            if (!Path.GetFileName(value).ToLower().Contains("adb"))
+            // 空路径视为用户清空输入、交由自动检测重填，不属于“文件名不含 ADB”
+            if (!string.IsNullOrWhiteSpace(value) && !Path.GetFileName(value).ToLower().Contains("adb"))
             {
                 var count = 3;
                 while (count-- > 0)
@@ -240,11 +256,31 @@ public class ConnectSettingsUserControlModel : PropertyChangedBase
 
     [PropertyDependsOn(nameof(ConnectConfig))]
     public ExtraConfig? ExtraConfig => ConnectConfig switch {
-        ConnectConfig.LDPlayer => ConfigFactory.CurrentConfig.Gui.ConnectSettings.Extras.LDPlayer,
-        ConnectConfig.MuMuEmulator12 => ConfigFactory.CurrentConfig.Gui.ConnectSettings.Extras.MuMuEmulator12,
-        ConnectConfig.PC => ConfigFactory.CurrentConfig.Gui.ConnectSettings.Extras.Win32Extra,
+        ConnectConfig.LDPlayer => Extras.LdPlayer,
+        ConnectConfig.MuMuEmulator12 => Extras.Mumu12,
+        ConnectConfig.PC => Extras.Win32,
         _ => null,
     };
+
+    private readonly ExtraConfigs Extras = new();
+
+    private class ExtraConfigs
+    {
+        public LDPlayerExtra LdPlayer { get; set; } = new();
+
+        public MuMu12Extra Mumu12 { get; set; } = new();
+
+        public Models.EmulatorConnectionExtra.Win32Extra Win32 { get; set; } = new();
+
+        public Bluestacks BluestacksExtra { get; set; } = new();
+
+        public record class Bluestacks
+        {
+            public string ConfigKeyword { get; set; } = string.Empty;
+
+            public string ConfigPath { get; set; } = string.Empty;
+        }
+    }
 
     public string ScreencapMethod { get; set; } = string.Empty;
 
@@ -550,7 +586,7 @@ public class ConnectSettingsUserControlModel : PropertyChangedBase
 
         if (TestLinkImage is null)
         {
-            TestLinkInfo = "Image is null";
+            TestLinkInfo = LocalizationHelper.GetString("ImageIsNull");
             return;
         }
 
@@ -559,7 +595,10 @@ public class ConnectSettingsUserControlModel : PropertyChangedBase
             case ConnectConfig.MuMuEmulator12:
                 if (ExtraConfig is MuMu12Extra muMu12Extra && muMu12Extra.Enable && ScreencapMethod != "MumuExtras")
                 {
-                    TestLinkInfo = $"{LocalizationHelper.GetString("MuMuExtrasNotEnabledMessage")}\n{ScreencapTestCost}";
+                    var mumuExtrasMsg = string.IsNullOrEmpty(muMu12Extra.EmulatorPath)
+                        ? LocalizationHelper.GetString("MuMuEmulatorPathEmptyError")
+                        : LocalizationHelper.GetString("MuMuExtrasNotEnabledMessage");
+                    TestLinkInfo = $"{mumuExtrasMsg}\n{ScreencapTestCost}";
                     return;
                 }
 
@@ -568,7 +607,10 @@ public class ConnectSettingsUserControlModel : PropertyChangedBase
             case ConnectConfig.LDPlayer:
                 if (ExtraConfig is LDPlayerExtra ldPlayerExtra && ldPlayerExtra.Enable && ScreencapMethod != "LDExtras")
                 {
-                    TestLinkInfo = $"{LocalizationHelper.GetString("LdExtrasNotEnabledMessage")}\n{ScreencapTestCost}";
+                    var ldExtrasMsg = string.IsNullOrEmpty(ldPlayerExtra.EmulatorPath)
+                        ? LocalizationHelper.GetString("LdEmulatorPathEmptyError")
+                        : LocalizationHelper.GetString("LdExtrasNotEnabledMessage");
+                    TestLinkInfo = $"{ldExtrasMsg}\n{ScreencapTestCost}";
                     return;
                 }
 
@@ -704,12 +746,6 @@ public class ConnectSettingsUserControlModel : PropertyChangedBase
             UpdateInstanceSettings();
             ConfigFactory.CurrentConfig.Gui.ConnectSettings.TouchMode = value;
 
-            // 同步 MuMu 触控增强勾选框状态（SetAndNotify 会自动去重，不会循环）
-            if (ExtraConfig is MuMu12Extra mumu)
-            {
-                mumu.EnableTouch = value == TouchMode.MumuExtras;
-            }
-
             // 触控模式决定控制器子类，Core 侧需重连才能重建控制器实例
             Instances.AsstProxy.Connected = false;
         }
@@ -722,8 +758,7 @@ public class ConnectSettingsUserControlModel : PropertyChangedBase
     /// <param name="mumuExtrasEnabled">MuMu 截图增强是否已启用。</param>
     public void OnMuMuExtrasEnableChanged(bool mumuExtrasEnabled)
     {
-        Execute.OnUIThread(() =>
-        {
+        Execute.OnUIThread(() => {
             var hasMumu = TouchModeList.Items.Any(item => item.Value == TouchMode.MumuExtras);
             if (mumuExtrasEnabled && !hasMumu)
             {
@@ -748,75 +783,101 @@ public class ConnectSettingsUserControlModel : PropertyChangedBase
         Instances.AsstProxy.AsstSetInstanceOption(InstanceOptionKey.KillAdbOnExit, KillAdbOnExit ? "1" : "0");
     }
 
+    /// <summary>
+    /// Gets or sets a value indicating whether 替换 ADB 进行中（含下载与解压全过程），期间禁用按钮防止并发写同一 adb.zip。
+    /// </summary>
+    public bool IsReplacingAdb
+    {
+        get; set {
+            if (SetAndNotify(ref field, value))
+            {
+                NotifyOfPropertyChange(nameof(CanReplaceAdb));
+            }
+        }
+    }
+
+    /// <summary>
+    /// Gets a value indicating whether 当前可触发替换 ADB（非进行中）。
+    /// </summary>
+    public bool CanReplaceAdb => !IsReplacingAdb;
+
     // UI 绑定的方法
     [UsedImplicitly]
     public async Task ReplaceAdb()
     {
-        if (!File.Exists(MaaUrls.GoogleAdbFilename))
+        IsReplacingAdb = true;
+        try
         {
-            string[] downloadUrls =
-            [
-                MaaUrls.GoogleAdbDownloadUrl,
-                MaaUrls.AdbMaaMirrorDownloadUrl,
-                MaaUrls.AdbMaaMirror2DownloadUrl
-            ];
-
-            bool downloadResult = false;
-            foreach (var url in downloadUrls)
+            if (!File.Exists(MaaUrls.GoogleAdbFilename))
             {
-                downloadResult = await Instances.HttpService.DownloadFileAsync(new(url), MaaUrls.GoogleAdbFilename);
-                if (downloadResult)
+                string[] downloadUrls =
+                [
+                    MaaUrls.GoogleAdbDownloadUrl,
+                    MaaUrls.AdbMaaMirrorDownloadUrl,
+                    MaaUrls.AdbMaaMirror2DownloadUrl
+                ];
+
+                bool downloadResult = false;
+                foreach (var url in downloadUrls)
                 {
-                    break;
+                    downloadResult = await Instances.HttpService.DownloadFileAsync(new(url), MaaUrls.GoogleAdbFilename);
+                    if (downloadResult)
+                    {
+                        break;
+                    }
+                }
+
+                if (!downloadResult)
+                {
+                    using var toast = new ToastNotification(LocalizationHelper.GetString("AdbDownloadFailedTitle"));
+                    toast.AppendContentText(LocalizationHelper.GetString("AdbDownloadFailedDesc")).Show();
+                    return;
                 }
             }
 
-            if (!downloadResult)
+            const string UnzipDir = "adb";
+            const string NewAdb = UnzipDir + "/platform-tools/adb.exe";
+
+            try
             {
-                using var toast = new ToastNotification(LocalizationHelper.GetString("AdbDownloadFailedTitle"));
-                toast.AppendContentText(LocalizationHelper.GetString("AdbDownloadFailedDesc")).Show();
+                if (Directory.Exists(UnzipDir))
+                {
+                    Directory.Delete(UnzipDir, true);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.Error("An error occurred while deleting directory: {Type}: {ExMessage}", ex.GetType(), ex.Message);
+                ToastNotification.ShowDirect(LocalizationHelper.GetString("AdbDeletionFailedMessage"));
                 return;
             }
-        }
 
-        const string UnzipDir = "adb";
-        const string NewAdb = UnzipDir + "/platform-tools/adb.exe";
-
-        try
-        {
-            if (Directory.Exists(UnzipDir))
+            try
             {
-                Directory.Delete(UnzipDir, true);
+                ZipFile.ExtractToDirectory(MaaUrls.GoogleAdbFilename, UnzipDir);
+            }
+            catch (Exception e)
+            {
+                _logger.Error(e, "UnzipFailedMessage");
+                ToastNotification.ShowDirect(LocalizationHelper.GetString("UnzipFailedMessage"));
+                return;
+            }
+
+            if (File.Exists(NewAdb))
+            {
+                AdbPath = NewAdb;
+                AdbReplaced = true;
+                ConfigFactory.CurrentConfig.Gui.ConnectSettings.AdbReplaced = true;
+                ToastNotification.ShowDirect(LocalizationHelper.GetString("SuccessfullyReplacedAdb"));
+            }
+            else
+            {
+                ToastNotification.ShowDirect(LocalizationHelper.GetString("FailedToReplaceAdbAndUseLocal"));
             }
         }
-        catch (Exception ex)
+        finally
         {
-            _logger.Error("An error occurred while deleting directory: {Type}: {ExMessage}", ex.GetType(), ex.Message);
-            ToastNotification.ShowDirect(LocalizationHelper.GetString("AdbDeletionFailedMessage"));
-            return;
-        }
-
-        try
-        {
-            ZipFile.ExtractToDirectory(MaaUrls.GoogleAdbFilename, UnzipDir);
-        }
-        catch (Exception e)
-        {
-            _logger.Error(e, "UnzipFailedMessage");
-            ToastNotification.ShowDirect(LocalizationHelper.GetString("UnzipFailedMessage"));
-            return;
-        }
-
-        if (File.Exists(NewAdb))
-        {
-            AdbPath = NewAdb;
-            AdbReplaced = true;
-            ConfigFactory.CurrentConfig.Gui.ConnectSettings.AdbReplaced = true;
-            ToastNotification.ShowDirect(LocalizationHelper.GetString("SuccessfullyReplacedAdb"));
-        }
-        else
-        {
-            ToastNotification.ShowDirect(LocalizationHelper.GetString("FailedToReplaceAdbAndUseLocal"));
+            IsReplacingAdb = false;
         }
     }
 
@@ -825,8 +886,12 @@ public class ConnectSettingsUserControlModel : PropertyChangedBase
     #region AttachWindow (Win32窗口绑定) 配置
 
     /// <summary>
-    /// Gets a value indicating whether to use AttachWindow mode instead of ADB connection.
+    /// Gets a value indicating whether to show the window restore button (PC 端 + *WithWindowPos 输入方式).
     /// </summary>
+    [PropertyDependsOn(nameof(ConnectConfig))]
+    public bool ShowWindowRestoreButton =>
+        IsPCConnectConfig && ExtraConfig is Models.EmulatorConnectionExtra.Win32Extra { MouseMethod: AsstWin32InputMethod.SendMessageWithWindowPos or AsstWin32InputMethod.PostMessageWithWindowPos };
+
     [PropertyDependsOn(nameof(ConnectConfig))]
     public bool IsPCConnectConfig => ConnectConfig == ConnectConfig.PC;
 

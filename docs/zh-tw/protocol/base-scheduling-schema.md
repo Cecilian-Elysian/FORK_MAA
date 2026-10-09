@@ -11,7 +11,9 @@ icon: material-symbols:view-quilt-rounded
 請注意，json 檔案不支援註解。文件中的註解僅供說明參考，請勿直接複製使用。
 :::
 
-[視覺化排班產生工具](https://ark.yituliu.cn/tools/schedule)
+[視覺化排班產生工具](https://ark.yituliu.cn/tools/scheduleV3)
+
+[自動產生基建排班表工具](https://riic.autos/)
 
 ## 完整欄位一覽
 

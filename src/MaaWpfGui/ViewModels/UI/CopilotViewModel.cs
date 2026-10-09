@@ -1,4 +1,4 @@
-// <copyright file="CopilotViewModel.cs" company="MaaAssistantArknights">
+﻿// <copyright file="CopilotViewModel.cs" company="MaaAssistantArknights">
 // Part of the MaaWpfGui project, maintained by the MaaAssistantArknights team (Maa Team)
 // Copyright (C) 2021-2025 MaaAssistantArknights Contributors
 //
@@ -27,6 +27,7 @@ using System.Windows.Input;
 using JetBrains.Annotations;
 using MaaWpfGui.Configuration.Factory;
 using MaaWpfGui.Constants;
+using MaaWpfGui.Constants.Enums;
 using MaaWpfGui.Helper;
 using MaaWpfGui.Main;
 using MaaWpfGui.Models;
@@ -53,28 +54,33 @@ namespace MaaWpfGui.ViewModels.UI;
 /// <summary>
 /// The view model of copilot.
 /// </summary>
-// 通过 container.Get<CopilotViewModel>(); 实例化或获取实例
+// 閫氳繃 container.Get<CopilotViewModel>(); 瀹炰緥鍖栨垨鑾峰彇瀹炰緥
 // ReSharper disable once ClassNeverInstantiated.Global
 public partial class CopilotViewModel : Screen
 {
     private readonly RunningState _runningState;
     private static readonly ILogger _logger = Log.ForContext<CopilotViewModel>();
     private static readonly SemaphoreSlim _semaphore = new(1, 1);
-    private readonly List<int> _copilotIdList = []; // 用于保存作业列表中的作业的Id，对于同一个作业，只有都执行成功才点赞
-    private readonly List<int> _recentlyRatedCopilotId = []; // TODO: 可能考虑加个持久化
+    private readonly List<int> _copilotIdList = []; // 鐢ㄤ簬淇濆瓨浣滀笟鍒楄〃涓殑浣滀笟鐨処d锛屽浜庡悓涓€涓綔涓氾紝鍙湁閮芥墽琛屾垚鍔熸墠鐐硅禐
+    private readonly List<int> _recentlyRatedCopilotId = []; // TODO: 鍙兘鑰冭檻鍔犱釜鎸佷箙鍖?
     private AsstTaskType _taskType = AsstTaskType.Copilot;
-    private readonly Dictionary<string, string> _copilotJsonPathMap = []; // 下拉框与实际作业 json 档案路径对照表
+    private readonly Dictionary<string, string> _copilotJsonPathMap = []; // 涓嬫媺妗嗕笌瀹為檯浣滀笟 json 妗ｆ璺緞瀵圭収琛?
 
     /// <summary>
-    /// 缓存的已解析作业，非即时添加的作业会使用该缓存
+    /// 缂撳瓨鐨勫凡瑙ｆ瀽浣滀笟锛岄潪鍗虫椂娣诲姞鐨勪綔涓氫細浣跨敤璇ョ紦瀛?
     /// </summary>
     private CopilotBase? _copilotCache;
-private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成后删除 maa:// 旧格式支持
+
+    /// <summary>
+    /// 输入框逐字符推送时，用于取消上一轮仍在途的解析/网络请求的令牌源
+    /// </summary>
+    private CancellationTokenSource? _updateFilenameCts;
+    private const string CopilotIdPrefix = "maa://";
     private const string CopilotNewIdPrefix = "prts://"; // 新格式前缀，prts://12345 为作业，prts://s12345 为作业集
     private const string CopilotNewSetIdPrefix = "prts://s"; // 新格式作业集前缀
     private static readonly string TempCopilotFile = Path.Combine(CacheDir, "_temp_copilot.json");
 
-    // VideoRecognition 已不支持：仅保留 json 作业
+    // VideoRecognition 宸蹭笉鏀寔锛氫粎淇濈暀 json 浣滀笟
     private static readonly string[] _supportExt = [".json"];
     private static readonly string CopilotJsonDir = Path.Combine(ConfigDir, "copilot");
     private const string StageNameRegex = @"(?:[a-z]{0,3})(?:\d{0,2})-(?:(?:A|B|C|D|EX|S|TR|MO)-?)?(?:\d{1,2})";
@@ -83,7 +89,7 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
     [GeneratedRegex(InvalidStageNameChars)]
     private static partial Regex InvalidStageNameRegex();
 
-    [GeneratedRegex(@"^(act\d+(side|mini)|a00\d+)_")]
+    [GeneratedRegex(@"^(act\d+(side|mini|d\d+)|a00\d+)_")]
     private static partial Regex SideStoryStageIdRegex();
 
     [GeneratedRegex(@"^(main|sub|tough|hard)_")]
@@ -100,11 +106,6 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
     public ObservableCollection<CopilotFileItem> FileItems { get; } = [];
 
     /// <summary>
-    /// Gets or sets a value indicating whether gets or sets whether the file dropdown popup is open.
-    /// </summary>
-    public bool IsFilePopupOpen { get => field; set => SetAndNotify(ref field, value); }
-
-    /// <summary>
     /// Gets or private sets the view models of Copilot items.
     /// </summary>
     public ObservableCollection<CopilotItemViewModel> CopilotItemViewModels { get; } = [];
@@ -118,14 +119,14 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
         DisplayName = LocalizationHelper.GetString("Copilot");
         AddLog(LocalizationHelper.GetString("CopilotTip"), showTime: false);
         _runningState = RunningState.Instance;
-        _runningState.StateChanged += (_, e) => {
-            Idle = e.NewState.Idle;
-            Inited = e.NewState.Inited;
-            Stopping = e.NewState.Stopping;
-        };
         LocalizationHelper.LanguageChanged += () => {
             DisplayName = LocalizationHelper.GetString("Copilot");
-            ClearLog();
+            SupportUnitUsageList.RefreshLocalization();
+            ModuleMapping = BuildModuleMapping();
+            foreach (var item in UserAdditionalItems)
+            {
+                item.RefreshLocalization();
+            }
         };
         UserAdditionalItems.CollectionChanged += (_, _) => {
             NotifyOfPropertyChange(nameof(UserAdditionalGridHeight));
@@ -152,7 +153,7 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
         };
     }
 
-    #region UI绑定及操作
+    #region UI缁戝畾鍙婃搷浣?
 
     #region Log
 
@@ -165,6 +166,10 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
     /// <param name="showTime">Whether show time.</param>
     public void AddLog(string? content, string color = UiLogColor.Trace, string weight = "Regular", bool showTime = true)
     {
+// Copilot 自动战斗期间也会启动停滞计时器（Start 通过 BeginRun 进入运行态），
+        // 这里的日志同样属于"有输出活动"，需要重置计时器，否则会误报任务卡住。
+        RunningState.Instance.NotifyOutputActivity();
+
         if (string.IsNullOrEmpty(content))
         {
             return;
@@ -215,16 +220,12 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
 
     #endregion Log
 
-    #region 属性
+    #region 灞炴€?
 
     /// <summary>
-    /// Gets a value indicating whether it is idle.
+    /// Gets the shared run control state for run-state bindings.
     /// </summary>
-    public bool Idle { get => field; private set => SetAndNotify(ref field, value); }
-
-    public bool Inited { get => field; set => SetAndNotify(ref field, value); }
-
-    public bool Stopping { get => field; set => SetAndNotify(ref field, value); }
+    public RunControlState Run => RunControlState.Instance;
 
     /// <summary>
     /// Gets or sets a value indicating whether the start button is enabled.
@@ -234,13 +235,13 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
     private int _copilotTabIndex = 0;
 
     /// <summary>
-    /// Gets or sets 作业类型，0：主线/故事集/SS 1：保全派驻 2：悖论模拟 3：其他活动
+    /// Gets or sets 浣滀笟绫诲瀷锛?锛氫富绾?鏁呬簨闆?SS 1锛氫繚鍏ㄦ淳椹?2锛氭倴璁烘ā鎷?3锛氬叾浠栨椿鍔?
     /// </summary>
     public int CopilotTabIndex
     {
         get => _copilotTabIndex;
         set {
-            if (!Idle)
+            if (!_runningState.GetIdle())
             {
                 return;
             }
@@ -250,10 +251,7 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
                 UseCopilotList = false;
             }
 
-            if (!SetAndNotify(ref _copilotTabIndex, value))
-            {
-                return;
-            }
+            SetAndNotify(ref _copilotTabIndex, value);
         }
     }
 
@@ -276,22 +274,22 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
             var copilotRoot = Path.Combine(ResourceDir, "copilot");
             var fullPath = Path.IsPathRooted(value) ? value : Path.Combine(copilotRoot, value);
 
-            /* 神秘代码（作业站 ID），交给 FileName 处理 */
+            /* 绁炵浠ｇ爜锛堜綔涓氱珯 ID锛夛紝浜ょ粰 FileName 澶勭悊 */
             if (IsCopilotCode(value))
             {
                 Filename = value;
             }
-            /* 相对/绝对路径 */
+            /* 鐩稿/缁濆璺緞 */
             else if (File.Exists(fullPath))
             {
                 Filename = fullPath;
             }
-            /* copilot 文件夹下的文件名 */
+            /* copilot 鏂囦欢澶逛笅鐨勬枃浠跺悕 */
             else if (_copilotJsonPathMap.TryGetValue(Path.GetFileName(value), out var mappedPath))
             {
                 Filename = mappedPath;
             }
-            /* maybe 是其他神秘代码，交给 FileName 处理 */
+            /* maybe 鏄叾浠栫绉樹唬鐮侊紝浜ょ粰 FileName 澶勭悊 */
             else
             {
                 Filename = value;
@@ -317,13 +315,13 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
 
     private string ProcessFilePath(string value)
     {
-        // 神秘代码不按文件路径处理，原样透传
+        // 绁炵浠ｇ爜涓嶆寜鏂囦欢璺緞澶勭悊锛屽師鏍烽€忎紶
         if (string.IsNullOrWhiteSpace(value) || IsCopilotCode(value) || File.Exists(value))
         {
             return value;
         }
 
-        // 从对照表取得完整 json 档案路径
+        // 浠庡鐓ц〃鍙栧緱瀹屾暣 json 妗ｆ璺緞
         if (_copilotJsonPathMap.TryGetValue(value, out var fullPath))
         {
             return fullPath;
@@ -355,46 +353,36 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
     }
 
     /// <summary>
-    /// 判断输入是否为作业站神秘代码（maa://、prts://、prts://s 前缀、s12345 或纯数字）
+    /// 鍒ゆ柇杈撳叆鏄惁涓轰綔涓氱珯绁炵浠ｇ爜锛坢aa://銆乸rts://銆乸rts://s 鍓嶇紑銆乻12345 鎴栫函鏁板瓧锛?
     /// </summary>
     private static bool IsCopilotCode(string value)
     {
         return TryParseCopilotCode(value, out _, out _);
     }
 
-    // TODO: 作业站迁移完成后删除此方法（旧格式 maa:// 和纯数字无法区分类型，届时所有格式都自带类型信息）
 
     /// <summary>
-    /// 判断是否为类型不明确的旧格式代码（maa:// 或纯数字，无法区分作业/作业集）
-    /// </summary>
-    private static bool IsAmbiguousCopilotCode(string value)
-    {
-        return value.StartsWith(CopilotIdPrefix, StringComparison.OrdinalIgnoreCase)
-            || int.TryParse(value, out _);
-    }
-
-    /// <summary>
-    /// 作业站代码类型
+    /// 浣滀笟绔欎唬鐮佺被鍨?
     /// </summary>
     private enum CopilotCodeType
     {
-        /// <summary>不是作业站代码</summary>
+        /// <summary>涓嶆槸浣滀笟绔欎唬鐮?/summary>
         None,
 
-        /// <summary>单个作业</summary>
+        /// <summary>鍗曚釜浣滀笟</summary>
         Copilot,
 
-        /// <summary>作业集</summary>
+        /// <summary>浣滀笟闆?/summary>
         CopilotSet,
     }
 
     /// <summary>
-    /// 解析作业站代码，识别所有已知格式并提取数字 ID
+    /// 瑙ｆ瀽浣滀笟绔欎唬鐮侊紝璇嗗埆鎵€鏈夊凡鐭ユ牸寮忓苟鎻愬彇鏁板瓧 ID
     /// </summary>
-    /// <param name="input">原始输入（maa://12345、prts://12345、prts://s12345、s12345、12345）</param>
-    /// <param name="type">解析出的类型；maa:// 和纯数字默认为 Copilot（按钮上下文可覆盖）</param>
-    /// <param name="id">提取的数字 ID</param>
-    /// <returns>是否成功解析</returns>
+    /// <param name="input">鍘熷杈撳叆锛坢aa://12345銆乸rts://12345銆乸rts://s12345銆乻12345銆?2345锛?/param>
+    /// <param name="type">瑙ｆ瀽鍑虹殑绫诲瀷锛沵aa:// 鍜岀函鏁板瓧榛樿涓?Copilot锛堟寜閽笂涓嬫枃鍙鐩栵級</param>
+    /// <param name="id">鎻愬彇鐨勬暟瀛?ID</param>
+    /// <returns>鏄惁鎴愬姛瑙ｆ瀽</returns>
     private static bool TryParseCopilotCode(string input, out CopilotCodeType type, out int id)
     {
         type = CopilotCodeType.None;
@@ -405,7 +393,7 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
             return false;
         }
 
-        // 带前缀的格式（从长到短匹配，避免 prts://s 被 prts:// 抢先）
+        // 甯﹀墠缂€鐨勬牸寮忥紙浠庨暱鍒扮煭鍖归厤锛岄伩鍏?prts://s 琚?prts:// 鎶㈠厛锛?
         if (input.StartsWith(CopilotNewSetIdPrefix, StringComparison.OrdinalIgnoreCase))
         {
             type = CopilotCodeType.CopilotSet;
@@ -418,22 +406,22 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
             return int.TryParse(input[CopilotNewIdPrefix.Length..], out id);
         }
 
-// TODO: 作业站迁移完成后删除 maa:// 旧格式分支
+// TODO: 浣滀笟绔欒縼绉诲畬鎴愬悗鍒犻櫎 maa:// 鏃ф牸寮忓垎鏀?
         if (input.StartsWith(CopilotIdPrefix, StringComparison.OrdinalIgnoreCase))
         {
-            // maa:// 旧格式，默认当单个作业（按钮上下文可覆盖为作业集）
+            // maa:// 鏃ф牸寮忥紝榛樿褰撳崟涓綔涓氾紙鎸夐挳涓婁笅鏂囧彲瑕嗙洊涓轰綔涓氶泦锛?
             type = CopilotCodeType.Copilot;
             return int.TryParse(input[CopilotIdPrefix.Length..], out id);
         }
 
-        // s12345 格式作业集
+        // s12345 鏍煎紡浣滀笟闆?
         if (input.Length > 1 && (input[0] is 's' or 'S') && int.TryParse(input[1..], out id))
         {
             type = CopilotCodeType.CopilotSet;
             return true;
         }
 
-        // 纯数字，默认当单个作业
+        // 绾暟瀛楋紝榛樿褰撳崟涓綔涓?
         if (int.TryParse(input, out id))
         {
             type = CopilotCodeType.Copilot;
@@ -452,7 +440,7 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
     public bool Form
     {
         get {
-            // Tab=1/2 不支持自动编队，根据 CopilotTabIndex 综合判断返回值
+            // Tab=1/2 涓嶆敮鎸佽嚜鍔ㄧ紪闃燂紝鏍规嵁 CopilotTabIndex 缁煎悎鍒ゆ柇杩斿洖鍊?
             if (CopilotTabIndex is 1 or 2)
             {
                 return false;
@@ -473,7 +461,7 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
     public bool IgnoreRequirements { get => field; set => SetAndNotify(ref field, value); }
 
     /// <summary>
-    /// Gets or sets a value indicating whether 真正有干员被忽略了要求
+    /// Gets or sets a value indicating whether 鐪熸鏈夊共鍛樿蹇界暐浜嗚姹?
     /// </summary>
     public bool HasRequirementIgnored { get; set; } = false;
 
@@ -547,7 +535,7 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
     /// </summary>
     public void OpenUserAdditionalPopup()
     {
-        // 清空列表
+        // 娓呯┖鍒楄〃
         UserAdditionalItems.Clear();
         foreach (var op in UserAdditional)
         {
@@ -564,7 +552,7 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
             UserAdditionalItems.Add(item);
         }
 
-        // 如果列表为空，添加一行空行
+        // 濡傛灉鍒楄〃涓虹┖锛屾坊鍔犱竴琛岀┖琛?
         if (UserAdditionalItems.Count == 0)
         {
             var newItem = new UserAdditionalItemViewModel { Name = string.Empty, Skill = 0, Module = 0 };
@@ -579,13 +567,13 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
     /// </summary>
     public void SaveUserAdditional()
     {
-        // 将列表转换为 UserAdditional 并序列化为 JSON
+        // 灏嗗垪琛ㄨ浆鎹负 UserAdditional 骞跺簭鍒楀寲涓?JSON
         var list = new List<UserAdditional>();
         foreach (var item in UserAdditionalItems)
         {
             if (string.IsNullOrWhiteSpace(item.Name))
             {
-                continue; // 跳过空行
+                continue; // 璺宠繃绌鸿
             }
 
             list.Add(new UserAdditional {
@@ -638,14 +626,19 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
         }
     }
 
-    public static Dictionary<string, int> ModuleMapping { get; } = new()
+    private static Dictionary<string, int> BuildModuleMapping() => new()
     {
         { LocalizationHelper.GetString("CopilotWithoutModule"), 0 },
-        { "χ", 1 },
-        { "γ", 2 },
-        { "α", 3 },
-        { "Δ", 4 },
+        { "蠂", 1 },
+        { "纬", 2 },
+        { "伪", 3 },
+        { "螖", 4 },
     };
+
+    /// <summary>
+    /// Gets 模组下拉的显示名到模组号映射，语言切换时整表重建（显示名即 Key，无模组项为本地化文本）。
+    /// </summary>
+    public Dictionary<string, int> ModuleMapping { get => field; private set => SetAndNotify(ref field, value); } = BuildModuleMapping();
 
     public class UserAdditionalItemViewModel : PropertyChangedBase
     {
@@ -675,13 +668,19 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
 
         /// <summary>
         /// Gets or sets the module number.
-        /// -1: 不切换模组 / 无要求, 0: 不使用模组, 1-4: 不同模组
+        /// -1: 不切换模组 / 无要求, 0: 不使用模组, 1: 模组χ, 2: 模组γ, 3: 模组α, 4: 模组Δ, 5: 模组β
         /// </summary>
         public int Module
         {
             get => _module;
             set => SetAndNotify(ref _module, value);
         }
+
+        /// <summary>
+        /// 语言切换后通知 Module 重读：模组字典整表重建时 Selector 按项相等性恢复选中，
+        /// ｢无模组｣ 项的 key 为本地化文本、新旧不等而匹配不到，需由 SelectedValue binding 按新字典的 Value 重匹配。
+        /// </summary>
+        public void RefreshLocalization() => NotifyOfPropertyChange(nameof(Module));
     }
 
     private bool _useFormation;
@@ -714,26 +713,23 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
         }
     } = ConfigFactory.CurrentConfig.Copilot.SupportMode;
 
-    public List<GenericCombinedData<CopilotSupportMode>> SupportUnitUsageList { get; } =
-    [
-        /* new() { Display = LocalizationHelper.GetString("SupportUnitUsage.None"), Value = 0 }, */
-        new() { Display = LocalizationHelper.GetString("SupportUnitUsage.WhenNeeded"), Value = CopilotSupportMode.WhenNeeded },
-        new() { Display = LocalizationHelper.GetString("SupportUnitUsage.Random"), Value = CopilotSupportMode.Random },
-    ];
+    public LocalizedObservableList<CopilotSupportMode> SupportUnitUsageList { get; } = new(
+        (CopilotSupportMode.WhenNeeded, "SupportUnitUsage.WhenNeeded"),
+        (CopilotSupportMode.Random, "SupportUnitUsage.Random"));
 
     public enum CopilotSupportMode
     {
-        /// <summary>仅补充必要</summary>
+        /// <summary>浠呰ˉ鍏呭繀瑕?/summary>
         WhenNeeded = 1,
 
-        /// <summary>随机加一个, 刷信用点用</summary>
+        /// <summary>闅忔満鍔犱竴涓? 鍒蜂俊鐢ㄧ偣鐢?/summary>
         Random = 3,
     }
 
     private bool _useCopilotList;
 
     /// <summary>
-    /// Gets or sets a value indicating whether 自动编队.
+    /// Gets or sets a value indicating whether 鑷姩缂栭槦.
     /// </summary>
     [PropertyDependsOn(nameof(CopilotTabIndex))]
     public bool UseCopilotList
@@ -742,7 +738,7 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
         set {
             if (value)
             {
-                // _taskType 应该只由选择的作业文件决定，不在此强制修改
+                // _taskType 搴旇鍙敱閫夋嫨鐨勪綔涓氭枃浠跺喅瀹氾紝涓嶅湪姝ゅ己鍒朵慨鏀?
                 Form = true;
             }
 
@@ -824,13 +820,13 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
         set => SetAndNotify(ref _couldLikeWebJson, value);
     }
 
-    #endregion 属性
+    #endregion 灞炴€?
 
-    #region 方法
+    #region 鏂规硶
 
     /// <summary>
     /// Selects file.
-    /// UI 绑定的方法
+    /// UI 缁戝畾鐨勬柟娉?
     /// </summary>
     [UsedImplicitly]
     public void SelectFile()
@@ -847,7 +843,7 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
 
     /// <summary>
     /// Paste clipboard contents.
-    /// UI 绑定的方法
+    /// UI 缁戝畾鐨勬柟娉?
     /// </summary>
     [UsedImplicitly]
     public void PasteClipboard()
@@ -862,42 +858,10 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
         }
     }
 
-    // TODO: 作业站迁移完成后删除此方法及对应的 XAML 按钮（CopilotView.xaml Grid.Column=3）、
-    //  TooltipBlock（Grid.Column=3）、本地化字符串 PasteClipboardCopilotSetTip
 
     /// <summary>
-/// Paste clipboard contents.
-    /// UI 绑定的方法
-    /// </summary>
-    /// <returns>Task</returns>
-    [UsedImplicitly]
-    public async Task PasteClipboardCopilotSet()
-    {
-        if (!Clipboard.ContainsText())
-        {
-            return;
-        }
-
-        var text = Clipboard.GetText().Trim();
-
-        // 新格式自带类型信息，交给 Filename → UpdateFileDoc 自动路由
-        // 旧格式（maa:// / 纯数字）类型不明确，按按钮上下文当作业集处理
-        if (!IsAmbiguousCopilotCode(text))
-        {
-            Filename = text;
-            return;
-        }
-
-        StartEnabled = false;
-        ClearLog();
-        await GetCopilotSetAsync(text);
-        CopilotUrl = CopilotUiUrl;
-        StartEnabled = true;
-    }
-
-    /// <summary>
-    /// 批量导入作业
-    /// UI 绑定的方法
+    /// 鎵归噺瀵煎叆浣滀笟
+    /// UI 缁戝畾鐨勬柟娉?
     /// </summary>
     /// <returns>Task</returns>
     [UsedImplicitly]
@@ -952,27 +916,29 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
         }
     }
 
-    // UI 绑定的方法
+    // UI 缁戝畾鐨勬柟娉?
     [UsedImplicitly]
     public async Task AddCopilotTask()
     {
         await AddCopilotTaskToList(CopilotTaskName, false);
+        CopilotTaskName = string.Empty;
     }
 
-    // UI 绑定的方法
+    // UI 缁戝畾鐨勬柟娉?
     [UsedImplicitly]
     public async Task AddCopilotTask_Adverse()
     {
         await AddCopilotTaskToList(CopilotTaskName, true);
+        CopilotTaskName = string.Empty;
     }
 
-    // UI 绑定的方法
+    // UI 缁戝畾鐨勬柟娉?
     [UsedImplicitly]
     public void SelectCopilotTask(object? sender, MouseButtonEventArgs? e = null)
     {
         if (e?.Source is FrameworkElement element && element.Tag is int index)
         {
-            Filename = CopilotItemViewModels[index].FilePath; // 假设原方法接受int参数
+            Filename = CopilotItemViewModels[index].FilePath; // 鍋囪鍘熸柟娉曟帴鍙梚nt鍙傛暟
             if (e.ChangedButton == MouseButton.Right)
             {
                 UseCopilotList = false;
@@ -980,7 +946,7 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
         }
     }
 
-    // UI 绑定的方法
+    // UI 缁戝畾鐨勬柟娉?
     [UsedImplicitly]
     public void DeleteCopilotTask(int index)
     {
@@ -988,7 +954,7 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
         CopilotItemIndexChanged();
     }
 
-    // UI 绑定的方法
+    // UI 缁戝畾鐨勬柟娉?
     [UsedImplicitly]
     public void CleanUnableCopilotTask()
     {
@@ -1000,7 +966,7 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
         CopilotItemIndexChanged();
     }
 
-    // UI 绑定的方法
+    // UI 缁戝畾鐨勬柟娉?
     [UsedImplicitly]
     public void ClearCopilotTask()
     {
@@ -1017,7 +983,7 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
         }
     }
 
-    // UI 绑定的方法
+    // UI 缁戝畾鐨勬柟娉?
     [UsedImplicitly]
     public async Task LikeWebJson()
     {
@@ -1028,7 +994,7 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
         }
     }
 
-    // UI 绑定的方法
+    // UI 缁戝畾鐨勬柟娉?
     [UsedImplicitly]
     public void DislikeWebJson()
     {
@@ -1036,19 +1002,44 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
         _ = RateCopilot(CopilotId, false);
     }
 
-    #endregion 方法
+    #endregion 鏂规硶
 
-    #endregion UI绑定及操作
+    #endregion UI缁戝畾鍙婃搷浣?
 
     private async Task UpdateFilename(string filename)
     {
+        // 旧轮次续体仍会读取已取消的 token，故不 Dispose 旧 CTS；未启用 CancelAfter/timer 的 CTS 可交由 GC 回收
+        _updateFilenameCts?.Cancel();
+        _updateFilenameCts = new CancellationTokenSource();
+        var token = _updateFilenameCts.Token;
+
         StartEnabled = false;
-        await UpdateFileDoc(filename);
-        StartEnabled = true;
+        try
+        {
+            await UpdateFileDoc(filename, token);
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
+            // 输入已被新一轮更新，UI 状态交由新一轮调用管理
+            return;
+        }
+
+        // 竞态下取消可能发生在请求已返回之后，此时不得恢复按钮状态，交由新一轮调用管理
+        if (!token.IsCancellationRequested)
+        {
+            StartEnabled = true;
+        }
     }
 
-    private async Task UpdateFileDoc(string filename)
+    private async Task UpdateFileDoc(string filename, CancellationToken token)
     {
+        if (Bootstrapper.IsDemoMode)
+        {
+            // README 截图演示模式：作业站代码仅用于界面展示，不发起网络请求
+            StartEnabled = true;
+            return;
+        }
+
         ClearLog();
         CopilotUrl = CopilotUiUrl;
         VideoUrl = string.Empty;
@@ -1078,8 +1069,13 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
             try
             {
                 using var reader = new StreamReader(File.OpenRead(filename));
-                var str = await reader.ReadToEndAsync();
+                var str = await reader.ReadToEndAsync(token);
+                token.ThrowIfCancellationRequested();
                 payload = JsonConvert.DeserializeObject<CopilotBase>(str, new CopilotContentConverter());
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
             }
             catch (Exception e)
             {
@@ -1091,12 +1087,13 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
         {
             if (codeType == CopilotCodeType.CopilotSet)
             {
-                await GetCopilotSetAsync(copilotSetId);
+                await GetCopilotSetAsync(copilotSetId, token);
                 return;
             }
 
             // 单个作业
-            (copilotId, payload) = await GetCopilotAsync(filename);
+            (copilotId, payload) = await GetCopilotAsync(filename, token);
+            token.ThrowIfCancellationRequested();
             if (payload is not null)
             {
                 IsDataFromWeb = true;
@@ -1112,10 +1109,10 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
         switch (payload)
         {
             case CopilotModel copilot:
-                await ParseCopilotAsync(copilot, writeToCache, UseCopilotList, copilotId);
+                await ParseCopilotAsync(copilot, writeToCache, UseCopilotList, copilotId, token: token);
                 return;
             case SSSCopilotModel sss:
-                await ParseSSSCopilot(sss, writeToCache);
+                await ParseSSSCopilot(sss, writeToCache, token);
                 return;
             default:
                 AddLog(LocalizationHelper.GetString("CopilotJsonError"), UiLogColor.Error, showTime: false);
@@ -1124,10 +1121,10 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
     }
 
     /// <summary>
-    /// 为自动战斗列表匹配名字
+    /// 涓鸿嚜鍔ㄦ垬鏂楀垪琛ㄥ尮閰嶅悕瀛?
     /// </summary>
-    /// <param name="names">用于匹配的名字</param>
-    /// <returns>关卡名 or string.Empty</returns>
+    /// <param name="names">鐢ㄤ簬鍖归厤鐨勫悕瀛?/param>
+    /// <returns>鍏冲崱鍚?or string.Empty</returns>
     private static string? FindStageName(params string[] names)
     {
         names = names.Where(str => !string.IsNullOrEmpty(str)).ToArray();
@@ -1136,7 +1133,7 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
             return string.Empty;
         }
 
-        // 一旦有由小写字母、数字、'-'组成的name则视为关卡名直接使用
+        // 涓€鏃︽湁鐢卞皬鍐欏瓧姣嶃€佹暟瀛椼€?-'缁勬垚鐨刵ame鍒欒涓哄叧鍗″悕鐩存帴浣跨敤
         var directName = names.FirstOrDefault(name => Regex.IsMatch(name.ToLower(), @"^[0-9a-z\-]+$"));
         if (!string.IsNullOrEmpty(directName))
         {
@@ -1147,9 +1144,9 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
         return names.Select(str => regex.Match(str)).FirstOrDefault(result => result.Success)?.Value ?? string.Empty;
     }
 
-    #region 作业解析
+    #region 浣滀笟瑙ｆ瀽
 
-    private async Task<(int CopilotId, CopilotBase? Payload)> GetCopilotAsync(string copilotCodeString)
+    private async Task<(int CopilotId, CopilotBase? Payload)> GetCopilotAsync(string copilotCodeString, CancellationToken token)
     {
         if (!TryParseCopilotCode(copilotCodeString, out _, out var copilotCode))
         {
@@ -1157,12 +1154,13 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
             return (0, null);
         }
 
-        return await GetCopilotAsync(copilotCode);
+        return await GetCopilotAsync(copilotCode, token);
     }
 
-    private async Task<(int CopilotId, CopilotBase? Payload)> GetCopilotAsync(int copilotId)
+    private async Task<(int CopilotId, CopilotBase? Payload)> GetCopilotAsync(int copilotId, CancellationToken token)
     {
-        var (status, copilotset) = await RequestCopilotAsync(copilotId);
+        var (status, copilotset) = await RequestCopilotAsync(copilotId, token);
+        token.ThrowIfCancellationRequested();
         if (status == PrtsStatus.NetworkError)
         {
             return (0, null);
@@ -1186,7 +1184,7 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
         return (0, null);
     }
 
-    private async Task<bool> ParseCopilotAsync(CopilotModel copilot, bool writeToCache, bool copilotList, int copilotId, bool printInfo = true)
+    private async Task<bool> ParseCopilotAsync(CopilotModel copilot, bool writeToCache, bool copilotList, int copilotId, bool printInfo = true, CancellationToken token = default)
     {
         if (string.IsNullOrEmpty(copilot.StageName))
         {
@@ -1203,35 +1201,78 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
             var match = linkParser.Match(copilot.Documentation.Details);
             if (match.Success)
             {
-                VideoUrl = MaaUrls.BilibiliVideo + match.Value; // 视频链接
+                VideoUrl = MaaUrls.BilibiliVideo + match.Value; // 瑙嗛閾炬帴
             }
         }
 
+        bool is_corrected = false;
         var list = copilot.Opers.Concat(copilot.Groups.SelectMany(g => g.Opers)).ToList();
         foreach (var oper in list)
         {
-            int rarity = DataHelper.GetCharacterByNameOrAlias(oper.Name)?.Rarity ?? -1;
-            if (oper.Skill == 3 && rarity < 6)
+            var character = DataHelper.GetCharacterByNameOrAlias(oper.Name);
+            int rarity = character?.Rarity ?? -1;
+            string id = character?.Id ?? string.Empty;
+            switch (oper.Skill)
             {
-                AddLog(LocalizationHelper.GetStringFormat("UnsupportedSkill", DataHelper.GetLocalizedCharacterName(oper.Name) ?? oper.Name, oper.Skill), UiLogColor.Warning, showTime: false);
-                oper.Skill = 0;
+                case 3 when rarity < 6 && id != "char_002_amiya":
+                case 2 when rarity < 4:
+                case 1 when rarity < 3:
+                    AddLog(LocalizationHelper.GetStringFormat("Copilot.UnsupportedSkill", DataHelper.GetLocalizedCharacterName(oper.Name) ?? oper.Name, oper.Skill), UiLogColor.Warning, showTime: false);
+                    is_corrected = true;
+                    oper.Skill = 0;
+                    break;
             }
-            else if (oper.Skill == 2 && rarity < 4)
+            int skillElite = oper.Skill - 1;
+            int skilLevelElite = oper.Requirements?.SkillLevel switch {
+                <= 4 => 0,
+                <= 7 => 1,
+                <= 10 => 2,
+                _ => 0,
+            };
+            int moduleElite = oper.Requirements?.Module > 0 ? 2 : 0;
+            int eliteReq = Math.Max(skillElite, Math.Max(skilLevelElite, moduleElite));
+            if (eliteReq > 0)
             {
-                AddLog(LocalizationHelper.GetStringFormat("UnsupportedSkill", DataHelper.GetLocalizedCharacterName(oper.Name) ?? oper.Name, oper.Skill), UiLogColor.Warning, showTime: false);
-                oper.Skill = 0;
+                if (oper.Requirements is null)
+                {
+                    oper.Requirements ??= new();
+                    oper.Requirements.Elite = eliteReq;
+                    AddLog(LocalizationHelper.GetStringFormat("Copilot.EliteEmpty", DataHelper.GetLocalizedCharacterName(oper.Name) ?? oper.Name, eliteReq), UiLogColor.Info, showTime: false);
+                }
+                else if (oper.Requirements.Elite < eliteReq)
+                {
+                    AddLog(LocalizationHelper.GetStringFormat("Copilot.EliteAjust", DataHelper.GetLocalizedCharacterName(oper.Name) ?? oper.Name, oper.Requirements.Elite, eliteReq), UiLogColor.Warning, showTime: false);
+                    oper.Requirements.Elite = eliteReq;
+                    is_corrected = true;
+                }
             }
-            else if (oper.Skill == 1 && rarity < 3)
+        }
+        foreach (var action in copilot.Actions.Where(a => a.Type is "Skill" or "Retreat" or "BulletTime" or "SkillUsage"))
+        {
+            var hasLoc = action.Location is not null;
+            var hasOper = action.Name is not null;
+            if (hasLoc && hasOper) // 重复指定干员和坐标，使用坐标
             {
-                AddLog(LocalizationHelper.GetStringFormat("UnsupportedSkill", DataHelper.GetLocalizedCharacterName(oper.Name) ?? oper.Name, oper.Skill), UiLogColor.Warning, showTime: false);
-                oper.Skill = 0;
+                AddLog(LocalizationHelper.GetStringFormat("Copilot.ActionWithBothLocAndOper", $"{action.Type}[{action.Location}]"), UiLogColor.Warning, showTime: false);
+                action.Role = null;
+                action.Name = null;
+                is_corrected = true;
+            }
+        }
+        foreach (var action in copilot.Actions.Where(a => a.Type is "Click"))
+        {
+            if (action.Rect is not null && action.Location is not null) // Core 对同填 rect 与 location 的点击动作按 rect 执行，此处移除 location 以与 Core 语义一致
+            {
+                AddLog(LocalizationHelper.GetStringFormat("Copilot.ActionWithBothRectAndLoc", $"{action.Type}[{string.Join(",", action.Rect)}]"), UiLogColor.Warning, showTime: false);
+                action.Location = null;
+                is_corrected = true;
             }
         }
         if (printInfo)
         {
             foreach (var (output, color) in copilot.Output())
             {
-                AddLog(output, color ?? UiLogColor.Message, showTime: false); // 作业信息输出
+                AddLog(output, color ?? UiLogColor.Message, showTime: false); // 浣滀笟淇℃伅杈撳嚭
             }
         }
 
@@ -1240,14 +1281,13 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
         var navigateName = mapInfo?.Code;
         if (navigateName is null)
         {
-            // 不支持的关卡
+            // 涓嶆敮鎸佺殑鍏冲崱
             AddLog(LocalizationHelper.GetStringFormat("UnsupportedStages", copilot.StageName), UiLogColor.Error, showTime: false);
             navigateName = FindStageName(copilot.Documentation?.Title ?? string.Empty);
             _ = Task.Run(ResourceUpdater.ResourceUpdateAndReloadAsync);
             AchievementTrackerHelper.Instance.Unlock(AchievementIds.MapOutdated);
             return true;
         }
-        CopilotTaskName = navigateName;
 
         if (mapInfo?.StageId is { } stageId)
         {
@@ -1262,17 +1302,17 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
         }
 
         if (!writeToCache)
-        {// 现在是暂时将所有本地作业不添加到列表
+        {// 鐜板湪鏄殏鏃跺皢鎵€鏈夋湰鍦颁綔涓氫笉娣诲姞鍒板垪琛?
         }
         else if (copilotList)
         {
             switch (copilot.Difficulty)
             {
                 case CopilotModel.DifficultyFlags.None:
-                    await AddCopilotTaskToList(copilot, CopilotModel.DifficultyFlags.Normal, navigateName, copilotId);
+                    await AddCopilotTaskToList(copilot, CopilotModel.DifficultyFlags.Normal, copilotId: is_corrected ? default : copilotId, token: token);
                     break;
                 default:
-                    await AddCopilotTaskToList(copilot, copilot.Difficulty, navigateName, copilotId);
+                    await AddCopilotTaskToList(copilot, copilot.Difficulty, copilotId: is_corrected ? default : copilotId, token: token);
                     break;
             }
         }
@@ -1280,8 +1320,14 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
         {
             try
             {
-                var json = JsonConvert.SerializeObject(copilot, Formatting.Indented, new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore, });
-                await File.WriteAllTextAsync(TempCopilotFile, json);
+                // 取消后不得写盘，避免旧轮次内容覆盖新一轮结果
+                token.ThrowIfCancellationRequested();
+                var json = JsonConvert.SerializeObject(copilot, Formatting.Indented, new JsonSerializerSettings { DefaultValueHandling = DefaultValueHandling.Ignore, NullValueHandling = NullValueHandling.Ignore, });
+                await File.WriteAllTextAsync(TempCopilotFile, json, token);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
             }
             catch
             {
@@ -1293,7 +1339,7 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
         return true;
     }
 
-    private async Task<bool> ParseSSSCopilot(SSSCopilotModel copilot, bool writeToCache)
+    private async Task<bool> ParseSSSCopilot(SSSCopilotModel copilot, bool writeToCache, CancellationToken token = default)
     {
         if (string.IsNullOrEmpty(copilot.StageName) || copilot.Type != new SSSCopilotModel().Type)
         {
@@ -1311,7 +1357,7 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
             var match = linkParser.Match(copilot.Documentation.Details);
             if (match.Success)
             {
-                VideoUrl = MaaUrls.BilibiliVideo + match.Value; // 视频链接
+                VideoUrl = MaaUrls.BilibiliVideo + match.Value; // 瑙嗛閾炬帴
             }
         }
 
@@ -1320,7 +1366,7 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
             AddLog(output, color ?? UiLogColor.Message, showTime: false);
         }
 
-        // 不支持的关卡
+        // 涓嶆敮鎸佺殑鍏冲崱
         var stages = copilot.Stages?.Select(copilot => DataHelper.FindMap(copilot.StageName));
         if (stages?.Any(i => i is null) is null or true)
         {
@@ -1333,7 +1379,13 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
         {
             try
             {
-                await File.WriteAllTextAsync(TempCopilotFile, JsonConvert.SerializeObject(copilot, Formatting.Indented));
+                // 取消后不得写盘，避免旧轮次内容覆盖新一轮结果
+                token.ThrowIfCancellationRequested();
+                await File.WriteAllTextAsync(TempCopilotFile, JsonConvert.SerializeObject(copilot, Formatting.Indented, new JsonSerializerSettings { DefaultValueHandling = DefaultValueHandling.Ignore, NullValueHandling = NullValueHandling.Ignore, }), token);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
             }
             catch
             {
@@ -1342,15 +1394,15 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
             }
         }
 
-        await AddSSSCopilotTaskToList(copilot, CopilotId);
+        // await AddSSSCopilotTaskToList(copilot, CopilotId); 淇濆叏浣滀笟娴忚鏃朵笉鑷姩娣诲姞鍒板垪琛?
         return true;
     }
 
-    #endregion 作业解析
+    #endregion 浣滀笟瑙ｆ瀽
 
-    #region 作业集解析
+    #region 浣滀笟闆嗚В鏋?
 
-    private async Task GetCopilotSetAsync(string copilotCodeString)
+    private async Task GetCopilotSetAsync(string copilotCodeString, CancellationToken token)
     {
         if (!TryParseCopilotCode(copilotCodeString, out _, out var copilotCode))
         {
@@ -1358,19 +1410,20 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
             return;
         }
 
-        await GetCopilotSetAsync(copilotCode);
+        await GetCopilotSetAsync(copilotCode, token);
     }
 
-    private async Task GetCopilotSetAsync(int copilotCode)
+    private async Task GetCopilotSetAsync(int copilotCode, CancellationToken token)
     {
-        var (status, copilotset) = await RequestCopilotSetAsync(copilotCode);
+        var (status, copilotset) = await RequestCopilotSetAsync(copilotCode, token);
+        token.ThrowIfCancellationRequested();
         if (status == PrtsStatus.NetworkError)
         {
             return;
         }
         else if (status == PrtsStatus.Success && copilotset is PrtsCopilotSetModel { StatusCode: 200 })
         {
-            await ParseCopilotSetAsync(copilotset.Data);
+            await ParseCopilotSetAsync(copilotset.Data, token);
             return;
         }
 
@@ -1378,7 +1431,7 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
         return;
     }
 
-    private async Task ParseCopilotSetAsync(PrtsCopilotSetModel.CopilotSetData? copilotSet)
+    private async Task ParseCopilotSetAsync(PrtsCopilotSetModel.CopilotSetData? copilotSet, CancellationToken token)
     {
         CopilotId = 0;
         _copilotCache = null;
@@ -1394,15 +1447,16 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
             return;
         }
 
-        var list = copilotSet.CopilotIds.Select(async (copilotId) => await GetCopilotAsync(copilotId)).ToList();
-        foreach (var task in list)
+        // 逐个顺序请求：并发发出后中途取消会让未观察的 task 异常逃逸
+        foreach (var copilotId in copilotSet.CopilotIds)
         {
-            var (copilotId, payload) = await task;
+            var (id, payload) = await GetCopilotAsync(copilotId, token);
+            token.ThrowIfCancellationRequested();
             if (payload is CopilotModel copilot)
             {
-                if (!await ParseCopilotAsync(copilot, true, true, copilotId, false))
+                if (!await ParseCopilotAsync(copilot, true, true, id, false, token))
                 {
-                    AddLog(LocalizationHelper.GetString("CopilotJsonError") + $", copilotId: {copilotId}", UiLogColor.Error, showTime: false);
+                    AddLog(LocalizationHelper.GetString("CopilotJsonError") + $", copilotId: {id}", UiLogColor.Error, showTime: false);
                     continue;
                 }
                 var opers = JArray.FromObject(copilot.Opers.Select(i => i.Name));
@@ -1412,7 +1466,7 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
             else if (payload is SSSCopilotModel sss)
             {
                 CopilotTabIndex = 1;
-                await AddSSSCopilotTaskToList(sss, copilotId);
+                await AddSSSCopilotTaskToList(sss, id, token);
             }
         }
 
@@ -1434,14 +1488,14 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
         }
     }
 
-    #endregion 作业集解析
+    #endregion 浣滀笟闆嗚В鏋?
 
     /// <summary>
     /// Drops file.
     /// </summary>
     /// <param name="sender">The sender.</param>
     /// <param name="e">The event arguments.</param>
-    /// TODO: 不知道为啥现在拖放不用了，之后瞅瞅
+    /// TODO: 涓嶇煡閬撲负鍟ョ幇鍦ㄦ嫋鏀句笉鐢ㄤ簡锛屼箣鍚庣瀰鐬?
     [UsedImplicitly]
     public void DropFile(object sender, DragEventArgs e)
     {
@@ -1489,11 +1543,11 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
 
             var copilotRoot = Path.Combine(ResourceDir, "copilot");
 
-            // 获取根目录下的所有目录和文件
+            // 鑾峰彇鏍圭洰褰曚笅鐨勬墍鏈夌洰褰曞拰鏂囦欢
             var directories = Directory.GetDirectories(copilotRoot);
             var rootFiles = Directory.GetFiles(copilotRoot, "*.json");
 
-            // 添加根目录下的文件
+            // 娣诲姞鏍圭洰褰曚笅鐨勬枃浠?
             foreach (var file in rootFiles)
             {
                 var fileName = Path.GetFileName(file);
@@ -1508,7 +1562,7 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
                 });
             }
 
-            // 添加根目录下的文件夹（支持嵌套，old 文件夹放在最后）
+            // 娣诲姞鏍圭洰褰曚笅鐨勬枃浠跺す锛堟敮鎸佸祵濂楋紝old 鏂囦欢澶规斁鍦ㄦ渶鍚庯級
             var oldFolderItem = (CopilotFileItem?)null;
             foreach (var dir in directories)
             {
@@ -1527,7 +1581,7 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
                 }
             }
 
-            // 将 old 文件夹添加到最后
+            // 灏?old 鏂囦欢澶规坊鍔犲埌鏈€鍚?
             if (oldFolderItem != null)
             {
                 FileItems.Add(oldFolderItem);
@@ -1541,11 +1595,11 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
     }
 
     /// <summary>
-    /// 递归加载文件夹项（支持嵌套子文件夹）
+    /// 閫掑綊鍔犺浇鏂囦欢澶归」锛堟敮鎸佸祵濂楀瓙鏂囦欢澶癸級
     /// </summary>
-    /// <param name="dirPath">文件夹路径</param>
-    /// <param name="copilotRoot">copilot 根目录路径</param>
-    /// <returns>文件项，如果文件夹为空则返回 null</returns>
+    /// <param name="dirPath">鏂囦欢澶硅矾寰?/param>
+    /// <param name="copilotRoot">copilot 鏍圭洰褰曡矾寰?/param>
+    /// <returns>鏂囦欢椤癸紝濡傛灉鏂囦欢澶逛负绌哄垯杩斿洖 null</returns>
     private CopilotFileItem? LoadFolderItem(string dirPath, string copilotRoot)
     {
         var dirName = Path.GetFileName(dirPath);
@@ -1554,7 +1608,7 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
             IsFolder = true,
         };
 
-        // 获取文件夹下的所有文件
+        // 鑾峰彇鏂囦欢澶逛笅鐨勬墍鏈夋枃浠?
         var folderFiles = Directory.GetFiles(dirPath, "*.json");
         foreach (var file in folderFiles)
         {
@@ -1570,7 +1624,7 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
             });
         }
 
-        // 获取文件夹下的所有子文件夹（递归加载）
+        // 鑾峰彇鏂囦欢澶逛笅鐨勬墍鏈夊瓙鏂囦欢澶癸紙閫掑綊鍔犺浇锛?
         var subDirectories = Directory.GetDirectories(dirPath);
         foreach (var subDir in subDirectories)
         {
@@ -1581,7 +1635,7 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
             }
         }
 
-        // 如果文件夹为空（既没有文件也没有子文件夹），返回 null
+        // 濡傛灉鏂囦欢澶逛负绌猴紙鏃㈡病鏈夋枃浠朵篃娌℃湁瀛愭枃浠跺す锛夛紝杩斿洖 null
         if (folderItem.Children.Count == 0)
         {
             return null;
@@ -1603,26 +1657,11 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
         }
 
         Filename = fileItem.FullPath;
-        IsFilePopupOpen = false;
-    }
-
-    /// <summary>
-    /// Toggle file popup.
-    /// </summary>
-    [UsedImplicitly]
-    public void ToggleFilePopup()
-    {
-        if (!IsFilePopupOpen)
-        {
-            LoadFileItems();
-        }
-
-        IsFilePopupOpen = !IsFilePopupOpen;
     }
 
     private async Task AddCopilotTaskToList(string? stageName, bool isRaid)
     {
-        if (string.IsNullOrEmpty(stageName) || InvalidStageNameRegex().IsMatch(stageName))
+        if (!string.IsNullOrEmpty(stageName) && InvalidStageNameRegex().IsMatch(stageName))
         {
             AddLog(LocalizationHelper.GetString("CopilotInvalidStageNameForNavigation"), UiLogColor.Error, showTime: false);
             return;
@@ -1650,14 +1689,15 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
     }
 
     /// <summary>
-    /// 将作业添加到列表
+    /// 灏嗕綔涓氭坊鍔犲埌鍒楄〃
     /// </summary>
     /// <param name="copilot">作业</param>
     /// <param name="flags">难度等级</param>
-    /// <param name="navigateName">关卡 code，用于导航</param>
+    /// <param name="navName">关卡 code，用于导航</param>
     /// <param name="copilotId">作业站 id</param>
+    /// <param name="token">取消令牌，取消后不写盘、不入列表</param>
     /// <returns>是否添加了作业</returns>
-    private async Task<bool> AddCopilotTaskToList(CopilotModel copilot, CopilotModel.DifficultyFlags flags, string? navigateName = null, int copilotId = 0)
+    private async Task<bool> AddCopilotTaskToList(CopilotModel copilot, CopilotModel.DifficultyFlags flags, string? navName = null, int copilotId = 0, CancellationToken token = default)
     {
         if (string.IsNullOrEmpty(copilot.StageName))
         {
@@ -1682,25 +1722,25 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
         var stageId = mapInfo?.StageId;
         if (mapInfo is null)
         {
-            AddLog(LocalizationHelper.GetStringFormat("CopilotStageNameNotFound", $"{navigateName}"), UiLogColor.Error, showTime: false);
+            AddLog(LocalizationHelper.GetStringFormat("CopilotStageNameNotFound", $"{copilot.StageName}({navName})"), UiLogColor.Error, showTime: false);
             return false;
         }
 
-        navigateName = string.IsNullOrEmpty(navigateName) ? stageCode : navigateName;
+        var navigateName = string.IsNullOrEmpty(navName) ? stageCode : navName;
         if (stageCode != navigateName)
         {
             stageCode = navigateName;
             AddLog(LocalizationHelper.GetString("CopilotStageNameNotEqualWithNavigateName"), UiLogColor.Warning, showTime: false);
         }
 
-        if (stageId is null || stageCode is null || navigateName is null)
+        if (stageId is null || stageCode is null || string.IsNullOrEmpty(navigateName))
         {
             return false;
         }
 
         var fileName = !string.IsNullOrEmpty(stageCode) ? stageCode : DateTimeOffset.Now.ToUnixTimeSeconds().ToString();
         var cachePath = Path.GetRelativePath(BaseDir, $"{CopilotJsonDir}/{fileName}.json");
-        await _semaphore.WaitAsync();
+        await _semaphore.WaitAsync(token);
         if (File.Exists(cachePath) && CopilotItemViewModels.Any(i => i.FilePath == cachePath))
         {
             cachePath = Path.GetRelativePath(BaseDir, $"{CopilotJsonDir}/{fileName}_{DateTimeOffset.Now.ToUnixTimeMilliseconds()}.json");
@@ -1714,7 +1754,15 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
 
         try
         {
-            await File.WriteAllTextAsync(cachePath, JsonConvert.SerializeObject(copilot, Formatting.Indented));
+            // 写盘前后各拦截一次：取消后不得写盘/入列表，避免旧轮次结果落地
+            token.ThrowIfCancellationRequested();
+            await File.WriteAllTextAsync(cachePath, JsonConvert.SerializeObject(copilot, Formatting.Indented, new JsonSerializerSettings { DefaultValueHandling = DefaultValueHandling.Ignore, NullValueHandling = NullValueHandling.Ignore, }), token);
+            token.ThrowIfCancellationRequested();
+        }
+        catch (OperationCanceledException)
+        {
+            _semaphore.Release();
+            throw;
         }
         catch
         {
@@ -1742,13 +1790,13 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
         {
             if (flags.HasFlag(CopilotModel.DifficultyFlags.Normal))
             {
-                var item = new CopilotItemViewModel(stageCode, cachePath, false, copilotId) { Index = CopilotItemViewModels.Count, };
+                var item = new CopilotItemViewModel(stageCode, cachePath, false, copilotId, isNavNameOverride: !string.IsNullOrEmpty(navName)) { Index = CopilotItemViewModels.Count, };
                 CopilotItemViewModels.Add(item);
             }
 
             if (flags.HasFlag(CopilotModel.DifficultyFlags.Raid))
             {
-                var item = new CopilotItemViewModel(stageCode, cachePath, true, copilotId) { Index = CopilotItemViewModels.Count, };
+                var item = new CopilotItemViewModel(stageCode, cachePath, true, copilotId, isNavNameOverride: !string.IsNullOrEmpty(navName)) { Index = CopilotItemViewModels.Count, };
                 CopilotItemViewModels.Add(item);
             }
         }
@@ -1758,7 +1806,7 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
         return true;
     }
 
-    private async Task<bool> AddSSSCopilotTaskToList(SSSCopilotModel copilot, int copilotId = 0)
+    private async Task<bool> AddSSSCopilotTaskToList(SSSCopilotModel copilot, int copilotId = 0, CancellationToken token = default)
     {
         if (string.IsNullOrEmpty(copilot.StageName) || copilot.Type != new SSSCopilotModel().Type)
         {
@@ -1785,7 +1833,7 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
         }
 
         var cachePath = Path.GetRelativePath(BaseDir, $"{CopilotJsonDir}/{fileName}.json");
-        await _semaphore.WaitAsync();
+        await _semaphore.WaitAsync(token);
         if (File.Exists(cachePath) && CopilotItemViewModels.Any(i => i.FilePath == cachePath))
         {
             cachePath = Path.GetRelativePath(BaseDir, $"{CopilotJsonDir}/{fileName}_{DateTimeOffset.Now.ToUnixTimeMilliseconds()}.json");
@@ -1799,7 +1847,15 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
 
         try
         {
-            await File.WriteAllTextAsync(cachePath, JsonConvert.SerializeObject(copilot, Formatting.Indented));
+            // 写盘前后各拦截一次：取消后不得写盘/入列表，避免旧轮次结果落地
+            token.ThrowIfCancellationRequested();
+            await File.WriteAllTextAsync(cachePath, JsonConvert.SerializeObject(copilot, Formatting.Indented, new JsonSerializerSettings { DefaultValueHandling = DefaultValueHandling.Ignore, NullValueHandling = NullValueHandling.Ignore, }), token);
+            token.ThrowIfCancellationRequested();
+        }
+        catch (OperationCanceledException)
+        {
+            _semaphore.Release();
+            throw;
         }
         catch
         {
@@ -1822,7 +1878,7 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
     }
 
     /// <summary>
-    /// 战斗列表的当前战斗任务成功
+    /// 鎴樻枟鍒楄〃鐨勫綋鍓嶆垬鏂椾换鍔℃垚鍔?
     /// </summary>
     public void CopilotTaskSuccess()
     {
@@ -1849,7 +1905,7 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
     }
 
     /// <summary>
-    /// 更新任务顺序
+    /// 鏇存柊浠诲姟椤哄簭
     /// </summary>
     public void CopilotItemIndexChanged()
     {
@@ -1863,18 +1919,24 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
 
     /// <summary>
     /// Starts copilot.
-    /// UI 绑定的方法
+    /// UI 缁戝畾鐨勬柟娉?
     /// </summary>
     /// <returns>Task</returns>
     [UsedImplicitly]
     public async Task Start()
     {
+        if (Bootstrapper.TryGetTaskBlockReason() is { } reason)
+        {
+            AddLog(reason, UiLogColor.Error);
+            return;
+        }
+
         /*
         if (_form)
         {
             AddLog(Localization.GetString("AutoSquadTip"), LogColor.Message);
         }*/
-        _runningState.SetIdle(false);
+        _runningState.BeginRun(RunOwner.Copilot);
 
         Instances.OverlayViewModel.LogItemsSource = LogItemViewModels;
 
@@ -1884,10 +1946,10 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
         //     return;
         // }
 
-        // 统一前置校验：先按 CopilotTabIndex 分发，再判断对应选项（UseCopilotList 等）
+        // 缁熶竴鍓嶇疆鏍￠獙锛氬厛鎸?CopilotTabIndex 鍒嗗彂锛屽啀鍒ゆ柇瀵瑰簲閫夐」锛圲seCopilotList 绛夛級
         if (!await ValidateStartAsync())
         {
-            _runningState.SetIdle(true);
+            Instances.TaskQueueViewModel.SetStopped();
             return;
         }
 
@@ -1895,14 +1957,16 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
 
         if (!await ConnectToEmulatorAsync())
         {
+            // Core 从未 start，Stop() 的轮询立即结束、走不到超时强制 SetStopped，需显式收尾
             await Stop();
+            Instances.TaskQueueViewModel.SetStopped();
             return;
         }
 
-        // 连接期间用户可能已点停止，需在此处拦截
+        // 杩炴帴鏈熼棿鐢ㄦ埛鍙兘宸茬偣鍋滄锛岄渶鍦ㄦ澶勬嫤鎴?
         if (_runningState.GetStopping())
         {
-            Instances.TaskQueueViewModel.SetStopped(SettingsViewModel.GameSettings.CopilotWithScript);
+            Instances.TaskQueueViewModel.SetStopped();
             AddLog(LocalizationHelper.GetString("Stopped"));
             return;
         }
@@ -1932,7 +1996,7 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
                 _logger.Warning("Failed to stop Asst");
             }
 
-            _runningState.SetIdle(true);
+            Instances.TaskQueueViewModel.SetStopped();
             AddLog(LocalizationHelper.GetString("CopilotFileReadError"), UiLogColor.Error, showTime: false);
         }
     }
@@ -1941,18 +2005,18 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
     {
         if (UseCopilotList)
         {
-            // 列表模式：只校验列表本身，不检查输入框里的单文件作业类型
+            // 鍒楄〃妯″紡锛氬彧鏍￠獙鍒楄〃鏈韩锛屼笉妫€鏌ヨ緭鍏ユ閲岀殑鍗曟枃浠朵綔涓氱被鍨?
             return await ValidateTaskListStrictAsync(tabIndex: CopilotTabIndex);
         }
 
-        // 非列表模式必须有当前作业
+        // 闈炲垪琛ㄦā寮忓繀椤绘湁褰撳墠浣滀笟
         if (_copilotCache is null)
         {
             AddLog(LocalizationHelper.GetString("CopilotEmptyError"), UiLogColor.Error, showTime: false);
             return false;
         }
 
-        // 非列表模式：检查单文件作业的 _taskType 与 CopilotTabIndex 是否匹配
+        // 闈炲垪琛ㄦā寮忥細妫€鏌ュ崟鏂囦欢浣滀笟鐨?_taskType 涓?CopilotTabIndex 鏄惁鍖归厤
         if ((_taskType == AsstTaskType.SSSCopilot && CopilotTabIndex != 1) || (_taskType != AsstTaskType.SSSCopilot && CopilotTabIndex == 1))
         {
             AddLog(LocalizationHelper.GetString("CopilotTaskTypeMismatch"), UiLogColor.Error, showTime: false);
@@ -1966,7 +2030,7 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
     {
         var selected = CopilotItemViewModels.Where(i => i.IsChecked).ToArray();
 
-        // 空列表：提示并失败
+        // 绌哄垪琛細鎻愮ず骞跺け璐?
         if (selected.Length == 0)
         {
             AddLog(LocalizationHelper.GetString("CopilotStartWithEmptyList"), UiLogColor.Error, showTime: false);
@@ -1989,7 +2053,7 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
             }
         }
 
-        // 先判断 CopilotTabIndex，再判断对应选项
+        // 鍏堝垽鏂?CopilotTabIndex锛屽啀鍒ゆ柇瀵瑰簲閫夐」
         if (tabIndex == 2)
         {
             return VerifyParadoxTasks(selected);
@@ -2039,7 +2103,13 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
             op.Skill = Math.Clamp(op.Skill, 0, 3);
         }
 
-        return UserAdditional.Where(op => !string.IsNullOrWhiteSpace(op.Name));
+        return UserAdditional
+            .Where(op => !string.IsNullOrWhiteSpace(op.Name))
+            .Select(op => new UserAdditional {
+                Name = DataHelper.GetCharacterByNameOrAlias(op.Name)?.Name ?? op.Name,
+                Skill = op.Skill,
+                Module = op.Module,
+            });
     }
 
     private async Task<bool> AppendAndStartCopilotAsync(IEnumerable<UserAdditional> userAdditional)
@@ -2053,7 +2123,7 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
 
             var t = CopilotItemViewModels.Where(i => i.IsChecked).Select(i => {
                 _copilotIdList.Add(i.CopilotId);
-                return new MultiTask { Index = i.Index, FileName = i.FilePath, IsRaid = i.IsRaid, StageName = i.Name, };
+                return new MultiTask { Index = i.Index, FileName = i.FilePath, IsRaid = i.IsRaid, StageName = i.IsNavNameOverride ? i.Name : null, };
             });
 
             var task = new AsstCopilotTask() {
@@ -2067,7 +2137,7 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
                 FormationIndex = UseFormation ? FormationIndex : 0,
             };
 
-            // 能用列表的是主线/ss/故事集/悖论，都是 Copilot 类型
+            // 鑳界敤鍒楄〃鐨勬槸涓荤嚎/ss/鏁呬簨闆?鎮栬锛岄兘鏄?Copilot 绫诲瀷
             var ret = Instances.AsstProxy.AsstAppendTaskWithEncoding(AsstProxy.TaskType.Copilot, task).IsSuccess;
             return ret && Instances.AsstProxy.AsstStart();
         }
@@ -2093,7 +2163,7 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
         {
             try
             {
-                await File.WriteAllTextAsync(TempCopilotFile, JsonConvert.SerializeObject(_copilotCache, Formatting.Indented));
+                await File.WriteAllTextAsync(TempCopilotFile, JsonConvert.SerializeObject(_copilotCache, Formatting.Indented, new JsonSerializerSettings { DefaultValueHandling = DefaultValueHandling.Ignore, NullValueHandling = NullValueHandling.Ignore, }));
             }
             catch
             {
@@ -2122,7 +2192,7 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
                 FormationIndex = UseFormation ? FormationIndex : 0,
             };
 
-            // 单作业需要区分 Copilot / SSSCopilot
+            // 鍗曚綔涓氶渶瑕佸尯鍒?Copilot / SSSCopilot
             appended = Instances.AsstProxy.AsstAppendTaskWithEncoding(AsstProxy.TaskType.Copilot, _taskType, singleTask.Serialize().Params);
         }
 
@@ -2135,13 +2205,36 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
     // }
 
     /// <summary>
-    /// Stops copilot.
+/// 手动停止 copilot。
     /// UI 绑定的方法
+    /// </summary>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    [UsedImplicitly]
+    public async Task ManualStop()
+    {
+        if (_runningState.GetStopping() || _runningState.GetIdle())
+        {
+            return;
+        }
+
+        AddLog(LocalizationHelper.GetString("Stopping"));
+
+        // 停止目标按运行归属判定：本页发起的运行归属 copilot，脚本须双开关同时开启；
+        // 其他页发起的运行在本页停止时也能正确判定归属（连接中、Core 未运行的启动阶段归属已在入口声明）
+        var stopped = await Instances.TaskQueueViewModel.StopManuallyAsync();
+        if (stopped)
+        {
+            AddLog(LocalizationHelper.GetString("Stopped"));
+        }
+    }
+
+    /// <summary>
+    /// 内部收尾停止：仅通知 Core 停止并等待，不发射结束脚本（连接失败等启动链路调用）。
     /// </summary>
     /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
     public async Task Stop()
     {
-        // 等待 Core 实际停止；回调或超时自动 SetStopped（脚本由 proxy 回调按 CopilotWithScript 设置判断）
+// 等待 Core 实际停止；回调或超时自动 SetStopped，结束脚本不经此发射
         AddLog(LocalizationHelper.GetString("Stopping"));
         await Instances.TaskQueueViewModel.Stop();
         if (_runningState.GetIdle() && !_runningState.GetStopping())
@@ -2200,7 +2293,7 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
                 return false;
             case 1:
                 AddLog(LocalizationHelper.GetString("CopilotSingleTaskWarning"), UiLogColor.Warning, showTime: false);
-                break; // 降级为警告, 有用户炸就派uuu
+                break; // 闄嶇骇涓鸿鍛? 鏈夌敤鎴风偢灏辨淳uuu
         }
 
         if (copilotItemViewModels.Any(i => string.IsNullOrEmpty(i.Name?.Trim())))
@@ -2271,10 +2364,10 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
          };
 
     /// <summary>
-    /// 点击后移除界面中元素焦点
+    /// 鐐瑰嚮鍚庣Щ闄ょ晫闈腑鍏冪礌鐒︾偣
     /// </summary>
-    /// <param name="sender">点击事件发送者</param>
-    /// <param name="e">点击事件</param>
+    /// <param name="sender">鐐瑰嚮浜嬩欢鍙戦€佽€?/param>
+    /// <param name="e">鐐瑰嚮浜嬩欢</param>
     [UsedImplicitly]
     public void MouseDown(object sender, MouseButtonEventArgs e)
     {
@@ -2289,10 +2382,10 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
     }
 
     /// <summary>
-    /// 回车键点击后移除界面中元素焦点
+    /// 鍥炶溅閿偣鍑诲悗绉婚櫎鐣岄潰涓厓绱犵劍鐐?
     /// </summary>
-    /// <param name="sender">点击事件发送者</param>
-    /// <param name="e">点击事件</param>
+    /// <param name="sender">鐐瑰嚮浜嬩欢鍙戦€佽€?/param>
+    /// <param name="e">鐐瑰嚮浜嬩欢</param>
     [UsedImplicitly]
     public void KeyDown(object sender, KeyEventArgs e)
     {
@@ -2387,16 +2480,16 @@ private const string CopilotIdPrefix = "maa://"; // TODO: 作业站迁移完成�
     {
         Unknown = -1,
 
-        /// <summary>主线, 故事集, 支线作业</summary>
+        /// <summary>涓荤嚎, 鏁呬簨闆? 鏀嚎浣滀笟</summary>
         MainStageAndSideStory = 0,
 
-        /// <summary>保全</summary>
+        /// <summary>淇濆叏</summary>
         SSS,
 
-        /// <summary>悖论模拟</summary>
+        /// <summary>鎮栬妯℃嫙</summary>
         Paradox,
 
-        /// <summary>其他</summary>
+        /// <summary>鍏朵粬</summary>
         Other,
     }
 

@@ -1,5 +1,5 @@
 ---
-order: 13
+order: 10
 icon: mdi:account-sync
 ---
 
@@ -20,6 +20,7 @@ This task includes two sub-items that can be independently toggled:
 - Recognizes owned and unowned operator rosters, and saves potential data.
 - Results are used by [Recruitment Recognition](./tools.md#recruitment-recognition) to display operator potentials.
 - Last sync time is displayed after recognition.
+- After enabling `Fetch Operator data from Yituliu` in `Settings - Third-party services`, this sub-item reads the Yituliu progression data directly when the task starts, without emulator recognition.
 
 ### Depot Recognition
 
@@ -35,10 +36,10 @@ The difference between this task and [Tools - Depot Recognition](./tools.md#depo
 
 Set the execution frequency of the task:
 
-| Option | Description |
-| :--- | :--- |
-| Every time | Execute the update every time the task queue runs. |
-| Daily | Execute at most once per day; automatically skipped on subsequent triggers the same day. |
-| Weekly | Execute at most once per week. |
+| Option     | Description                                                                              |
+| :--------- | :--------------------------------------------------------------------------------------- |
+| Every time | Execute the update every time the task queue runs.                                       |
+| Daily      | Execute at most once per day; automatically skipped on subsequent triggers the same day. |
+| Weekly     | Execute at most once per week.                                                           |
 
 Recommended to set to "Daily" for automatic daily data sync on first run, avoiding frequent OCR that impacts efficiency.

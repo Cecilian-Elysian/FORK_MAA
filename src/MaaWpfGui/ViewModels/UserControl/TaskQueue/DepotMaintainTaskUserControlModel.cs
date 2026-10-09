@@ -64,7 +64,7 @@ public class DepotMaintainTaskUserControlModel : TaskSettingsViewModel, DepotMai
             };
         }
 
-        // 任务状态变化时，用最新库存重算该 plan 的缺口
+        // 任务开始时用最新库存重算该 plan 的缺口；任务正常结束但未达标时记录临期药耗尽证明
         Instances.AsstProxy.OnTaskStatusChanged += OnTaskStatusChanged;
 
         // 语言切换时由 FightSettings.RebuildDropsList 显式调用 OnLanguageChanged
@@ -91,7 +91,7 @@ public class DepotMaintainTaskUserControlModel : TaskSettingsViewModel, DepotMai
 
     private void OnTaskStatusChanged(int taskId, TaskItemStatus status)
     {
-        if (status != TaskItemStatus.InProgress || taskId <= 0)
+        if (taskId <= 0)
         {
             return;
         }
@@ -107,6 +107,21 @@ public class DepotMaintainTaskUserControlModel : TaskSettingsViewModel, DepotMai
             return;
         }
 
+        if (status == TaskItemStatus.Completed)
+        {
+            // 库存任务无次数上限，未达库存目标即正常结束说明理智打不动了，记录其临期药窗口为已耗尽
+            UpdateProvenExhaustedMedicineDays(
+                task.UseExpiringMedicine ? DepotMaintainTask.ExpiringMedicineDays : 0,
+                plan.DropId,
+                plan.DropCount);
+            return;
+        }
+
+        if (status != TaskItemStatus.InProgress)
+        {
+            return;
+        }
+
         // 复用 FightSettings 的公共方法，用最新库存重算缺口
         var stage = GetFightStage([plan.Stage]);
         if (!string.IsNullOrEmpty(stage))
@@ -118,10 +133,9 @@ public class DepotMaintainTaskUserControlModel : TaskSettingsViewModel, DepotMai
                 MedicineExpireDays = task.UseExpiringMedicine ? DepotMaintainTask.ExpiringMedicineDays : 0,
                 Series = task.UseAutoSeries ? 0 : 1,
                 MaxTimes = int.MaxValue,
-                ReportToPenguin = SettingsViewModel.GameSettings.EnablePenguin,
-                ReportToYituliu = SettingsViewModel.GameSettings.EnableYituliu,
-                PenguinId = SettingsViewModel.GameSettings.PenguinId,
-                YituliuId = SettingsViewModel.GameSettings.PenguinId,
+                ReportToPenguin = SettingsViewModel.ThirdPartyServiceSettings.EnablePenguin,
+                ReportToYituliu = SettingsViewModel.ThirdPartyServiceSettings.EnableYituliu,
+                PenguinId = SettingsViewModel.ThirdPartyServiceSettings.PenguinId,
                 ServerType = Instances.SettingsViewModel.ServerType,
                 ClientType = SettingsViewModel.GameSettings.ClientType,
             };
@@ -155,6 +169,15 @@ public class DepotMaintainTaskUserControlModel : TaskSettingsViewModel, DepotMai
     {
         get => GetTaskConfig<DepotMaintainTask>().SkipDuringResourceCollection;
         set => SetTaskConfig<DepotMaintainTask>(t => t.SkipDuringResourceCollection == value, t => t.SkipDuringResourceCollection = value);
+    }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether 仅下发第一个库存不足且当日可执行的计划，其补满后由下次运行继续后续计划。
+    /// </summary>
+    public bool OnlyFirstInsufficientPlan
+    {
+        get => GetTaskConfig<DepotMaintainTask>().OnlyFirstInsufficientPlan;
+        set => SetTaskConfig<DepotMaintainTask>(t => t.OnlyFirstInsufficientPlan == value, t => t.OnlyFirstInsufficientPlan = value);
     }
 
     /// <summary>
@@ -281,6 +304,9 @@ public class DepotMaintainTaskUserControlModel : TaskSettingsViewModel, DepotMai
 
         PlanList = new(list);
         PlanList.CollectionChanged += PlanList_CollectionChanged;
+
+        // new(list) 的 Reset 发生在构造阶段，此时 CollectionChanged 尚未挂载，需手动重排一次
+        ReindexPlans();
         SyncPlanListToTaskConfig();
         NotifyOfPropertyChange(nameof(PlanInfo));
     }
@@ -476,12 +502,20 @@ public class DepotMaintainTaskUserControlModel : TaskSettingsViewModel, DepotMai
                 plan.PropertyChanged += PlanItem_PropertyChanged;
             });
         }
+        ReindexPlans();
+        SyncPlanListToTaskConfig();
+    }
+
+    /// <summary>
+    /// 按当前 <see cref="PlanList"/> 顺序重排每项 <see cref="DepotPlanItemViewModel.Index"/>。
+    /// Title 依赖 Index，Fody 已在 Index setter 织入 Title 的通知，赋值即自动刷新显示。
+    /// </summary>
+    private void ReindexPlans()
+    {
         foreach (var (plan, index) in PlanList.Select((plan, index) => (plan, index)))
         {
             plan.Index = index;
         }
-
-        SyncPlanListToTaskConfig();
     }
 
     /// <summary>
@@ -536,6 +570,15 @@ public class DepotMaintainTaskUserControlModel : TaskSettingsViewModel, DepotMai
                 taskIds.Add(depotTaskId);
             }
 
+            // 空计划且未追加前置仓库识别时整任务没有 core 任务，须说明跳过原因；计划非空时各 plan 已有逐条日志
+            if (depot.PlanList.Count == 0 && !depot.UpdateDepot)
+            {
+                Instances.TaskQueueViewModel.AddLog(LocalizationHelper.GetString("DepotPlanNoPlan"), UiLogColor.Error);
+                return (null, []);
+            }
+
+            Instances.TaskQueueViewModel.AddLogSection(depot.NameOrTaskType);
+
             var depotList = Instances.ToolboxViewModel?.DepotResult.Where(item => item.Count >= 0).ToDictionary(item => item.Id, item => item.Count) ?? [];
             for (int i = 0; i < depot.PlanList.Count; i++)
             {
@@ -556,9 +599,9 @@ public class DepotMaintainTaskUserControlModel : TaskSettingsViewModel, DepotMai
 
                 var currentCount = depotList.TryGetValue(plan.DropId, out var value) ? value : 0;
                 var need = plan.DropCount - currentCount;
+                var dropName = ItemListHelper.GetItemName(plan.DropId) ?? plan.DropId;
                 if (need <= 0)
                 {
-                    var dropName = ItemListHelper.GetItemName(plan.DropId) ?? plan.DropId;
                     Instances.TaskQueueViewModel.AddLog(LocalizationHelper.GetStringFormat("DepotPlanInventoryEnough", i + 1, dropName, currentCount.ToString("N0"), plan.DropCount.ToString("N0")));
                     taskIds.Add(0);
                     continue;
@@ -588,10 +631,9 @@ public class DepotMaintainTaskUserControlModel : TaskSettingsViewModel, DepotMai
                     Stone = depot.UseStone && plan.UseStone ? plan.StoneCount : 0,
                     MedicineExpireDays = depot.UseExpiringMedicine ? DepotMaintainTask.ExpiringMedicineDays : 0,
                     Series = depot.UseAutoSeries ? 0 : 1,
-                    ReportToPenguin = SettingsViewModel.GameSettings.EnablePenguin,
-                    ReportToYituliu = SettingsViewModel.GameSettings.EnableYituliu,
-                    PenguinId = SettingsViewModel.GameSettings.PenguinId,
-                    YituliuId = SettingsViewModel.GameSettings.PenguinId,
+                    ReportToPenguin = SettingsViewModel.ThirdPartyServiceSettings.EnablePenguin,
+                    ReportToYituliu = SettingsViewModel.ThirdPartyServiceSettings.EnableYituliu,
+                    PenguinId = SettingsViewModel.ThirdPartyServiceSettings.PenguinId,
                     ServerType = Instances.SettingsViewModel.ServerType,
                     ClientType = SettingsViewModel.GameSettings.ClientType,
                 };
@@ -605,8 +647,15 @@ public class DepotMaintainTaskUserControlModel : TaskSettingsViewModel, DepotMai
                 {
                     taskIds.Add(id);
                     depot.PlanList[i] = plan with { TaskId = id };
+                    Instances.TaskQueueViewModel.AddLog(LocalizationHelper.GetStringFormat("DepotPlanInventoryInsufficient", i + 1, dropName, currentCount.ToString("N0"), plan.DropCount.ToString("N0"), need.ToString("N0")));
+                    if (depot.OnlyFirstInsufficientPlan)
+                    {
+                        break; // 仅下发第一个库存不足的计划，其后计划本轮不评估也不输出日志
+                    }
                 }
             }
+
+            Instances.TaskQueueViewModel.AddLog(string.Empty, splitMode: TaskQueueViewModel.LogCardSplitMode.Before);
 
             if (taskIds.Any(id => id > 0))
             {

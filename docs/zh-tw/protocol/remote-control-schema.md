@@ -17,7 +17,7 @@ icon: mdi:remote-desktop
 
 ## 獲取任務端點
 
-MAA 會以 1 秒的間隔持續輪詢此端點，嘗試獲取要執行的任務，並按照獲取到的列表依序執行。
+MAA 會以固定間隔持續輪詢此端點（預設 1 秒，可在設定中調整），嘗試獲取要執行的任務，並按照獲取到的列表依序執行。
 
 端點路徑不限，但必須是 HTTP(S) 端點。例如：`https://your-control-host.net/maa/getTask`
 
@@ -58,7 +58,7 @@ MAA 會以 1 秒的間隔持續輪詢此端點，嘗試獲取要執行的任務�
         },
         {
             "id": "b353c469-b902-4357-bd8f-d133199eea31",   // 任務唯一 ID（字串），彙報任務時會使用。
-            "type": "Settings-ConnectionAddress",           // 修改設定項任務，等同於執行 ConfigurationHelper.SetValue("ConnectionAddress", params)。為求安全，僅部分設定可修改，詳見下述。
+            "type": "Settings-ConnectAddress",              // 修改設定項任務，等同於設定連線設定的 ConnectAddress 屬性。為求安全，僅部分設定可修改，詳見下述。
             "params": "value"                               // 要修改的值。
         },
         // 立即執行任務：下列任務可在順序執行任務運作中執行，且 MAA 保證任何一個任務都會儘快回傳結果，通常用於控制遠端控制功能本身。
@@ -72,7 +72,7 @@ MAA 會以 1 秒的間隔持續輪詢此端點，嘗試獲取要執行的任務�
         },
         {
             "id": "b353c469-b902-4357-bd8f-d133199eea31",   // 任務唯一 ID（字串），彙報任務時會使用。
-            "type": "HeartBeat"                             // 心跳任務。會立即回傳，並將目前「順序執行任務」隊列中正在執行的任務 ID 作為 Payload 回傳；若目前無任務執行，則回傳空字串。
+            "type": "HeartBeat"                             // 心跳任務。會立即回傳，並將目前「順序執行任務」佇列中正在執行的任務 ID 作為 Payload 回傳；若目前無任務執行，則回傳空字串。
         }
     ],
     ...     // 若您的端點有其他用途，可自行新增回傳值，但 MAA 只會讀取 tasks。
@@ -85,7 +85,7 @@ MAA 會以 1 秒的間隔持續輪詢此端點，嘗試獲取要執行的任務�
 ::: note
 
 - `LinkStart-[TaskName]` 型任務的 type 可選值為：LinkStart-Base, LinkStart-WakeUp, LinkStart-Combat, LinkStart-Recruiting, LinkStart-Mall, LinkStart-Mission, LinkStart-AutoRoguelike, LinkStart-Reclamation。
-- `Settings-[SettingsName]` 型任務的 type 可選值為：Settings-ConnectionAddress, Settings-Stage1。
+- `Settings-[SettingsName]` 型任務的 type 可選值為：Settings-ConnectAddress, Settings-Stage1。
 - Settings 系列任務仍須依序執行，收到任務時不會立刻執行，而是排在上一項任務之後。
 - 多個立即執行任務亦會按部就班執行，但因執行速度極快，通常無需關注其順序。
 
@@ -112,7 +112,7 @@ MAA 會以 1 秒的間隔持續輪詢此端點，嘗試獲取要執行的任務�
 }
 ```
 
-該端點的回傳內容不限，但若未回傳 `200 OK`，MAA 端會彈出通知顯示 `上傳失敗`。
+該端點的回傳內容不限，MAA 不會讀取回傳內容，也不校驗狀態碼；回報請求失敗時 MAA 只會在日誌中記錄錯誤。
 
 ## 範例工作流——使用 QQBot 控制 MAA
 
@@ -139,7 +139,7 @@ QQBot 收到識別碼後，根據訊息中的使用者 QQ 號尋找資料庫是�
 
 當使用者透過 QQBot 提交指令後，Bot 將一項任務寫入資料庫，稍後 getTask 便會回傳該任務。此外，該 QQBot 甚至在每次使用者提交指令後，均預設額外指派一個截圖任務。
 
-MAA 執行完畢後會調用 reportStatus 彙報結果，Bot 收到結果後便於 QQ 端發送通知並展示截圖。
+MAA 執行完畢後會呼叫 reportStatus 彙報結果，Bot 收到結果後便於 QQ 端發送通知並展示截圖。
 
 ## 範例工作流——用網站控制 MAA
 
