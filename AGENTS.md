@@ -816,14 +816,16 @@ git commit -m $msg
 
 **首次踩坑记录**：2026-09-19 — fork 用户报 MAA 跑日常 Penguin/Yituliu 报数失败（直连 SSL EOF）。在 `gui.json` 的 `Global` 加 `VersionUpdate.Proxy` 键失败，日志无 `Rebuild HttpClient with proxy`。根因即上表 new vs legacy 路径混淆。改 `gui.new.json` 的 `Update.Proxy` 字段后 1 分钟内日志出现代理行，api.maa.plus 返回 304。**Proxy / ProxyType 字段位置在 `gui.new.json` 顶层 `"Update": { ... }` 子对象里，不是顶层散落，也不是 `Global` 子对象里**。
 
-**二次踩坑记录（2026-10-11，代理已卸载但配置残留）**：排查游戏 2.7.81 登录页故障时顺带发现 `Update.Proxy = "127.0.0.1:7897"`，但机器上**根本没装任何代理软件**（clash/mihomo/v2ray/sing-box 全无进程，`%LOCALAPPDATA%\Programs`、`C:\Program Files*`、`%APPDATA%` 扫不到安装目录），7890/7891/7892/7897/1080/10808/10809/20171 等 10 个常见端口全部无监听，系统代理 `ProxyEnable=0`（`ProxyServer` 只是残留值）。直连实测 `api.maa.plus` / `api2.maa.plus` / `penguin-stats.io` / `api.github.com` 四个目标**全部 200**。
+**二次踩坑记录（2026-10-11，代理软件装了但没运行）**：排查游戏 2.7.81 登录页故障时顺带发现 `Update.Proxy = "127.0.0.1:7897"`，但该代理**根本没在运行**：clash / mihomo / v2ray / sing-box 等进程全无，7890/7891/7892/**7897**/1080/10808/10809/20171 等 10 个常见代理端口全部无监听，系统代理 `ProxyEnable=0`（`ProxyServer` 只是残留值）。代理软件本体**是装了的** —— Clash Verge 在 `E:\Clash Verge\clash-verge.exe`（桌面 `clash-verge.lnk`），只是没启动；7897 正是 Clash Verge 的默认混合端口，所以**配置值本身没错，错的是"以为它在跑"**。直连实测 `api.maa.plus` / `api2.maa.plus` / `penguin-stats.io` / `api.github.com` 四个目标**全部 200**。
+
+> ⚠️ **排查陷阱**：判断"有没有装代理软件"不能只扫 `%LOCALAPPDATA%\Programs` / `C:\Program Files*` / `%APPDATA%` —— 本次这三个目录全扫不到，误判成"从未安装"，实际装在 **E 盘**。正确做法：读桌面快捷方式目标 + `Get-Process`，或直接测端口。
 
 | 排查顺序 | 命令 |
 |----------|------|
-| 1. 先测端口通不通 | `Test-NetConnection -ComputerName 127.0.0.1 -Port <端口>` → `TcpTestSucceeded=False` 即代理不存在 |
+| 1. 先测端口通不通（最直接） | `Test-NetConnection -ComputerName 127.0.0.1 -Port 7897` → `TcpTestSucceeded=False` 即代理**没在跑** |
 | 2. 确认无代理进程 | `Get-Process \| Where-Object ProcessName -match 'clash\|mihomo\|v2ray\|sing-box\|verge'` |
-| 3. 测直连是否可用 | `curl.exe -s -o NUL -w "%{http_code}" https://api.maa.plus/...`（直连 200 就说明根本不需要代理） |
-| 4. 处理 | 不需要代理 → 设置 → 更新里**清空代理框**；需要代理 → 装代理软件并对齐端口 |
+| 3. 测直连是否可用 | `curl.exe -s -o NUL -w "%{http_code}" https://api.maa.plus/...`（直连 200 就说明**根本不需要代理**） |
+| 4. 处理 | 不想用代理 → 设置 → 更新里**清空代理框**（+ 重启 MAA）；想用 → 启动 Clash Verge，确认监听端口与配置一致 |
 
 **⚠️ 关键：清空代理框后必须重启 MAA**。`HttpService` 构造函数订阅了 `VersionUpdateSettingsUserControlModel.Proxy/ProxyType` 的 `PropertyChanged`（`HttpService.cs:66-77`），但回调里有个守卫：`GetProxy()` 返回 null 时只打一条 `keep using the original HttpClient` 警告就 `return`，**不重建 client** —— 旧的、带死代理的 HttpClient 会继续用。日志时序可证：
 
