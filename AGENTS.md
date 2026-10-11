@@ -112,6 +112,7 @@ staging ──── feat/<name>, fix/<name> ← 从 staging 拉出
 - 2026-09-25：`39a7b516e7` fix/sanity-auto-series-adapt（AUTO 倍率按理智自适应）；`0a3884231d` merge 上游 v6.18.0 release（134 commit，§7.22 阶段 11）+ `1b7b087aae` 编译修复三连；MaaUtils 子模块 bump `0c2556cf` → `6e9ba33`
 - 2026-10-05：`5862c1a5d5` fix/data-account-ui-hardening（账号轮换数据归属 UI 加固 5 项，§7.23）
 - 2026-10-09：`9f91e74d99` staging → branch 晋升（698 commit，零冲突，branch 与 staging 树一致）；**上游待同步**：`upstream/master-v2` 已推进 84 commit 至 `54d20df` = v6.19.0-beta.1（2026-10-01）
+- 2026-10-11：`ef28c3197d` fix/login-page-account-manager-roi 合入 staging（游戏 2.7.81 登录页改版适配，摘上游 #18524 + #18538，详见 §7.24）；**上游待同步更新**：`master-v2` 已再推进至 `da4fa6f1f1` = **v6.19.0-beta.2**（2026-10-10），与本仓库 merge-base `23feeddc53`（v6.18.0）相差 **202 commit**（beta.1 84 + beta.2 118），本地 `upstream/master-v2` ref 需 `git fetch upstream master-v2` 刷新
 
 历史假关联：fork base `c8c8e75be5` 无父节点，通过 `git replace --graft` 接 `6147357bd0`（v6.14.0 upstream release），merge-base = `c8c8e75be5` 走 3-way 合并。
 
@@ -604,6 +605,20 @@ Select-String -Path install-staging/MAA.runtimeconfig.json -Pattern "STARTUP_HOO
 | 边界 | 账号改名不迁移旧桶文件（§7.14 既有行为，下拉短暂新旧两行并存）；工具箱两 Tab 不加账号后缀（旁有账号名避免重复）；Yituliu token 单账号语义仅在丢弃时日志说明，轮换中禁用该模式属后续可选增强 |
 | 作用域 | 仅本仓库 fork 私有，不推 upstream |
 | 详见 | `LOG.md` 2026-10-05（启动 / 实施完成 / 合入 staging 三段） |
+
+### 7.24 fix/login-page-account-manager-roi（2026-10-11 已合入 staging）
+
+| 项 | 内容 |
+|----|------|
+| 用途 | 修复游戏 2.7.81 登录页改版导致的「开始唤醒」必失败：登录页底部按钮重排（新增「扫码登录」），「账号管理」由 x≈864 左移一格至 x≈708，旧 `AccountManager` ROI `[855,660,150,40]` 上最高 NCC 0.6707 < 0.7 阈值 → `AccountSwitchTask` 30 次重试耗尽 → TaskChainError，连锁 理智作战 / 自动公招 全挂 |
+| 生命周期 | 2026-10-11 创建（从 staging 拉出） → 2026-10-11 `--no-ff` 合入 `staging` |
+| 关键 commit | `ef28c3197d`（fix(wakeup): 适配 2.7.81 新登录页账号管理与设置页用户中心位置，2 files +33 -7） |
+| 关键实现 | 摘上游 dev-v2 `8be6be077c` (#18524) + `2d24c7211a` (#18538)：`AccountManager` roi → `[693,655,310,54]`（兼容无「扫码登录」的老布局）、`UserCenter` roi → `[42,522,63,75]`、`Settings.next` 前置 `AccountLogout`、新增 `AccountLogout` + `AccountLogoutConfirm`、新增模板 `AccountLogout.png` |
+| 子修复分支 | 无（独立 fix） |
+| 验证 | 离线 NCC：新 ROI 最高分 0.9035 @ (708,667)（老 ROI 0.6707）；实机 13:35:18 `AccountManager` 命中 `[708,667]` score 0.9038 → `AccountManagerOfficial` 0.9559 → `AccountManagerListAccount` 0.9314 → `AccountManagerLoginButton` 0.99999 → 13:35:52 进入 1~7 代理作战。纯资源变更，无需重编译 / 无需 nbeauty2 |
+| 边界 | 账号轮换第 2 号的 `AccountLogout` 路径未实测（单账号跑批不触发）；上游 v6.19.0-beta.2 已含同一改动，同步时该区块自然收敛 |
+| 作用域 | 仅同步上游已有修复（不推 upstream，上游已有） |
+| 详见 | `LOG.md` 2026-10-11（启动 / 实施完成 / 合入 staging 三段） |
 
 
 ## 8. 关键参考链接
