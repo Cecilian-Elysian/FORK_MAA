@@ -1,0 +1,235 @@
+name: Issue Review
+
+on:
+  issues:
+    types: [opened]
+  issue_comment:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: 'Issue number to analyze'
+        required: true
+        type: number
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check-then-close-or-fold:
+    name: Review and Modify Issues
+    if: github.event_name == 'issues' && github.event.action == 'opened'
+    outputs:
+      blocked: ${{ steps.unread-checkbox-check.outputs.result }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check for duplicate issues in last hour
+        id: duplicate-check
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+            const currentIssueCreatedAt = new Date(context.payload.issue.created_at);
+            const issueAuthor = context.payload.issue.user.login;
+
+            // 重新获取该用户最近的 issues
+            const { data: userIssues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              creator: issueAuthor,
+              state: 'all',
+              since: oneHourAgo.toISOString(),
+              per_page: 30
+            });
+
+            // 过滤出1小时内创建的其他 issues（排除当前 issue）
+            const recentIssues = userIssues.filter(issue => {
+              const issueCreatedAt = new Date(issue.created_at);
+              return issue.number !== context.issue.number && 
+                     issueCreatedAt >= oneHourAgo &&
+                     issueCreatedAt < currentIssueCreatedAt;
+            });
+
+            if (recentIssues.length > 0) {
+              // 给当前 issue 添加标签
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                labels: ['rapid-submission']
+              });
+              
+              // 给1小时内的其他 issues 也添加标签
+              for (const issue of recentIssues) {
+                try {
+                  await github.rest.issues.addLabels({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: issue.number,
+                    labels: ['rapid-submission']
+                  });
+                  console.log(`Added rapid-submission label to issue #${issue.number}`);
+                } catch (error) {
+                  console.log(`Failed to add label to issue #${issue.number}: ${error.message}`);
+                }
+              }
+            }
+
+      - name: Check for issue checkboxes
+        id: unread-checkbox-check
+        uses: actions/github-script@v9
+        with:
+          script: |
+            // 找不到###就算了
+            if (!/###([^#]+)###/.test(context.payload.issue.body)) {
+              return false;
+            }
+            var checkList = /###([^#]+)###/.exec(context.payload.issue.body)[1];
+            const UnreadRegexCn = /- \[x\]\s*.*?我.*未仔细阅读/i;
+            const UnreadRegexCn_ = /- \[ \]\s*.*?我.*未仔细阅读/i;
+            if (/- \[(x| )\]\s*.*?[\u4e00-\u9fa5]+/i.test(checkList)) { // 中英区分
+              if (UnreadRegexCn.test(checkList)) {
+                return true;
+              }
+              checkList = checkList.replace(UnreadRegexCn_, "");
+              return /- \[ \]\s*.*?[\u4e00-\u9fa5]+/i.test(checkList);
+            }
+            const texts = [
+            'I have checked all the options without carefully reading the content and believe this will not affect issue resolution.'];
+            return texts.some(text => new RegExp(`- \\[x\\]\\s*${text}`).test(context.payload.issue.body));
+
+      - name: Close low-quality issue
+        if: steps.unread-checkbox-check.outputs.result == 'true'
+        uses: actions/github-script@v9
+        with:
+          script: |
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              state: 'closed',
+              state_reason: 'not_planned'
+            });
+
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              labels: ['low-quality-report']
+            });
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: '因为未阅读模板提示并正确提交，触发了自动关闭规则\n\nBecause the template prompt was not read and submitted correctly, the automatic closing rule was triggered'
+            });
+
+      - name: Fold checkboxes
+        if: steps.unread-checkbox-check.outputs.result == 'false'
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const originalBody = context.payload.issue.body;
+            if (originalBody.includes('<details><summary>Checkboxes</summary>\n\n')) {
+              return;
+            }
+            const checkboxSectionRegex_cn_bug = /([\s\S]*?)(### 问题描述\n\n)/;
+            const checkboxSectionRegex_cn_feat = /([\s\S]*?)(### 说说你遇到的问题？\n\n)/;
+            const checkboxSectionRegex_en_bug = /([\s\S]*?)(### Description\n\n)/;
+            const checkboxSectionRegex_en_feat = /([\s\S]*?)(### The problems you have encountered?\n\n)/;
+
+            const foldedBody_cn_bug = originalBody.replace(
+              checkboxSectionRegex_cn_bug,
+              `<details><summary>Checkboxes</summary>\n\n$1\n\n</details>\n\n$2`
+            );
+            const foldedBody_cn_feat = foldedBody_cn_bug.replace(
+              checkboxSectionRegex_cn_feat,
+              `<details><summary>Checkboxes</summary>\n\n$1\n\n</details>\n\n$2`
+            );
+            const foldedBody_en_bug = foldedBody_cn_feat.replace(
+              checkboxSectionRegex_en_bug,
+              `<details><summary>Checkboxes</summary>\n\n$1\n\n</details>\n\n$2`
+            );
+            const foldedBody = foldedBody_en_bug.replace(
+              checkboxSectionRegex_en_feat,
+              `<details><summary>Checkboxes</summary>\n\n$1\n\n</details>\n\n$2`
+            );
+
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: foldedBody
+            });
+
+  ai-analysis:
+    name: Analyze Issue with AI
+    needs: check-then-close-or-fold
+    # opened 需勾选框检查放行（blocked）；评论触发需 @bot 且 issue 未关闭；
+    # 手动触发直接放行。人工重开的 issue 不自动分析，需要时先重开再 @bot。
+    # !cancelled() 使评论/手动触发时上游 skipped 不阻断本 job 评估；
+    # 勾选框检查自身 failure 时 opened 不放行，宁可漏一次分析让人工 @ 补跑。
+    if: >-
+      !cancelled() && (
+      (github.event_name == 'issues' && github.event.action == 'opened'
+      && needs.check-then-close-or-fold.result == 'success'
+      && needs.check-then-close-or-fold.outputs.blocked != 'true')
+      || github.event_name == 'workflow_dispatch'
+      || (github.event_name == 'issue_comment' && github.event.action == 'created'
+      && contains(github.event.comment.body, '@MaaArknightsBot')
+      && github.event.comment.user.type != 'Bot')
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check issue state
+        id: issue-state
+        if: github.event_name == 'issue_comment'
+        uses: actions/github-script@v9
+        with:
+          script: |
+            // 被勾选框规则关闭的 issue，作者 @bot 不再触发分析；
+            // 需要分析时先重开 issue 再 @bot
+            const { data: issue } = await github.rest.issues.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            core.setOutput('closed', issue.state === 'closed');
+
+      # 分析质量仍依赖配套的 issue/log analysis skill。
+      # 详细使用文档：https://github.com/MistEO/ai-issue-analysis
+      - name: Analyze issue with AI
+        id: analysis
+        if: steps.issue-state.outputs.closed != 'true'
+        continue-on-error: true
+        uses: MistEO/ai-issue-analysis@main
+        with:
+          agent: ${{ secrets.BOT_AI_AGENT }}
+          api-key: ${{ secrets.BOT_AI_API_KEY }}
+          api-base-url: ${{ secrets.BOT_AI_API_BASE_URL }}
+          model: ${{ secrets.BOT_AI_MODEL }}
+          github-token: ${{ secrets.MAA_BOT_TOKEN }}
+          bot-name: '@MaaArknightsBot'
+          initial-comment-body: |
+            🤖 **MaaBot 正在分析该 Issue...**  
+            
+            感谢您的反馈！AI 正在自动分析该问题，预计耗时约 10 分钟。
+          prompt-template: |
+            严格按照 .agents/skills/maa-issue-log-analysis/SKILL.md 中的规则，分析 GitHub Issue {{issue_number}}。把最终结论写到 {{answer_file}}。
+          extra-comment-content: |
+            <!-- Skip all labels -->
+
+      - name: 查看完整输入输出
+        if: always()
+        env:
+          ISSUE_NUMBER: ${{ steps.analysis.outputs.issue-number }}
+          COMMENT_ID: ${{ steps.analysis.outputs.comment-id }}
+          COMMENT_URL: ${{ steps.analysis.outputs.comment-url }}
+        run: |
+          echo "issue_number=$ISSUE_NUMBER"
+          echo "comment_id=$COMMENT_ID"
+          echo "comment_url=$COMMENT_URL"
+          echo "(Full agent-output and final-conclusion are available in the uploaded artifacts)"

@@ -23,7 +23,7 @@
     <PublishReadyToRun>false</PublishReadyToRun>
     <PublishSingleFile>false</PublishSingleFile>
     <PublishTrimmed>false</PublishTrimmed>
-    <SelfContained Condition="'$(RuntimeIdentifier)' != ''">false</SelfContained>
+<SelfContained Condition="'$(RuntimeIdentifier)' != ''">false</SelfContained>
     <BeautyLibsDir>./externals</BeautyLibsDir>
     <BeautyUsePatch Condition="'$(RuntimeIdentifier)' != ''">false</BeautyUsePatch>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
@@ -44,6 +44,7 @@
   <PropertyGroup>
     <UseApplicationTrust>false</UseApplicationTrust>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <WarningsNotAsErrors>NU1701;NU1900;NU1901;NU1902;NU1903;NU1904</WarningsNotAsErrors>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <CETCompat>false</CETCompat>
   </PropertyGroup>
@@ -88,7 +89,7 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
 
-  <!-- Ignore Warings -->
+  <!-- Ignore Warings (fork: v6.19 上游开 TreatWarningsAsErrors=true, fork 保留豁免) -->
   <PropertyGroup>
     <NoWarn>SA1121;SA1404;Uno0001</NoWarn>
   </PropertyGroup>

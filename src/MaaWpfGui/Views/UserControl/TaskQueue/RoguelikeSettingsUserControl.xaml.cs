@@ -1,6 +1,6 @@
 // <copyright file="RoguelikeSettingsUserControl.xaml.cs" company="MaaAssistantArknights">
 // Part of the MaaWpfGui project, maintained by the MaaAssistantArknights team (Maa Team)
-// Copyright (C) 2021-2025 MaaAssistantArknights Contributors
+// Copyright (C) 2021-2026 MaaAssistantArknights Contributors
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License v3.0 only as published by
@@ -11,9 +11,9 @@
 // but WITHOUT ANY WARRANTY
 // </copyright>
 
-#nullable enable
+#pragma warning disable SA1402 // 伴生小类与控件同文件
 
-#pragma warning disable SA1402
+#nullable enable
 
 using System;
 using System.Globalization;
@@ -74,7 +74,7 @@ public partial class RoguelikeSettingsUserControl : System.Windows.Controls.User
         }
 
         var text = comboBox.Text;
-        if (!string.IsNullOrEmpty(text) && DataHelper.GetCharacterByNameOrAlias(text) is null)
+        if (!string.IsNullOrEmpty(text) && DataHelper.GetCharacterByNameOrAlias(text)?.Id.StartsWith("char_", StringComparison.Ordinal) != true)
         {
             // 输入的是无效干员名，保持全干员列表 override，便于继续从任意干员中选取
             return;
@@ -101,7 +101,7 @@ public class StartingCoreCharRule : ValidationRule
             return new ValidationResult(false, HandyControl.Properties.Langs.Lang.FormatError);
         }
 
-        if (!string.IsNullOrEmpty(stringValue) && DataHelper.GetCharacterByNameOrAlias(stringValue) is null)
+        if (!string.IsNullOrEmpty(stringValue) && DataHelper.GetCharacterByNameOrAlias(stringValue)?.Id.StartsWith("char_", StringComparison.Ordinal) != true)
         {
             // 输入无效时把下拉列表临时扩展为全干员列表，便于从任意干员中选取；
             // 经由可搜索扩展的 override 切换，不直接写 ItemsSource，以保持其维护的独立视图与过滤状态

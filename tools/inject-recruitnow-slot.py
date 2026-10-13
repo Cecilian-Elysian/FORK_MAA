@@ -50,6 +50,18 @@ SLOT_TASKS = {
 ANCHOR_TASK = "RecruitNow"
 ANCHOR_NEXT_KEY = "next"
 
+# 文本锚点: `RecruitNowConfirm` task 的首行 (紧随 `RecruitNow` 之后)
+ANCHOR_TEXT = '    "RecruitNowConfirm": {'
+
+# 待插入的原文块, 缩进与上游紧凑风格对齐 (4 空格 base / 8 空格字段)
+SLOT_BLOCK_TEXT = "".join(
+    '    "{}": {{\n'.format(name)
+    + '        "baseTask": "RecruitNow",\n'
+    + '        "roi": {}\n'.format(json.dumps(body["roi"]))
+    + "    },\n"
+    for name, body in SLOT_TASKS.items()
+)
+
 
 def main() -> int:
     if not TARGET.exists():
@@ -93,10 +105,35 @@ def main() -> int:
     backup = TARGET.with_suffix(".json.bak")
     backup.write_text(TARGET.read_text(encoding="utf-8"), encoding="utf-8")
 
-    json_text = json.dumps(data, ensure_ascii=False, indent=4)
-    TARGET.write_text(json_text + "\n", encoding="utf-8")
+    # 文本级插入: 上游 tasks.json 用紧凑风格 (数组同行), 若整份json.dumps(indent=4)
+    # 会把上游格式全量重排, 制造 ~7000 行格式债, 让后续每次同步都付冲突代价。
+    # 故只在锚点 task 前插入原文块, 保持上游其余部分逐字节不变。
+    text = TARGET.read_text(encoding="utf-8")
+    if text.count(ANCHOR_TEXT) != 1:
+        print(
+            f"[ERR] 文本锚点出现 {text.count(ANCHOR_TEXT)} 次 (期望 1 次), 已回滚",
+            file=sys.stderr,
+        )
+        backup.replace(TARGET)
+        return 1
 
-    print(f"[OK] 注入 {len(SLOT_TASKS)} 个 slot tasks 到 {TARGET}")
+    text = text.replace(ANCHOR_TEXT, SLOT_BLOCK_TEXT + ANCHOR_TEXT)
+    TARGET.write_text(text, encoding="utf-8", newline="")
+
+    # 回读校验: JSON 可解析 + 4 个 slot task 内容与常量一致
+    try:
+        verify = json.loads(TARGET.read_text(encoding="utf-8"))
+    except ValueError as exc:
+        print(f"[ERR] 注入后 JSON 无法解析 ({exc}), 已回滚", file=sys.stderr)
+        backup.replace(TARGET)
+        return 1
+    for name, body in SLOT_TASKS.items():
+        if verify.get(name) != body:
+            print(f"[ERR] 注入后 {name} 内容不符, 已回滚", file=sys.stderr)
+            backup.replace(TARGET)
+            return 1
+
+    print(f"[OK] 注入 {len(SLOT_TASKS)} 个 slot tasks 到 {TARGET} (文本级, 保持上游紧凑格式)")
     print(f"[OK] 备份: {backup}")
     return 0
 

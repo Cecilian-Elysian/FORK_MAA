@@ -1,6 +1,6 @@
 // <copyright file="FightSettingsUserControlModel.cs" company="MaaAssistantArknights">
 // Part of the MaaWpfGui project, maintained by the MaaAssistantArknights team (Maa Team)
-// Copyright (C) 2021-2025 MaaAssistantArknights Contributors
+// Copyright (C) 2021-2026 MaaAssistantArknights Contributors
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License v3.0 only as published by
@@ -138,7 +138,7 @@ public class FightSettingsUserControlModel : TaskSettingsViewModel, FightSetting
         if (status == TaskItemStatus.Completed)
         {
             // 有次数限制的目标库存任务可能打满次数而未达标，结束原因不唯一，不构成耗尽证明；
-            // 无次数限制时该模式下「未达库存目标的正常结束」只能是理智不足
+            // 无次数限制时该模式下 ｢未达库存目标的正常结束｣ 只能是理智不足
             if (GetFightTaskByTaskId(taskId) is { } completedFight &&
                 IsInventoryTargetDropEnabled(completedFight) &&
                 !string.IsNullOrEmpty(completedFight.DropId) &&
@@ -257,7 +257,7 @@ public class FightSettingsUserControlModel : TaskSettingsViewModel, FightSetting
     /// 并以给定关卡名重建候选关卡列表与已选关卡。
     /// 语言切换会经 <see cref="UpdateStageList"/> 重建列表，届时需重新调用本方法。
     /// </summary>
-    /// <param name="stages">候选关卡名；Display/Value 取 <see cref="StageManager.GetStageInfo"/> 的解析结果（含兜底）。</param>
+    /// <param name="stages">候选关卡名；Display/Value 取 <see cref="MaaWpfGui.Services.StageManager.GetStageInfo"/> 的解析结果（含兜底）。</param>
     public void InjectDemoStages(IReadOnlyList<string> stages)
     {
         if (TaskSettingVisibilityInfo.CurrentTask is not FightTask current)
@@ -267,7 +267,7 @@ public class FightSettingsUserControlModel : TaskSettingsViewModel, FightSetting
         }
 
         // 备选三行 StagePlan 不受 UseAlternateStage 控制可见性，必须先切备选模式，
-        // 否则「关卡指定」标签/添加关卡按钮/复选框勾选停留在主关卡模式，与渲染出的三行叠加错乱
+        // 否则 ｢关卡指定｣ 标签/添加关卡按钮/复选框勾选停留在主关卡模式，与渲染出的三行叠加错乱
         UseAlternateStage = true;
 
         StageListSource = [.. stages.Select(s => {
@@ -298,6 +298,29 @@ public class FightSettingsUserControlModel : TaskSettingsViewModel, FightSetting
         {
             _logger.Information("Demo stages injected: {Count} item(s), last={LastDisplay}", StageListSource.Count, StageListSource[^1].Display);
         }
+    }
+
+    /// <summary>
+    /// README 截图演示模式专用：设置 ｢指定材料｣ 下拉显示的材料，不勾选 ｢指定材料｣（避免带出数量框）。
+    /// 语言切换经 <see cref="RebuildDropsList"/> 自动保留选中并刷新显示名，随语言组重复调用幂等。
+    /// </summary>
+    /// <param name="itemId">材料 ID（resource/item_index.json 的 key，如 30012 固源岩）。</param>
+    public void InjectDemoSpecifiedDrops(string itemId)
+    {
+        if (TaskSettingVisibilityInfo.CurrentTask is not FightTask)
+        {
+            _logger.Warning("InjectDemoSpecifiedDrops skipped: current task is not FightTask");
+            return;
+        }
+
+        if (AllDrops.All(i => i.Value != itemId))
+        {
+            _logger.Warning("Demo specified drops item {ItemId} not in drops list, skipped", itemId);
+            return;
+        }
+
+        DropsItemId = itemId;
+        RefreshDropName();
     }
 
     // UI 绑定的方法
@@ -416,7 +439,6 @@ public class FightSettingsUserControlModel : TaskSettingsViewModel, FightSetting
     /// <summary>
     /// Gets or sets a value indicating whether 使用源石 with null
     /// </summary>
-    // ReSharper disable once MemberCanBePrivate.Global
     [PropertyDependsOn(nameof(UseStone))]
     public bool UseStoneDisplay
     {
@@ -1596,20 +1618,6 @@ public class FightSettingsUserControlModel : TaskSettingsViewModel, FightSetting
     #endregion Data Class
 
     #region UI Item
-
-    public class WeeklyScheduleItem(DayOfWeek dayOfWeek) : PropertyChangedBase
-    {
-        public string Display => LocalizationHelper.CustomCultureInfo.DateTimeFormat.GetDayName(DayOfWeek);
-
-        /// <summary>
-        /// 语言切换后通知 Display 回读新文化的星期名，Value（勾选状态）保持不变。
-        /// </summary>
-        public void RefreshLocalization() => NotifyOfPropertyChange(nameof(Display));
-
-        public DayOfWeek DayOfWeek { get; } = dayOfWeek;
-
-        public bool Value { get => field; set => SetAndNotify(ref field, value); } = true;
-    }
 
     public class StageSourceItem : PropertyChangedBase
     {

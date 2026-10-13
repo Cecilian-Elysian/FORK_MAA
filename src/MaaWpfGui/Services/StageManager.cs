@@ -1,6 +1,6 @@
 // <copyright file="StageManager.cs" company="MaaAssistantArknights">
 // Part of the MaaWpfGui project, maintained by the MaaAssistantArknights team (Maa Team)
-// Copyright (C) 2021-2025 MaaAssistantArknights Contributors
+// Copyright (C) 2021-2026 MaaAssistantArknights Contributors
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License v3.0 only as published by
@@ -76,6 +76,12 @@ public class StageManager
     private Dictionary<string, SideStoryActivity> _activityList = [];
 
     public IReadOnlyDictionary<string, SideStoryActivity> ActivityList => _activityList.AsReadOnly();
+
+    /// <summary>
+    /// 关卡与活动数据重载完成（本地缓存加载或 OTA 更新后触发）。
+    /// 可能在非 UI 线程触发，监听方自行处理线程上下文。
+    /// </summary>
+    public event EventHandler? StageDataChanged;
 
     // 资源全开放活动（resourceCollection），用于判断当前是否处于资源全开放期间
     private StageActivityInfo _resourceCollection = new() { IsResourceCollection = true };
@@ -181,7 +187,7 @@ public class StageManager
                 growlInfo.Message = LocalizationHelper.GetString("ApiUpdateSuccess");
             }
 
-            Growl.Info(growlInfo);
+            GrowlHelper.Info(growlInfo);
         });
     }
 
@@ -297,6 +303,8 @@ public class StageManager
         var tempMiniGames = InitializeDefaultMiniGameEntries();
         ParseMiniGameEntries(activity?[clientType], tempMiniGames, curVerParsed, curVersionObj, isDebugVersion);
         _miniGameEntries = tempMiniGames;
+
+        StageDataChanged?.Invoke(this, EventArgs.Empty);
     }
 
     private static Dictionary<string, StageInfo> InitializeDefaultStages()

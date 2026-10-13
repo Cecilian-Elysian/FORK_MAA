@@ -305,8 +305,8 @@ bool asst::InfrastProductionTask::shift_facility_list()
         }
 
         /* 产物识别紧靠换产物/换人：`ProductOfFacility` 与 Replenish / Shamare（仅贸易）监听该时点，早于 Pre。
-           可信度：须达到对应 InfrastFlag* 模板的 templThreshold，避免出现「最高分仍不可靠」却仍选
-           all_products.at(0)」。 */
+           可信度：须达到对应 InfrastFlag* 模板的 templThreshold，避免出现 ｢最高分仍不可靠｣ 却仍选
+           all_products.at(0)｣ 。 */
         // 识别产物时添加守卫，对后续逻辑没有本质影响
         const auto image_facility_products = ctrler()->get_image();
         Matcher product_analyzer(image_facility_products);
@@ -584,7 +584,8 @@ bool asst::InfrastProductionTask::resolve_operator_identity(infrast::Oper& oper)
         return false;
     }
 
-    const std::string& operator_id = BattleData.get_first_id(battle::Role::Unknown, name->text).value_or(std::string());
+    const std::string& operator_id =
+        BattleData.get_first_id(battle::Role::Unknown, name->text, true).value_or(std::string());
     if (!infrast::operator_id_matches_candidates(oper.operator_ids, operator_id)) {
         if (!operator_id.empty()) {
             LogWarn << __FUNCTION__ << "infrastructure operator identity conflicts with skills" << name->text

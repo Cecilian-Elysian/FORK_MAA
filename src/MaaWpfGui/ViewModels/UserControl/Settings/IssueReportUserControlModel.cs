@@ -1,6 +1,6 @@
 // <copyright file="IssueReportUserControlModel.cs" company="MaaAssistantArknights">
 // Part of the MaaWpfGui project, maintained by the MaaAssistantArknights team (Maa Team)
-// Copyright (C) 2021-2025 MaaAssistantArknights Contributors
+// Copyright (C) 2021-2026 MaaAssistantArknights Contributors
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License v3.0 only as published by
@@ -683,7 +683,7 @@ public class IssueReportUserControlModel : PropertyChangedBase
             IconKey = "HangoverGeometry",
             IconBrushKey = "PallasBrush",
         };
-        Growl.Info(growlInfo);
+        GrowlHelper.Info(growlInfo);
     }
 
     /// <summary>

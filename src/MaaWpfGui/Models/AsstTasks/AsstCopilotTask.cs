@@ -1,6 +1,6 @@
 // <copyright file="AsstCopilotTask.cs" company="MaaAssistantArknights">
 // Part of the MaaWpfGui project, maintained by the MaaAssistantArknights team (Maa Team)
-// Copyright (C) 2021-2025 MaaAssistantArknights Contributors
+// Copyright (C) 2021-2026 MaaAssistantArknights Contributors
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License v3.0 only as published by
@@ -68,6 +68,11 @@ public class AsstCopilotTask : AsstBaseTask
     public bool UseSanityPotion { get; set; }
 
     /// <summary>
+    /// Gets or sets 干员识别数据文件路径
+    /// </summary>
+    public string OperBoxDataPath { get; set; } = string.Empty;
+
+    /// <summary>
     /// Gets or sets 自定干员列表
     /// </summary>
     public List<UserAdditional>? UserAdditionals { get; set; }
@@ -86,6 +91,7 @@ public class AsstCopilotTask : AsstBaseTask
             ["ignore_requirements"] = IgnoreRequirements,
             ["loop_times"] = LoopTimes,
             ["use_sanity_potion"] = UseSanityPotion,
+            ["operbox_data_path"] = OperBoxDataPath,
         };
 
         if (!string.IsNullOrEmpty(FileName) && MultiTasks.Count > 0)

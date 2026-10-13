@@ -1,6 +1,6 @@
 // <copyright file="PowerManagement.cs" company="MaaAssistantArknights">
 // Part of the MaaWpfGui project, maintained by the MaaAssistantArknights team (Maa Team)
-// Copyright (C) 2021-2025 MaaAssistantArknights Contributors
+// Copyright (C) 2021-2026 MaaAssistantArknights Contributors
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License v3.0 only as published by
@@ -59,7 +59,8 @@ public class PowerManagement
     {
         try
         {
-            return PInvoke.SetSuspendState(true, true, true);
+            // 第三参数传 false 保持唤醒事件启用，与手动睡眠行为一致，不挡计划任务的唤醒定时器
+            return PInvoke.SetSuspendState(true, true, false);
         }
         catch (Exception ex)
         {
@@ -72,11 +73,32 @@ public class PowerManagement
     {
         try
         {
-            return PInvoke.SetSuspendState(false, true, true);
+            // 第三参数传 false 保持唤醒事件启用，与手动睡眠行为一致，不挡计划任务的唤醒定时器
+            return PInvoke.SetSuspendState(false, true, false);
         }
         catch (Exception ex)
         {
             _logger.Error("Sleep error: {ExMessage}", ex.Message);
+            return false;
+        }
+    }
+
+    public static bool LockScreen()
+    {
+        try
+        {
+            _logger.Information("Locking workstation.");
+            if (!PInvoke.LockWorkStation())
+            {
+                _logger.Error("Lock workstation failed.");
+                return false;
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.Error("Lock workstation error: {ExMessage}", ex.Message);
             return false;
         }
     }

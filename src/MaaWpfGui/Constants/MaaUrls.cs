@@ -1,6 +1,6 @@
 // <copyright file="MaaUrls.cs" company="MaaAssistantArknights">
 // Part of the MaaWpfGui project, maintained by the MaaAssistantArknights team (Maa Team)
-// Copyright (C) 2021-2025 MaaAssistantArknights Contributors
+// Copyright (C) 2021-2026 MaaAssistantArknights Contributors
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License v3.0 only as published by
@@ -36,6 +36,9 @@ public static class MaaUrls
     public const string PrtsPlus = "https://prts.plus";
 
     public const string YituliuOpenApiOperatorInfo = "https://backend.yituliu.cn/open-api/operator/info";
+
+    // 一图流个人中心（第三方 API Token 生成处）
+    public const string YituliuAccountHome = "https://ark.yituliu.cn/account/home";
 
     public const string PrtsPlusCopilotGet = "https://prts.maa.plus/copilot/get/";
 
