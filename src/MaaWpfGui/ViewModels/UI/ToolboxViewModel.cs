@@ -1988,7 +1988,7 @@ if (Bootstrapper.TryGetTaskBlockReason() is { } reason)
                 Instances.TaskQueueViewModel?.AddLog(
                     "[DataAccount] 一图流干员数据已丢弃：拉取期间账号已切换（一图流 token 仅对应单个游戏账号）",
                     UiLogColor.Warning);
-                return false;
+                return (YituliuFetchResult.NetworkError, 0);
             }
 
             // 拉取成功后才清空内存中的旧识别数据与同步时间，失败时原样保留

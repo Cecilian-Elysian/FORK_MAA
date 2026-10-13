@@ -103,10 +103,11 @@ public partial class TaskQueueViewModel
         MarkPreviousStepCompleted(prevStep);
 
         // fix/account_rotation/6: 切换到新步骤前重置左侧任务列表状态 + 进度计数,
-        // 对齐 LinkStartWithTasks:1909-1910, 否则上一账号的绿色(Completed)会残留,
-        // 进度条也会因 MainTasksCompletedCount 不归零而不再出现。
-        MainTasksCompletedCount = 0;
+        // 否则上一账号的绿色(Completed)会残留、进度条不重开。
+        // v6.19 上游以 RefreshMainTasksProgress() 从条目状态重算进度(取代 MainTasksCompletedCount 属性),
+        // Reset 后重算即归零重走。
         ResetTaskItemStatuses();
+        RefreshMainTasksProgress();
 
         // 跨账号切换: 显式追加一个 StartUp(StartGame=false) 切号
         bool needStartupSwitch = prevStep == null || prevStep.AccountName?.Trim() != nextStep.AccountName?.Trim();
