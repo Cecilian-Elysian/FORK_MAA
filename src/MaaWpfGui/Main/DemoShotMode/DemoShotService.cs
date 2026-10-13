@@ -1,6 +1,6 @@
 // <copyright file="DemoShotService.cs" company="MaaAssistantArknights">
 // Part of the MaaWpfGui project, maintained by the MaaAssistantArknights team (Maa Team)
-// Copyright (C) 2021-2025 MaaAssistantArknights Contributors
+// Copyright (C) 2021-2026 MaaAssistantArknights Contributors
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License v3.0 only as published by
@@ -56,7 +56,7 @@ public static class DemoShotService
     private const int WindowHeight = 600;
 
     /// <summary>遍历的界面语言，与 LocalizationHelper.SupportedLanguages 及文档目录名保持一致。</summary>
-    private static readonly string[] Languages = ["zh-cn", "zh-tw", "en-us", "ja-jp", "ko-kr"];
+    private static readonly string[] _languages = ["zh-cn", "zh-tw", "en-us", "ja-jp", "ko-kr"];
 
     /// <summary>
     /// 运行演示截图流程。全程保持在 UI 线程（数据文件读取除外），异常时记日志并以非零码退出。
@@ -89,9 +89,9 @@ public static class DemoShotService
 
             string[] themeSuffixes = ["light", "dark"];
             GlobalGui.DarkModeType[] themes = [GlobalGui.DarkModeType.Light, GlobalGui.DarkModeType.Dark];
-            int total = Languages.Length * themes.Length;
+            int total = _languages.Length * themes.Length;
             int current = 0;
-            foreach (string lang in Languages)
+            foreach (string lang in _languages)
             {
                 for (int themeIndex = 0; themeIndex < themes.Length; themeIndex++)
                 {
@@ -236,7 +236,7 @@ public static class DemoShotService
     /// <c>TaskQueueViewModel.TaskTypeList</c> 的成员（<c>TaskQueueView.xaml</c> 的菜单项）一一对应，
     /// 即任务列表可出现的全部条目；<c>CustomTask</c> 为自定义空壳不在演示之列。
     /// </summary>
-    private static readonly Dictionary<string, Func<BaseTask>> DemoTaskFactories =
+    private static readonly Dictionary<string, Func<BaseTask>> _demoTaskFactories =
         new(StringComparer.OrdinalIgnoreCase)
         {
             ["StartUp"] = () => new StartUpTask(),
@@ -254,7 +254,7 @@ public static class DemoShotService
         };
 
     /// <summary>
-    /// 按演示数据序列以 <see cref="DemoTaskFactories"/> 全新建固定任务实例列表，不读取配置：
+    /// 按演示数据序列以 <see cref="_demoTaskFactories"/> 全新建固定任务实例列表，不读取配置：
     /// 任务名一律为 TaskType 标准本地化名（<see cref="BaseTask.Name"/> 留空），不受运行目录
     /// 遗留的自定义任务名与任务集差异影响。
     /// </summary>
@@ -265,7 +265,7 @@ public static class DemoShotService
         var ordered = new List<BaseTask>(tasks.Count);
         foreach (var entry in tasks)
         {
-            if (!DemoTaskFactories.TryGetValue(entry.Type, out var factory))
+            if (!_demoTaskFactories.TryGetValue(entry.Type, out var factory))
             {
                 _logger.Warning("Demo task type {Type} not found in factories, skipped", entry.Type);
                 continue;
@@ -392,7 +392,7 @@ public static class DemoShotService
     private static void ReinjectLanguageData(DemoShotData data, string lang, string dataDir)
     {
         // 关卡活动数据按当组客户端类型重新本地解析（构造时解析用的是启动配置的客户端类型），
-        // 随后重算「今日关卡小提示」
+        // 随后重算 ｢今日关卡小提示｣
         Instances.StageManager.UpdateStageLocal();
         Instances.TaskQueueViewModel.UpdateDatePrompt();
 
@@ -414,6 +414,12 @@ public static class DemoShotService
         if (data.TaskQueue.Stages.Count > 0)
         {
             FightSettingsUserControlModel.Instance.InjectDemoStages(data.TaskQueue.Stages);
+        }
+
+        // 指定材料下拉的显示名由 RefreshDropName 随各语言材料列表自动本地化，重注入只负责写入选中项，幂等
+        if (!string.IsNullOrEmpty(data.TaskQueue.SpecifiedDrops))
+        {
+            FightSettingsUserControlModel.Instance.InjectDemoSpecifiedDrops(data.TaskQueue.SpecifiedDrops);
         }
 
         InjectTaskQueueLogs(data, lang, dataDir);
@@ -609,10 +615,11 @@ public static class DemoShotService
         await WaitUiSettledAsync();
         await CaptureAsync(Path.Combine(outDir, $"2-{themeSuffix}.png"));
 
-        // 页 3：小工具-干员识别，切到「已拥有」页。
+        // 页 3：小工具-干员识别，切到 ｢已拥有｣ 页。
         // Idle 切回空闲：小工具页的识别按钮呈可点观感（演示数据是识别完成的结果态），
         // 长草/自动战斗页则保持运行中（与日志的演示进度一致）
         States.RunningState.Instance.SetIdle(true);
+
         // TabControlSliding 的滑块依赖可见状态下的选择变化事件移动，且视图分离期间的索引变更
         // 会以未布局的位置参与动画导致滑块错位；故挂载稳定后先抖到 0 再落到 1，强制一次完整动画。
         // 内层 OperBox TabControl 同理抖一次：语言组的热切换重建会把索引拉回 0，直接设 1 滑块可能不跟随
@@ -681,7 +688,7 @@ public static class DemoShotService
     /// （tools 产线认可的 README 圆角形态，弧线/羽化为实测值，非理想几何圆）；
     /// 其余三角与左上角互为严格镜像，按翻转取下标即可。
     /// </summary>
-    private static readonly byte[,] CornerAlphaMask =
+    private static readonly byte[,] _cornerAlphaMask =
     {
         { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 16, 96, 159, 191 },
         { 0, 0, 0, 0, 0, 0, 0, 0, 32, 159, 255, 255, 255, 255 },
@@ -721,7 +728,7 @@ public static class DemoShotService
                 for (int x = 0; x < CornerMaskSize; x++)
                 {
                     int maskX = flipX ? CornerMaskSize - 1 - x : x;
-                    pixels[rowBase + (x * 4) + 3] = CornerAlphaMask[maskY, maskX];
+                    pixels[rowBase + (x * 4) + 3] = _cornerAlphaMask[maskY, maskX];
                 }
             }
         }
@@ -769,7 +776,7 @@ public static class DemoShotService
     /// UiLogColor 常量名到常量值的映射。演示数据中的 color 是常量名（如 Trace），
     /// 而 AddLog 接受的是常量值即 brush 资源 key（如 TraceLogBrush），直传常量名会查不到资源回退默认色。
     /// </summary>
-    private static readonly Dictionary<string, string> LogColorMap =
+    private static readonly Dictionary<string, string> _logColorMap =
         typeof(UiLogColor)
             .GetFields(BindingFlags.Public | BindingFlags.Static)
             .Where(f => f.IsLiteral && f.FieldType == typeof(string))
@@ -785,7 +792,7 @@ public static class DemoShotService
             return UiLogColor.Trace;
         }
 
-        if (LogColorMap.TryGetValue(color, out string? brushKey))
+        if (_logColorMap.TryGetValue(color, out string? brushKey))
         {
             return brushKey;
         }

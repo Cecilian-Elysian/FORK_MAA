@@ -1,6 +1,6 @@
 // <copyright file="ThirdParty.cs" company="MaaAssistantArknights">
 // Part of the MaaWpfGui project, maintained by the MaaAssistantArknights team (Maa Team)
-// Copyright (C) 2021-2025 MaaAssistantArknights Contributors
+// Copyright (C) 2021-2026 MaaAssistantArknights Contributors
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License v3.0 only as published by
@@ -36,4 +36,9 @@ public partial class ThirdParty : NotifyPropertyChangedWithValue
     /// 干员识别改为从一图流 OpenAPI 获取，而不是连接模拟器本地识别
     /// </summary>
     public bool OperBoxUseYituliuApi { get; set; }
+
+    /// <summary>
+    /// 使用一图流数据辅助自动编队
+    /// </summary>
+    public bool EnableOperBoxAssist { get; set; }
 }

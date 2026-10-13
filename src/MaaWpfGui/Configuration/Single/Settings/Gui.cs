@@ -1,6 +1,6 @@
 // <copyright file="Gui.cs" company="MaaAssistantArknights">
 // Part of the MaaWpfGui project, maintained by the MaaAssistantArknights team (Maa Team)
-// Copyright (C) 2021-2025 MaaAssistantArknights Contributors
+// Copyright (C) 2021-2026 MaaAssistantArknights Contributors
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License v3.0 only as published by
@@ -14,7 +14,6 @@
 using System.Text.Json.Serialization;
 using MaaWpfGui.Models;
 using static MaaWpfGui.Configuration.Factory.ConfigFactory;
-using static MaaWpfGui.Configuration.Single.Settings.ExternalNotification;
 using static MaaWpfGui.Models.PostActionSetting;
 
 namespace MaaWpfGui.Configuration.Single.Settings;
@@ -27,9 +26,8 @@ public partial class Gui : NotifyPropertyChangedWithValue
     public void EventBinding(string prefix)
     {
         PropertyChanged += Handler.OnPropertyChangedFactory(prefix);
-        Performance.PropertyChanged += Handler.OnPropertyChangedFactory(prefix + nameof(Performance) + ".");
-        ExternalNotification.PropertyChanged += Handler.OnPropertyChangedFactory(prefix + nameof(ExternalNotification) + ".");
-        ExternalNotification.Configs.CollectionChanged += Handler.OnCollectionChangedFactory<Base>(prefix + nameof(ExternalNotification) + ".");
+        Notification.EventBinding(prefix + nameof(Notification) + ".");
+        ExternalNotification.EventBinding(prefix + nameof(ExternalNotification) + ".");
         RemoteControl.PropertyChanged += Handler.OnPropertyChangedFactory(prefix + nameof(RemoteControl) + ".");
         RuntimeSettings.PropertyChanged += Handler.OnPropertyChangedFactory(prefix + nameof(RuntimeSettings) + ".");
         ThirdParty.PropertyChanged += Handler.OnPropertyChangedFactory(prefix + nameof(ThirdParty) + ".");
@@ -41,7 +39,7 @@ public partial class Gui : NotifyPropertyChangedWithValue
     public ConnectSettings ConnectSettings { get; private set; } = new();
 
     [JsonInclude]
-    public Performance Performance { get; private set; } = new();
+    public NotificationSettings Notification { get; private set; } = new();
 
     [JsonInclude]
     public ExternalNotification ExternalNotification { get; private set; } = new();

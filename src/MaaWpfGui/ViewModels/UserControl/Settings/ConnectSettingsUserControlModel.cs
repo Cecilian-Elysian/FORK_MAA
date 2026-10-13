@@ -1,6 +1,6 @@
 // <copyright file="ConnectSettingsUserControlModel.cs" company="MaaAssistantArknights">
 // Part of the MaaWpfGui project, maintained by the MaaAssistantArknights team (Maa Team)
-// Copyright (C) 2021-2025 MaaAssistantArknights Contributors
+// Copyright (C) 2021-2026 MaaAssistantArknights Contributors
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License v3.0 only as published by
@@ -49,6 +49,8 @@ namespace MaaWpfGui.ViewModels.UserControl.Settings;
 /// </summary>
 public class ConnectSettingsUserControlModel : PropertyChangedBase
 {
+    private readonly RunningState _runningState = RunningState.Instance;
+
     static ConnectSettingsUserControlModel()
     {
         Instance = new();
@@ -56,7 +58,7 @@ public class ConnectSettingsUserControlModel : PropertyChangedBase
 
         // MuMu 触控勾选框的跨实例依赖须在 Instance 就绪后注册，
         // 放进构造链会因静态构造重入拿到 null 的 Instance 而静默失败
-        PropertyDependsOnUtility.InitializePropertyDependencies(Instance.Extras.Mumu12);
+        PropertyDependsOnUtility.InitializePropertyDependencies(Instance._extras.Mumu12);
     }
 
     private ConnectSettingsUserControlModel()
@@ -64,12 +66,13 @@ public class ConnectSettingsUserControlModel : PropertyChangedBase
         PropertyDependsOnUtility.InitializePropertyDependencies(this);
 
         // 刷新截图方式选项的可用状态
-        Extras.Win32.UpdateScreencapMethodAvailability();
+        _extras.Win32.UpdateScreencapMethodAvailability();
 
-        Extras.Win32.PropertyChanged += (_, e) => {
+        _extras.Win32.PropertyChanged += (_, e) => {
             if (e.PropertyName == nameof(Win32Extra.MouseMethod))
             {
                 NotifyOfPropertyChange(nameof(ShowWindowRestoreButton));
+                NotifyOfPropertyChange(nameof(ShowWindowMinimizeButton));
             }
         };
 
@@ -87,8 +90,6 @@ public class ConnectSettingsUserControlModel : PropertyChangedBase
 
     private static readonly ILogger _logger = Log.ForContext<ConnectSettingsUserControlModel>();
 
-    private static RunningState _runningState => RunningState.Instance;
-
     /// <summary>
     /// Gets the list of the configuration of connection.
     /// </summary>
@@ -96,6 +97,7 @@ public class ConnectSettingsUserControlModel : PropertyChangedBase
         (ConnectConfig.General, "General"),
         (ConnectConfig.BlueStacks, "BlueStacks"),
         (ConnectConfig.MuMuEmulator12, "MuMuEmulator12"),
+        (ConnectConfig.MuMuArm, "MuMuArm"),
         (ConnectConfig.LDPlayer, "LDPlayer"),
         (ConnectConfig.Androws, "Androws"),
         (ConnectConfig.AVD, "AVD"),
@@ -256,13 +258,13 @@ public class ConnectSettingsUserControlModel : PropertyChangedBase
 
     [PropertyDependsOn(nameof(ConnectConfig))]
     public ExtraConfig? ExtraConfig => ConnectConfig switch {
-        ConnectConfig.LDPlayer => Extras.LdPlayer,
-        ConnectConfig.MuMuEmulator12 => Extras.Mumu12,
-        ConnectConfig.PC => Extras.Win32,
+        ConnectConfig.LDPlayer => _extras.LdPlayer,
+        ConnectConfig.MuMuEmulator12 => _extras.Mumu12,
+        ConnectConfig.PC => _extras.Win32,
         _ => null,
     };
 
-    private readonly ExtraConfigs Extras = new();
+    private readonly ExtraConfigs _extras = new();
 
     private class ExtraConfigs
     {
@@ -316,6 +318,27 @@ public class ConnectSettingsUserControlModel : PropertyChangedBase
     } = ConfigFactory.CurrentConfig.Gui.StartUpSettings.RestartEmulatorWhenAdbFailed;
 
     /// <summary>
+    /// Gets or sets a value indicating whether to start the PC client again after a window connection failure.
+    /// </summary>
+    public bool RetryPcClientOnDisconnected
+    {
+        get; set {
+            if (value && string.IsNullOrEmpty(SettingsViewModel.StartSettings.PcClientPath))
+            {
+                MessageBoxHelper.Show(
+                    LocalizationHelper.GetString("RetryOnPcDisconnectedPathEmptyError"),
+                    LocalizationHelper.GetString("Tip"),
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                value = false;
+            }
+
+            SetAndNotify(ref field, value);
+            ConfigFactory.CurrentConfig.Gui.StartUpSettings.RestartPcClientWhenConnectFailed = value;
+        }
+    } = ConfigFactory.CurrentConfig.Gui.StartUpSettings.RestartPcClientWhenConnectFailed;
+
+    /// <summary>
     /// Gets or sets a value indicating whether to retry task after ADB disconnected.
     /// </summary>
     public bool AllowAdbRestart
@@ -361,6 +384,7 @@ public class ConnectSettingsUserControlModel : PropertyChangedBase
     public Dictionary<string, List<string>> DefaultAddress { get; } = new()
         {
             { "General", [string.Empty] },
+            { "MuMuArm", [] },
             { "BlueStacks", ["127.0.0.1:5555", "127.0.0.1:5556", "127.0.0.1:5565", "127.0.0.1:5575", "127.0.0.1:5585", "127.0.0.1:5595", "127.0.0.1:5554"] },
             { "MuMuEmulator12", ["127.0.0.1:16384", "127.0.0.1:16416", "127.0.0.1:16448", "127.0.0.1:16480", "127.0.0.1:16512", "127.0.0.1:16544", "127.0.0.1:16576"] },
             { "LDPlayer", ["emulator-5554", "emulator-5556", "emulator-5558", "emulator-5560", "127.0.0.1:5555", "127.0.0.1:5557", "127.0.0.1:5559", "127.0.0.1:5561"] },
@@ -414,6 +438,10 @@ public class ConnectSettingsUserControlModel : PropertyChangedBase
         try
         {
             emulators = adapter.RefreshEmulatorsInfo();
+            if (ConnectConfig == ConnectConfig.MuMuArm)
+            {
+                emulators.RemoveAll(emulator => emulator.EmulatorName != ConnectConfig.MuMuArm);
+            }
         }
         catch (Exception e)
         {
@@ -457,6 +485,20 @@ public class ConnectSettingsUserControlModel : PropertyChangedBase
         {
             error = LocalizationHelper.GetString("AdbException");
             return false;
+        }
+
+        // MuMu ARM exposes its endpoint in the running instance's state file,
+        // even before it appears in `adb devices`. Never select an unrelated device.
+        if (selectedEmulator?.EmulatorName == ConnectConfig.MuMuArm)
+        {
+            if (string.IsNullOrEmpty(selectedEmulator.Address))
+            {
+                error = LocalizationHelper.GetString("MuMuArmConnectionNotReady");
+                return false;
+            }
+
+            ConnectAddress = selectedEmulator.Address;
+            return true;
         }
 
         var addresses = WinAdapter.GetAdbAddresses(AdbPath);
@@ -556,8 +598,26 @@ public class ConnectSettingsUserControlModel : PropertyChangedBase
     private static Window? _imagePopupWindow;
 
     /// <summary>
+    /// Enables persistent detection of the running MuMu ARM instance and tests its connection and screenshot.
+    /// </summary>
+    /// <returns>Task</returns>
+    [UsedImplicitly]
+    public async Task DetectMuMuArmConnection()
+    {
+        if (!_runningState.GetIdle())
+        {
+            return;
+        }
+
+        AutoDetectConnection = true;
+
+        // MuMu ARM can receive a new IP address when the instance restarts.
+        AlwaysAutoDetectConnection = true;
+        await TestLinkAndGetImage();
+    }
+
+    /// <summary>
     /// Test Link And Get Image.
-    /// UI 绑定的方法
     /// </summary>
     /// <returns>Task</returns>
     [UsedImplicitly]
@@ -565,6 +625,12 @@ public class ConnectSettingsUserControlModel : PropertyChangedBase
     {
         if (!_runningState.GetIdle())
         {
+            return;
+        }
+
+        if (Bootstrapper.TryGetTaskBlockReason() is { } reason)
+        {
+            TestLinkInfo = reason;
             return;
         }
 
@@ -581,8 +647,19 @@ public class ConnectSettingsUserControlModel : PropertyChangedBase
             return;
         }
 
-        TestLinkImage = await Instances.AsstProxy.AsstGetImageAsync(forceScreencap: true);
-        _runningState.SetIdle(true);
+        try
+        {
+            TestLinkImage = await Instances.AsstProxy.AsstGetImageAsync(forceScreencap: true);
+        }
+        finally
+        {
+            if (ShowWindowRestoreButton)
+            {
+                Instances.AsstProxy.RestoreGameWindowPosition();
+            }
+
+            _runningState.SetIdle(true);
+        }
 
         if (TestLinkImage is null)
         {
@@ -700,7 +777,6 @@ public class ConnectSettingsUserControlModel : PropertyChangedBase
 
         var allLines = File.ReadAllLines(_bluestacksConfig);
 
-        // ReSharper disable once InvertIf
         if (string.IsNullOrEmpty(_bluestacksKeyWord))
         {
             foreach (var line in allLines)
@@ -752,7 +828,7 @@ public class ConnectSettingsUserControlModel : PropertyChangedBase
     } = ConfigFactory.CurrentConfig.Gui.ConnectSettings.TouchMode;
 
     /// <summary>
-    /// 根据 MuMu 截图增强的开关状态，动态增删触控模式下拉列表中的「MuMu 触控」选项。
+    /// 根据 MuMu 截图增强的开关状态，动态增删触控模式下拉列表中的 ｢MuMu 触控｣ 选项。
     /// 仅增删下拉项，不自动切换当前触控模式——切换由触控增强勾选框负责。
     /// </summary>
     /// <param name="mumuExtrasEnabled">MuMu 截图增强是否已启用。</param>
@@ -891,6 +967,13 @@ public class ConnectSettingsUserControlModel : PropertyChangedBase
     [PropertyDependsOn(nameof(ConnectConfig))]
     public bool ShowWindowRestoreButton =>
         IsPCConnectConfig && ExtraConfig is Models.EmulatorConnectionExtra.Win32Extra { MouseMethod: AsstWin32InputMethod.SendMessageWithWindowPos or AsstWin32InputMethod.PostMessageWithWindowPos };
+
+    /// <summary>
+    /// Gets a value indicating whether to show the window minimize button for PC PostMsg-WindowPos input.
+    /// </summary>
+    [PropertyDependsOn(nameof(ConnectConfig))]
+    public bool ShowWindowMinimizeButton =>
+        IsPCConnectConfig && ExtraConfig is Models.EmulatorConnectionExtra.Win32Extra { MouseMethod: AsstWin32InputMethod.PostMessageWithWindowPos };
 
     [PropertyDependsOn(nameof(ConnectConfig))]
     public bool IsPCConnectConfig => ConnectConfig == ConnectConfig.PC;

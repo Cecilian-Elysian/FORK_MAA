@@ -1,6 +1,6 @@
 // <copyright file="GpuOption.cs" company="MaaAssistantArknights">
 // Part of the MaaWpfGui project, maintained by the MaaAssistantArknights team (Maa Team)
-// Copyright (C) 2021-2025 MaaAssistantArknights Contributors
+// Copyright (C) 2021-2026 MaaAssistantArknights Contributors
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License v3.0 only as published by
@@ -40,8 +40,8 @@ public abstract class GpuOption
 
     public static bool AllowDeprecatedGpu
     {
-        get => ConfigFactory.CurrentConfig.Gui.Performance.AllowDeprecatedGpu;
-        set => ConfigFactory.CurrentConfig.Gui.Performance.AllowDeprecatedGpu = value;
+        get => ConfigFactory.Root.Gui.Performance.AllowDeprecatedGpu;
+        set => ConfigFactory.Root.Gui.Performance.AllowDeprecatedGpu = value;
     }
 
     // use string literal to efficiently store uint16 array
@@ -415,11 +415,11 @@ public abstract class GpuOption
 
     public static GpuOption GetCurrent()
     {
-        var preferredGpuInstancePath = ConfigFactory.CurrentConfig.Gui.Performance.GpuInstancePath;
-        var preferredGpuDescription = ConfigFactory.CurrentConfig.Gui.Performance.GpuDescription;
+        var preferredGpuInstancePath = ConfigFactory.Root.Gui.Performance.GpuInstancePath;
+        var preferredGpuDescription = ConfigFactory.Root.Gui.Performance.GpuDescription;
 
         GpuOption result;
-        if (ConfigFactory.CurrentConfig.Gui.Performance.UseGpu)
+        if (ConfigFactory.Root.Gui.Performance.UseGpu)
         {
             var options = GetGpuOptions();
             if (ReferenceEquals(options, _unavailableOptions))
@@ -452,19 +452,19 @@ public abstract class GpuOption
         switch (option)
         {
             case DisableOption:
-                ConfigFactory.CurrentConfig.Gui.Performance.UseGpu = false;
-                ConfigFactory.CurrentConfig.Gui.Performance.GpuDescription = string.Empty;
-                ConfigFactory.CurrentConfig.Gui.Performance.GpuInstancePath = string.Empty;
+                ConfigFactory.Root.Gui.Performance.UseGpu = false;
+                ConfigFactory.Root.Gui.Performance.GpuDescription = string.Empty;
+                ConfigFactory.Root.Gui.Performance.GpuInstancePath = string.Empty;
                 break;
             case SystemDefaultOption:
-                ConfigFactory.CurrentConfig.Gui.Performance.UseGpu = true;
-                ConfigFactory.CurrentConfig.Gui.Performance.GpuDescription = string.Empty;
-                ConfigFactory.CurrentConfig.Gui.Performance.GpuInstancePath = string.Empty;
+                ConfigFactory.Root.Gui.Performance.UseGpu = true;
+                ConfigFactory.Root.Gui.Performance.GpuDescription = string.Empty;
+                ConfigFactory.Root.Gui.Performance.GpuInstancePath = string.Empty;
                 break;
             case SpecificGpuOption x:
-                ConfigFactory.CurrentConfig.Gui.Performance.UseGpu = true;
-                ConfigFactory.CurrentConfig.Gui.Performance.GpuDescription = x.GpuInfo.Description;
-                ConfigFactory.CurrentConfig.Gui.Performance.GpuInstancePath = x.InstancePath;
+                ConfigFactory.Root.Gui.Performance.UseGpu = true;
+                ConfigFactory.Root.Gui.Performance.GpuDescription = x.GpuInfo.Description;
+                ConfigFactory.Root.Gui.Performance.GpuInstancePath = x.InstancePath;
                 break;
         }
     }
@@ -551,7 +551,6 @@ public abstract class GpuOption
             return false;
         }
 
-        // ReSharper disable once UsageOfDefaultStructEquality
         public override int GetHashCode() => HashCode.Combine(typeof(SpecificGpuOption), _description, _index, _instancePath);
 
         public override string ToString() => ShowIndex ? _description + $" (GPU {_index})" : _description.Description.ToString();

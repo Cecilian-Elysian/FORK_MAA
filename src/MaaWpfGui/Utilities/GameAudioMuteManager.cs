@@ -1,6 +1,6 @@
 // <copyright file="GameAudioMuteManager.cs" company="MaaAssistantArknights">
 // Part of the MaaWpfGui project, maintained by the MaaAssistantArknights team (Maa Team)
-// Copyright (C) 2021-2025 MaaAssistantArknights Contributors
+// Copyright (C) 2021-2026 MaaAssistantArknights Contributors
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License v3.0 only as published by
@@ -38,6 +38,26 @@ internal static class GameAudioMuteManager
     private static long _version;
 
     /// <summary>
+    /// Retains the game window placement before connecting Core can move or restore it.
+    /// </summary>
+    /// <param name="hwnd">The game window handle.</param>
+    public static void CaptureWindowPlacement(IntPtr hwnd)
+    {
+        if (hwnd == IntPtr.Zero || !PInvoke.IsWindow((HWND)hwnd))
+        {
+            return;
+        }
+
+        lock (_syncRoot)
+        {
+            _version++;
+            RestoreCore();
+            _windowHwnd = hwnd;
+            CaptureWindowPlacementCore(hwnd);
+        }
+    }
+
+    /// <summary>
     /// Starts muting the process attached to the game window until the task ends.
     /// </summary>
     /// <param name="hwnd">The attached game window handle.</param>
@@ -59,11 +79,22 @@ internal static class GameAudioMuteManager
         long version;
         lock (_syncRoot)
         {
+            // Completion actions can start Core tasks while the GUI is already idle.
+            if (!shouldContinue())
+            {
+                return false;
+            }
+
             version = ++_version;
-            RestoreCore();
-            _windowHwnd = hwnd;
+            RestoreAudioCore();
+            if (_windowHwnd != hwnd)
+            {
+                RestoreWindowCore();
+                _windowHwnd = hwnd;
+                CaptureWindowPlacementCore(hwnd);
+            }
+
             _processId = processId;
-            CaptureWindowPlacementCore(hwnd);
             MuteNewSessionsCore();
         }
 
@@ -91,7 +122,7 @@ internal static class GameAudioMuteManager
     }
 
     /// <summary>
-    /// Restores the window and audio after Core stops moving the window.
+    /// Restores audio immediately and the window after Core stops moving it.
     /// </summary>
     /// <param name="isCoreRunning">Returns whether Core is still running tasks.</param>
     /// <returns>A task representing the delayed window restoration.</returns>
@@ -106,6 +137,13 @@ internal static class GameAudioMuteManager
             }
 
             version = ++_version;
+
+            // Restore audio before completion actions can close the game process.
+            RestoreAudioCore();
+            if (_windowHwnd == IntPtr.Zero)
+            {
+                return;
+            }
         }
 
         const int MaxAttempts = 1200;
@@ -128,7 +166,7 @@ internal static class GameAudioMuteManager
         {
             if (version == _version)
             {
-                RestoreCore();
+                RestoreWindowCore();
             }
         }
     }
@@ -164,14 +202,9 @@ internal static class GameAudioMuteManager
             while (true)
             {
                 await Task.Delay(5000).ConfigureAwait(false);
-                if (!shouldContinue())
-                {
-                    return;
-                }
-
                 lock (_syncRoot)
                 {
-                    if (version != _version)
+                    if (version != _version || !shouldContinue())
                     {
                         return;
                     }

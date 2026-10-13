@@ -64,6 +64,7 @@ bool Win32Controller::attach(
 {
     LogTraceFunction;
 
+    restore_window_position();
     m_inited = false;
     m_hwnd = hwnd;
     m_screencap_method = screencap_method;
@@ -117,12 +118,6 @@ bool Win32Controller::attach(
         Log.info("Screen size:", m_screen_size.first, "x", m_screen_size.second);
     }
 
-    if ((m_mouse_method & (Win32Input::SendMessageWithWindowPos | Win32Input::PostMessageWithWindowPos)) != 0 &&
-        (m_screencap_method &
-         (Win32Screencap::ScreenDC | Win32Screencap::DXGI_DesktopDup | Win32Screencap::DXGI_DesktopDup_Window)) == 0) {
-        save_window_position();
-    }
-
     m_inited = true;
     return true;
 }
@@ -148,13 +143,26 @@ const std::string& Win32Controller::get_uuid() const
 
 bool Win32Controller::screencap(cv::Mat& image_payload, bool allow_reconnect [[maybe_unused]])
 {
+    return screencap_impl(image_payload, true);
+}
+
+bool Win32Controller::screencap_for_preview(cv::Mat& image_payload, bool allow_reconnect [[maybe_unused]])
+{
+    return screencap_impl(image_payload, false);
+}
+
+bool Win32Controller::screencap_impl(cv::Mat& image_payload, bool move_cursor)
+{
     LogTraceFunction;
 
     // 截图前把鼠标移走，避免光标出现在截图中影响识别
+    // AnchoredTouch 注入合成触控，全程不移动真实光标，游戏自绘光标也不随合成触控移动，
+    // 挪光标逻辑对其无意义，且底层 touch_move 在无活动接触点时会直接失败，整体跳过
     POINT original_cursor_pos = { 0, 0 };
     bool cursor_pos_saved = false;
     bool input_blocked = false;
-    if (m_screen_size.second > 0) {
+    // preview 截图（move_cursor == false）与 AnchoredTouch 都不需要挪动窗口/光标，整体跳过
+    if (move_cursor && m_screen_size.second > 0 && (m_mouse_method & Win32Input::AnchoredTouch) == 0) {
         const bool with_window_pos =
             (m_mouse_method & (Win32Input::SendMessageWithWindowPos | Win32Input::PostMessageWithWindowPos)) != 0;
         // 仅 WithCursorPos 两种方式挪的是真实光标；Seize 本就强制接管鼠标，纯消息模式不动真实光标
@@ -411,12 +419,17 @@ bool Win32Controller::swipe(
 
     // Win32 输入（如 Seize 的 SendInput）为异步注入且无内置节拍，不等待会使整段滑动在
     // 毫秒级完成，被游戏判定为点击。按绝对节拍控制：以本段滑动起点为基准，
-    // 第 k 步对齐 start + k * SwipeIntervalMs，调用耗时吃进预算，超时不补立即继续
+    // 第 k 步对齐 start + k * interval_ms，调用耗时吃进预算，超时不补立即继续
+    // AnchoredTouch 底层 touch_move 每步需等待一帧注入提交（约 12ms 节拍），沿用 2ms 步距
+    // 会让实际耗时随步数成倍膨胀，步距与底层节拍对齐后实际耗时≈计划时长
+    static constexpr int AnchoredTouchSwipeIntervalMs = 13;
+    const int interval_ms =
+        (m_mouse_method & Win32Input::AnchoredTouch) != 0 ? AnchoredTouchSwipeIntervalMs : SwipeIntervalMs;
     auto tick_start = std::chrono::steady_clock::now();
     int move_step = 0;
-    auto move_func = [this, &tick_start, &move_step](int x, int y) {
+    auto move_func = [this, &tick_start, &move_step, &interval_ms](int x, int y) {
         bool ret = unit_touch_move(0, x, y, 0);
-        high_res_sleep_until(tick_start + ++move_step * std::chrono::milliseconds(SwipeIntervalMs));
+        high_res_sleep_until(tick_start + ++move_step * std::chrono::milliseconds(interval_ms));
         return ret;
     };
 
@@ -441,7 +454,7 @@ bool Win32Controller::swipe(
                 _x2,
                 _y2,
                 _duration,
-                SwipeIntervalMs,
+                interval_ms,
                 slope_in,
                 slope_out,
                 move_func,
@@ -458,7 +471,7 @@ bool Win32Controller::swipe(
             _x2,
             _y2,
             _duration,
-            SwipeIntervalMs,
+            interval_ms,
             slope_in,
             slope_out,
             move_func,
@@ -498,14 +511,10 @@ bool Win32Controller::inject_input_event(const InputEvent& event)
         return unit_touch_up(event.pointerId);
     case InputEvent::Type::TOUCH_MOVE:
         return unit_touch_move(event.pointerId, event.point.x, event.point.y, 0);
-    case InputEvent::Type::KEY_DOWN: {
-        auto* unit = static_cast<MaaFwControlUnitAPI*>(m_unit_handle);
-        return unit ? unit->key_down(event.keycode) : false;
-    }
-    case InputEvent::Type::KEY_UP: {
-        auto* unit = static_cast<MaaFwControlUnitAPI*>(m_unit_handle);
-        return unit ? unit->key_up(event.keycode) : false;
-    }
+    case InputEvent::Type::KEY_DOWN:
+        return unit_key_down(event.keycode);
+    case InputEvent::Type::KEY_UP:
+        return unit_key_up(event.keycode);
     case InputEvent::Type::WAIT_MS:
         std::this_thread::sleep_for(std::chrono::milliseconds(event.milisec));
         return true;
@@ -545,23 +554,43 @@ void Win32Controller::save_window_position()
 void Win32Controller::restore_window_position()
 {
     LogTraceFunction;
-    if (!m_window_rect_saved || !m_hwnd) {
+    if (!m_hwnd) {
         return;
     }
+
+    HWND hwnd = static_cast<HWND>(m_hwnd);
+    bool minimize_on_restore = false;
+    if (IsWindow(hwnd) && (m_screencap_method & (Win32Screencap::PrintWindow | Win32Screencap::FramePool)) != 0) {
+        // inactive 会取消截图模块的透明还原，需保留用户当前的最小化意图。
+        const auto ex_style = GetWindowLongPtr(hwnd, GWL_EXSTYLE);
+        BYTE alpha = 255;
+        DWORD flags = 0;
+        const bool pseudo_minimized =
+            (ex_style & (WS_EX_LAYERED | WS_EX_TRANSPARENT)) == (WS_EX_LAYERED | WS_EX_TRANSPARENT) &&
+            GetLayeredWindowAttributes(hwnd, nullptr, &alpha, &flags) && (flags & LWA_ALPHA) != 0 && alpha == 0;
+        minimize_on_restore = IsIconic(hwnd) || pseudo_minimized;
+    }
+
     // 先结束窗口追踪，避免把窗口移动到错误位置
     if (auto* unit = static_cast<MaaFwControlUnitAPI*>(m_unit_handle); unit != nullptr) {
         unit->inactive();
     }
-    HWND hwnd = static_cast<HWND>(m_hwnd);
     if (IsWindow(hwnd)) {
-        SetWindowPos(
-            hwnd,
-            nullptr,
-            m_original_window_rect.left,
-            m_original_window_rect.top,
-            0,
-            0,
-            SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+        if (m_window_rect_saved) {
+            if (!SetWindowPos(
+                    hwnd,
+                    nullptr,
+                    m_original_window_rect.left,
+                    m_original_window_rect.top,
+                    0,
+                    0,
+                    SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE)) {
+                LogError << "Failed to restore window position, last_error: " << GetLastError();
+            }
+        }
+        if (minimize_on_restore) {
+            ShowWindow(hwnd, SW_SHOWMINNOACTIVE);
+        }
     }
     m_window_rect_saved = false;
 }
@@ -594,6 +623,28 @@ bool Win32Controller::unit_connect()
     return unit->connect();
 }
 
+bool Win32Controller::prepare_window_for_input()
+{
+    // 后台截图会先把最小化窗口透明还原。必须在移动窗口或发送激活消息之前完成，
+    // 否则输入可能先恢复窗口，截图侧就无法感知用户的最小化意图。
+    if ((m_screencap_method & (Win32Screencap::PrintWindow | Win32Screencap::FramePool)) != 0 &&
+        IsIconic(static_cast<HWND>(m_hwnd))) {
+        LogInfo << "Preparing minimized window before input";
+        cv::Mat image;
+        if (!unit_screencap(image)) {
+            LogError << "Failed to prepare minimized window for input";
+            return false;
+        }
+    }
+    if ((m_mouse_method & (Win32Input::SendMessageWithWindowPos | Win32Input::PostMessageWithWindowPos)) != 0 &&
+        (m_screencap_method &
+         (Win32Screencap::ScreenDC | Win32Screencap::DXGI_DesktopDup | Win32Screencap::DXGI_DesktopDup_Window)) == 0) {
+        // 停止任务后控制器可以复用，下次输入前重新记录位置。
+        save_window_position();
+    }
+    return true;
+}
+
 bool Win32Controller::unit_screencap(cv::Mat& image)
 {
     auto* unit = static_cast<MaaFwControlUnitAPI*>(m_unit_handle);
@@ -609,7 +660,7 @@ bool Win32Controller::unit_click(int x, int y)
     if (!unit) {
         return false;
     }
-    return unit->click(x, y);
+    return prepare_window_for_input() && unit->click(x, y);
 }
 
 bool Win32Controller::unit_swipe(int x1, int y1, int x2, int y2, int duration)
@@ -618,7 +669,7 @@ bool Win32Controller::unit_swipe(int x1, int y1, int x2, int y2, int duration)
     if (!unit) {
         return false;
     }
-    return unit->swipe(x1, y1, x2, y2, duration);
+    return prepare_window_for_input() && unit->swipe(x1, y1, x2, y2, duration);
 }
 
 bool Win32Controller::unit_touch_down(int contact, int x, int y, int pressure)
@@ -627,7 +678,7 @@ bool Win32Controller::unit_touch_down(int contact, int x, int y, int pressure)
     if (!unit) {
         return false;
     }
-    return unit->touch_down(contact, x, y, pressure);
+    return prepare_window_for_input() && unit->touch_down(contact, x, y, pressure);
 }
 
 bool Win32Controller::unit_touch_move(int contact, int x, int y, int pressure)
@@ -636,7 +687,7 @@ bool Win32Controller::unit_touch_move(int contact, int x, int y, int pressure)
     if (!unit) {
         return false;
     }
-    return unit->touch_move(contact, x, y, pressure);
+    return prepare_window_for_input() && unit->touch_move(contact, x, y, pressure);
 }
 
 bool Win32Controller::unit_touch_up(int contact)
@@ -645,7 +696,10 @@ bool Win32Controller::unit_touch_up(int contact)
     if (!unit) {
         return false;
     }
-    return unit->touch_up(contact);
+    const bool prepared = prepare_window_for_input();
+    // 准备失败也要抬手，避免未结束的手势影响后续操作。
+    const bool released = unit->touch_up(contact);
+    return prepared && released;
 }
 
 bool Win32Controller::unit_input_text(const std::string& text)
@@ -654,23 +708,39 @@ bool Win32Controller::unit_input_text(const std::string& text)
     if (!unit) {
         return false;
     }
-    return unit->input_text(text);
+    return prepare_window_for_input() && unit->input_text(text);
 }
 
-bool Win32Controller::unit_click_key(int key)
+bool Win32Controller::unit_key_down(int key)
 {
     auto* unit = static_cast<MaaFwControlUnitAPI*>(m_unit_handle);
     if (!unit) {
         return false;
     }
 
+    return prepare_window_for_input() && unit->key_down(key);
+}
+
+bool Win32Controller::unit_key_up(int key)
+{
+    auto* unit = static_cast<MaaFwControlUnitAPI*>(m_unit_handle);
+    if (!unit) {
+        return false;
+    }
+    const bool prepared = prepare_window_for_input();
+    const bool released = unit->key_up(key);
+    return prepared && released;
+}
+
+bool Win32Controller::unit_click_key(int key)
+{
     // MaaWin32ControlUnit 返回 MaaControllerFeature_UseKeyboardDownAndUpInsteadOfClick
     // 需要使用 key_down/key_up 替代 click_key
-    if (!unit->key_down(key)) {
+    if (!unit_key_down(key)) {
         return false;
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    return unit->key_up(key);
+    return unit_key_up(key);
 }
 } // namespace asst
 

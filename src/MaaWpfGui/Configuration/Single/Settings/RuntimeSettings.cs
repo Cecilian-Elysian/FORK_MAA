@@ -1,6 +1,6 @@
 // <copyright file="RuntimeSettings.cs" company="MaaAssistantArknights">
 // Part of the MaaWpfGui project, maintained by the MaaAssistantArknights team (Maa Team)
-// Copyright (C) 2021-2025 MaaAssistantArknights Contributors
+// Copyright (C) 2021-2026 MaaAssistantArknights Contributors
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License v3.0 only as published by
@@ -46,12 +46,6 @@ public partial class RuntimeSettings : NotifyPropertyChangedWithValue, IJsonOnDe
 
     public bool BlockSleepWithScreenOn { get; set; } = true;
 
-    public bool EnableStallTimeout { get; set; } = true;
-
-    public int StallTimeoutReminderIntervalMinutes { get; set; } = 30;
-
-    public int StallTimeoutMinutes { get; set; } = 30;
-
     /// <summary>
     /// 运行时长上限，从开始任务起计时，到时停止任务；null 为右键半选，仅生效一次
     /// </summary>
@@ -63,8 +57,6 @@ public partial class RuntimeSettings : NotifyPropertyChangedWithValue, IJsonOnDe
 
     public void OnDeserialized()
     {
-        StallTimeoutMinutes = Math.Clamp(StallTimeoutMinutes, 0, GameSettingsUserControlModel.TimeoutMaxMinutes);
-        StallTimeoutReminderIntervalMinutes = Math.Clamp(StallTimeoutReminderIntervalMinutes, 1, GameSettingsUserControlModel.TimeoutMaxMinutes);
         RunDurationLimitMinutes = Math.Clamp(RunDurationLimitMinutes, 1, GameSettingsUserControlModel.TimeoutMaxMinutes);
     }
 }

@@ -1,6 +1,6 @@
 // <copyright file="AutoStart.cs" company="MaaAssistantArknights">
 // Part of the MaaWpfGui project, maintained by the MaaAssistantArknights team (Maa Team)
-// Copyright (C) 2021-2025 MaaAssistantArknights Contributors
+// Copyright (C) 2021-2026 MaaAssistantArknights Contributors
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License v3.0 only as published by
@@ -29,32 +29,13 @@ public static class AutoStart
     private static readonly ILogger _logger = Log.ForContext("SourceContext", "AutoStart");
 
     private static readonly string _fileValue = Environment.ProcessPath;
-    private static readonly string _uniqueIdentifier = GetHashCode(_fileValue);
+    private static readonly string _uniqueIdentifier = InstanceIdentifier.GetHash(_fileValue);
 
     private static readonly string _startupFolderPath = Environment.GetFolderPath(Environment.SpecialFolder.Startup);
     private static readonly string _registryKeyName = $"MAA_{_uniqueIdentifier}";
     private static readonly string _startupShortcutPath = Path.Combine(_startupFolderPath, _registryKeyName + ".lnk");
 
     private const string CurrentUserRunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
-
-    private static string GetHashCode(string input)
-    {
-        int hash1 = (5381 << 16) + 5381;
-        int hash2 = hash1;
-
-        for (int i = 0; i < input.Length; i += 2)
-        {
-            hash1 = ((hash1 << 5) + hash1) ^ input[i];
-            if (i == input.Length - 1)
-            {
-                break;
-            }
-
-            hash2 = ((hash2 << 5) + hash2) ^ input[i + 1];
-        }
-
-        return (hash1 + (hash2 * 1566083941)).ToString("X");
-    }
 
     /// <summary>
     /// Checks whether this program starts up with OS.

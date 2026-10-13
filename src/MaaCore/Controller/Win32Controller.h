@@ -48,6 +48,7 @@ public: // ControllerAPI 接口
     virtual size_t get_version() const noexcept override { return 0; }
 
     virtual bool screencap(cv::Mat& image_payload, bool allow_reconnect = false) override;
+    virtual bool screencap_for_preview(cv::Mat& image_payload, bool allow_reconnect = false) override;
 
     virtual bool start_game(const std::string& client_type) override;
     virtual bool stop_game(const std::string& client_type) override;
@@ -72,11 +73,13 @@ public: // ControllerAPI 接口
     virtual std::pair<int, int> get_screen_res() const noexcept override;
 
 private:
+    bool screencap_impl(cv::Mat& image_payload, bool move_cursor);
     void callback(AsstMsg msg, const json::value& details);
-    // 记录窗口当前位置，任务结束是恢复
+    // 记录窗口当前位置，任务结束时恢复
     void save_window_position();
 
     // 封装 MaaWin32ControlUnit 的调用
+    bool prepare_window_for_input();
     bool unit_connect();
     bool unit_screencap(cv::Mat& image);
     bool unit_click(int x, int y);
@@ -85,6 +88,8 @@ private:
     bool unit_touch_move(int contact, int x, int y, int pressure);
     bool unit_touch_up(int contact);
     bool unit_input_text(const std::string& text);
+    bool unit_key_down(int key);
+    bool unit_key_up(int key);
     bool unit_click_key(int key);
 
 private:

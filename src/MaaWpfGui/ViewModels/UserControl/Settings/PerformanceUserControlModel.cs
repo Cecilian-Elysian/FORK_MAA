@@ -1,6 +1,6 @@
 // <copyright file="PerformanceUserControlModel.cs" company="MaaAssistantArknights">
 // Part of the MaaWpfGui project, maintained by the MaaAssistantArknights team (Maa Team)
-// Copyright (C) 2021-2025 MaaAssistantArknights Contributors
+// Copyright (C) 2021-2026 MaaAssistantArknights Contributors
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License v3.0 only as published by
@@ -14,7 +14,10 @@
 #nullable enable
 using System.Collections.Generic;
 using System.Linq;
+using System.Windows;
+using MaaWpfGui.Configuration.Factory;
 using MaaWpfGui.Helper;
+using MaaWpfGui.Main;
 using MaaWpfGui.ViewModels.UI;
 using Stylet;
 
@@ -72,6 +75,48 @@ public class PerformanceUserControlModel : PropertyChangedBase
         set {
             GpuOption.AllowDeprecatedGpu = value;
             NotifyOfPropertyChange();
+        }
+    }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether to ignore bad modules and use software rendering.
+    /// </summary>
+    public bool IgnoreBadModulesAndUseSoftwareRendering
+    {
+        get => ConfigFactory.Root.Gui.Performance.IgnoreBadModulesAndUseSoftwareRendering;
+        set {
+            ConfigFactory.Root.Gui.Performance.IgnoreBadModulesAndUseSoftwareRendering = value;
+            NotifyOfPropertyChange();
+            if (value)
+            {
+                MessageBoxHelper.Show(
+                    LocalizationHelper.GetString("BadModules.ResetWarning"),
+                    LocalizationHelper.GetString("Tip"),
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
+            else
+            {
+                var mainWindow = Application.Current.MainWindow;
+                if (mainWindow != null)
+                {
+                    mainWindow.Show();
+                    mainWindow.WindowState = WindowState.Normal;
+                    mainWindow.Activate();
+                }
+
+                var result = MessageBoxHelper.Show(
+                    LocalizationHelper.GetString("BadModules.ResetSuccess"),
+                    LocalizationHelper.GetString("Tip"),
+                    MessageBoxButton.OKCancel,
+                    MessageBoxImage.Information,
+                    ok: LocalizationHelper.GetString("Ok"),
+                    cancel: LocalizationHelper.GetString("ManualRestart"));
+                if (result == MessageBoxResult.OK)
+                {
+                    Bootstrapper.ShutdownAndRestartWithoutArgs();
+                }
+            }
         }
     }
 }
