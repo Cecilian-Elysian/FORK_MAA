@@ -114,6 +114,7 @@ staging ──── feat/<name>, fix/<name> ← 从 staging 拉出
 - 2026-10-09：`9f91e74d99` staging → branch 晋升（698 commit，零冲突，branch 与 staging 树一致）；**上游待同步**：`upstream/master-v2` 已推进 84 commit 至 `54d20df` = v6.19.0-beta.1（2026-10-01）
 - 2026-10-11：`ef28c3197d` fix/login-page-account-manager-roi 合入 staging（游戏 2.7.81 登录页改版适配，摘上游 #18524 + #18538，详见 §7.24）；**上游待同步更新**：`master-v2` 已再推进至 `da4fa6f1f1` = **v6.19.0-beta.2**（2026-10-10），与本仓库 merge-base `23feeddc53`（v6.18.0）相差 **202 commit**（beta.1 84 + beta.2 118），本地 `upstream/master-v2` ref 需 `git fetch upstream master-v2` 刷新
 - 2026-10-13：`ab1f29bab3` merge 上游 **v6.19.0** release `d274123cfc`（#18595，2026-10-11，自 v6.18.0 起 220 commit，§7.25）；§7.24 登录页修复与上游自然收敛；v6.19 编译修复两处（`YituliuFetchResult` tuple 返回 + `MainTasksCompletedCount` → `RefreshMainTasksProgress()`）
+- 2026-10-20：`d983921df6` feat/background-embed 背景图内嵌存储合入 staging（§7.26：外部图片复制进 `Res\Backgrounds\Custom` + MAA 目录内路径改存 BaseDir 相对路径 + 启动自愈）
 
 历史假关联：fork base `c8c8e75be5` 无父节点，通过 `git replace --graft` 接 `6147357bd0`（v6.14.0 upstream release），merge-base = `c8c8e75be5` 走 3-way 合并。
 
@@ -304,7 +305,7 @@ Select-String -Path install-staging/MAA.runtimeconfig.json -Pattern "STARTUP_HOO
 
 | 分支 | 角色 | 修复目标 |
 |------|------|----------|
-| `feat/background-embed` | 背景图内嵌存储：选外部图复制进 `Res\Backgrounds\Custom` + MAA 目录内路径改存 BaseDir 相对路径 + 启动自愈 | 修复外部图片移动 / MAA 目录改名后背景静默失效（上游无修复，#17266 not planned） |
+| （无 — v6.18 beta.1/v6.18.0/v6.19.0 同步均随 merge `6d32144858`/`0a3884231d`/`ab1f29bab3` 合入 staging，feat 分支已按 §2.3 删除；`feat/background-embed` 已于 2026-10-20 合入 staging，见 §7.26） | — | — |
 
 
 ## 7. 分支生命周期记录
@@ -636,6 +637,20 @@ Select-String -Path install-staging/MAA.runtimeconfig.json -Pattern "STARTUP_HOO
 | 验证 | MaaCore 256/256；dotnet publish exit=0（仅预存 StyleCop warning）；nbeauty2 exit=0（STARTUP_HOOKS 在位）；post-merge-validate 8/8；fork 标记全对齐（AdvanceAccountCycle=10、expedite_min_level=8、RecruitNow@Slot=4、AccountManagerPageConfirm=0）；冒烟 `AsstLoadResource ret: true` + 本次启动 0 ERR / 0 Unhandled/Fatal + 进程存活 |
 | 作用域 | 仅本仓库 fork 三方同步操作，不推 upstream |
 | 详见 | `LOG.md` 2026-10-13（启动 / 实施完成 两段） |
+
+### 7.26 feat/background-embed（2026-10-20 已合入 staging）
+
+| 项 | 内容 |
+|----|------|
+| 用途 | 背景图内嵌存储：外部图片复制进 `Res\Backgrounds\Custom` + MAA 目录内路径改存 BaseDir 相对路径 + 启动自愈；修复外部图片移动 / MAA 目录改名后背景静默失效 |
+| 根因 | 背景图路径一律存绝对路径（`SelectImagePath` 存外部原路径 / `OnBackgroundImageSelected` 存 `FullPath`），外部图片移动或 MAA 目录改名后 `RefreshBackgroundImage` 的 `File.Exists` 失败 → 静默 null。上游无修复可摘（issue #17266 closed not planned；v5.15 初版曾存 MAA 内固定文件 `background/background.png`（#12204）后被背景选择器改为存路径；dev-v2 该文件 2026-10-01 后无相关提交） |
+| 关键实现 | `TryEmbedImage`（复制进 Custom，同名同 MD5 复用不重复复制、同名不同内容 `_1` 序号后缀）+ `ToPersistentPath`（MAA 目录内 → BaseDir 相对，外部原样）+ `ResolveStoredPath`（启动自愈：存量绝对路径失效时截取 `\Res\Backgrounds\` 锚点尾部在当前 MAA 目录重试，命中回写配置）+ `RefreshBackgroundImage` 相对路径按 BaseDir 解析（不再依赖 cwd）+ `BackgroundImageCopyTip` 5 语灰色提示行 |
+| 生命周期 | 2026-10-20 创建（从 staging 拉出） → 2026-10-20 `--no-ff` 合入 `staging`（`d983921df6`） |
+| 关键 commit | `730ad77047`（实施，10 files +193 -7） + `a8d603569e`（LOG 实施完成） |
+| 验证 | dotnet build 0 错误（118 warning 全预存）；publish + nbeauty2 部署 install-staging（STARTUP_HOOKS 在位）；自愈 E2E 实测：配置注入 `Q:\GoneMAA\Res\Backgrounds\...`（Q: 盘不存在）→ 日志 `Background image path healed` + 配置改写相对路径持久化；相对路径配置重启无 heal 无错误 `ret: true`；失效现场复确实锤（`install\config` 指向已移动的 `Pictures\屏幕截图 2026-02-15 084708.png`）；留用户实机：选外部图验证复制进 Custom + 下拉树 Custom 折叠节点 + 5 语提示渲染 |
+| 边界 | 更新器安全：MaaUpdater 仅按 removeList 清单删文件，Custom 升级不丢；存量外部失效路径无锚点不可自愈（重选一次即内嵌）；下拉树 `Custom` 目录自动显示为折叠节点可复选/手动管理；同名同 MD5 复用避免重复副本 |
+| 作用域 | 仅本仓库 fork 私有，不推 upstream |
+| 详见 | `LOG.md` 2026-10-20（启动 / 实施完成 两段） |
 
 
 ## 8. 关键参考链接

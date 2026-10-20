@@ -18,7 +18,7 @@
 py tools/gen-downstream-changes.py
 ```
 
-共扫描 499 个表格行，聚合出 72 个唯一源文件路径。
+共扫描 503 个表格行，聚合出 75 个唯一源文件路径。
 
 ## 仓库根（2 个文件）
 
@@ -156,7 +156,7 @@ py tools/gen-downstream-changes.py
 |------|------|
 | 删除 | fork 独有占位模板（AccountManagerListAccount.png 复制品），master 无此文件，已验模板目录与 master 对齐 |
 
-## `src/`（49 个文件）
+## `src/`（51 个文件）
 
 ### [TGT] `src/MaaCore/Assistant.cpp` 
 
@@ -358,7 +358,7 @@ py tools/gen-downstream-changes.py
 | 新增 | `Parts` 属性 (List<PartInfo>) + `PartInfo` record (FileName / UncompressedSizeBytes / FileCount) |
 | 整理 | `DateFilterInfo` / `AppInfo` / `SysInfo` / `GpuInfo` 各字段之间补空行符合 SA1516；`SysInfo.IsWine` / `GpuInfo.Description` 等加空行 |
 
-### [HOT] `src/MaaWpfGui/Res/Localizations/en-us.xaml` (x12)
+### [HOT] `src/MaaWpfGui/Res/Localizations/en-us.xaml` (x13)
 
 | 操作 | 说明 |
 |------|------|
@@ -374,8 +374,9 @@ py tools/gen-downstream-changes.py
 | 保留 fork + 接上游 | 保留 `PasteClipboardCopilotSetTip` 等 fork 字符串 + 上游新 key |
 | 同上 (英文) | 同上 |
 | 修改 | 各 +2 key：`DataAccountLabel` / `DataAccountDefault` |
+| 修改 | feat/background-embed: 5 语新增 `BackgroundImageCopyTip` key（tools/_add_background_copy_tip.py 注入，插于 BackgroundImageStretchModeUniformToFill 后） |
 
-### [HOT] `src/MaaWpfGui/Res/Localizations/ja-jp.xaml` (x12)
+### [HOT] `src/MaaWpfGui/Res/Localizations/ja-jp.xaml` (x13)
 
 | 操作 | 说明 |
 |------|------|
@@ -391,8 +392,9 @@ py tools/gen-downstream-changes.py
 | 保留 fork + 接上游 | 保留 `PasteClipboardCopilotSetTip` 等 fork 字符串 + 上游新 key |
 | 同上 (日文) | 同上 |
 | 修改 | 各 +2 key：`DataAccountLabel` / `DataAccountDefault` |
+| 修改 | feat/background-embed: 5 语新增 `BackgroundImageCopyTip` key（tools/_add_background_copy_tip.py 注入，插于 BackgroundImageStretchModeUniformToFill 后） |
 
-### [HOT] `src/MaaWpfGui/Res/Localizations/ko-kr.xaml` (x12)
+### [HOT] `src/MaaWpfGui/Res/Localizations/ko-kr.xaml` (x13)
 
 | 操作 | 说明 |
 |------|------|
@@ -408,8 +410,9 @@ py tools/gen-downstream-changes.py
 | 保留 fork + 接上游 | 保留 `PasteClipboardCopilotSetTip` 等 fork 字符串 + 上游新 key |
 | 同上 (韩文) | 同上 |
 | 修改 | 各 +2 key：`DataAccountLabel` / `DataAccountDefault` |
+| 修改 | feat/background-embed: 5 语新增 `BackgroundImageCopyTip` key（tools/_add_background_copy_tip.py 注入，插于 BackgroundImageStretchModeUniformToFill 后） |
 
-### [HOT] `src/MaaWpfGui/Res/Localizations/zh-cn.xaml` (x13)
+### [HOT] `src/MaaWpfGui/Res/Localizations/zh-cn.xaml` (x14)
 
 | 操作 | 说明 |
 |------|------|
@@ -426,8 +429,9 @@ py tools/gen-downstream-changes.py
 | 保留 fork + 接上游 | 保留 `PasteClipboardCopilotSetTip` 等 fork 字符串 + 上游新 key |
 | 修改 | 删 `AccountSwitch` / `AccountSwitchManualRun` / `AccountSwitchTip` / `AccountCycleEditMode` 4 key;新增 `AccountCycleTip` / `AccountCycleAddNewAccount` / `AccountCycleRemoveTip` / `AccountCycleRemoveConfirm` / `AccountCycleRemoveMessage` 5 key (顺序调整) |
 | 修改 | 各 +2 key：`DataAccountLabel` / `DataAccountDefault` |
+| 修改 | feat/background-embed: 5 语新增 `BackgroundImageCopyTip` key（tools/_add_background_copy_tip.py 注入，插于 BackgroundImageStretchModeUniformToFill 后） |
 
-### [HOT] `src/MaaWpfGui/Res/Localizations/zh-tw.xaml` (x12)
+### [HOT] `src/MaaWpfGui/Res/Localizations/zh-tw.xaml` (x13)
 
 | 操作 | 说明 |
 |------|------|
@@ -443,6 +447,7 @@ py tools/gen-downstream-changes.py
 | 保留 fork + 接上游 | 保留 `PasteClipboardCopilotSetTip` 等 fork 字符串 + 上游新 key |
 | 同上 (繁体) | 同上 |
 | 修改 | 各 +2 key：`DataAccountLabel` / `DataAccountDefault` |
+| 修改 | feat/background-embed: 5 语新增 `BackgroundImageCopyTip` key（tools/_add_background_copy_tip.py 注入，插于 BackgroundImageStretchModeUniformToFill 后） |
 
 ### [TGT] `src/MaaWpfGui/Res/Styles/Basic/Geometries.xaml` (x2)
 
@@ -538,6 +543,12 @@ py tools/gen-downstream-changes.py
 | 修改 | `StartOperBox` 手动识别前锚定 |
 | 修改（待实施） | Fix-3: StartOperBoxFromYituliuApiAsync 入口捕获发起时桶 key，拉取成功后桶已变则丢弃 + 告警，不重置内存不落盘 |
 | 修改 | Fix-3: `StartOperBoxFromYituliuApiAsync` 入口捕获 `originDataAccountKey`；拉取成功后桶已变则 logger Warning + AddLog 告警 + 返回 false，不 Reset 不落盘（堵 fire-and-forget 跨账号桶竞态） |
+
+### [TGT] `src/MaaWpfGui/ViewModels/UserControl/Settings/BackgroundSettingsUserControlModel.cs` 
+
+| 操作 | 说明 |
+|------|------|
+| 修改 | feat/background-embed: `TryEmbedImage` 复制外部图进 `Res\Backgrounds\Custom`（同名同 MD5 复用 / `_1` 序号）+ `ToPersistentPath`（MAA 目录内 → BaseDir 相对）+ `ResolveStoredPath` 启动自愈（锚点尾部重试 + 回写配置）+ `RefreshBackgroundImage` 相对路径按 BaseDir 解析 |
 
 ### [HOT] `src/MaaWpfGui/ViewModels/UserControl/Settings/IssueReportUserControlModel.cs` (x30)
 
@@ -638,6 +649,12 @@ py tools/gen-downstream-changes.py
 | 修改（待实施） | Fix-2: 305/665 行 `Idle and Inited` → `Run.Idle and Run.Inited`（悬空绑定修复；工具箱两 Tab 已有账号名标注不重复加） |
 | 修改 | Fix-2: 账号下拉锁 `Idle and Inited` → `Run.Idle and Run.Inited`（`91cdccbb17` RunningState→RunControlState 重构移除 VM 级 `Idle`/`Inited` 后的悬空绑定回归，运行中下拉实际未锁） |
 
+### [TGT] `src/MaaWpfGui/Views/UserControl/Settings/BackgroundSettings.xaml` 
+
+| 操作 | 说明 |
+|------|------|
+| 修改 | feat/background-embed: 背景路径行下新增 `BackgroundImageCopyTip` 灰色提示行（controls:TextBlock + SecondaryTextBrush + Wrap） |
+
 ### [HOT] `src/MaaWpfGui/Views/UserControl/Settings/IssueReportUserControl.xaml` (x5)
 
 | 操作 | 说明 |
@@ -676,7 +693,7 @@ py tools/gen-downstream-changes.py
 | 修改（待实施） | Fix-1: 干员/仓库两处时间换 Accounted 属性绑定（含 Visibility 条件同步） |
 | 修改 | Fix-1: 「数据更新」设置面板干员/仓库两处时间换绑 Accounted 属性（Visibility 条件同步换 `.Length > 0`） |
 
-## `tools/`（7 个文件）
+## `tools/`（8 个文件）
 
 ### [TGT] `tools/DependencySetup_渚濊禆搴撳畨瑁?bat` (x2)
 
@@ -690,6 +707,12 @@ py tools/gen-downstream-changes.py
 | 操作 | 说明 |
 |------|------|
 | 接上游 | v6.16.x 模板哈希 |
+
+### [TGT] `tools/_add_background_copy_tip.py` 
+
+| 操作 | 说明 |
+|------|------|
+| 新增 | feat/background-embed: 5 语 key 注入脚本（沿用 _add_current_account_label.py 模式） |
 
 ### [TGT] `tools/gen-downstream-changes.py` (x2)
 
