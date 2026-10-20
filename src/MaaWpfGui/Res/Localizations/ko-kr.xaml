@@ -34,6 +34,7 @@
     <system:String x:Key="BackgroundImageStretchModeFill">늘려 채움</system:String>
     <system:String x:Key="BackgroundImageStretchModeUniform">비율 유지 (맞춤)</system:String>
     <system:String x:Key="BackgroundImageStretchModeUniformToFill">비율 유지 (자르기)</system:String>
+    <system:String x:Key="BackgroundImageCopyTip">｢선택｣ 버튼으로 고른 외부 이미지는 MAA 디렉터리의 ｢Res\Backgrounds\Custom｣ 에 복사되며, 이후 MAA나 원본 이미지를 이동해도 배경에는 영향을 주지 않습니다</system:String>
     <system:String x:Key="BackgroundMonet">모네 색상</system:String>
     <system:String x:Key="BackgroundMonetMode">색상 모드</system:String>
     <system:String x:Key="BackgroundMonetAuto">자동 추출</system:String>

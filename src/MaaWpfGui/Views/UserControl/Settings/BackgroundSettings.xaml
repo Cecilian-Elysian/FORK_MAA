@@ -97,6 +97,14 @@
                     Command="{s:Action SelectImagePath}"
                     ToolTip="{DynamicResource Select}" />
             </Grid>
+            <controls:TextBlock
+                MaxWidth="400"
+                Margin="0,4,0,0"
+                HorizontalAlignment="Center"
+                Block.TextAlignment="Center"
+                Foreground="{DynamicResource SecondaryTextBrush}"
+                Text="{DynamicResource BackgroundImageCopyTip}"
+                TextWrapping="Wrap" />
         </StackPanel>
         <StackPanel
             Margin="5"

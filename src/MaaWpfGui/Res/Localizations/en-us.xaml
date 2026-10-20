@@ -29,6 +29,7 @@
     <system:String x:Key="BackgroundImageStretchModeFill">Fill</system:String>
     <system:String x:Key="BackgroundImageStretchModeUniform">Uniform (Fit)</system:String>
     <system:String x:Key="BackgroundImageStretchModeUniformToFill">Uniform to Fill (Cover)</system:String>
+    <system:String x:Key="BackgroundImageCopyTip">External images picked via the ｢Select｣ button are copied into ｢Res\Backgrounds\Custom｣ inside the MAA directory, so moving MAA or the source file later will not break the background</system:String>
     <system:String x:Key="BackgroundMonet">Monet Color</system:String>
     <system:String x:Key="BackgroundMonetMode">Color Mode</system:String>
     <system:String x:Key="BackgroundMonetAuto">Auto Extract</system:String>
