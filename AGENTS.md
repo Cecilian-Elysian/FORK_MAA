@@ -304,7 +304,7 @@ Select-String -Path install-staging/MAA.runtimeconfig.json -Pattern "STARTUP_HOO
 
 | 分支 | 角色 | 修复目标 |
 |------|------|----------|
-| （无 — v6.18 beta.1/v6.18.0/v6.19.0 同步均随 merge `6d32144858`/`0a3884231d`/`ab1f29bab3` 合入 staging，feat 分支已按 §2.3 删除） | — | — |
+| `feat/background-embed` | 背景图内嵌存储：选外部图复制进 `Res\Backgrounds\Custom` + MAA 目录内路径改存 BaseDir 相对路径 + 启动自愈 | 修复外部图片移动 / MAA 目录改名后背景静默失效（上游无修复，#17266 not planned） |
 
 
 ## 7. 分支生命周期记录
