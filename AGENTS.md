@@ -654,6 +654,20 @@ Select-String -Path install-staging/MAA.runtimeconfig.json -Pattern "STARTUP_HOO
 | 作用域 | 仅本仓库 fork 私有，不推 upstream |
 | 详见 | `LOG.md` 2026-10-20（启动 / 实施完成 两段） |
 
+### 7.27 feat/upstream-v620-sync（2026-10-22 已合入 staging）
+
+| 项 | 内容 |
+|----|------|
+| 用途 | 拉取上游 v6.19.0 `d274123cfc` → v6.20.1 `d94dd007ac` 共 172 commit 三方合并；主要新增基建训练室 / 回收站换班、黑流树海 DLC1（N16 / 新分队 / 刷等级模式）、五语协议文档与 `XxxTaskUserControl` 命名统一 |
+| 生命周期 | 2026-10-22 从 `staging` 创建 → merge `ff8fd20fc2` 落地 feat 分支 → `5c5a3472b3` `--no-ff` 合入 `staging`；随后 `75ab24fb6f` 回同步 branch 的 v6.19 晋升 / 生产部署记录 |
+| 关键冲突 | 仅 4 个：CHANGELOG、TaskQueueViewModel、RecruitTaskUserControlModel、StartUpTaskUserControlModel。上游将全套 Settings UserControl / Model 改名 Task UserControl / Model；fork 的 Expedite / AccountCycle partial 与 AccountCycleOrchestrator 同步迁移，旧类名 0 残留 |
+| fork 兼容 | 保留 `expedite_min_level` / ExpediteMode；补 `RecruitTaskUserControlModel.ResetRecruitVariables` 对接上游 v6.20 右键半选临时变量还原（仅 `UseExpedited` 为 null 时归一 false，保留门槛）；账号轮换切换到 StartUpTaskUserControlModel；CycleConfig XML 注释 mojibake 修复 |
+| 子模块 | MaaUtils gitlink 未变：`6e9ba33f6a`，无第三方 DLL ABI bump；fork 继续保留 4 个子模块，拒收上游 `test` / `src/MAAUnified` |
+| 工具链 | MSVC 14.51.36257 已实测，真实路径 `C:\Tools\msvc-portable\msvc\setup_x64.bat`；AGENTS / WORKFLOW SOP 已纠正旧的 `C:\msvc-portable` / `E:\Tools` 路径 |
+| 验证 | MaaCore 91/91（0 errors）；dotnet build 0 errors / 240 pre-existing warnings；install-staging publish + nbeauty2；post-merge-validate 8/8；MaaCore / MaaUtils 与 build/bin 尺寸一致；冒烟 `AsstLoadResource ret: true` + 0 Unhandled/Fatal + 进程存活 |
+| 边界 | 冒烟中的 penguin/yituliu POST 失败是本地代理未运行导致的历史网络上报问题，非 core/UI 回归；v6.20.1 保留在 `staging` 等待日常实机验证后再由用户手动晋升 `branch` |
+| 详见 | `LOG.md` 2026-10-22（启动 / 实施完成）；`WORKFLOW.md` §6.5.11；commit `ff8fd20fc2` / `5c5a3472b3` |
+
 
 ## 8. 关键参考链接
 
