@@ -1,6 +1,6 @@
 // <copyright file="RootViewModel.cs" company="MaaAssistantArknights">
 // Part of the MaaWpfGui project, maintained by the MaaAssistantArknights team (Maa Team)
-// Copyright (C) 2021-2025 MaaAssistantArknights Contributors
+// Copyright (C) 2021-2026 MaaAssistantArknights Contributors
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License v3.0 only as published by
@@ -61,6 +61,13 @@ public class RootViewModel : Conductor<Screen>.Collection.OneActive
         {
             // README 截图演示模式：跳过版本不匹配提示、Nightly 提示、公告下载、
             // 完整性/更新检查与配置损坏等弹窗，避免联网与弹窗干扰自动截图
+            return;
+        }
+
+        if (Bootstrapper.IsCoreInitSkipped)
+        {
+            // UI 预览模式：Core 未加载时版本号比对必然触发版本不匹配错误弹窗，
+            // 更新/公告/完整性检查等联网弹窗同样干扰界面预览，一并跳过
             return;
         }
 
@@ -189,7 +196,7 @@ public class RootViewModel : Conductor<Screen>.Collection.OneActive
 
     private static void ToastNotificationCheck()
     {
-        if (!SettingsViewModel.GuiSettings.UseNotify)
+        if (!SettingsViewModel.NotificationSettings.UseNotify)
         {
             return;
         }
@@ -197,7 +204,7 @@ public class RootViewModel : Conductor<Screen>.Collection.OneActive
         var (isAvailable, detail) = ToastNotification.ToastNotificationCheck();
         if (!isAvailable)
         {
-            Growl.Error(LocalizationHelper.GetStringFormat("ToastNotificationUnavailable", detail));
+            GrowlHelper.Error(LocalizationHelper.GetStringFormat("ToastNotificationUnavailable", detail));
             _logger.Error(LocalizationHelper.GetStringFormat("ToastNotificationUnavailable", detail));
         }
     }
@@ -222,9 +229,10 @@ public class RootViewModel : Conductor<Screen>.Collection.OneActive
         {
             await Task.Run(Instances.AsstProxy.Init);
         }
-        catch
+        catch (Exception e)
         {
-            // ignored
+            // 初始化失败除 Link Start 保持置灰外无任何表现，不落日志则无从定位（如 Core 与资源版本不匹配）
+            _logger.Error(e, "Failed to init AsstProxy");
         }
     }
 

@@ -44,7 +44,7 @@ MAA 的意思是 MAA Assistant Arknights
 | Fork 私有功能 | 帳號輪換、帳號資料分桶、公招加急門檻、會客室線索回退、診斷報告、`expedite_min_level` 協定擴充等，全部來自 `branch` 分支的本地改造 |
 | 文件 | 倉庫根 [README](../../README.md) + [AGENTS.md](../../AGENTS.md) + [WORKFLOW.md](../../WORKFLOW.md) + [LOG.md](../../LOG.md) |
 
-> 不要將 `upstream/master-v2` 直接合併到 `staging` 或 `branch`。Fork 流程細節請參考 [WORKFLOW.md](../../WORKFLOW.md) §5（假歷史關聯）與 §6（合併手解）。
+> 不要將 `upstream/master-v2` 直接合併到 `staging` 或 `branch`。Fork 流程細節請參考 [WORKFLOW.md](../../WORKFLOW.md) §6（合併手解）與 §8（編譯驗證）；§5（假歷史關聯）與 §7（git replace）為已完成的一次性歷史步驟，無需執行。
 
 ## 下載與安裝
 

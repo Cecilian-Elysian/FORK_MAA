@@ -1,6 +1,6 @@
-﻿// <copyright file="CopilotViewModel.cs" company="MaaAssistantArknights">
+// <copyright file="CopilotViewModel.cs" company="MaaAssistantArknights">
 // Part of the MaaWpfGui project, maintained by the MaaAssistantArknights team (Maa Team)
-// Copyright (C) 2021-2025 MaaAssistantArknights Contributors
+// Copyright (C) 2021-2026 MaaAssistantArknights Contributors
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License v3.0 only as published by
@@ -24,20 +24,24 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media.Imaging;
 using JetBrains.Annotations;
 using MaaWpfGui.Configuration.Factory;
 using MaaWpfGui.Constants;
 using MaaWpfGui.Constants.Enums;
+using MaaWpfGui.Extensions;
 using MaaWpfGui.Helper;
 using MaaWpfGui.Main;
 using MaaWpfGui.Models;
 using MaaWpfGui.Models.AsstTasks;
 using MaaWpfGui.Models.Copilot;
 using MaaWpfGui.Services;
+using MaaWpfGui.Services.Notification;
 using MaaWpfGui.States;
 using MaaWpfGui.Utilities;
 using MaaWpfGui.Utilities.ValueType;
 using MaaWpfGui.ViewModels.Items;
+using MaaWpfGui.ViewModels.UserControl.Settings;
 using Microsoft.Win32;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -54,20 +58,19 @@ namespace MaaWpfGui.ViewModels.UI;
 /// <summary>
 /// The view model of copilot.
 /// </summary>
-// 閫氳繃 container.Get<CopilotViewModel>(); 瀹炰緥鍖栨垨鑾峰彇瀹炰緥
-// ReSharper disable once ClassNeverInstantiated.Global
+// 通过 container.Get<CopilotViewModel>(); 实例化或获取实例
 public partial class CopilotViewModel : Screen
 {
     private readonly RunningState _runningState;
     private static readonly ILogger _logger = Log.ForContext<CopilotViewModel>();
     private static readonly SemaphoreSlim _semaphore = new(1, 1);
-    private readonly List<int> _copilotIdList = []; // 鐢ㄤ簬淇濆瓨浣滀笟鍒楄〃涓殑浣滀笟鐨処d锛屽浜庡悓涓€涓綔涓氾紝鍙湁閮芥墽琛屾垚鍔熸墠鐐硅禐
-    private readonly List<int> _recentlyRatedCopilotId = []; // TODO: 鍙兘鑰冭檻鍔犱釜鎸佷箙鍖?
+    private readonly List<int> _copilotIdList = []; // 用于保存作业列表中的作业的Id，对于同一个作业，只有都执行成功才点赞
+    private readonly List<int> _recentlyRatedCopilotId = []; // TODO: 可能考虑加个持久化
     private AsstTaskType _taskType = AsstTaskType.Copilot;
-    private readonly Dictionary<string, string> _copilotJsonPathMap = []; // 涓嬫媺妗嗕笌瀹為檯浣滀笟 json 妗ｆ璺緞瀵圭収琛?
+    private readonly Dictionary<string, string> _copilotJsonPathMap = []; // 下拉框与实际作业 json 档案路径对照表
 
     /// <summary>
-    /// 缂撳瓨鐨勫凡瑙ｆ瀽浣滀笟锛岄潪鍗虫椂娣诲姞鐨勪綔涓氫細浣跨敤璇ョ紦瀛?
+    /// 缓存的已解析作业，非即时添加的作业会使用该缓存
     /// </summary>
     private CopilotBase? _copilotCache;
 
@@ -78,11 +81,11 @@ public partial class CopilotViewModel : Screen
     private const string CopilotIdPrefix = "maa://";
     private const string CopilotNewIdPrefix = "prts://"; // 新格式前缀，prts://12345 为作业，prts://s12345 为作业集
     private const string CopilotNewSetIdPrefix = "prts://s"; // 新格式作业集前缀
-    private static readonly string TempCopilotFile = Path.Combine(CacheDir, "_temp_copilot.json");
+    private static readonly string _tempCopilotFile = Path.Combine(CacheDir, "_temp_copilot.json");
 
-    // VideoRecognition 宸蹭笉鏀寔锛氫粎淇濈暀 json 浣滀笟
+    // VideoRecognition 已不支持：仅保留 json 作业
     private static readonly string[] _supportExt = [".json"];
-    private static readonly string CopilotJsonDir = Path.Combine(ConfigDir, "copilot");
+    private static readonly string _copilotJsonDir = Path.Combine(ConfigDir, "copilot");
     private const string StageNameRegex = @"(?:[a-z]{0,3})(?:\d{0,2})-(?:(?:A|B|C|D|EX|S|TR|MO)-?)?(?:\d{1,2})";
     private const string InvalidStageNameChars = @"[:',\.\(\)\|\[\]\?，。【】｛｝；：]"; // 无效字符
 
@@ -117,7 +120,9 @@ public partial class CopilotViewModel : Screen
     {
         PropertyDependsOnUtility.InitializePropertyDependencies(this);
         DisplayName = LocalizationHelper.GetString("Copilot");
-        AddLog(LocalizationHelper.GetString("CopilotTip"), showTime: false);
+
+        // 静态使用提示只参与界面展示，不进通知历史，也不算停滞计时器的输出活动
+        DisplayLog(LocalizationHelper.GetString("CopilotTip"), showTime: false, logToFile: false);
         _runningState = RunningState.Instance;
         LocalizationHelper.LanguageChanged += () => {
             DisplayName = LocalizationHelper.GetString("Copilot");
@@ -151,9 +156,24 @@ public partial class CopilotViewModel : Screen
                 SaveCopilotTask();
             }
         };
+
+        // 干员识别数据落盘内容变化（本地识别覆盖、一图流拉取、重置）时刷新同步时间展示；
+        // 可用性判定与勾选收回的状态源在 ThirdPartyServiceSettingsUserControlModel，由其同名订阅承担。
+        // 事件触发点均在 UI 线程（Core 回调整体在 OnUIThread 内）
+        OperBoxAssistHelper.StateChanged += RefreshOperBoxLastSyncTime;
+        RefreshOperBoxLastSyncTime();
     }
 
-    #region UI缁戝畾鍙婃搷浣?
+    protected override void OnActivate()
+    {
+        base.OnActivate();
+
+        // 激活时兜底判定无事件的数据变化（如手删文件）并收回失效勾选，同步时间随后就地刷新
+        ThirdPartyServiceSettingsUserControlModel.Instance.RefreshOperBoxAssistState();
+        RefreshOperBoxLastSyncTime();
+    }
+
+    #region UI绑定及操作
 
     #region Log
 
@@ -164,19 +184,30 @@ public partial class CopilotViewModel : Screen
     /// <param name="color">The font color.</param>
     /// <param name="weight">The font weight.</param>
     /// <param name="showTime">Whether show time.</param>
-    public void AddLog(string? content, string color = UiLogColor.Trace, string weight = "Regular", bool showTime = true)
+    /// <param name="notifyActivity">Whether to reset the stalled-output timer.</param>
+    /// <param name="logToFile">Whether to write the entry to the gui log.</param>
+    public void AddLog(string? content, string color = UiLogColor.Trace, string weight = "Regular", bool showTime = true, bool notifyActivity = true, bool logToFile = true)
     {
-// Copilot 自动战斗期间也会启动停滞计时器（Start 通过 BeginRun 进入运行态），
+        // Copilot 自动战斗期间也会启动停滞计时器（Start 通过 BeginRun 进入运行态），
         // 这里的日志同样属于"有输出活动"，需要重置计时器，否则会误报任务卡住。
-        RunningState.Instance.NotifyOutputActivity();
+        if (notifyActivity)
+        {
+            RunningState.Instance.NotifyOutputActivity();
+        }
 
+        Instances.NotificationService.PublishLog(NotificationSource.Copilot, content,
+            () => DisplayLog(content, color, weight, showTime, logToFile), color);
+    }
+
+    internal void DisplayLog(string? content, string color = UiLogColor.Trace, string weight = "Regular", bool showTime = true, bool logToFile = true)
+    {
         if (string.IsNullOrEmpty(content))
         {
             return;
         }
         Execute.OnUIThread(() => {
             LogItemViewModels.Add(new LogItemViewModel(content, color, weight, "HH':'mm':'ss", showTime: showTime));
-            if (showTime)
+            if (logToFile)
             {
                 switch (color)
                 {
@@ -192,8 +223,19 @@ public partial class CopilotViewModel : Screen
                 }
             }
         });
+    }
 
-        // LogItemViewModels.Insert(0, new LogItemViewModel(time + content, color, weight));
+    private void AddCopilotPreview(CopilotOutput output)
+    {
+        if (output.Parts.All(part => part.OperName is null))
+        {
+            AddLog(output.Content, output.Color ?? UiLogColor.Message, showTime: false);
+            return;
+        }
+
+        RunningState.Instance.NotifyOutputActivity();
+        Instances.NotificationService.PublishLog(NotificationSource.Copilot, output.Content,
+            () => LogItemViewModels.Add(new OperPreviewLogItemViewModel(output)), output.Color ?? UiLogColor.Message);
     }
 
     /// <summary>
@@ -213,14 +255,15 @@ public partial class CopilotViewModel : Screen
                 }
             }
 
+            Instances.NotificationService.Clear(NotificationSource.Copilot);
             LogItemViewModels.Clear();
-            AddLog(LocalizationHelper.GetString("CopilotTip"), showTime: false);
+            DisplayLog(LocalizationHelper.GetString("CopilotTip"), showTime: false, logToFile: false);
         });
     }
 
     #endregion Log
 
-    #region 灞炴€?
+    #region 属性
 
     /// <summary>
     /// Gets the shared run control state for run-state bindings.
@@ -235,7 +278,7 @@ public partial class CopilotViewModel : Screen
     private int _copilotTabIndex = 0;
 
     /// <summary>
-    /// Gets or sets 浣滀笟绫诲瀷锛?锛氫富绾?鏁呬簨闆?SS 1锛氫繚鍏ㄦ淳椹?2锛氭倴璁烘ā鎷?3锛氬叾浠栨椿鍔?
+    /// Gets or sets 作业类型，0：主线/故事集/SS 1：保全派驻 2：悖论模拟 3：其他活动
     /// </summary>
     public int CopilotTabIndex
     {
@@ -251,7 +294,10 @@ public partial class CopilotViewModel : Screen
                 UseCopilotList = false;
             }
 
-            SetAndNotify(ref _copilotTabIndex, value);
+            if (SetAndNotify(ref _copilotTabIndex, value))
+            {
+                Loop = false;
+            }
         }
     }
 
@@ -274,22 +320,22 @@ public partial class CopilotViewModel : Screen
             var copilotRoot = Path.Combine(ResourceDir, "copilot");
             var fullPath = Path.IsPathRooted(value) ? value : Path.Combine(copilotRoot, value);
 
-            /* 绁炵浠ｇ爜锛堜綔涓氱珯 ID锛夛紝浜ょ粰 FileName 澶勭悊 */
+            /* 神秘代码（作业站 ID），交给 FileName 处理 */
             if (IsCopilotCode(value))
             {
                 Filename = value;
             }
-            /* 鐩稿/缁濆璺緞 */
+            /* 相对/绝对路径 */
             else if (File.Exists(fullPath))
             {
                 Filename = fullPath;
             }
-            /* copilot 鏂囦欢澶逛笅鐨勬枃浠跺悕 */
+            /* copilot 文件夹下的文件名 */
             else if (_copilotJsonPathMap.TryGetValue(Path.GetFileName(value), out var mappedPath))
             {
                 Filename = mappedPath;
             }
-            /* maybe 鏄叾浠栫绉樹唬鐮侊紝浜ょ粰 FileName 澶勭悊 */
+            /* maybe 是其他神秘代码，交给 FileName 处理 */
             else
             {
                 Filename = value;
@@ -315,13 +361,13 @@ public partial class CopilotViewModel : Screen
 
     private string ProcessFilePath(string value)
     {
-        // 绁炵浠ｇ爜涓嶆寜鏂囦欢璺緞澶勭悊锛屽師鏍烽€忎紶
+        // 神秘代码不按文件路径处理，原样透传
         if (string.IsNullOrWhiteSpace(value) || IsCopilotCode(value) || File.Exists(value))
         {
             return value;
         }
 
-        // 浠庡鐓ц〃鍙栧緱瀹屾暣 json 妗ｆ璺緞
+        // 从对照表取得完整 json 档案路径
         if (_copilotJsonPathMap.TryGetValue(value, out var fullPath))
         {
             return fullPath;
@@ -353,36 +399,35 @@ public partial class CopilotViewModel : Screen
     }
 
     /// <summary>
-    /// 鍒ゆ柇杈撳叆鏄惁涓轰綔涓氱珯绁炵浠ｇ爜锛坢aa://銆乸rts://銆乸rts://s 鍓嶇紑銆乻12345 鎴栫函鏁板瓧锛?
+    /// 判断输入是否为作业站神秘代码（maa://、prts://、prts://s 前缀、s12345 或纯数字）
     /// </summary>
     private static bool IsCopilotCode(string value)
     {
         return TryParseCopilotCode(value, out _, out _);
     }
 
-
     /// <summary>
-    /// 浣滀笟绔欎唬鐮佺被鍨?
+    /// 作业站代码类型
     /// </summary>
     private enum CopilotCodeType
     {
-        /// <summary>涓嶆槸浣滀笟绔欎唬鐮?/summary>
+        /// <summary>不是作业站代码</summary>
         None,
 
-        /// <summary>鍗曚釜浣滀笟</summary>
+        /// <summary>单个作业</summary>
         Copilot,
 
-        /// <summary>浣滀笟闆?/summary>
+        /// <summary>作业集</summary>
         CopilotSet,
     }
 
     /// <summary>
-    /// 瑙ｆ瀽浣滀笟绔欎唬鐮侊紝璇嗗埆鎵€鏈夊凡鐭ユ牸寮忓苟鎻愬彇鏁板瓧 ID
+    /// 解析作业站代码，识别所有已知格式并提取数字 ID
     /// </summary>
-    /// <param name="input">鍘熷杈撳叆锛坢aa://12345銆乸rts://12345銆乸rts://s12345銆乻12345銆?2345锛?/param>
-    /// <param name="type">瑙ｆ瀽鍑虹殑绫诲瀷锛沵aa:// 鍜岀函鏁板瓧榛樿涓?Copilot锛堟寜閽笂涓嬫枃鍙鐩栵級</param>
-    /// <param name="id">鎻愬彇鐨勬暟瀛?ID</param>
-    /// <returns>鏄惁鎴愬姛瑙ｆ瀽</returns>
+    /// <param name="input">原始输入（maa://12345、prts://12345、prts://s12345、s12345、12345）</param>
+    /// <param name="type">解析出的类型</param>
+    /// <param name="id">提取的数字 ID</param>
+    /// <returns>是否成功解析</returns>
     private static bool TryParseCopilotCode(string input, out CopilotCodeType type, out int id)
     {
         type = CopilotCodeType.None;
@@ -393,7 +438,7 @@ public partial class CopilotViewModel : Screen
             return false;
         }
 
-        // 甯﹀墠缂€鐨勬牸寮忥紙浠庨暱鍒扮煭鍖归厤锛岄伩鍏?prts://s 琚?prts:// 鎶㈠厛锛?
+        // 带前缀的格式（从长到短匹配，避免 prts://s 被 prts:// 抢先）
         if (input.StartsWith(CopilotNewSetIdPrefix, StringComparison.OrdinalIgnoreCase))
         {
             type = CopilotCodeType.CopilotSet;
@@ -406,22 +451,20 @@ public partial class CopilotViewModel : Screen
             return int.TryParse(input[CopilotNewIdPrefix.Length..], out id);
         }
 
-// TODO: 浣滀笟绔欒縼绉诲畬鎴愬悗鍒犻櫎 maa:// 鏃ф牸寮忓垎鏀?
         if (input.StartsWith(CopilotIdPrefix, StringComparison.OrdinalIgnoreCase))
         {
-            // maa:// 鏃ф牸寮忥紝榛樿褰撳崟涓綔涓氾紙鎸夐挳涓婁笅鏂囧彲瑕嗙洊涓轰綔涓氶泦锛?
             type = CopilotCodeType.Copilot;
             return int.TryParse(input[CopilotIdPrefix.Length..], out id);
         }
 
-        // s12345 鏍煎紡浣滀笟闆?
+        // s12345 格式作业集
         if (input.Length > 1 && (input[0] is 's' or 'S') && int.TryParse(input[1..], out id))
         {
             type = CopilotCodeType.CopilotSet;
             return true;
         }
 
-        // 绾暟瀛楋紝榛樿褰撳崟涓綔涓?
+        // 纯数字，默认当单个作业
         if (int.TryParse(input, out id))
         {
             type = CopilotCodeType.Copilot;
@@ -440,7 +483,7 @@ public partial class CopilotViewModel : Screen
     public bool Form
     {
         get {
-            // Tab=1/2 涓嶆敮鎸佽嚜鍔ㄧ紪闃燂紝鏍规嵁 CopilotTabIndex 缁煎悎鍒ゆ柇杩斿洖鍊?
+            // Tab=1/2 不支持自动编队，根据 CopilotTabIndex 综合判断返回值
             if (CopilotTabIndex is 1 or 2)
             {
                 return false;
@@ -460,8 +503,77 @@ public partial class CopilotViewModel : Screen
     /// </summary>
     public bool IgnoreRequirements { get => field; set => SetAndNotify(ref field, value); }
 
+    [PropertyDependsOn(typeof(ThirdPartyServiceSettingsUserControlModel), nameof(ThirdPartyServiceSettingsUserControlModel.EnableOperBoxAssist))]
+    public bool EnableOperBoxAssist
+    {
+        get => SettingsViewModel.ThirdPartyServiceSettings.EnableOperBoxAssist;
+        set => SettingsViewModel.ThirdPartyServiceSettings.EnableOperBoxAssist = value;
+    }
+
     /// <summary>
-    /// Gets or sets a value indicating whether 鐪熸鏈夊共鍛樿蹇界暐浜嗚姹?
+    /// Gets 上次同步时间文案（MM/dd HH:mm:ss），无数据时为空串；整行显隐由 XAML 绑定 EnableOperBoxAssist 控制。
+    /// </summary>
+    public string OperBoxLastSyncTimeText { get => field; private set => SetAndNotify(ref field, value); } = string.Empty;
+
+    /// <summary>
+    /// Gets a value indicating whether 辅助编队可用：一图流干员数据接口已启用且落盘数据可用。
+    /// 判定与刷新收敛在 <see cref="ThirdPartyServiceSettingsUserControlModel.CanUseOperBoxAssist"/>，此处跨实例转发供本页绑定。
+    /// </summary>
+    [PropertyDependsOn(typeof(ThirdPartyServiceSettingsUserControlModel), nameof(ThirdPartyServiceSettingsUserControlModel.CanUseOperBoxAssist))]
+    public bool CanUseOperBoxAssist => ThirdPartyServiceSettingsUserControlModel.Instance.CanUseOperBoxAssist;
+
+    /// <summary>
+    /// 重新读取落盘数据刷新同步时间文案；只在落盘完成事件、页面激活等明确事件点调用，不做文件监听。
+    /// </summary>
+    private void RefreshOperBoxLastSyncTime()
+    {
+        OperBoxLastSyncTimeText = OperBoxAssistHelper.CheckData().SyncTime?.ToLocalTimeString("MM/dd HH:mm:ss") ?? string.Empty;
+    }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether 一图流数据同步进行中，用于禁用同步按钮防重复触发。
+    /// </summary>
+    public bool SyncingOperBox { get => field; set => SetAndNotify(ref field, value); }
+
+    /// <summary>
+    /// 从一图流拉取干员练度数据并落盘，结果反馈到 Copilot 日志区。
+    /// </summary>
+    /// <returns>异步任务。</returns>
+    public async Task SyncOperBoxFromYituliu()
+    {
+        if (SyncingOperBox)
+        {
+            return;
+        }
+
+        SyncingOperBox = true;
+        try
+        {
+            var (result, operatorCount) = await Instances.ToolboxViewModel.FetchAndSaveYituliuOperBoxAsync();
+            AddLog(result switch {
+                ToolboxViewModel.YituliuFetchResult.Success => LocalizationHelper.GetStringFormat("Copilot.SyncOperBoxSuccess", operatorCount),
+                ToolboxViewModel.YituliuFetchResult.TokenEmpty => LocalizationHelper.GetString("YituliuTokenEmpty"),
+                ToolboxViewModel.YituliuFetchResult.NoData => LocalizationHelper.GetString("YituliuNoOperBoxData"),
+                ToolboxViewModel.YituliuFetchResult.WriteOnly => LocalizationHelper.GetString("YituliuTokenWriteOnly"),
+                ToolboxViewModel.YituliuFetchResult.Invalid => LocalizationHelper.GetString("YituliuTokenInvalid"),
+                _ => LocalizationHelper.GetString("YituliuTokenNetworkError"),
+            }, result == ToolboxViewModel.YituliuFetchResult.Success ? UiLogColor.Info : UiLogColor.Error, showTime: false);
+        }
+        finally
+        {
+            SyncingOperBox = false;
+        }
+    }
+
+    [PropertyDependsOn(nameof(EnableOperBoxAssist))]
+    [PropertyDependsOn(nameof(Form))]
+    [PropertyDependsOn(nameof(CopilotTabIndex))]
+    public bool EffectiveOperBoxAssist => EnableOperBoxAssist
+        && Form
+        && (CopilotTabIndex == 0 || CopilotTabIndex == 3);
+
+    /// <summary>
+    /// Gets or sets a value indicating whether 真正有干员被忽略了要求
     /// </summary>
     public bool HasRequirementIgnored { get; set; } = false;
 
@@ -535,7 +647,7 @@ public partial class CopilotViewModel : Screen
     /// </summary>
     public void OpenUserAdditionalPopup()
     {
-        // 娓呯┖鍒楄〃
+        // 清空列表
         UserAdditionalItems.Clear();
         foreach (var op in UserAdditional)
         {
@@ -552,7 +664,7 @@ public partial class CopilotViewModel : Screen
             UserAdditionalItems.Add(item);
         }
 
-        // 濡傛灉鍒楄〃涓虹┖锛屾坊鍔犱竴琛岀┖琛?
+        // 如果列表为空，添加一行空行
         if (UserAdditionalItems.Count == 0)
         {
             var newItem = new UserAdditionalItemViewModel { Name = string.Empty, Skill = 0, Module = 0 };
@@ -567,13 +679,13 @@ public partial class CopilotViewModel : Screen
     /// </summary>
     public void SaveUserAdditional()
     {
-        // 灏嗗垪琛ㄨ浆鎹负 UserAdditional 骞跺簭鍒楀寲涓?JSON
+        // 将列表转换为 UserAdditional 并序列化为 JSON
         var list = new List<UserAdditional>();
         foreach (var item in UserAdditionalItems)
         {
             if (string.IsNullOrWhiteSpace(item.Name))
             {
-                continue; // 璺宠繃绌鸿
+                continue; // 跳过空行
             }
 
             list.Add(new UserAdditional {
@@ -629,10 +741,10 @@ public partial class CopilotViewModel : Screen
     private static Dictionary<string, int> BuildModuleMapping() => new()
     {
         { LocalizationHelper.GetString("CopilotWithoutModule"), 0 },
-        { "蠂", 1 },
-        { "纬", 2 },
-        { "伪", 3 },
-        { "螖", 4 },
+        { "χ", 1 },
+        { "γ", 2 },
+        { "α", 3 },
+        { "Δ", 4 },
     };
 
     /// <summary>
@@ -650,8 +762,18 @@ public partial class CopilotViewModel : Screen
         public string Name
         {
             get => _name;
-            set => SetAndNotify(ref _name, value);
+            set {
+                if (SetAndNotify(ref _name, value))
+                {
+                    NotifyOfPropertyChange(nameof(Avatar));
+                }
+            }
         }
+
+        /// <summary>
+        /// Gets 干员头像（按 <see cref="Name"/> 解析，名字为空或无法识别时为 null）
+        /// </summary>
+        public BitmapSource? Avatar => OperAvatarHelper.GetOperAvatarByName(Name);
 
         private int _skill;
 
@@ -683,9 +805,13 @@ public partial class CopilotViewModel : Screen
         public void RefreshLocalization() => NotifyOfPropertyChange(nameof(Module));
     }
 
-    private bool _useFormation;
-
-    public bool UseFormation { get => _useFormation; set => SetAndNotify(ref _useFormation, value); }
+    public bool UseFormation
+    {
+        get; set {
+            SetAndNotify(ref field, value);
+            ConfigFactory.CurrentConfig.Copilot.UseFormation = value;
+        }
+    } = ConfigFactory.CurrentConfig.Copilot.UseFormation;
 
     public List<GenericCombinedData<int>> FormationSelectList { get; } =
     [
@@ -719,17 +845,17 @@ public partial class CopilotViewModel : Screen
 
     public enum CopilotSupportMode
     {
-        /// <summary>浠呰ˉ鍏呭繀瑕?/summary>
+        /// <summary>仅补充必要</summary>
         WhenNeeded = 1,
 
-        /// <summary>闅忔満鍔犱竴涓? 鍒蜂俊鐢ㄧ偣鐢?/summary>
+        /// <summary>随机加一个, 刷信用点用</summary>
         Random = 3,
     }
 
     private bool _useCopilotList;
 
     /// <summary>
-    /// Gets or sets a value indicating whether 鑷姩缂栭槦.
+    /// Gets or sets a value indicating whether 自动编队.
     /// </summary>
     [PropertyDependsOn(nameof(CopilotTabIndex))]
     public bool UseCopilotList
@@ -738,7 +864,7 @@ public partial class CopilotViewModel : Screen
         set {
             if (value)
             {
-                // _taskType 搴旇鍙敱閫夋嫨鐨勪綔涓氭枃浠跺喅瀹氾紝涓嶅湪姝ゅ己鍒朵慨鏀?
+                // _taskType 应该只由选择的作业文件决定，不在此强制修改
                 Form = true;
             }
 
@@ -760,7 +886,7 @@ public partial class CopilotViewModel : Screen
         }
     }
 
-    public bool Loop { get; set; }
+    public bool Loop { get; set => SetAndNotify(ref field, value); }
 
     public int LoopTimes
     {
@@ -820,13 +946,13 @@ public partial class CopilotViewModel : Screen
         set => SetAndNotify(ref _couldLikeWebJson, value);
     }
 
-    #endregion 灞炴€?
+    #endregion 属性
 
-    #region 鏂规硶
+    #region 方法
 
     /// <summary>
     /// Selects file.
-    /// UI 缁戝畾鐨勬柟娉?
+    /// UI 绑定的方法
     /// </summary>
     [UsedImplicitly]
     public void SelectFile()
@@ -843,7 +969,7 @@ public partial class CopilotViewModel : Screen
 
     /// <summary>
     /// Paste clipboard contents.
-    /// UI 缁戝畾鐨勬柟娉?
+    /// UI 绑定的方法
     /// </summary>
     [UsedImplicitly]
     public void PasteClipboard()
@@ -858,10 +984,9 @@ public partial class CopilotViewModel : Screen
         }
     }
 
-
     /// <summary>
-    /// 鎵归噺瀵煎叆浣滀笟
-    /// UI 缁戝畾鐨勬柟娉?
+    /// 批量导入作业
+    /// UI 绑定的方法
     /// </summary>
     /// <returns>Task</returns>
     [UsedImplicitly]
@@ -916,7 +1041,7 @@ public partial class CopilotViewModel : Screen
         }
     }
 
-    // UI 缁戝畾鐨勬柟娉?
+    // UI 绑定的方法
     [UsedImplicitly]
     public async Task AddCopilotTask()
     {
@@ -924,7 +1049,7 @@ public partial class CopilotViewModel : Screen
         CopilotTaskName = string.Empty;
     }
 
-    // UI 缁戝畾鐨勬柟娉?
+    // UI 绑定的方法
     [UsedImplicitly]
     public async Task AddCopilotTask_Adverse()
     {
@@ -932,13 +1057,13 @@ public partial class CopilotViewModel : Screen
         CopilotTaskName = string.Empty;
     }
 
-    // UI 缁戝畾鐨勬柟娉?
+    // UI 绑定的方法
     [UsedImplicitly]
     public void SelectCopilotTask(object? sender, MouseButtonEventArgs? e = null)
     {
         if (e?.Source is FrameworkElement element && element.Tag is int index)
         {
-            Filename = CopilotItemViewModels[index].FilePath; // 鍋囪鍘熸柟娉曟帴鍙梚nt鍙傛暟
+            Filename = CopilotItemViewModels[index].FilePath; // 假设原方法接受int参数
             if (e.ChangedButton == MouseButton.Right)
             {
                 UseCopilotList = false;
@@ -946,7 +1071,7 @@ public partial class CopilotViewModel : Screen
         }
     }
 
-    // UI 缁戝畾鐨勬柟娉?
+    // UI 绑定的方法
     [UsedImplicitly]
     public void DeleteCopilotTask(int index)
     {
@@ -954,7 +1079,7 @@ public partial class CopilotViewModel : Screen
         CopilotItemIndexChanged();
     }
 
-    // UI 缁戝畾鐨勬柟娉?
+    // UI 绑定的方法
     [UsedImplicitly]
     public void CleanUnableCopilotTask()
     {
@@ -966,7 +1091,7 @@ public partial class CopilotViewModel : Screen
         CopilotItemIndexChanged();
     }
 
-    // UI 缁戝畾鐨勬柟娉?
+    // UI 绑定的方法
     [UsedImplicitly]
     public void ClearCopilotTask()
     {
@@ -975,7 +1100,7 @@ public partial class CopilotViewModel : Screen
 
         try
         {
-            Directory.Delete(CopilotJsonDir, true);
+            Directory.Delete(_copilotJsonDir, true);
         }
         catch
         {
@@ -983,7 +1108,7 @@ public partial class CopilotViewModel : Screen
         }
     }
 
-    // UI 缁戝畾鐨勬柟娉?
+    // UI 绑定的方法
     [UsedImplicitly]
     public async Task LikeWebJson()
     {
@@ -994,7 +1119,7 @@ public partial class CopilotViewModel : Screen
         }
     }
 
-    // UI 缁戝畾鐨勬柟娉?
+    // UI 绑定的方法
     [UsedImplicitly]
     public void DislikeWebJson()
     {
@@ -1002,9 +1127,9 @@ public partial class CopilotViewModel : Screen
         _ = RateCopilot(CopilotId, false);
     }
 
-    #endregion 鏂规硶
+    #endregion 方法
 
-    #endregion UI缁戝畾鍙婃搷浣?
+    #endregion UI绑定及操作
 
     private async Task UpdateFilename(string filename)
     {
@@ -1121,10 +1246,10 @@ public partial class CopilotViewModel : Screen
     }
 
     /// <summary>
-    /// 涓鸿嚜鍔ㄦ垬鏂楀垪琛ㄥ尮閰嶅悕瀛?
+    /// 为自动战斗列表匹配名字
     /// </summary>
-    /// <param name="names">鐢ㄤ簬鍖归厤鐨勫悕瀛?/param>
-    /// <returns>鍏冲崱鍚?or string.Empty</returns>
+    /// <param name="names">用于匹配的名字</param>
+    /// <returns>关卡名 or string.Empty</returns>
     private static string? FindStageName(params string[] names)
     {
         names = names.Where(str => !string.IsNullOrEmpty(str)).ToArray();
@@ -1133,7 +1258,7 @@ public partial class CopilotViewModel : Screen
             return string.Empty;
         }
 
-        // 涓€鏃︽湁鐢卞皬鍐欏瓧姣嶃€佹暟瀛椼€?-'缁勬垚鐨刵ame鍒欒涓哄叧鍗″悕鐩存帴浣跨敤
+        // 一旦有由小写字母、数字、'-'组成的name则视为关卡名直接使用
         var directName = names.FirstOrDefault(name => Regex.IsMatch(name.ToLower(), @"^[0-9a-z\-]+$"));
         if (!string.IsNullOrEmpty(directName))
         {
@@ -1144,7 +1269,7 @@ public partial class CopilotViewModel : Screen
         return names.Select(str => regex.Match(str)).FirstOrDefault(result => result.Success)?.Value ?? string.Empty;
     }
 
-    #region 浣滀笟瑙ｆ瀽
+    #region 作业解析
 
     private async Task<(int CopilotId, CopilotBase? Payload)> GetCopilotAsync(string copilotCodeString, CancellationToken token)
     {
@@ -1201,7 +1326,7 @@ public partial class CopilotViewModel : Screen
             var match = linkParser.Match(copilot.Documentation.Details);
             if (match.Success)
             {
-                VideoUrl = MaaUrls.BilibiliVideo + match.Value; // 瑙嗛閾炬帴
+                VideoUrl = MaaUrls.BilibiliVideo + match.Value; // 视频链接
             }
         }
 
@@ -1249,11 +1374,12 @@ public partial class CopilotViewModel : Screen
         }
         foreach (var action in copilot.Actions.Where(a => a.Type is "Skill" or "Retreat" or "BulletTime" or "SkillUsage"))
         {
+            // 重复指定干员和坐标，使用坐标
             var hasLoc = action.Location is not null;
             var hasOper = action.Name is not null;
-            if (hasLoc && hasOper) // 重复指定干员和坐标，使用坐标
+            if (hasLoc && hasOper)
             {
-                AddLog(LocalizationHelper.GetStringFormat("Copilot.ActionWithBothLocAndOper", $"{action.Type}[{action.Location}]"), UiLogColor.Warning, showTime: false);
+                AddLog(LocalizationHelper.GetStringFormat("Copilot.ActionWithBothLocAndOper", $"{action.Type}[{string.Join(",", action.Location!)}]"), UiLogColor.Warning, showTime: false);
                 action.Role = null;
                 action.Name = null;
                 is_corrected = true;
@@ -1261,7 +1387,8 @@ public partial class CopilotViewModel : Screen
         }
         foreach (var action in copilot.Actions.Where(a => a.Type is "Click"))
         {
-            if (action.Rect is not null && action.Location is not null) // Core 对同填 rect 与 location 的点击动作按 rect 执行，此处移除 location 以与 Core 语义一致
+            // Core 对同填 rect 与 location 的点击动作按 rect 执行，此处移除 location 以与 Core 语义一致
+            if (action.Rect is not null && action.Location is not null)
             {
                 AddLog(LocalizationHelper.GetStringFormat("Copilot.ActionWithBothRectAndLoc", $"{action.Type}[{string.Join(",", action.Rect)}]"), UiLogColor.Warning, showTime: false);
                 action.Location = null;
@@ -1270,9 +1397,9 @@ public partial class CopilotViewModel : Screen
         }
         if (printInfo)
         {
-            foreach (var (output, color) in copilot.Output())
+            foreach (var output in copilot.Output())
             {
-                AddLog(output, color ?? UiLogColor.Message, showTime: false); // 浣滀笟淇℃伅杈撳嚭
+                AddCopilotPreview(output);
             }
         }
 
@@ -1281,7 +1408,7 @@ public partial class CopilotViewModel : Screen
         var navigateName = mapInfo?.Code;
         if (navigateName is null)
         {
-            // 涓嶆敮鎸佺殑鍏冲崱
+            // 不支持的关卡
             AddLog(LocalizationHelper.GetStringFormat("UnsupportedStages", copilot.StageName), UiLogColor.Error, showTime: false);
             navigateName = FindStageName(copilot.Documentation?.Title ?? string.Empty);
             _ = Task.Run(ResourceUpdater.ResourceUpdateAndReloadAsync);
@@ -1302,7 +1429,7 @@ public partial class CopilotViewModel : Screen
         }
 
         if (!writeToCache)
-        {// 鐜板湪鏄殏鏃跺皢鎵€鏈夋湰鍦颁綔涓氫笉娣诲姞鍒板垪琛?
+        {// 现在是暂时将所有本地作业不添加到列表
         }
         else if (copilotList)
         {
@@ -1323,7 +1450,7 @@ public partial class CopilotViewModel : Screen
                 // 取消后不得写盘，避免旧轮次内容覆盖新一轮结果
                 token.ThrowIfCancellationRequested();
                 var json = JsonConvert.SerializeObject(copilot, Formatting.Indented, new JsonSerializerSettings { DefaultValueHandling = DefaultValueHandling.Ignore, NullValueHandling = NullValueHandling.Ignore, });
-                await File.WriteAllTextAsync(TempCopilotFile, json, token);
+                await File.WriteAllTextAsync(_tempCopilotFile, json, token);
             }
             catch (OperationCanceledException)
             {
@@ -1331,7 +1458,7 @@ public partial class CopilotViewModel : Screen
             }
             catch
             {
-                _logger.Error("Could not save copilot task to file: " + TempCopilotFile);
+                _logger.Error("Could not save copilot task to file: " + _tempCopilotFile);
                 return false;
             }
         }
@@ -1357,16 +1484,16 @@ public partial class CopilotViewModel : Screen
             var match = linkParser.Match(copilot.Documentation.Details);
             if (match.Success)
             {
-                VideoUrl = MaaUrls.BilibiliVideo + match.Value; // 瑙嗛閾炬帴
+                VideoUrl = MaaUrls.BilibiliVideo + match.Value; // 视频链接
             }
         }
 
-        foreach (var (output, color) in copilot.Output())
+        foreach (var output in copilot.Output())
         {
-            AddLog(output, color ?? UiLogColor.Message, showTime: false);
+            AddCopilotPreview(output);
         }
 
-        // 涓嶆敮鎸佺殑鍏冲崱
+        // 不支持的关卡
         var stages = copilot.Stages?.Select(copilot => DataHelper.FindMap(copilot.StageName));
         if (stages?.Any(i => i is null) is null or true)
         {
@@ -1381,7 +1508,7 @@ public partial class CopilotViewModel : Screen
             {
                 // 取消后不得写盘，避免旧轮次内容覆盖新一轮结果
                 token.ThrowIfCancellationRequested();
-                await File.WriteAllTextAsync(TempCopilotFile, JsonConvert.SerializeObject(copilot, Formatting.Indented, new JsonSerializerSettings { DefaultValueHandling = DefaultValueHandling.Ignore, NullValueHandling = NullValueHandling.Ignore, }), token);
+                await File.WriteAllTextAsync(_tempCopilotFile, JsonConvert.SerializeObject(copilot, Formatting.Indented, new JsonSerializerSettings { DefaultValueHandling = DefaultValueHandling.Ignore, NullValueHandling = NullValueHandling.Ignore, }), token);
             }
             catch (OperationCanceledException)
             {
@@ -1389,18 +1516,18 @@ public partial class CopilotViewModel : Screen
             }
             catch
             {
-                _logger.Error("Could not save copilot task to file: " + TempCopilotFile);
+                _logger.Error("Could not save copilot task to file: " + _tempCopilotFile);
                 return false;
             }
         }
 
-        // await AddSSSCopilotTaskToList(copilot, CopilotId); 淇濆叏浣滀笟娴忚鏃朵笉鑷姩娣诲姞鍒板垪琛?
+        // await AddSSSCopilotTaskToList(copilot, CopilotId); 保全作业浏览时不自动添加到列表
         return true;
     }
 
-    #endregion 浣滀笟瑙ｆ瀽
+    #endregion 作业解析
 
-    #region 浣滀笟闆嗚В鏋?
+    #region 作业集解析
 
     private async Task GetCopilotSetAsync(string copilotCodeString, CancellationToken token)
     {
@@ -1459,9 +1586,35 @@ public partial class CopilotViewModel : Screen
                     AddLog(LocalizationHelper.GetString("CopilotJsonError") + $", copilotId: {id}", UiLogColor.Error, showTime: false);
                     continue;
                 }
-                var opers = JArray.FromObject(copilot.Opers.Select(i => i.Name));
-                opers = JArray.FromObject(opers.Union(JArray.FromObject(copilot.Groups.Select(i => i.Opers.Select(op => op.Name)))));
-                AddLog(opers.ToString(Formatting.None), UiLogColor.Message, showTime: false);
+                var stageName = DataHelper.FindMap(copilot.StageName)?.Code ?? copilot.StageName;
+                var parts = new List<CopilotOutput.Part> { new(stageName + ": [") };
+                AddNames(copilot.Opers.Select(oper => oper.Name).Distinct());
+                foreach (var group in copilot.Groups)
+                {
+                    if (parts.Count > 1)
+                    {
+                        parts.Add(new(", "));
+                    }
+                    parts.Add(new(group.Name + ": ["));
+                    AddNames(group.Opers.Select(oper => oper.Name));
+                    parts.Add(new("]"));
+                }
+                parts.Add(new("]"));
+                AddCopilotPreview(new CopilotOutput(parts, UiLogColor.Message));
+
+                void AddNames(IEnumerable<string> names)
+                {
+                    var first = true;
+                    foreach (var name in names)
+                    {
+                        if (!first)
+                        {
+                            parts.Add(new(", "));
+                        }
+                        parts.Add(new(DataHelper.GetLocalizedCharacterName(name) ?? name, name));
+                        first = false;
+                    }
+                }
             }
             else if (payload is SSSCopilotModel sss)
             {
@@ -1488,14 +1641,14 @@ public partial class CopilotViewModel : Screen
         }
     }
 
-    #endregion 浣滀笟闆嗚В鏋?
+    #endregion 作业集解析
 
     /// <summary>
     /// Drops file.
     /// </summary>
     /// <param name="sender">The sender.</param>
     /// <param name="e">The event arguments.</param>
-    /// TODO: 涓嶇煡閬撲负鍟ョ幇鍦ㄦ嫋鏀句笉鐢ㄤ簡锛屼箣鍚庣瀰鐬?
+    /// TODO: 不知道为啥现在拖放不用了，之后瞅瞅
     [UsedImplicitly]
     public void DropFile(object sender, DragEventArgs e)
     {
@@ -1543,11 +1696,11 @@ public partial class CopilotViewModel : Screen
 
             var copilotRoot = Path.Combine(ResourceDir, "copilot");
 
-            // 鑾峰彇鏍圭洰褰曚笅鐨勬墍鏈夌洰褰曞拰鏂囦欢
+            // 获取根目录下的所有目录和文件
             var directories = Directory.GetDirectories(copilotRoot);
             var rootFiles = Directory.GetFiles(copilotRoot, "*.json");
 
-            // 娣诲姞鏍圭洰褰曚笅鐨勬枃浠?
+            // 添加根目录下的文件
             foreach (var file in rootFiles)
             {
                 var fileName = Path.GetFileName(file);
@@ -1562,7 +1715,7 @@ public partial class CopilotViewModel : Screen
                 });
             }
 
-            // 娣诲姞鏍圭洰褰曚笅鐨勬枃浠跺す锛堟敮鎸佸祵濂楋紝old 鏂囦欢澶规斁鍦ㄦ渶鍚庯級
+            // 添加根目录下的文件夹（支持嵌套，old 文件夹放在最后）
             var oldFolderItem = (CopilotFileItem?)null;
             foreach (var dir in directories)
             {
@@ -1581,7 +1734,7 @@ public partial class CopilotViewModel : Screen
                 }
             }
 
-            // 灏?old 鏂囦欢澶规坊鍔犲埌鏈€鍚?
+            // 将 old 文件夹添加到最后
             if (oldFolderItem != null)
             {
                 FileItems.Add(oldFolderItem);
@@ -1595,11 +1748,11 @@ public partial class CopilotViewModel : Screen
     }
 
     /// <summary>
-    /// 閫掑綊鍔犺浇鏂囦欢澶归」锛堟敮鎸佸祵濂楀瓙鏂囦欢澶癸級
+    /// 递归加载文件夹项（支持嵌套子文件夹）
     /// </summary>
-    /// <param name="dirPath">鏂囦欢澶硅矾寰?/param>
-    /// <param name="copilotRoot">copilot 鏍圭洰褰曡矾寰?/param>
-    /// <returns>鏂囦欢椤癸紝濡傛灉鏂囦欢澶逛负绌哄垯杩斿洖 null</returns>
+    /// <param name="dirPath">文件夹路径</param>
+    /// <param name="copilotRoot">copilot 根目录路径</param>
+    /// <returns>文件项，如果文件夹为空则返回 null</returns>
     private CopilotFileItem? LoadFolderItem(string dirPath, string copilotRoot)
     {
         var dirName = Path.GetFileName(dirPath);
@@ -1608,7 +1761,7 @@ public partial class CopilotViewModel : Screen
             IsFolder = true,
         };
 
-        // 鑾峰彇鏂囦欢澶逛笅鐨勬墍鏈夋枃浠?
+        // 获取文件夹下的所有文件
         var folderFiles = Directory.GetFiles(dirPath, "*.json");
         foreach (var file in folderFiles)
         {
@@ -1624,7 +1777,7 @@ public partial class CopilotViewModel : Screen
             });
         }
 
-        // 鑾峰彇鏂囦欢澶逛笅鐨勬墍鏈夊瓙鏂囦欢澶癸紙閫掑綊鍔犺浇锛?
+        // 获取文件夹下的所有子文件夹（递归加载）
         var subDirectories = Directory.GetDirectories(dirPath);
         foreach (var subDir in subDirectories)
         {
@@ -1635,7 +1788,7 @@ public partial class CopilotViewModel : Screen
             }
         }
 
-        // 濡傛灉鏂囦欢澶逛负绌猴紙鏃㈡病鏈夋枃浠朵篃娌℃湁瀛愭枃浠跺す锛夛紝杩斿洖 null
+        // 如果文件夹为空（既没有文件也没有子文件夹），返回 null
         if (folderItem.Children.Count == 0)
         {
             return null;
@@ -1689,7 +1842,7 @@ public partial class CopilotViewModel : Screen
     }
 
     /// <summary>
-    /// 灏嗕綔涓氭坊鍔犲埌鍒楄〃
+    /// 将作业添加到列表
     /// </summary>
     /// <param name="copilot">作业</param>
     /// <param name="flags">难度等级</param>
@@ -1705,11 +1858,11 @@ public partial class CopilotViewModel : Screen
             return false;
         }
 
-        if (!Path.Exists(CopilotJsonDir))
+        if (!Path.Exists(_copilotJsonDir))
         {
             try
             {
-                Directory.CreateDirectory(CopilotJsonDir);
+                Directory.CreateDirectory(_copilotJsonDir);
             }
             catch
             {
@@ -1739,11 +1892,11 @@ public partial class CopilotViewModel : Screen
         }
 
         var fileName = !string.IsNullOrEmpty(stageCode) ? stageCode : DateTimeOffset.Now.ToUnixTimeSeconds().ToString();
-        var cachePath = Path.GetRelativePath(BaseDir, $"{CopilotJsonDir}/{fileName}.json");
+        var cachePath = Path.GetRelativePath(BaseDir, $"{_copilotJsonDir}/{fileName}.json");
         await _semaphore.WaitAsync(token);
         if (File.Exists(cachePath) && CopilotItemViewModels.Any(i => i.FilePath == cachePath))
         {
-            cachePath = Path.GetRelativePath(BaseDir, $"{CopilotJsonDir}/{fileName}_{DateTimeOffset.Now.ToUnixTimeMilliseconds()}.json");
+            cachePath = Path.GetRelativePath(BaseDir, $"{_copilotJsonDir}/{fileName}_{DateTimeOffset.Now.ToUnixTimeMilliseconds()}.json");
             if (CopilotItemViewModels.Any(i => i.FilePath == cachePath))
             {
                 _logger.Error("Could not add copilot task with duplicate stage name: {StageName}", copilot.StageName);
@@ -1814,11 +1967,11 @@ public partial class CopilotViewModel : Screen
             return false;
         }
 
-        if (!Path.Exists(CopilotJsonDir))
+        if (!Path.Exists(_copilotJsonDir))
         {
             try
             {
-                Directory.CreateDirectory(CopilotJsonDir);
+                Directory.CreateDirectory(_copilotJsonDir);
             }
             catch
             {
@@ -1832,11 +1985,11 @@ public partial class CopilotViewModel : Screen
             fileName = DateTimeOffset.Now.ToUnixTimeSeconds().ToString();
         }
 
-        var cachePath = Path.GetRelativePath(BaseDir, $"{CopilotJsonDir}/{fileName}.json");
+        var cachePath = Path.GetRelativePath(BaseDir, $"{_copilotJsonDir}/{fileName}.json");
         await _semaphore.WaitAsync(token);
         if (File.Exists(cachePath) && CopilotItemViewModels.Any(i => i.FilePath == cachePath))
         {
-            cachePath = Path.GetRelativePath(BaseDir, $"{CopilotJsonDir}/{fileName}_{DateTimeOffset.Now.ToUnixTimeMilliseconds()}.json");
+            cachePath = Path.GetRelativePath(BaseDir, $"{_copilotJsonDir}/{fileName}_{DateTimeOffset.Now.ToUnixTimeMilliseconds()}.json");
             if (CopilotItemViewModels.Any(i => i.FilePath == cachePath))
             {
                 _logger.Error("Could not add SSS copilot task with duplicate stage name: {StageName}", copilot.StageName);
@@ -1878,7 +2031,7 @@ public partial class CopilotViewModel : Screen
     }
 
     /// <summary>
-    /// 鎴樻枟鍒楄〃鐨勫綋鍓嶆垬鏂椾换鍔℃垚鍔?
+    /// 战斗列表的当前战斗任务成功
     /// </summary>
     public void CopilotTaskSuccess()
     {
@@ -1905,7 +2058,7 @@ public partial class CopilotViewModel : Screen
     }
 
     /// <summary>
-    /// 鏇存柊浠诲姟椤哄簭
+    /// 更新任务顺序
     /// </summary>
     public void CopilotItemIndexChanged()
     {
@@ -1919,7 +2072,7 @@ public partial class CopilotViewModel : Screen
 
     /// <summary>
     /// Starts copilot.
-    /// UI 缁戝畾鐨勬柟娉?
+    /// UI 绑定的方法
     /// </summary>
     /// <returns>Task</returns>
     [UsedImplicitly]
@@ -1927,7 +2080,7 @@ public partial class CopilotViewModel : Screen
     {
         if (Bootstrapper.TryGetTaskBlockReason() is { } reason)
         {
-            AddLog(reason, UiLogColor.Error);
+            AddLog(reason, UiLogColor.Error, showTime: false);
             return;
         }
 
@@ -1946,7 +2099,7 @@ public partial class CopilotViewModel : Screen
         //     return;
         // }
 
-        // 缁熶竴鍓嶇疆鏍￠獙锛氬厛鎸?CopilotTabIndex 鍒嗗彂锛屽啀鍒ゆ柇瀵瑰簲閫夐」锛圲seCopilotList 绛夛級
+        // 统一前置校验：先按 CopilotTabIndex 分发，再判断对应选项（UseCopilotList 等）
         if (!await ValidateStartAsync())
         {
             Instances.TaskQueueViewModel.SetStopped();
@@ -1963,7 +2116,7 @@ public partial class CopilotViewModel : Screen
             return;
         }
 
-        // 杩炴帴鏈熼棿鐢ㄦ埛鍙兘宸茬偣鍋滄锛岄渶鍦ㄦ澶勬嫤鎴?
+        // 连接期间用户可能已点停止，需在此处拦截
         if (_runningState.GetStopping())
         {
             Instances.TaskQueueViewModel.SetStopped();
@@ -1997,26 +2150,34 @@ public partial class CopilotViewModel : Screen
             }
 
             Instances.TaskQueueViewModel.SetStopped();
-            AddLog(LocalizationHelper.GetString("CopilotFileReadError"), UiLogColor.Error, showTime: false);
+
+            // 中性兜底与已报告的具体原因连打：原因在前、结论在后，互不冲突
+            AddLog(LocalizationHelper.GetString("CopilotStartFailed"), UiLogColor.Error, showTime: false);
         }
     }
 
     private async Task<bool> ValidateStartAsync()
     {
+        if (EffectiveOperBoxAssist && !CanUseOperBoxAssist)
+        {
+            AddLog(LocalizationHelper.GetString("CopilotOperboxAssistRequiresYituliuData"), UiLogColor.Error, showTime: false);
+            return false;
+        }
+
         if (UseCopilotList)
         {
-            // 鍒楄〃妯″紡锛氬彧鏍￠獙鍒楄〃鏈韩锛屼笉妫€鏌ヨ緭鍏ユ閲岀殑鍗曟枃浠朵綔涓氱被鍨?
+            // 列表模式：只校验列表本身，不检查输入框里的单文件作业类型
             return await ValidateTaskListStrictAsync(tabIndex: CopilotTabIndex);
         }
 
-        // 闈炲垪琛ㄦā寮忓繀椤绘湁褰撳墠浣滀笟
+        // 非列表模式必须有当前作业
         if (_copilotCache is null)
         {
             AddLog(LocalizationHelper.GetString("CopilotEmptyError"), UiLogColor.Error, showTime: false);
             return false;
         }
 
-        // 闈炲垪琛ㄦā寮忥細妫€鏌ュ崟鏂囦欢浣滀笟鐨?_taskType 涓?CopilotTabIndex 鏄惁鍖归厤
+        // 非列表模式：检查单文件作业的 _taskType 与 CopilotTabIndex 是否匹配
         if ((_taskType == AsstTaskType.SSSCopilot && CopilotTabIndex != 1) || (_taskType != AsstTaskType.SSSCopilot && CopilotTabIndex == 1))
         {
             AddLog(LocalizationHelper.GetString("CopilotTaskTypeMismatch"), UiLogColor.Error, showTime: false);
@@ -2030,7 +2191,7 @@ public partial class CopilotViewModel : Screen
     {
         var selected = CopilotItemViewModels.Where(i => i.IsChecked).ToArray();
 
-        // 绌哄垪琛細鎻愮ず骞跺け璐?
+        // 空列表：提示并失败
         if (selected.Length == 0)
         {
             AddLog(LocalizationHelper.GetString("CopilotStartWithEmptyList"), UiLogColor.Error, showTime: false);
@@ -2053,7 +2214,7 @@ public partial class CopilotViewModel : Screen
             }
         }
 
-        // 鍏堝垽鏂?CopilotTabIndex锛屽啀鍒ゆ柇瀵瑰簲閫夐」
+        // 先判断 CopilotTabIndex，再判断对应选项
         if (tabIndex == 2)
         {
             return VerifyParadoxTasks(selected);
@@ -2135,9 +2296,10 @@ public partial class CopilotViewModel : Screen
                 UserAdditionals = AddUserAdditional ? [.. userAdditional] : [],
                 UseSanityPotion = UseSanityPotion,
                 FormationIndex = UseFormation ? FormationIndex : 0,
+                OperBoxDataPath = EffectiveOperBoxAssist ? OperBoxAssistHelper.OperBoxDataJsonPath : string.Empty,
             };
 
-            // 鑳界敤鍒楄〃鐨勬槸涓荤嚎/ss/鏁呬簨闆?鎮栬锛岄兘鏄?Copilot 绫诲瀷
+            // 能用列表的是主线/ss/故事集/悖论，都是 Copilot 类型
             var ret = Instances.AsstProxy.AsstAppendTaskWithEncoding(AsstProxy.TaskType.Copilot, task).IsSuccess;
             return ret && Instances.AsstProxy.AsstStart();
         }
@@ -2163,11 +2325,11 @@ public partial class CopilotViewModel : Screen
         {
             try
             {
-                await File.WriteAllTextAsync(TempCopilotFile, JsonConvert.SerializeObject(_copilotCache, Formatting.Indented, new JsonSerializerSettings { DefaultValueHandling = DefaultValueHandling.Ignore, NullValueHandling = NullValueHandling.Ignore, }));
+                await File.WriteAllTextAsync(_tempCopilotFile, JsonConvert.SerializeObject(_copilotCache, Formatting.Indented, new JsonSerializerSettings { DefaultValueHandling = DefaultValueHandling.Ignore, NullValueHandling = NullValueHandling.Ignore, }));
             }
             catch
             {
-                AddLog(LocalizationHelper.GetString("CopilotCouldNotSaveFile") + TempCopilotFile, UiLogColor.Error);
+                AddLog(LocalizationHelper.GetString("CopilotCouldNotSaveFile") + _tempCopilotFile, UiLogColor.Error, showTime: false);
                 return false;
             }
         }
@@ -2175,13 +2337,13 @@ public partial class CopilotViewModel : Screen
         bool appended;
         if (CopilotTabIndex == 2)
         {
-            var singleTask = new AsstParadoxCopilotTask() { FileName = IsDataFromWeb ? TempCopilotFile : Filename };
+            var singleTask = new AsstParadoxCopilotTask() { FileName = IsDataFromWeb ? _tempCopilotFile : Filename };
             appended = Instances.AsstProxy.AsstAppendTaskWithEncoding(AsstProxy.TaskType.Copilot, singleTask).IsSuccess;
         }
         else
         {
             var singleTask = new AsstCopilotTask() {
-                FileName = IsDataFromWeb ? TempCopilotFile : Filename,
+                FileName = IsDataFromWeb ? _tempCopilotFile : Filename,
                 Formation = Form,
                 SupportUnitUsage = UseSupportUnitUsage ? (int)SupportUnitUsage : 0,
                 AddTrust = AddTrust,
@@ -2190,9 +2352,10 @@ public partial class CopilotViewModel : Screen
                 LoopTimes = Loop ? LoopTimes : 1,
                 UseSanityPotion = false,
                 FormationIndex = UseFormation ? FormationIndex : 0,
+                OperBoxDataPath = EffectiveOperBoxAssist ? OperBoxAssistHelper.OperBoxDataJsonPath : string.Empty,
             };
 
-            // 鍗曚綔涓氶渶瑕佸尯鍒?Copilot / SSSCopilot
+            // 单作业需要区分 Copilot / SSSCopilot
             appended = Instances.AsstProxy.AsstAppendTaskWithEncoding(AsstProxy.TaskType.Copilot, _taskType, singleTask.Serialize().Params);
         }
 
@@ -2205,7 +2368,7 @@ public partial class CopilotViewModel : Screen
     // }
 
     /// <summary>
-/// 手动停止 copilot。
+    /// 手动停止 copilot。
     /// UI 绑定的方法
     /// </summary>
     /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
@@ -2234,7 +2397,7 @@ public partial class CopilotViewModel : Screen
     /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
     public async Task Stop()
     {
-// 等待 Core 实际停止；回调或超时自动 SetStopped，结束脚本不经此发射
+        // 等待 Core 实际停止；回调或超时自动 SetStopped，结束脚本不经此发射
         AddLog(LocalizationHelper.GetString("Stopping"));
         await Instances.TaskQueueViewModel.Stop();
         if (_runningState.GetIdle() && !_runningState.GetStopping())
@@ -2293,7 +2456,7 @@ public partial class CopilotViewModel : Screen
                 return false;
             case 1:
                 AddLog(LocalizationHelper.GetString("CopilotSingleTaskWarning"), UiLogColor.Warning, showTime: false);
-                break; // 闄嶇骇涓鸿鍛? 鏈夌敤鎴风偢灏辨淳uuu
+                break; // 降级为警告, 有用户炸就派uuu
         }
 
         if (copilotItemViewModels.Any(i => string.IsNullOrEmpty(i.Name?.Trim())))
@@ -2364,10 +2527,10 @@ public partial class CopilotViewModel : Screen
          };
 
     /// <summary>
-    /// 鐐瑰嚮鍚庣Щ闄ょ晫闈腑鍏冪礌鐒︾偣
+    /// 点击后移除界面中元素焦点
     /// </summary>
-    /// <param name="sender">鐐瑰嚮浜嬩欢鍙戦€佽€?/param>
-    /// <param name="e">鐐瑰嚮浜嬩欢</param>
+    /// <param name="sender">点击事件发送者</param>
+    /// <param name="e">点击事件</param>
     [UsedImplicitly]
     public void MouseDown(object sender, MouseButtonEventArgs e)
     {
@@ -2382,10 +2545,10 @@ public partial class CopilotViewModel : Screen
     }
 
     /// <summary>
-    /// 鍥炶溅閿偣鍑诲悗绉婚櫎鐣岄潰涓厓绱犵劍鐐?
+    /// 回车键点击后移除界面中元素焦点
     /// </summary>
-    /// <param name="sender">鐐瑰嚮浜嬩欢鍙戦€佽€?/param>
-    /// <param name="e">鐐瑰嚮浜嬩欢</param>
+    /// <param name="sender">点击事件发送者</param>
+    /// <param name="e">点击事件</param>
     [UsedImplicitly]
     public void KeyDown(object sender, KeyEventArgs e)
     {
@@ -2480,16 +2643,16 @@ public partial class CopilotViewModel : Screen
     {
         Unknown = -1,
 
-        /// <summary>涓荤嚎, 鏁呬簨闆? 鏀嚎浣滀笟</summary>
+        /// <summary>主线, 故事集, 支线作业</summary>
         MainStageAndSideStory = 0,
 
-        /// <summary>淇濆叏</summary>
+        /// <summary>保全</summary>
         SSS,
 
-        /// <summary>鎮栬妯℃嫙</summary>
+        /// <summary>悖论模拟</summary>
         Paradox,
 
-        /// <summary>鍏朵粬</summary>
+        /// <summary>其他</summary>
         Other,
     }
 

@@ -283,6 +283,41 @@ struct GrantedScrap
     Condition when;
 };
 
+struct EncounterRule
+{
+    std::string id;
+    std::string description;
+    std::string event_name;
+    int rank = 0;
+    Condition when;
+    std::vector<std::string> option_text;
+    std::size_t option_num = 0;
+    std::size_t choose = 0;
+    bool allow_fallback = true;
+    std::unordered_map<std::string, FactValue> on_selected;
+};
+
+struct EncounterSelection
+{
+    std::string event_name;
+    std::size_t option_num = 0;
+    std::size_t choose = 0; // 与事件配置一致，从 1 开始编号。
+    std::string option_text;
+    std::string rule_id;
+    bool used_fallback = false;
+};
+
+struct ShoppingRule
+{
+    std::string id;
+    std::string description;
+    std::string page_intent;
+    int rank = 0;
+    Condition when;
+    std::string buy_table = "default";
+    std::string sell_table;
+};
+
 struct PolicyModule
 {
     std::string id;
@@ -292,6 +327,8 @@ struct PolicyModule
     std::vector<ResourceReserve> reserves;
     std::vector<Milestone> milestones;
     std::vector<GrantedScrap> granted_scraps;
+    std::vector<EncounterRule> encounter_rules;
+    std::vector<ShoppingRule> shopping_rules;
 };
 
 struct StrategyTerminalRule
@@ -338,6 +375,8 @@ struct ResolvedPolicy
     std::vector<ResourceReserve> reserves;
     std::vector<Milestone> milestones;
     std::vector<GrantedScrap> granted_scraps;
+    std::vector<EncounterRule> encounter_rules;
+    std::vector<ShoppingRule> shopping_rules;
     std::vector<StrategyTerminalRule> terminal_rules;
     std::string failure_action = "stop_run";
     // 走出本层与耗尽行动力结局相同的层。这些层没有锁定目标的那几轮不再为出口预留行动力，
@@ -347,6 +386,12 @@ struct ResolvedPolicy
     // 区间表达不了这种层集合。必须抵达终点的层一律不要列进来。
     std::unordered_set<int> no_AP_is_terminal_floors;
 };
+
+[[nodiscard]] const EncounterRule*
+    resolve_encounter_rule(const ResolvedPolicy& policy, const FactStore& facts, std::string_view event_name);
+
+[[nodiscard]] std::optional<std::reference_wrapper<const ShoppingRule>>
+    resolve_shopping_rule(const ResolvedPolicy& policy, const FactStore& facts, std::string_view page_intent);
 
 class ResourceRegistry
 {
@@ -452,11 +497,11 @@ public:
     const MissionState& mission_state);
 [[nodiscard]] bool milestone_is_complete(const Milestone& milestone, const FactStore& facts);
 
-// 本层的策略目标：哪些节点算「达成即收工」，以及哪些强制目标要送进可行性阶梯去锁定。
+// 本层的策略目标：哪些节点算 ｢达成即收工｣ ，以及哪些强制目标要送进可行性阶梯去锁定。
 // 只依赖地图、任务进度和事实，不依赖会话状态，因此放在策略层。
 struct StrategyGoals
 {
-    // 声明「达成即收工」的目标节点。它与物理出口取并集，所以端点集合恒非空。
+    // 声明 ｢达成即收工｣ 的目标节点。它与物理出口取并集，所以端点集合恒非空。
     std::unordered_set<NodeId> terminal_nodes;
     // 待锁定的强制目标，按优先级从高到低。前 undemotable_count 条是无条件必达的，阶梯不会降级它们。
     std::vector<std::string> binding_candidates;

@@ -6,18 +6,17 @@ icon: mdi:package-variant-closed
 # Depot Maintain
 
 ::: info UI-Only Feature
-This page covers UI-layer features. See [Getting Started](../newbie.md#about-this-documentation) for details.
+This page covers UI-layer features. See [Getting Started](../newbie.md) for details.
 :::
 
 Depot Maintain is a task that **automatically farms materials to a target inventory level**. It calculates the shortfall based on the cached depot data from [Depot Recognition](./tools.md#depot-recognition) and farms the specified stage until the target quantity is reached.
 
 ## How It Works
 
-1. At the start of the task (if "Update depot data before starting" is checked), a depot recognition is performed to get the latest inventory.
-2. For each plan, the shortfall is calculated by subtracting the current quantity from the target.
-3. Fight tasks are automatically added for materials with shortfalls.
-4. After each stage drop, the depot cache is updated in real-time, so materials farmed by earlier plans affect the shortfall calculation of later plans.
-5. Right before each plan starts, MAA re-checks whether it needs to run: if the target inventory is already reached, or the current sanity estimated from the sanity reported by the most recent fight is below the stage's minimum entry cost and the plan has no potion/Originium budget, the plan is skipped entirely (no terminal, no navigation), with the reason logged. When expiring potions count as unavailable, see [Use expiring sanity potions within 48 hours](#use-expiring-sanity-potions-within-48-hours).
+1. When the task starts, MAA first checks each plan's shortfall against the inventory data cached at that moment; this step is called the pre-check. Plans already meeting their targets are logged and skipped in the pre-check, not added to this run's farming list, and never re-evaluated afterwards. The pre-check runs before depot recognition and uses the cache from before recognition.
+2. Fight tasks are automatically added for materials with shortfalls in the pre-check; if "Update depot data before starting" is checked, a depot recognition is performed before the plans run.
+3. After each stage drop, the depot cache is updated in real-time, so materials farmed by earlier plans affect the shortfall calculation of later plans.
+4. Right before each plan starts, MAA re-checks whether it needs to run: if the target inventory is already reached, or the current sanity estimated from the sanity reported by the most recent fight is below the stage's minimum entry cost and the plan has no potion/Originium budget, the plan is skipped entirely (no terminal, no navigation), with the reason logged. Data refreshed by depot recognition takes effect from this step. If a skipped plan turns out to be insufficient after recognition, it will be logged; re-running the task farms it based on the actual inventory. When expiring potions count as unavailable, see [Use expiring sanity potions within 48 hours](#use-expiring-sanity-potions-within-48-hours).
 
 ::: tip Depot Data Sync
 Depot data is cached and may differ from your actual stock after manual farming, crafting, or material use. Sync it with [Update Doctor Data](./user-data-update.md) or [Depot Recognition](./tools.md#depot-recognition).
@@ -35,7 +34,7 @@ Each plan contains the following:
 | Use Sanity Potion | Check to set the number of sanity potions to use.                                                                      |
 | Use Originium     | Check to set the number of Originium to use.                                                                           |
 
-Items in the plan list can be **dragged to reorder**. Plans are executed in order during the task.
+Items in the plan list can be **dragged to reorder**. Plans are executed in order during the task; when "[Execute in inventory progress order](#execute-in-inventory-progress-order)" is enabled, plans are instead queued by inventory progress, and drag ordering only takes effect while it is disabled.
 
 ::: tip Skipping when sanity is insufficient
 
@@ -43,23 +42,32 @@ Items in the plan list can be **dragged to reorder**. Plans are executed in orde
 - Plans with a sanity potion or Originium budget are never skipped for insufficient sanity: even when sanity is not enough, they still enter the stage and restore sanity with the budget to keep fighting.
 - Plans without a budget are skipped directly (without entering the stage) when the target inventory is already reached, or when the estimated current sanity is below the stage's minimum entry cost and expiring potions are unavailable (see "Use expiring sanity potions within 48 hours").
 - Decisions always use the latest state: after a middle plan restores sanity and reaches its target, the remaining sanity still flows to later plans.
-  :::
+
+:::
 
 ### Presets
 
 Built-in presets for quick plan population:
 
-- **Low-tier Chips (all classes)**: PR-A/B/C/D-1, target 20 each
-- **High-tier Chip Packs (all classes)**: PR-A/B/C/D-2, target 20 each
-- **LMD**: CE-6, target 2,000,000
-- **Purchase Certificates (Red Tickets)**: AP-5, target 5,000
-- **Skill Summary SP3**: CA-5, target 200
+- **Low-tier Chips (all classes)**: PR-A/B/C/D-1, target 20 each (4x the development cost of a six-star operator)
+- **High-tier Chip Packs (all classes)**: PR-A/B/C/D-2, target 32 each (4x the development cost of a six-star operator)
+- **LMD**: CE-6, target 5,000,000 (4x the development cost of a six-star operator)
+- **Purchase Certificates (Red Tickets)**: AP-5, target 8,000 (8 six-star tokens + 8 five-star tokens + monthly module data blocks)
+- **Skill Summary SP3**: CA-5, target 400 (4x the development cost of a six-star operator)
+
+### Current Event
+
+When a SideStory event is open, the preset menu also lists current events; reruns and new events running at the same time are listed separately. Clicking an event name creates one plan per stage in the event's stage table whose drop is a material, with a uniform target inventory of 200; adjust the targets to your own exchange plan after importing.
+
+If "[Skip during events](#skip-during-events)" is enabled, a notice appears on import: these plans will not run while the event is open.
 
 ## Advanced Settings
 
 ### Update depot data before starting
 
-When checked, a depot recognition is performed at task start to get the latest inventory. Uncheck to use the last cached data.
+When checked, a depot recognition runs before the plans and corrects the inventory cache to the actual values. When unchecked, no recognition runs; the cache keeps its previous values and still accumulates drops from this run's stages in real time.
+
+Every plan is re-checked against the latest cache when it starts, regardless of this setting. The difference made by checking it is only the recognition correction, especially the downward correction of cache values inflated by manual consumption. However, plans that were sufficient during the pre-check are not added to this run's farming list, and skipped plans cannot be added while the task is running; if recognition reveals they are actually insufficient, they will only be logged. Re-running the task farms them based on the actual inventory. After manually consuming or using materials and items (e.g. shopping with Purchase Certificates, crafting materials), it is recommended to sync once via the [Data Update](./user-data-update.md) task or the [Depot Recognition](./tools.md#depot-recognition) tool before starting the task.
 
 Recommended to keep checked unless you are certain the cache is accurate or want to save recognition time.
 
@@ -86,3 +94,9 @@ When checked, the entire Depot Maintain task is skipped if resource collection s
 ### Only execute the first insufficient plan
 
 When checked, each run only executes the first plan with insufficient stock that is open today, and the log stops at that plan; once it is stocked up, the next run automatically continues with the following plans. Plans not executable today (stage not open, invalid configuration) are skipped.
+
+### Execute in inventory progress order
+
+When checked, plans are queued each run in ascending inventory progress order, so the plan with the largest shortfall ratio gets sanity first; the display order of the list is unchanged, and drag ordering only takes effect while unchecked.
+
+Ordering uses the cached inventory from the last scan (same source as the pre-check). Each plan still recalculates its shortfall from the latest inventory when it starts: a plan queued ahead by stale data is simply skipped if it has actually reached its target, wasting no sanity. Materials never scanned count as 0, i.e. treated as the largest shortfall and farmed first; invalid plans (no material selected or target 0) go last. When combined with "[Only execute the first insufficient plan](#only-execute-the-first-insufficient-plan)", the "first" plan executed is the one with the largest shortfall ratio.

@@ -1,6 +1,6 @@
 // <copyright file="SettingKey.cs" company="MaaAssistantArknights">
 // Part of the MaaWpfGui project, maintained by the MaaAssistantArknights team (Maa Team)
-// Copyright (C) 2021-2025 MaaAssistantArknights Contributors
+// Copyright (C) 2021-2026 MaaAssistantArknights Contributors
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License v3.0 only as published by
@@ -60,14 +60,9 @@ public enum SettingKey
     UiSettings,
 
     /// <summary>
-    /// 背景设置。
+    /// 通知设置。
     /// </summary>
-    BackgroundSettings,
-
-    /// <summary>
-    /// 外部通知设置。
-    /// </summary>
-    ExternalNotificationSettings,
+    NotificationSettings,
 
     /// <summary>
     /// 三方服务设置。

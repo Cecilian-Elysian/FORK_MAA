@@ -2,6 +2,8 @@
 
 > 基于 2026-08-06 fork 同步上游 v6.16.5（master-v2 `a02e95a9af`）的实际经验总结。
 > 适用场景：从上游 `MaaAssistantArknights/MaaAssistantArknights` 拉取新功能到本地 fork。
+>
+> **状态（2026-10-21）**：§5 graft / §7 replace 为 2026-08-06 首次挂接 fork base（`c8c8e75be5` 无父节点）的**一次性步骤，已完成并退役**（replace ref 已删除）。此后 fork base 已入正常拓扑，merge-base 直接落在上游 tip，日常同步只需 §1 备份 → §2 冲突矩阵 → §6 合并手解 → §8 编译验证；§5 / §7 保留仅作历史记录，勿再执行。
 
 ## §0 适用范围与前置假设
 
@@ -143,9 +145,9 @@ git commit -m "docs(cleanup): 同步仓库清理（AGENTS/csproj/CHANGELOG）"
 
 ---
 
-## §5 假历史关联（5 min，关键步骤）
+## §5 假历史关联（5 min，关键步骤）【一次性·已完成（2026-08-06）·已退役（2026-10-21）】
 
-> **不执行此步将导致 merge 失败**，报 "refusing to merge unrelated histories" 或大量 add/add 冲突。
+> **不执行此步将导致 merge 失败**，报 "refusing to merge unrelated histories" 或大量 add/add 冲突。**（2026-10-21 注：本节为一次性历史步骤，已完成退役；当前 fork base 已在正常拓扑内，merge-base 直接可用，勿再执行本节。）**
 
 ### §5.1 问题原因
 
@@ -552,9 +554,9 @@ fork-specific 删除：feat/...（理由）"
 
 ---
 
-## §7 转 git replace（1 min）
+## §7 转 git replace（1 min）【一次性·已完成（2026-08-06）；replace ref 已于 2026-10-21 删除】
 
-> graft 仅本地生效，push 到 Github 后下游无法识别。转 `git replace` 可保留假历史关联。
+> graft 仅本地生效，push 到 Github 后下游无法识别。转 `git replace` 可保留假历史关联。**（2026-10-21 注：v6.19.0 合入后 fork base 已入正常拓扑，replace ref 已 `git replace -d c8c8e75be5227d0fcc8d1ebe9fdbc462055cdfce` 删除，merge-base 不受影响；仅当未来 fork base 再次成为孤儿 root 时才重走 §5 / §7。）**
 
 ```powershell
 # 7.1 安装 replace ref
@@ -745,7 +747,7 @@ git merge-base HEAD upstream/master-v2
 # 若输出为空 → 历史无关联
 ```
 
-**修复**：执行 §5 graft 流程。
+**修复**：执行 §5 graft 流程。**（2026-10-21 注：正常情况不再出现——merge-base 已直接落在上游 tip；若再现，说明 fork base 被重写为孤儿 root，才需重走 §5 / §7。）**
 
 ### 错误 2: 冲突数量爆炸（>100）
 
@@ -941,7 +943,7 @@ $upstreamFiles = git log staging..upstream/master-v2 --no-merges --name-only --f
 $overlap = $forkFiles | Where-Object { $upstreamFiles -contains $_ }
 Write-Host "潜在冲突文件: $($overlap.Count)"
 
-# --- §5 graft（关键） ---
+# --- §5 graft（关键）【已退役 2026-10-21：merge-base 已直接可用，本段保留仅作历史存档，勿再执行】 ---
 Write-Host "`n=== §5 graft ===" -ForegroundColor Cyan
 $forkRoot = "c8c8e75be5227d0fcc8d1ebe9fdbc462055cdfce"
 $upstreamAnchor = "6147357bd074d926047d1e391ba3759f40477ef1"
@@ -988,9 +990,7 @@ Write-Host "`n完成后继续执行：git add -u && git commit -m 'merge: upstre
 □ git log master..staging --oneline | head -20（可见 fork commits）
 □ git status -s（应 clean）
 □ install-staging/MAA.exe 启动无错误对话框
-□ git config advice.graftFileDeprecated = false
-□ git replace --list 包含 fork_root
-□ git merge-base HEAD upstream/master-v2 返回 fork_root
+□ （已退役 2026-10-21）原 graft/replace 三项检查不再适用：replace ref 已删除，merge-base 应等于上游 tip（见下方 8 维度总检）
 □ 所有 DLL 在 maaDlls 白名单内（§8.4 验证）
 
 —— 8 维度总检（v6.18 沉淀，merge 后与 staging→branch 晋升前必跑）——
@@ -1000,7 +1000,7 @@ Write-Host "`n完成后继续执行：git add -u && git commit -m 'merge: upstre
 □ git log -1 --format="%h %s" HEAD（merge commit 形态：Merge: xxxx yyyy）
 □ install-staging/MAA.exe 时间戳 ≥ 最近一次 publish；MaaCore.dll MD5 与 build/bin/MaaCore.dll 一致
 □ install-staging/MAA.runtimeconfig.json 含 "STARTUP_HOOKS": "libloader"
-□ git replace --list 含 fork_root（c8c8e75be5227d0fcc8d1ebe9fdbc462055cdfce）
+□ （已退役 2026-10-21）git replace --list 含 fork_root：replace ref 已删除，本项跳过
 □ fork marker 12 项 grep 全命中（§6.5.8 一键验证脚本）
 □ tools/post-merge-validate.ps1 7/7 检查全 OK
 □ 3 个 backup 分支存活：backup/staging-pre-v{N}-sync-{日期} + backup/master-pre-v{N}-sync-{日期} + backup/staging-pre-v{N-1}-sync-{日期}
@@ -1017,7 +1017,7 @@ Write-Host "`n完成后继续执行：git add -u && git commit -m 'merge: upstre
 | §6（merge） | `git merge --abort`（若未 commit）<br>`git reset --hard HEAD~1`（若已 commit） | 回滚 merge commit，工作区回到 merge 前 |
 | §8（编译修复） | `git reset --hard HEAD~1` 或单独 revert | 回滚 build fix commit |
 
-**注意**：若 §7 已执行（git replace），回滚 merge 后仍需保留 replace ref（不影响后续工作）。
+**注意**：若 §7 已执行（git replace），回滚 merge 后仍需保留 replace ref（不影响后续工作）。（2026-10-21 注：当前 replace ref 已删除，回滚 merge 无需任何 replace 操作。）
 
 ---
 
@@ -1030,5 +1030,5 @@ Write-Host "`n完成后继续执行：git add -u && git commit -m 'merge: upstre
 | `tools/local-install*.bat` | 本地构建脚本 |
 | `tools/local-install-staging.bat` | staging 专用构建脚本 |
 | `src/MaaWpfGui/Main/Bootstrapper.cs` | maaDlls 白名单（核心安全检查） |
-| `.git/info/grafts`（已弃用） | 假历史关联（建议转 git replace） |
-| `.git/config` `advice.graftFileDeprecated` | 抑制 deprecation 警告 |
+| `.git/info/grafts`（已退役） | 假历史关联（2026-08-06 一次性使用后即转 git replace；现无此文件） |
+| `.git/config` `advice.graftFileDeprecated` | 抑制 deprecation 警告（已退役：replace ref 已于 2026-10-21 删除） |

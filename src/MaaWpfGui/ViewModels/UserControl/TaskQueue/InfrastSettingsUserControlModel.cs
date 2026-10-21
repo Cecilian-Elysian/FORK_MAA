@@ -1,6 +1,6 @@
 // <copyright file="InfrastSettingsUserControlModel.cs" company="MaaAssistantArknights">
 // Part of the MaaWpfGui project, maintained by the MaaAssistantArknights team (Maa Team)
-// Copyright (C) 2021-2025 MaaAssistantArknights Contributors
+// Copyright (C) 2021-2026 MaaAssistantArknights Contributors
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License v3.0 only as published by
@@ -31,11 +31,10 @@ using MaaWpfGui.Utilities.ValueType;
 using Microsoft.Win32;
 using Newtonsoft.Json;
 using Serilog;
+using static MaaWpfGui.Main.AsstProxy;
+using Mode = MaaWpfGui.ViewModels.UserControl.TaskQueue.InfrastMode;
 
 namespace MaaWpfGui.ViewModels.UserControl.TaskQueue;
-
-using static MaaWpfGui.Main.AsstProxy;
-using Mode = InfrastMode;
 
 /// <summary>
 /// 基建任务
@@ -51,6 +50,15 @@ public class InfrastSettingsUserControlModel : TaskSettingsViewModel, InfrastSet
     public InfrastSettingsUserControlModel()
     {
         _runningState = RunningState.Instance;
+        foreach (var item in WeeklyScheduleSource)
+        {
+            item.PropertyChanged += (_, args) => {
+                if (args.PropertyName == nameof(WeeklyScheduleItem.Value))
+                {
+                    SaveWeeklySchedule();
+                }
+            };
+        }
     }
 
     public static InfrastSettingsUserControlModel Instance { get; }
@@ -335,6 +343,42 @@ public class InfrastSettingsUserControlModel : TaskSettingsViewModel, InfrastSet
     }
 
     public const string UserDefined = "user_defined";
+
+    public bool UseWeeklySchedule
+    {
+        get => GetTaskConfig<InfrastTask>().UseWeeklySchedule;
+        set => SetTaskConfig<InfrastTask>(t => t.UseWeeklySchedule == value, t => t.UseWeeklySchedule = value);
+    }
+
+    public ObservableCollection<WeeklyScheduleItem> WeeklyScheduleSource { get; } = [.. Enum.GetValues<DayOfWeek>().Select(i => new WeeklyScheduleItem(i))];
+
+    private void RefreshWeeklySchedule()
+    {
+        IsRefreshingUI = true;
+        try
+        {
+            var plan = GetTaskConfig<InfrastTask>().WeeklySchedule;
+            foreach (var item in WeeklyScheduleSource)
+            {
+                item.Value = !plan.TryGetValue(item.DayOfWeek, out var value) || value;
+            }
+        }
+        finally
+        {
+            IsRefreshingUI = false;
+        }
+    }
+
+    private void SaveWeeklySchedule()
+    {
+        if (IsRefreshingUI)
+        {
+            return;
+        }
+
+        var plan = WeeklyScheduleSource.ToDictionary(i => i.DayOfWeek, i => i.Value);
+        SetTaskConfig<InfrastTask>(t => t.WeeklySchedule.SequenceEqual(plan), t => t.WeeklySchedule = plan);
+    }
 
     /// <summary>
     /// Gets or sets the uses of drones.
@@ -637,6 +681,7 @@ public class InfrastSettingsUserControlModel : TaskSettingsViewModel, InfrastSet
     {
         if (baseTask is InfrastTask)
         {
+            RefreshWeeklySchedule();
             RefreshInfrastRoomList();
             RefreshCustomInfrastPlanList();
             Refresh();
@@ -655,6 +700,10 @@ public class InfrastSettingsUserControlModel : TaskSettingsViewModel, InfrastSet
         InfrastModeList.RefreshLocalization();
         FiammettaTargetList.RefreshLocalization();
         OptionalFiammettaTargetList.RefreshLocalization();
+        foreach (var item in WeeklyScheduleSource)
+        {
+            item.RefreshLocalization();
+        }
 
         // 重建显示列表以刷新 _defaultItem 固化的 ｢自动切换（xx）｣ 前缀，选中值由重建逻辑保留
         RefreshCustomInfrastPlanList();
@@ -666,6 +715,12 @@ public class InfrastSettingsUserControlModel : TaskSettingsViewModel, InfrastSet
         {
             if (baseTask is not InfrastTask infrast)
             {
+                return (null, []);
+            }
+
+            if (infrast.UseWeeklySchedule && infrast.WeeklySchedule.TryGetValue(Instances.TaskQueueViewModel.CurDayOfWeek, out var isEnabled) && !isEnabled)
+            {
+                Instances.TaskQueueViewModel.AddLog(LocalizationHelper.GetString("InfrastSkippedWeeklySchedule"), UiLogColor.Info);
                 return (null, []);
             }
 

@@ -1,6 +1,6 @@
 // <copyright file="BackgroundSettingsUserControlModel.cs" company="MaaAssistantArknights">
 // Part of the MaaWpfGui project, maintained by the MaaAssistantArknights team (Maa Team)
-// Copyright (C) 2021-2025 MaaAssistantArknights Contributors
+// Copyright (C) 2021-2026 MaaAssistantArknights Contributors
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License v3.0 only as published by
@@ -17,6 +17,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Input;
@@ -46,6 +47,11 @@ public class BackgroundSettingsUserControlModel : PropertyChangedBase
     /// 莫奈取色更新的防抖延迟（毫秒）。
     /// </summary>
     private const int MonetDebounceMs = 150;
+
+    /// <summary>
+    /// 启动时对存量配置完成解析与自愈后的背景图路径（相对路径已展开为绝对路径）。
+    /// </summary>
+    private static readonly string _resolvedImagePath = ResolveStoredPath(ConfigFactory.Root.Gui.Background.ImagePath);
 
     static BackgroundSettingsUserControlModel()
     {
@@ -78,7 +84,7 @@ public class BackgroundSettingsUserControlModel : PropertyChangedBase
 
             AchievementTrackerHelper.Instance.Unlock(AchievementIds.CustomizationMaster);
         }
-    } = ConfigFactory.Root.Gui.Background.ImagePath;
+    } = _resolvedImagePath;
 
     public void SelectImagePath()
     {
@@ -86,10 +92,137 @@ public class BackgroundSettingsUserControlModel : PropertyChangedBase
             Filter = "Image|*.jpg;*.jpeg;*.png;*.bmp;*.gif;*.webp",
         };
 
-        if (dialog.ShowDialog() == true)
+        if (dialog.ShowDialog() != true)
         {
-            BackgroundImagePath = dialog.FileName;
+            return;
         }
+
+        // 外部图片先复制进 MAA 目录，改存目录内副本路径，原图片移动 / MAA 搬家都不失效
+        BackgroundImagePath = TryEmbedImage(dialog.FileName, out var embeddedPath) ? embeddedPath : dialog.FileName;
+    }
+
+    /// <summary>
+    /// 将外部图片复制到 MAA 目录 ｢Res\Backgrounds\Custom｣，输出落位后的持久化路径。
+    /// 同名同内容的已有副本直接复用，不重复复制；同名不同内容按 ｢_1｣ 序号后缀落位。
+    /// </summary>
+    /// <param name="sourcePath">用户选中的外部图片路径</param>
+    /// <param name="persistentPath">落位后的持久化路径（BaseDir 相对路径）</param>
+    /// <returns>是否复制成功；失败时调用方应回退存原始路径</returns>
+    private static bool TryEmbedImage(string sourcePath, out string persistentPath)
+    {
+        persistentPath = sourcePath;
+        try
+        {
+            Directory.CreateDirectory(_customRoot);
+
+            var fileName = Path.GetFileName(sourcePath);
+            var target = Path.Combine(_customRoot, fileName);
+            if (File.Exists(target))
+            {
+                if (IsSameFile(sourcePath, target))
+                {
+                    persistentPath = ToPersistentPath(target);
+                    return true;
+                }
+
+                var stem = Path.GetFileNameWithoutExtension(fileName);
+                var extension = Path.GetExtension(fileName);
+                for (var i = 1; File.Exists(target); i++)
+                {
+                    target = Path.Combine(_customRoot, $"{stem}_{i}{extension}");
+                }
+            }
+
+            File.Copy(sourcePath, target, overwrite: false);
+            _logger.Information("Background image embedded: {Source} -> {Target}", sourcePath, target);
+            persistentPath = ToPersistentPath(target);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex, "Failed to embed background image into {_customRoot}", _customRoot);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 判断两个文件内容是否相同（先比大小，再比 MD5）。
+    /// </summary>
+    private static bool IsSameFile(string left, string right)
+    {
+        if (new FileInfo(left).Length != new FileInfo(right).Length)
+        {
+            return false;
+        }
+
+        return MD5.HashData(File.ReadAllBytes(left)).SequenceEqual(MD5.HashData(File.ReadAllBytes(right)));
+    }
+
+    /// <summary>
+    /// 将路径归一化为持久化形式：MAA 目录内（内置壁纸 / Custom 副本）改存 BaseDir 相对路径，目录搬家 / 换盘不失效；外部路径原样保留。
+    /// </summary>
+    private static string ToPersistentPath(string fullPath)
+    {
+        if (string.IsNullOrEmpty(fullPath))
+        {
+            return fullPath;
+        }
+
+        var full = Path.GetFullPath(fullPath);
+        var baseDir = Path.TrimEndingDirectorySeparator(PathsHelper.BaseDir);
+        if (full.StartsWith(baseDir + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)
+            || full.StartsWith(baseDir + Path.AltDirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+        {
+            return Path.GetRelativePath(baseDir, full);
+        }
+
+        return fullPath;
+    }
+
+    /// <summary>
+    /// 解析存量配置的背景图路径：相对路径按 BaseDir 展开；绝对路径失效时截取 ｢Res\Backgrounds｣ 锚点尾部在当前 MAA 目录下重试，命中则改存相对路径并回写配置。
+    /// </summary>
+    private static string ResolveStoredPath(string stored)
+    {
+        if (string.IsNullOrEmpty(stored))
+        {
+            return stored;
+        }
+
+        if (!Path.IsPathRooted(stored))
+        {
+            return Path.GetFullPath(Path.Combine(PathsHelper.BaseDir, stored));
+        }
+
+        if (File.Exists(stored))
+        {
+            return stored;
+        }
+
+        var separators = new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar };
+        foreach (var separator in separators)
+        {
+            var anchor = $"{separator}Res{separator}Backgrounds{separator}";
+            var index = stored.LastIndexOf(anchor, StringComparison.OrdinalIgnoreCase);
+            if (index < 0)
+            {
+                continue;
+            }
+
+            var tail = stored[(index + anchor.Length)..].Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
+            var candidate = Path.Combine(PathsHelper.BaseDir, "Res", "Backgrounds", tail);
+            if (!File.Exists(candidate))
+            {
+                continue;
+            }
+
+            var healed = ToPersistentPath(candidate);
+            _logger.Information("Background image path healed: {OldPath} -> {NewPath}", stored, healed);
+            ConfigFactory.Root.Gui.Background.ImagePath = healed;
+            return Path.GetFullPath(candidate);
+        }
+
+        return stored;
     }
 
     /// <summary>
@@ -98,12 +231,17 @@ public class BackgroundSettingsUserControlModel : PropertyChangedBase
     /// </summary>
     public ObservableCollection<BackgroundImageItem> BackgroundImageItems { get; } = [];
 
-    private static readonly string BackgroundsRoot = Path.Combine(PathsHelper.BaseDir, "Res", "Backgrounds");
+    private static readonly string _backgroundsRoot = Path.Combine(PathsHelper.BaseDir, "Res", "Backgrounds");
+
+    /// <summary>
+    /// 外部图片复制落位的目录，位于 <c>Res/Backgrounds</c> 下，会作为折叠节点出现在背景下拉树中。
+    /// </summary>
+    private static readonly string _customRoot = Path.Combine(_backgroundsRoot, "Custom");
 
     /// <summary>
     /// 这些目录本身不显示，只把内部子项提升到上一级。
     /// </summary>
-    private static readonly HashSet<string> FlattenDirectoryNames = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly HashSet<string> _flattenDirectoryNames = new(StringComparer.OrdinalIgnoreCase)
     {
         "Wallpapers",
     };
@@ -111,12 +249,12 @@ public class BackgroundSettingsUserControlModel : PropertyChangedBase
     /// <summary>
     /// 内部资源目录，不出现在用户可选列表中。
     /// </summary>
-    private static readonly HashSet<string> SkippedDirectoryNames = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly HashSet<string> _skippedDirectoryNames = new(StringComparer.OrdinalIgnoreCase)
     {
         "Internal",
     };
 
-    private static readonly string[] SupportedImageExtensions = [".jpg", ".jpeg", ".png", ".bmp", ".gif", ".webp"];
+    private static readonly string[] _supportedImageExtensions = [".jpg", ".jpeg", ".png", ".bmp", ".gif", ".webp"];
 
     /// <summary>
     /// 加载 <c>Res/Backgrounds</c> 下的文件夹与图片，供下拉 TreeView 使用。
@@ -128,18 +266,18 @@ public class BackgroundSettingsUserControlModel : PropertyChangedBase
         {
             BackgroundImageItems.Clear();
 
-            if (!Directory.Exists(BackgroundsRoot))
+            if (!Directory.Exists(_backgroundsRoot))
             {
-                Directory.CreateDirectory(BackgroundsRoot);
+                Directory.CreateDirectory(_backgroundsRoot);
                 return;
             }
 
-            AddDirectoryContent(BackgroundsRoot, BackgroundsRoot, promoteChildrenOfFlattenDirs: true);
+            AddDirectoryContent(_backgroundsRoot, _backgroundsRoot, promoteChildrenOfFlattenDirs: true);
         }
         catch (Exception ex)
         {
             BackgroundImageItems.Clear();
-            _logger.Error(ex, "Failed to load background images from {BackgroundsRoot}", BackgroundsRoot);
+            _logger.Error(ex, "Failed to load background images from {_backgroundsRoot}", _backgroundsRoot);
         }
     }
 
@@ -163,13 +301,13 @@ public class BackgroundSettingsUserControlModel : PropertyChangedBase
                      .OrderBy(Path.GetFileName, StringComparer.CurrentCultureIgnoreCase))
         {
             var dirName = Path.GetFileName(dir);
-            if (SkippedDirectoryNames.Contains(dirName))
+            if (_skippedDirectoryNames.Contains(dirName))
             {
                 continue;
             }
 
             // Wallpapers 等容器目录：不生成折叠节点，直接提升其子目录/图片
-            if (promoteChildrenOfFlattenDirs && FlattenDirectoryNames.Contains(dirName))
+            if (promoteChildrenOfFlattenDirs && _flattenDirectoryNames.Contains(dirName))
             {
                 AddDirectoryContent(dir, relativeRoot, promoteChildrenOfFlattenDirs: false);
                 continue;
@@ -229,7 +367,7 @@ public class BackgroundSettingsUserControlModel : PropertyChangedBase
     private static bool IsSupportedImage(string path)
     {
         var ext = Path.GetExtension(path);
-        return SupportedImageExtensions.Any(supported => ext.Equals(supported, StringComparison.OrdinalIgnoreCase));
+        return _supportedImageExtensions.Any(supported => ext.Equals(supported, StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>
@@ -244,10 +382,10 @@ public class BackgroundSettingsUserControlModel : PropertyChangedBase
             return;
         }
 
-        BackgroundImagePath = imageItem.FullPath;
+        BackgroundImagePath = ToPersistentPath(imageItem.FullPath);
     }
 
-    private static BitmapImage? _backgroundImage = RefreshBackgroundImage(ConfigFactory.Root.Gui.Background.ImagePath);
+    private static BitmapImage? _backgroundImage = RefreshBackgroundImage(_resolvedImagePath);
 
     public BitmapImage? BackgroundImage
     {
@@ -273,7 +411,18 @@ public class BackgroundSettingsUserControlModel : PropertyChangedBase
 
     private static BitmapImage? RefreshBackgroundImage(string imagePath)
     {
-        if (string.IsNullOrEmpty(imagePath) || !File.Exists(imagePath))
+        if (string.IsNullOrEmpty(imagePath))
+        {
+            return null;
+        }
+
+        // 相对路径按 BaseDir 解析（旧实现依赖当前工作目录，工作目录变化时失效）
+        if (!Path.IsPathRooted(imagePath))
+        {
+            imagePath = Path.GetFullPath(Path.Combine(PathsHelper.BaseDir, imagePath));
+        }
+
+        if (!File.Exists(imagePath))
         {
             return null;
         }

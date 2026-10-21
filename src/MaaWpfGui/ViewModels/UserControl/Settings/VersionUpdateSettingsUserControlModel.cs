@@ -1,6 +1,6 @@
 // <copyright file="VersionUpdateSettingsUserControlModel.cs" company="MaaAssistantArknights">
 // Part of the MaaWpfGui project, maintained by the MaaAssistantArknights team (Maa Team)
-// Copyright (C) 2021-2025 MaaAssistantArknights Contributors
+// Copyright (C) 2021-2026 MaaAssistantArknights Contributors
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License v3.0 only as published by
@@ -71,9 +71,11 @@ public class VersionUpdateSettingsUserControlModel : PropertyChangedBase
     }
 
     /// <summary>
-    /// Gets the core version.
+    /// Gets the core version. UI 预览模式下 Core 未加载，不触碰 native，降级为占位值。
     /// </summary>
-    private static readonly string _coreVersion = Marshal.PtrToStringAnsi(MaaService.AsstGetVersion()) ?? "0.0.1";
+    private static readonly string _coreVersion = Main.Bootstrapper.IsCoreInitSkipped
+        ? "N/A"
+        : Marshal.PtrToStringAnsi(MaaService.AsstGetVersion()) ?? "0.0.1";
 
     public static string CoreVersion => FakeUpdateHelper.IsEnabled ? FakeUpdateHelper.CurrentVersion : _coreVersion;
 

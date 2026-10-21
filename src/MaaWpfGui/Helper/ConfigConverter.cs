@@ -1,6 +1,6 @@
 // <copyright file="ConfigConverter.cs" company="MaaAssistantArknights">
 // Part of the MaaWpfGui project, maintained by the MaaAssistantArknights team (Maa Team)
-// Copyright (C) 2021-2025 MaaAssistantArknights Contributors
+// Copyright (C) 2021-2026 MaaAssistantArknights Contributors
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License v3.0 only as published by
@@ -18,6 +18,7 @@ using System.IO;
 using System.Linq;
 using System.Windows.Input;
 using System.Windows.Media;
+using MaaWpfGui.Configuration.Converter.Specific;
 using MaaWpfGui.Configuration.Factory;
 using MaaWpfGui.Configuration.Global;
 using MaaWpfGui.Configuration.Single.MaaTask;
@@ -48,10 +49,10 @@ namespace MaaWpfGui.Helper;
 public class ConfigConverter
 {
     private static readonly ILogger _logger = Log.ForContext<ConfigConverter>();
-    private static readonly string ConfigurationNewFile = ConfigFactory.ConfigFile;
-    private static readonly string ConfigurationOldBakFile = ConfigurationHelper.ConfigFile + ".old";
-    private static readonly string ConfigurationOldFile = ConfigurationHelper.ConfigFile;
-    private static bool HasBackupOldConfig = false;
+    private static readonly string _configurationNewFile = ConfigFactory.ConfigFile;
+    private static readonly string _configurationOldBakFile = ConfigurationHelper.ConfigFile + ".old";
+    private static readonly string _configurationOldFile = ConfigurationHelper.ConfigFile;
+    private static bool _hasBackupOldConfig = false;
 
     public static bool ConvertConfig()
     {
@@ -61,13 +62,13 @@ public class ConfigConverter
         }
 
         // Load configuration file
-        var parsedOld = ParseJsonFile(ConfigurationOldFile);
+        var parsedOld = ParseJsonFile(_configurationOldFile);
         if (parsedOld is null)
         {
             return false;
         }
 
-        var root = ParseJsonFile(ConfigurationNewFile);
+        var root = ParseJsonFile(_configurationNewFile);
 
         bool ret = true;
         JObject? configurations = root?["Configurations"] as JObject;
@@ -560,12 +561,13 @@ public class ConfigConverter
                 throw new Exception($"Config migration failed, unable to switch to config: {configName}");
             }
 
-            // 性能设置
+            // 性能设置（仅读取当前档案，避免多档案循环互相覆盖全局值）
+            if (configName == currentConfigName)
             {
-                ConfigFactory.CurrentConfig.Gui.Performance.UseGpu = ConfigurationHelper.GetValue(ConfigurationKeys.PerformanceUseGpu, false);
-                ConfigFactory.CurrentConfig.Gui.Performance.GpuDescription = ConfigurationHelper.GetValue(ConfigurationKeys.PerformancePreferredGpuDescription, string.Empty);
-                ConfigFactory.CurrentConfig.Gui.Performance.GpuInstancePath = ConfigurationHelper.GetValue(ConfigurationKeys.PerformancePreferredGpuInstancePath, string.Empty);
-                ConfigFactory.CurrentConfig.Gui.Performance.AllowDeprecatedGpu = ConfigurationHelper.GetValue(ConfigurationKeys.PerformanceAllowDeprecatedGpu, false);
+                ConfigFactory.Root.Gui.Performance.UseGpu = ConfigurationHelper.GetValue(ConfigurationKeys.PerformanceUseGpu, false);
+                ConfigFactory.Root.Gui.Performance.GpuDescription = ConfigurationHelper.GetValue(ConfigurationKeys.PerformancePreferredGpuDescription, string.Empty);
+                ConfigFactory.Root.Gui.Performance.GpuInstancePath = ConfigurationHelper.GetValue(ConfigurationKeys.PerformancePreferredGpuInstancePath, string.Empty);
+                ConfigFactory.Root.Gui.Performance.AllowDeprecatedGpu = ConfigurationHelper.GetValue(ConfigurationKeys.PerformanceAllowDeprecatedGpu, false);
 
                 ConfigurationHelper.DeleteValue(ConfigurationKeys.PerformanceUseGpu);
                 ConfigurationHelper.DeleteValue(ConfigurationKeys.PerformancePreferredGpuDescription);
@@ -710,10 +712,13 @@ public class ConfigConverter
                 ConfigurationHelper.DeleteValue(ConfigurationKeys.ExternalNotificationCustomWebhookBody);
                 ConfigurationHelper.DeleteValue(ConfigurationKeys.ExternalNotificationCustomWebhookHeaders);
 
-                ConfigFactory.CurrentConfig.Gui.ExternalNotification.SendWhenComplete = ConfigurationHelper.GetValue(ConfigurationKeys.ExternalNotificationSendWhenComplete, true);
-                ConfigFactory.CurrentConfig.Gui.ExternalNotification.ShowWhenCompleteWithDetails = ConfigurationHelper.GetValue(ConfigurationKeys.ExternalNotificationEnableDetails, false);
-                ConfigFactory.CurrentConfig.Gui.ExternalNotification.SendWhenError = ConfigurationHelper.GetValue(ConfigurationKeys.ExternalNotificationSendWhenError, true);
-                ConfigFactory.CurrentConfig.Gui.ExternalNotification.SendWhenStalled = ConfigurationHelper.GetValue(ConfigurationKeys.ExternalNotificationSendWhenStalled, false);
+                ConfigFactory.CurrentConfig.Gui.ExternalNotification.Delivery.Enable = ConfigFactory.CurrentConfig.Gui.ExternalNotification.Configs.Count > 0;
+                NotificationSettingsMigrationConverter.MigrateExternal(ConfigFactory.CurrentConfig.Gui.ExternalNotification.Delivery,
+                    ConfigurationHelper.GetValue(ConfigurationKeys.ExternalNotificationSendWhenComplete, true),
+                    ConfigurationHelper.GetValue(ConfigurationKeys.ExternalNotificationSendWhenError, true),
+                    ConfigurationHelper.GetValue(ConfigurationKeys.ExternalNotificationSendWhenStalled, false),
+                    ConfigurationHelper.GetValue(ConfigurationKeys.ExternalNotificationEnableDetails, false));
+
                 ConfigurationHelper.DeleteValue(ConfigurationKeys.ExternalNotificationSendWhenError);
                 ConfigurationHelper.DeleteValue(ConfigurationKeys.ExternalNotificationSendWhenComplete);
                 ConfigurationHelper.DeleteValue(ConfigurationKeys.ExternalNotificationSendWhenStalled);
@@ -755,9 +760,9 @@ public class ConfigConverter
                 ConfigFactory.CurrentConfig.Gui.ThirdParty.ReportToPenguin = ConfigurationHelper.GetValue(ConfigurationKeys.EnablePenguin, true);
                 ConfigFactory.CurrentConfig.Gui.ThirdParty.ReportToYituliu = ConfigurationHelper.GetValue(ConfigurationKeys.EnableYituliu, true);
                 ConfigFactory.CurrentConfig.Gui.ThirdParty.PenguinId = ConfigurationHelper.GetValue(ConfigurationKeys.PenguinId, string.Empty);
-                ConfigFactory.CurrentConfig.Gui.RuntimeSettings.EnableStallTimeout = ConfigurationHelper.GetValue(ConfigurationKeys.StallTimeoutEnabled, true);
-                ConfigFactory.CurrentConfig.Gui.RuntimeSettings.StallTimeoutMinutes = ConfigurationHelper.GetValue(ConfigurationKeys.StallTimeoutMinutes, 25).Clamp(0, GameSettingsUserControlModel.TimeoutMaxMinutes);
-                ConfigFactory.CurrentConfig.Gui.RuntimeSettings.StallTimeoutReminderIntervalMinutes = ConfigurationHelper.GetValue(ConfigurationKeys.ReminderIntervalMinutes, 30).Clamp(1, GameSettingsUserControlModel.TimeoutMaxMinutes);
+                ConfigFactory.CurrentConfig.Gui.Notification.EnableStallTimeout = ConfigurationHelper.GetValue(ConfigurationKeys.StallTimeoutEnabled, true);
+                ConfigFactory.CurrentConfig.Gui.Notification.StallTimeoutMinutes = ConfigurationHelper.GetValue(ConfigurationKeys.StallTimeoutMinutes, 25).Clamp(0, GameSettingsUserControlModel.TimeoutMaxMinutes);
+                ConfigFactory.CurrentConfig.Gui.Notification.ReminderIntervalMinutes = ConfigurationHelper.GetValue(ConfigurationKeys.ReminderIntervalMinutes, 30).Clamp(1, GameSettingsUserControlModel.TimeoutMaxMinutes);
                 ConfigFactory.CurrentConfig.Gui.RuntimeSettings.StartGame = ConfigurationHelper.GetValue(ConfigurationKeys.StartGame, true);
                 ConfigurationHelper.DeleteValue(ConfigurationKeys.StartGame);
                 ConfigurationHelper.DeleteValue(ConfigurationKeys.ClientType);
@@ -1210,14 +1215,14 @@ public class ConfigConverter
 
     private static void BackupOldConfig()
     {
-        if (HasBackupOldConfig)
+        if (_hasBackupOldConfig)
         {
             return;
         }
-        HasBackupOldConfig = true;
+        _hasBackupOldConfig = true;
         try
         {
-            File.Copy(ConfigurationOldFile, ConfigurationOldBakFile, true);
+            File.Copy(_configurationOldFile, _configurationOldBakFile, true);
         }
         catch (Exception ex)
         {

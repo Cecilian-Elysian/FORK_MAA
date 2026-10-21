@@ -1,6 +1,6 @@
 // <copyright file="AchievementSettingsUserControlModel.cs" company="MaaAssistantArknights">
 // Part of the MaaWpfGui project, maintained by the MaaAssistantArknights team (Maa Team)
-// Copyright (C) 2021-2025 MaaAssistantArknights Contributors
+// Copyright (C) 2021-2026 MaaAssistantArknights Contributors
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License v3.0 only as published by
@@ -61,11 +61,11 @@ public class AchievementSettingsUserControlModel : PropertyChangedBase
                 Message = $"{LocalizationHelper.GetString("AchievementBackupSuccess")} {Path.Combine(selectedPath, fileName)}.json",
                 StaysOpen = true,
             };
-            Growl.Success(growlInfo);
+            GrowlHelper.Success(growlInfo);
         }
         else
         {
-            Growl.Error(LocalizationHelper.GetString("AchievementRestoreFailed"));
+            GrowlHelper.Error(LocalizationHelper.GetString("AchievementRestoreFailed"));
         }
     }
 
@@ -101,11 +101,11 @@ public class AchievementSettingsUserControlModel : PropertyChangedBase
 
             AchievementTrackerHelper.Instance.Save();
             AchievementTrackerHelper.Instance.Unlock(AchievementIds.LoadLastSave);
-            Growl.Success(LocalizationHelper.GetString("AchievementRestoreSuccess"));
+            GrowlHelper.Success(LocalizationHelper.GetString("AchievementRestoreSuccess"));
         }
         else
         {
-            Growl.Error(LocalizationHelper.GetString("AchievementRestoreFailed"));
+            GrowlHelper.Error(LocalizationHelper.GetString("AchievementRestoreFailed"));
         }
     }
 

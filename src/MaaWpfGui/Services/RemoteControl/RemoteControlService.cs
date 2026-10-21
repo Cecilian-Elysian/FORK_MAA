@@ -1,6 +1,6 @@
 // <copyright file="RemoteControlService.cs" company="MaaAssistantArknights">
 // Part of the MaaWpfGui project, maintained by the MaaAssistantArknights team (Maa Team)
-// Copyright (C) 2021-2025 MaaAssistantArknights Contributors
+// Copyright (C) 2021-2026 MaaAssistantArknights Contributors
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License v3.0 only as published by
@@ -42,7 +42,6 @@ namespace MaaWpfGui.Services.RemoteControl;
 /// The view model of remote control.
 /// </summary>
 // 通过 container.Get<RemoteControlService>(); 实例化或获取实例
-// ReSharper disable once ClassNeverInstantiated.Global
 public class RemoteControlService
 {
     private Task _pollJobTask = Task.CompletedTask;
@@ -106,8 +105,6 @@ public class RemoteControlService
                     _logger.Error(ex, "RemoteControl service raises unknown error.");
                 }
             }
-
-            // ReSharper disable once FunctionNeverReturns
         });
 
         _executeSequentialJobTask = _executeSequentialJobTask.ContinueWith(async _ => {
@@ -129,8 +126,6 @@ public class RemoteControlService
                     _logger.Error(ex, "RemoteControl service raises unknown error.");
                 }
             }
-
-            // ReSharper disable once FunctionNeverReturns
         });
 
         _executeInstantJobTask = _executeInstantJobTask.ContinueWith(async _ => {
@@ -152,8 +147,6 @@ public class RemoteControlService
                     _logger.Error(ex, "RemoteControl service raises unknown error.");
                 }
             }
-
-            // ReSharper disable once FunctionNeverReturns
         });
     }
 
@@ -209,27 +202,6 @@ public class RemoteControlService
         }
 
         return (T)methodInfo.Invoke(instance, null);
-    }
-
-    private static async Task<T> InvokeInstanceAsyncFunction<T>(object instance, string methodName)
-    {
-        ArgumentNullException.ThrowIfNull(instance);
-
-        if (string.IsNullOrEmpty(methodName))
-        {
-            throw new ArgumentNullException(nameof(methodName));
-        }
-
-        Type type = instance.GetType();
-        MethodInfo methodInfo = type.GetMethod(methodName, BindingFlags.NonPublic | BindingFlags.Instance) ?? throw new ArgumentException($"Method '{methodName}' not found in type '{type.FullName}'.");
-
-        // 检查方法是否是异步方法 (返回Task或Task<T>)
-        if (!typeof(Task).IsAssignableFrom(methodInfo.ReturnType))
-        {
-            throw new ArgumentException($"Method '{methodName}' is not asynchronous.");
-        }
-
-        return await (Task<T>)methodInfo.Invoke(instance, null);
     }
 
     private static TResult InvokeStaticFunction<TResult>(Type staticType, string methodName)
@@ -587,7 +559,7 @@ public class RemoteControlService
                 return;
             }
 
-            if (!await InvokeInstanceAsyncFunction<bool>(Instances.TaskQueueViewModel, "ConnectToEmulator"))
+            if (!await Instances.TaskQueueViewModel.ConnectToConnectionTarget())
             {
                 return;
             }

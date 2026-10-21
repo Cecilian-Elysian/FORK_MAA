@@ -1,6 +1,6 @@
 // <copyright file="ToastNotification.cs" company="MaaAssistantArknights">
 // Part of the MaaWpfGui project, maintained by the MaaAssistantArknights team (Maa Team)
-// Copyright (C) 2021-2025 MaaAssistantArknights Contributors
+// Copyright (C) 2021-2026 MaaAssistantArknights Contributors
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License v3.0 only as published by
@@ -20,7 +20,6 @@ using System.Net;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Interop;
-using HandyControl.Controls;
 using MaaWpfGui.Configuration.Factory;
 using MaaWpfGui.Helper.Notification;
 using MaaWpfGui.WineCompat;
@@ -290,10 +289,14 @@ public class ToastNotification : IDisposable
         NotificationSounds sound = NotificationSounds.Notification, params NotificationHint[] hints)
     {
         Execute.OnUIThread(() => {
-            // TODO: 整理过时代码
+            // 启动早期（SettingsViewModel 静态构造、SimpleEncryptionHelper 解密失败提示、
+            // 配置迁移 converter 等）也会走到本方法，不可触碰 SettingsViewModel 静态成员，
+            // 否则循环触发其类型初始化器、在 NotificationSettings 赋值前拿到 null 导致启动崩溃，
+            // 故此处豁免“设置值一律走 SettingsViewModel.XxxSettings”约定，直读配置
             if (!ConfigFactory.Root.Gui.UseNotify || !ToastNotificationCheck().IsAvailable)
             {
-                Growl.Info(_notificationTitle + _contentCollection);
+                // 启动期主窗口可能尚未创建，经 GrowlHelper 暂存待窗口显示后补发
+                GrowlHelper.Info(_notificationTitle + _contentCollection);
                 return;
             }
 

@@ -1,6 +1,6 @@
 // <copyright file="PixelPaintHelper.cs" company="MaaAssistantArknights">
 // Part of the MaaWpfGui project, maintained by the MaaAssistantArknights team (Maa Team)
-// Copyright (C) 2021-2025 MaaAssistantArknights Contributors
+// Copyright (C) 2021-2026 MaaAssistantArknights Contributors
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License v3.0 only as published by
@@ -111,7 +111,7 @@ public static class PixelPaintHelper
         public double SaturationPercent { get; init; } = 100;
 
         /// <summary>
-        /// 取景区：相对「去边后内容图」的归一化矩形（0~1）。
+        /// 取景区：相对 ｢去边后内容图｣ 的归一化矩形（0~1）。
         /// null 表示用完整去边结果再按 Fit 适配。
         /// </summary>
         public Rect? ContentViewNormalized { get; init; }
@@ -473,7 +473,7 @@ public static class PixelPaintHelper
 
     /// <summary>
     /// OKLab 感知色差（欧氏距离平方）。向后兼容入口，内部逐次转换。
-    /// 热路径请用 <see cref="NearestPaletteIndex((double L, double A, double B))"/> 的 OKLab 缓存比对。
+    /// 热路径请用 <c>NearestPaletteIndex</c> 的 OKLab 缓存比对。
     /// </summary>
     /// <param name="c1">颜色一。</param>
     /// <param name="c2">颜色二。</param>

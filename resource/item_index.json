@@ -1733,6 +1733,22 @@
         "sortId": 40003,
         "usage": "罗德岛人事部特别批发的许可书，在特殊的时间点上招揽特殊的人才，一次可招聘十位干员。"
     },
+    "SINGLE_78_0_1_GACHA": {
+        "classifyType": "NORMAL",
+        "description": "为了确保人才扩展而应博士要求准备的应急手段，该批寻访条目具有一定的针对性与时效性，以及，小小的风险。",
+        "icon": "SINGLE_78_0_1_GACHA.png",
+        "name": "海渊巡游寻访凭证",
+        "sortId": 40003,
+        "usage": "罗德岛人事部特别批发的许可书，在特殊的时间点上招揽特殊的人才，一次可招聘一位干员。"
+    },
+    "SINGLE_78_0_1_GACHA_10": {
+        "classifyType": "NORMAL",
+        "description": "为了确保人才扩展而应博士要求准备的应急手段，该批寻访条目具有一定的针对性与时效性，以及，小小的风险。",
+        "icon": "SINGLE_78_0_1_GACHA_10.png",
+        "name": "海渊巡游十连寻访凭证",
+        "sortId": 40003,
+        "usage": "罗德岛人事部特别批发的许可书，在特殊的时间点上招揽特殊的人才，一次可招聘十位干员。"
+    },
     "SOCIAL_PT": {
         "classifyType": "NONE",
         "description": "信用维系着各个群体间的关系，也是社会稳定的象征，有时候甚至比金钱还有用哦，请好好珍惜。",
@@ -2661,6 +2677,14 @@
         "sortId": -10000,
         "usage": "用于对遏制单元进行数据迭代。"
     },
+    "act3break_milestone_point": {
+        "classifyType": "NONE",
+        "description": "普通的标识牌。 在圆凳滑行赛中被作为加速指示牌使用之后，受到了关注这项赛事的干员们的喜爱，逐渐成为一种收藏品。",
+        "icon": "act3break_milestone_point.png",
+        "name": "“小心地滑”",
+        "sortId": -10000,
+        "usage": "可在突破里程碑中兑换奖励。"
+    },
     "act3collection_point_token": {
         "classifyType": "NONE",
         "description": "为了激励在各项集成战略行动中做出贡献的外勤人员，罗德岛发放了一定量的特殊奖励兑换点数。凭借兑换点数可兑换急需的物资。",
@@ -2820,6 +2844,14 @@
         "name": "破碎诗行",
         "sortId": -10000,
         "usage": "未寄出信件的残片。捡到它们的人，可以选择将其作为证据封存，也可以选择将它们投入尚未熄灭的火堆，换取片刻的温暖。"
+    },
+    "act52side_token_scope": {
+        "classifyType": "NONE",
+        "description": "几十年后，从遗迹中拾起这些潜望镜的打捞工人，更熟悉它们的另一个用途：拿去配给所，换一份额外的口粮。",
+        "icon": "act52side_token_scope.png",
+        "name": "“未来瞻望镜”",
+        "sortId": -10000,
+        "usage": "手持式的潜望镜。 每当有探险船队归航，围观的人群规模总是如此庞大，以至于后排的人不得不借助潜望镜，才能一窥那些来自大海的奇珍。"
     },
     "act53side_token_photo": {
         "classifyType": "NONE",

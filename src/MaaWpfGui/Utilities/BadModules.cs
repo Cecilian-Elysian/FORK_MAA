@@ -1,6 +1,6 @@
 // <copyright file="BadModules.cs" company="MaaAssistantArknights">
 // Part of the MaaWpfGui project, maintained by the MaaAssistantArknights team (Maa Team)
-// Copyright (C) 2021-2025 MaaAssistantArknights Contributors
+// Copyright (C) 2021-2026 MaaAssistantArknights Contributors
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License v3.0 only as published by
@@ -76,7 +76,7 @@ internal class BadModules
         }
 
         // 如果用户已经选择忽略警告并使用软件渲染，则不再显示警告
-        if (ConfigFactory.Root.Gui.IgnoreBadModulesAndUseSoftwareRendering)
+        if (ConfigFactory.Root.Gui.Performance.IgnoreBadModulesAndUseSoftwareRendering)
         {
             return;
         }
@@ -174,7 +174,7 @@ internal class BadModules
             // 如果用户确认，则保存设置
             if (confirmed)
             {
-                ConfigFactory.Root.Gui.IgnoreBadModulesAndUseSoftwareRendering = true;
+                ConfigFactory.Root.Gui.Performance.IgnoreBadModulesAndUseSoftwareRendering = true;
                 _logger.Information("User chose to ignore bad modules warning and use software rendering");
                 Bootstrapper.ShutdownAndRestartWithoutArgs();
             }
