@@ -253,6 +253,14 @@ struct Milestone
 
     // 参与绑定候选的目标。是否真的绑定还要看可行性阶梯的结论。
     [[nodiscard]] bool binding_candidate() const noexcept { return enforcement != MilestoneEnforcement::Soft; }
+
+    // 策略目标有完成条件、参与绑定或错过即结算。其余按访问次数计分的软目标只是路线偏好，
+    // 换层即到期，本身不代表策略进展。
+    [[nodiscard]] bool strategy_goal() const noexcept
+    {
+        return completion == MilestoneCompletion::Condition || binding_candidate() ||
+               on_miss == MilestoneMissAction::Terminate;
+    }
 };
 
 struct MissionState
@@ -447,6 +455,7 @@ enum class DecisionReasonCategory
     StrategyEnd,
     ResourceReserve,
     PreferredGoal,
+    RouteCost,
     Development,
     RiskAvoidance,
     SafetyFallback,
@@ -465,9 +474,12 @@ struct PolicyDecision
     std::size_t total_candidates = 0;
     std::size_t eligible_candidates = 0;
     DecisionReasonCategory reason_category = DecisionReasonCategory::TieBreak;
+    // 第一名与第二名第一个分出胜负的比较项，来自策略规则、路线指标或第一名多推进的目标，三者只填其一。
     std::string decisive_rule_id;
-    std::string decisive_milestone_id;
+    std::string decisive_metric;
     std::vector<std::string> decisive_milestone_ids;
+    // 同一比较项里第二名推进得更多、第一名放弃的目标。
+    std::vector<std::string> forgone_milestone_ids;
     // 因为无法满足而被放弃的资源预留。放弃它们是为了不让本轮变成无路可走。
     std::vector<std::string> released_reserve_ids;
     std::string reason;

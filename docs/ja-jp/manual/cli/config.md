@@ -32,6 +32,12 @@ params = { client_type = "Official", start_game_enabled = true } # 対応する�
 
 具体的なタスクタイプとパラメータは [MAA 統合ドキュメント][task-types] で確認できます。なお、現在 maa-cli はパラメータ名やパラメータ値の正しさを検証しません。エラーが発生してもエラーメッセージは生成されず、MaaCore が実行時にエラーを検出した場合にのみ検出されます。
 
+`tasks` のほかに、タスクファイルは以下のトップレベルフィールドもサポートしています：
+
+- `client_type`: クライアントタイプを指定します。この値は `StartUp`、`Fight`、`CloseDown` タスクの `client_type` パラメータに自動的に設定されます。
+- `startup`: ゲームを自動的に起動するかどうか。`true` に設定すると、タスクリストに `StartUp` タスクがない場合は先頭に自動的に追加され、既に `StartUp` タスクが存在する場合は `start_game_enabled` が有効になっていないとき、それも自動的に有効になります。
+- `closedown`: ゲームを自動的に終了するかどうか。`true` に設定すると、タスクリストに `CloseDown` タスクがない場合は末尾に自動的に追加され、既に `CloseDown` タスクが存在する場合は `enable` が `false` のとき、それも自動的に有効になります。
+
 ### タスク条件
 
 いくつかの条件に応じて異なるパラメータのタスクを実行したい場合は、タスクの複数のバリアントを定義できます：
@@ -383,6 +389,17 @@ kill_adb_on_exit = false # 終了時に adb を強制終了するかどうか
 
 なお、`touch_mode` の選択肢 `MacPlayTools` は接続方式 `PlayTools` と紐付いています。`PlayTools` で接続する場合、`touch_mode` は強制的に `MacPlayTools` に設定されます。
 
+### 動作設定
+
+`[behavior]` 関連フィールドは、maa-cli 自身の実行時の動作を指定するために使用されます：
+
+```toml
+[behavior]
+auto_reconnect = true # ゲームがサーバーから切断されたときに自動的に再接続するかどうか、デフォルトは true
+```
+
+なお、タスクの実行時に `--no-auto-reconnect` オプションを指定することで、その実行中に限り自動再接続を無効化することもできます。
+
 ## CLI 関連設定
 
 CLI 関連の設定は `$MAA_CONFIG_DIR/cli.toml` に配置する必要があります。現在含まれる設定は次のとおりです：
@@ -405,7 +422,7 @@ resource = true # MaaCore のリソースをインストールするかどうか
 
 # CLI の更新に関する設定
 [cli]
-channel = "Stable" # 更新チャンネル。"Alpha"、"Beta"、"Stable" から選択、デフォルトは "Stable"
+channel = "Stable" # 更新チャンネル。"Nightly"、"Beta"、"Stable" から選択、デフォルトは "Stable"
 # maa-cli の最新バージョンを照会する API アドレス。空欄でデフォルトアドレスを使用
 api_url = "https://github.com/MaaAssistantArknights/maa-cli/raw/version/"
 # プリコンパイル済みバイナリのダウンロードアドレス。空欄でデフォルトアドレスを使用
@@ -481,8 +498,8 @@ check_interval = 600
 - MaaCore 設定の JSON Schema ファイルは [`asst.schema.json`][asst-schema]
 - CLI 設定の JSON Schema ファイルは [`cli.schema.json`][cli-schema]
 
-[task-types]: ../../protocol/integration.md#タスク-タイプ一覧
-[emulator-ports]: ../../manual/connection.md#ポート番号の取得
+[task-types]: ../../protocol/integration.md#タスク-タイプ一覧
+[emulator-ports]: ../../manual/connection.md#ポート番号の取得
 [playcover-doc]: ../../manual/device/macos.md
 [waydroid-doc]: ../../manual/device/linux.md#✅-waydroid
 [example-config]: https://github.com/MaaAssistantArknights/maa-cli/blob/main/crates/maa-cli/config_examples

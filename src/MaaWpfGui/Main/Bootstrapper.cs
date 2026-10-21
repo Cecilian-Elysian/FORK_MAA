@@ -43,7 +43,6 @@ using MaaWpfGui.Services.RemoteControl;
 using MaaWpfGui.Services.Web;
 using MaaWpfGui.States;
 using MaaWpfGui.Utilities;
-using MaaWpfGui.ViewModels.Dialogs;
 using MaaWpfGui.ViewModels.UI;
 using MaaWpfGui.ViewModels.UserControl.Settings;
 using MaaWpfGui.Views.Dialogs;
@@ -54,7 +53,6 @@ using Serilog.Core;
 using Serilog.Events;
 using Stylet;
 using StyletIoC;
-using Growl = HandyControl.Controls.Growl;
 
 namespace MaaWpfGui.Main;
 
@@ -608,8 +606,7 @@ public class Bootstrapper : Bootstrapper<RootViewModel>
     /// </summary>
     private static bool IsBuildOutputFolder
     {
-        get
-        {
+        get {
             var folderName = Path.GetFileName(PathsHelper.BaseDir.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
             return string.Equals(folderName, "Release", StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(folderName, "Debug", StringComparison.OrdinalIgnoreCase) ||
@@ -934,8 +931,7 @@ return true;
 
     public static string InstanceKey
     {
-        get
-        {
+        get {
             var normalizedBaseDir = Path.GetFullPath(PathsHelper.BaseDir)
                 .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
                 .ToUpperInvariant();
@@ -1248,12 +1244,15 @@ return true;
 
         if (!_isRestartingAfterUpdate)
         { // 如果是更新后重启，则不删除 .old
-            try
-            { // 退出时移除.old
-                Directory.Delete(".old", true);
-            }
-            catch (Exception)
-            { // ignored
+            if (Directory.Exists(".old"))
+            {
+                try
+                { // 退出时移除.old
+                    Directory.Delete(".old", true);
+                }
+                catch (Exception)
+                { // ignored
+                }
             }
 
             foreach (var file in new DirectoryInfo(".").EnumerateFiles("*.old"))
@@ -1523,6 +1522,7 @@ return true;
     private static void RestartAfterPendingUpdateEarly()
     {
         _logger.Information("Pending update package applied, restarting application");
+        Log.CloseAndFlush();
         if (Environment.ProcessPath is not null)
         {
             var startInfo = new ProcessStartInfo {
@@ -1537,8 +1537,7 @@ return true;
 
             Process.Start(startInfo);
         }
-
-        FlushLogAndExit();
+        Environment.Exit(0);
     }
 
     /// <summary>

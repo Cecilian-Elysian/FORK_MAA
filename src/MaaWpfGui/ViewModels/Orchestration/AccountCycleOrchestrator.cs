@@ -22,7 +22,7 @@ namespace MaaWpfGui.ViewModels.Orchestration;
 
 /// <summary>
 /// feat/account-cycle-refactor: 账号轮换调度状态机 (单一职责).
-/// 从 <see cref="StartUpSettingsUserControlModel"/> 抽出:
+/// 从 <see cref="StartUpTaskUserControlModel"/> 抽出:
 ///   - 扁平步骤列表 <c>_cycleSteps</c> / <c>_currentStepIndex</c>
 ///   - 完成集合 <c>_completedAccounts</c>
 ///   - RebuildCycleSteps / AdvanceStepIndex / MarkAccountCompleted / ResetCycle / ClearCompletedAccounts

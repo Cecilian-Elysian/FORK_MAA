@@ -22,8 +22,8 @@ AsstTaskId ASSTAPI AsstAppendTask(AsstHandle handle, const char* type, const cha
 #### 返回値
 
 - `AsstTaskId`  
-   追加に成功した場合、タスク ID を返します。後続のタスク パラメータ設定に使用できます；  
-   追加に失敗した場合、0 を返します。
+  追加に成功した場合、タスク ID を返します。後続のタスク パラメータ設定に使用できます；  
+  追加に失敗した場合、0 を返します。
 
 #### パラメータ説明
 
@@ -131,7 +131,7 @@ Bilibili：`张三`、入力可能：`张三`、`张`、`三`
 </details>
 
 - `Fight`  
-  理智作战
+  作戦
 
 :::: field-group  
 ::: field enable  
@@ -148,7 +148,7 @@ Bilibili：`张三`、入力可能：`张三`、`张`、`三`
 
 - すべてのメイン ストーリー ステージ。ステージ末尾に `-NORMAL` または `-HARD` を付けて難易度を切り替えできます（10〜14章は標準/厄難、15章以降は通常/険地）。
 - 龍門幣、作戦記録の 5/6 関。ただし `CE-6` / `LS-6` と入力する必要があります。MAA は 6 関が代理できない場合は自動的に 5 関に切り替わります。
-- スキル本、購買資格証、碳素材の第 5 関。`CA-5` / `AP-5` / `SK-5` と入力する必要があります。
+- スキル本、購買資格証、炭素材の第 5 関。`CA-5` / `AP-5` / `SK-5` と入力する必要があります。
 - すべてのチップ本。完全なステージ番号を入力する必要があります（例：`PR-A-1`）。
 - 殲滅モードは以下の入力値をサポートし、対応する Value を使用する必要があります：
   - 当期殲滅：Annihilation
@@ -158,113 +158,115 @@ Bilibili：`张三`、入力可能：`张三`、`张`、`三`
 - 別伝の OF-1 / OF-F3。
 - 当期 SS イベントの最後の 3 ステージ。[API](https://api.maa.plus/MaaAssistantArknights/api/gui/StageActivityV2.json) にアクセスして、サポートされているステージ リストを取得できます。[tasks.json](https://api.maa.plus/MaaAssistantArknights/api/resource/tasks.json) ファイルのイベント ステージ ナビゲーションを追加でロードする必要があります。
 - 復刻 SS イベント。`SSReopen-<ステージ プレフィックス>` と入力します。例えば `SSReopen-IC` と入力すると、XX-1～XX-9 ステージを一度に完了できます。
-  :::  
-  ::: field medicine  
-  @type number
-  @default 0
-  @optional
-  理性回復剤の最大使用数。  
-  :::  
-  ::: field medicine_expire_days  
-  @type number
-  @default 0
-  @optional
-  指定日数以内に期限切れになる理性回復剤を使用します。`0` は期限切れの理性回復剤を使用しないことを意味します。  
-  :::  
-  ::: field expiring_medicine  
-  @type number
-  @default 0
-  @optional
-  @deprecated
-  v6.8.0 で非推奨になりました。代わりに `medicine_expire_days` を使用してください。  
-  :::  
-  ::: field stone  
-  @type number
-  @default 0
-  @optional
-  純正源石の最大使用数。  
-  :::  
-  ::: field times  
-  @type number
-  @default 2147483647
-  @optional
-  戦闘回数。  
-  :::  
-  ::: field series  
-  @type number
-  @default 1
-  @optional
-  連戦回数。-1～10。
-  <br>
-  `-1` は切り替えを無効にします。
-  <br>
-  `0` は現在利用可能な最大回数に自動的に切り替わります。現在の理智が最大回数未満の場合は、利用可能な最小回数を選択します。
-  <br>
-  `1～10` は指定した連戦回数です。
-  <br>
-  ::: info サーバー差異
-  入力検証はリソースに `FightSeries-OldMethodFlag` が存在するかどうかで決まります：
-  <br>
-  - 新リスト（中国版 2026/8/1 以降の主リソース、当該 flag なし）：`-1～10` を受け付け
-  - 旧リスト（海外リソースに当該 flag あり）：`-1～6` のみ受け付け、それより大きい値は拒否
 
-  海外サーバーは約半年後に追従予定で、その際に上限はリソースに合わせて 10 になります。Windows GUI の連戦回数ドロップダウンは現在固定で 10 まで表示されます。海外で手動で 7～10 を選ぶと、タスク投入時に Core に拒否されます。
-  :::  
-  ::: field drops  
-  @type object
-  @optional
-  ドロップ数を指定します。デフォルトで指定なし。キーは item_id、値は数量です。キーは `resource/item_index.json` ファイルを参照できます。  
-  <br>
-  例：`{ "30011": 10, "30062": 5 }`  
-  <br>
-  上記はすべて OR 関係です。つまり、いずれかに達するとタスクが停止します。  
-  :::  
-  ::: field report_to_penguin  
-  @type boolean
-  @default false
-  @optional
-  ペンギン統計にレポートするかどうか。  
-  :::  
-  ::: field penguin_id  
-  @type string
-  @optional
-  ペンギン統計レポート ID。デフォルトは空です。`report_to_penguin` が true の場合のみ有効です。  
-  :::  
-  ::: field report_to_yituliu  
-  @type boolean
-  @default false
-  @optional
-  一图流にレポートするかどうか。  
-  :::  
-  ::: field yituliu_id  
-  @type string
-  @optional
-  一图流レポート ID。デフォルトは空です。`report_to_yituliu` が true の場合のみ有効です。  
-  :::  
-  ::: field server  
-  @type string
-  @default CN
-  @optional
-  サーバー。ドロップ認識とアップロードに影響します。
-  <br>
-  オプション：`CN` | `US` | `JP` | `KR`  
-  :::  
-  ::: field client_type  
-  @type string
-  @optional
-  クライアント バージョン。デフォルトは空です。ゲームがクラッシュした場合にクライアントを再起動して接続し直すために使用されます。空の場合、この機能は有効になりません。
-  <br>
-  オプション：`Official` | `Bilibili` | `txwy` | `YoStarEN` | `YoStarJP` | `YoStarKR`  
-  :::  
-  ::: field DrGrandet  
-  @type boolean
-  @default false
-  @optional
-  理智節約源石モード。源石効果が発生する可能性がある場合にのみ有効です。
-  <br>
-  源石確認画面で待機し、現在の 1 ポイントの理智回復が完了するまで待ってから、すぐに源石を使用します。  
-  :::  
-  ::::
+:::  
+::: field medicine  
+@type number
+@default 0
+@optional
+理性回復剤の最大使用数。  
+:::  
+::: field medicine_expire_days  
+@type number
+@default 0
+@optional
+指定日数以内に期限切れになる理性回復剤を使用します。`0` は期限切れの理性回復剤を使用しないことを意味します。  
+:::  
+::: field expiring_medicine  
+@type number
+@default 0
+@optional
+@deprecated
+v6.8.0 で非推奨になりました。代わりに `medicine_expire_days` を使用してください。  
+:::  
+::: field stone  
+@type number
+@default 0
+@optional
+純正源石の最大使用数。  
+:::  
+::: field times  
+@type number
+@default 2147483647
+@optional
+戦闘回数。  
+:::  
+::: field series  
+@type number
+@default 1
+@optional
+連戦回数。-1～10。
+<br>
+`-1` は切り替えを無効にします。
+<br>
+`0` は現在利用可能な最大回数に自動的に切り替わります。現在の理性が最大回数未満の場合は、利用可能な最小回数を選択します。
+<br>
+`1～10` は指定した連戦回数です。
+<br>
+::: info サーバー差異
+入力検証はリソースに `FightSeries-OldMethodFlag` が存在するかどうかで決まります：
+<br>
+
+- 新リスト（中国版 2026/8/1 以降の主リソース、当該 flag なし）：`-1～10` を受け付け
+- 旧リスト（海外リソースに当該 flag あり）：`-1～6` のみ受け付け、それより大きい値は拒否
+
+海外サーバーは約半年後に追従予定で、その際に上限はリソースに合わせて 10 になります。Windows GUI の連戦回数ドロップダウンは現在固定で 10 まで表示されます。海外で手動で 7～10 を選ぶと、タスク投入時に Core に拒否されます。
+:::  
+::: field drops  
+@type object
+@optional
+ドロップ数を指定します。デフォルトで指定なし。キーは item_id、値は数量です。キーは `resource/item_index.json` ファイルを参照できます。  
+<br>
+例：`{ "30011": 10, "30062": 5 }`  
+<br>
+上記はすべて OR 関係です。つまり、いずれかに達するとタスクが停止します。  
+:::  
+::: field report_to_penguin  
+@type boolean
+@default false
+@optional
+ペンギン統計にレポートするかどうか。  
+:::  
+::: field penguin_id  
+@type string
+@optional
+ペンギン統計レポート ID。デフォルトは空です。`report_to_penguin` が true の場合のみ有効です。  
+:::  
+::: field report_to_yituliu  
+@type boolean
+@default false
+@optional
+一图流（Yituliu）にレポートするかどうか。  
+:::  
+::: field yituliu_id  
+@type string
+@optional
+一图流（Yituliu）レポート ID。デフォルトは空です。`report_to_yituliu` が true の場合のみ有効です。  
+:::  
+::: field server  
+@type string
+@default CN
+@optional
+サーバー。ドロップ認識とアップロードに影響します。
+<br>
+オプション：`CN` | `US` | `JP` | `KR`  
+:::  
+::: field client_type  
+@type string
+@optional
+クライアント バージョン。デフォルトは空です。ゲームがクラッシュした場合にクライアントを再起動して接続し直すために使用されます。空の場合、この機能は有効になりません。
+<br>
+オプション：`Official` | `Bilibili` | `txwy` | `YoStarEN` | `YoStarJP` | `YoStarKR`  
+:::  
+::: field DrGrandet  
+@type boolean
+@default false
+@optional
+理性節約源石モード。源石効果が発生する可能性がある場合にのみ有効です。
+<br>
+源石確認画面で待機し、現在の 1 ポイントの理性回復が完了するまで待ってから、すぐに源石を使用します。  
+:::  
+::::
 
 <details>
 <summary>Example</summary>
@@ -410,12 +412,12 @@ Fork 拡張です。確定した最低レアリティがこの値以上の場合
 @type boolean
 @default false
 @optional
-一图流にレポートするかどうか。  
+一图流（Yituliu）にレポートするかどうか。  
 :::  
 ::: field yituliu_id  
 @type string
 @optional
-一图流レポート ID。デフォルトは空です。`report_to_yituliu` が true の場合のみ有効です。  
+一图流（Yituliu）レポート ID。デフォルトは空です。`report_to_yituliu` が true の場合のみ有効です。  
 :::  
 ::: field server  
 @type string
@@ -478,7 +480,7 @@ Fork 拡張です。確定した最低レアリティがこの値以上の場合
 <br>
 `10000` - `Custom`：カスタム シフト モード。ユーザー構成を読み込みます。[基地スケジューリング プロトコル](./base-scheduling-schema.md)を参照してください。
 <br>
-`20000` - `Rotation`：ワンキー ローテーション モード。制御中枢、発電所、宿舎、および事務室をスキップします。他の施設はシフトを変更しませんが、基本的な操作は保持されます（ドローン使用、応接室ロジックなど）。  
+`20000` - `Rotation`：ワンキー ローテーション モード。制御中枢、発電所、宿舎、事務室、および回収所をスキップします。他の施設はシフトを変更しませんが、基本的な操作は保持されます（ドローン使用、応接室ロジックなど）。  
 :::  
 ::: field facility  
 @type array<string>
@@ -487,7 +489,7 @@ Fork 拡張です。確定した最低レアリティがこの値以上の場合
 <br>
 `mode = 0` の場合、この配列は有効化セットとして扱われ、順序と重複はスケジューリングに影響しません（交代順序はアルゴリズムが自動的に決定します）。`mode = 10000` / `20000` の場合は配列の順序で処理されます。
 <br>
-施設名：`Mfg` | `Trade` | `Power` | `Control` | `Reception` | `Office` | `Dorm` | `Processing` | `Training` | `AssistantChange`  
+施設名：`Mfg` | `Trade` | `Power` | `Control` | `Reception` | `Office` | `Recycle` | `Dorm` | `Processing` | `Training` | `AssistantChange`  
 :::  
 ::: field drones  
 @type string
@@ -839,7 +841,7 @@ OF-1 実行時に使用する編成スロットのインデックス。
 <br>
 `JieGarden` - 歳の界園志異
 <br>
-`BlackFlow` - 黒流樹海  
+`BlackFlow` - 黒流樹海（日本語名未定）  
 :::  
 ::: field mode  
 @type number
@@ -868,6 +870,8 @@ OF-1 実行時に使用する編成スロットのインデックス。
 `20001` - 常楽ノードを稼ぎます。第 1 層で洞窟に入り、必要なノードが見つからなければリセット。JieGarden テーマ専用で、`find_playTime_target` との併用が必要です。
 <br>
 `30001` - 襁褓動物の入手。BlackFlow テーマ専用。
+<br>
+`30003` - 初期報酬稼ぎ。まず準備用の探索を行い、その後に目標の探索を開始します。準備用の探索は `blackflow_start_animals` で指定した襁褓動物を入手して第 3 層に入った後に放棄します。目標の探索では支援選択画面に `blackflow_start_rewards` のいずれかが出れば選択せずにテーマ画面へ退出し、その探索を保持したままタスクを終了します。準備用の探索は `collectible_mode_squad` を使用し、`difficulty` が `-1` でない場合は難易度 0 で行います。目標の探索は `squad` と `difficulty` を使用し、支援選択画面で終了します。`roles` と最初のオペレーターは準備用の探索にのみ使用されます。BlackFlow テーマ専用で、`blackflow_start_animals` と `blackflow_start_rewards` との併用が必要です。（機械翻訳）
 :::  
 ::: field squad  
 @type string
@@ -1054,6 +1058,8 @@ OF-1 実行時に使用する編成スロットのインデックス。
 @type string
 @optional
 湯沸かしモードで使用する分隊、デフォルトで squad と同期、squad が空文字列で collectible_mode_squad が指定されていない場合は指揮分隊。  
+<br>
+BlackFlow のモード 30003 では準備用の探索で使用する分隊です。（機械翻訳）  
 :::  
 ::: field start_with_seed  
 @type string
@@ -1067,19 +1073,43 @@ Sarkaz テーマ、Investment モード、 ｢破棘成金分隊｣ または �
 @optional
 黒流樹海テーマの戦略。空欄の場合は `mode` と `investment_enabled` から推測されます。
 <br>
-`baby_animal` - 1階層で一般商店を確認し、2・3階層を探索して秘境行商（シークレット商人）で種を育成します。`blackflow_cultivation_target` との併用が必要です
+`baby_animal` - 1階層で一般商店を確認し、2・3階層を探索して秘境行商（秘境の行商人）で種を育成します。`blackflow_cultivation_target` との併用が必要です
 <br>
 `investment` - 1階層を戦闘回数が最も少なく所要時間が最も短いルートで、固定の一般商店に到達します
 <br>
 `burn_with_investment` - 1階層で投資を完了した後、できるだけ早く3階層に到達し、到着次第再開します
 <br>
 `burn` - できるだけ早く3階層に到達し、到着次第再開します  
+<br>
+`ending1` - レベル稼ぎで第一エンディングを目指して進めます
+<br>
+`ending2` - レベル稼ぎで第二エンディングを目指して進めます
+<br>
+`ending3` - レベル稼ぎで第三エンディングを目指して進めます
+<br>
+これらの値はレベル稼ぎモード（mode 0）でのみ使用されます。エンディングが解放されているかどうかはゲーム内の表示に従います。エンディングを指定した場合、開始時も通常どおりオペレーターを招集します。
+<br>
+モード 30003 ではこの項目を読み取りません。動物の指定がある場合、準備用の探索は `baby_animal` のルートで育成します。指定がない場合、準備用の探索はできるだけ早く第 3 層に到達し、`investment_enabled` が true のときは先に第 1 層で投資します。準備用の探索の最初のオペレーターが機械師、`collectible_mode_squad` が特勤分队（特別行動分隊）または堡垒战术分队（要塞戦術分隊）、`roles` が稳扎稳打（攻守一体）または坚不可摧（難攻不落）の場合、素質を全解放した機械師での開局とみなし、構造性原理を持ち込みます。準備用の探索では機械師を招集した後に残りの初期招集を放棄し、必要に応じて構造性原理で移動します。動物の指定がない場合は、第 2 層でそれを使って出口へ直接飛びます。（機械翻訳）  
 :::  
 ::: field blackflow_cultivation_target  
 @type string
 @default swaddled_cat
 @optional
 襁褓動物育成モードの目標。選択可能な値：`swaddled_cat`（襁褓の猫）| `swaddled_feathered_serpent`（襁褓の羽蛇）| `swaddled_dog`（襁褓の犬）| `swaddled_cerberus`（襁褓のケルベロス）。`blackflow_strategy` が `baby_animal` の場合のみ使用されます。  
+:::  
+::: field blackflow_start_animals  
+@type array<string>
+@optional
+モード 30003 の準備用の探索で育成する襁褓動物。0〜2 項目、重複可、羽蛇は 1 項目まで。選択可能な値：`swaddled_cat` | `swaddled_dog` | `swaddled_cerberus` | `swaddled_feathered_serpent`。各項目は数も含めて同時に満たす必要があり、例えば `swaddled_cat` を 2 項目指定すると猫が 2 匹以上必要で、それ以外の動物が多くても影響しません。育成終了時にそろっていない場合はその探索を放棄し、準備用の探索をやり直します。空配列の場合、準備用の探索は第 3 層に入るだけで済みます。モード 30003 では必須。（機械翻訳）  
+:::  
+::: field blackflow_start_rewards  
+@type number
+@optional
+モード 30003 の目標の探索で狙う初期報酬。ビットマスクで、範囲は 0〜4095。モード 30003 では必須。（機械翻訳）  
+<br>
+`1` 未编号物；`2` 调查预付款；`4` 空间租赁；`8` 退行补偿；`16` 林间代步；`32` 巢寄生；`64` 襁褓天马；`128` 襁褓骏鹰；`256` 襁褓巨龙；`512` 襁褓九头蛇；`1024` 襁褓白泽；`2048` 襁褓金乌（日本語名未定）。後ろの 6 項目は羽蛇がもたらす青色の報酬で、`blackflow_start_animals` に羽蛇が含まれる場合のみ有効、それ以外は無視されます。  
+<br>
+目標の探索では支援選択画面の報酬をすべて認識してから判断します。いずれかが一致すれば完了します。報酬は認識できたが狙うものがない場合はその探索を放棄し、準備用の探索をやり直します。1 つも認識できない場合、または羽蛇の報酬を指定したのに青色の報酬を読み取れない場合は、支援選択画面に留まってタスクを停止し、スクリーンショットを `debug/roguelike` に保存します。0 の場合は支援選択画面に入った時点で完了します。進捗は `SubTaskExtraInfo` の `BlackFlowStartRun` コールバックで通知されます。[コールバックスキーマ](./callback-schema.md) を参照してください。  
 :::  
 ::: field find_playTime_target  
 @type number
@@ -1142,7 +1172,7 @@ Sarkaz テーマ、Investment モード、 ｢破棘成金分隊｣ または �
 
 </details>
 
-パラダイムロスト稼ぎ機能の詳細は [統合戦略補助プロトコル](./integrated-strategy-schema.md#サーミテーマ--パラダイムロスト)を参照してください。
+パラダイムロスト稼ぎ機能の詳細は [統合戦略補助プロトコル](./integrated-strategy-schema.md#サーミテーマ-パラダイムロスト)を参照してください。
 
 - `Copilot`  
   自動戦闘
@@ -1170,77 +1200,80 @@ Sarkaz テーマ、Investment モード、 ｢破棘成金分隊｣ または �
 - `nav_name_override`: ナビゲーション用のステージ名。可選、未指定または `null` の場合は、作業ファイルから自動的に推定されます
   <br>
 - `is_raid`: 強襲作戦モードに切り替えるかどうか。可選、デフォルト false
-  :::  
-  ::: field loop_times  
-  @type number
-  @default 1
-  @optional
-  ループ回数。単一作業モード（filename 指定時）のみ有効。このパラメータが有効な場合、set_params は 1 回のみ実行可能。  
-  :::  
-  ::: field use_sanity_potion  
-  @type boolean
-  @default false
-  @optional
-  理智が不足した場合に理智薬を使用するかどうか。  
-  :::  
-  ::: field formation  
-  @type boolean
-  @default false
-  @optional
-  自動編成を行うかどうか。  
-  :::  
-  ::: field formation_index  
-  @type number
-  @default 0
-  @optional
-  自動編成で使用する編成スロットのインデックス。formation が true の場合のみ有効。
-  <br>
-  0～4 の整数。0 は現在の編成を意味し、1～4 は第 1～第 4 編成を表します。  
-  :::  
-  ::: field user_additional  
-  @type array`<object>`
-  @default []
-  @optional
-  カスタム追加オペレーター リスト。formation が true の場合のみ有効。
-  <br>
-  各オブジェクトには以下を含みます：
-  <br>
+
+:::  
+::: field loop_times  
+@type number
+@default 1
+@optional
+ループ回数。単一作業モード（filename 指定時）のみ有効。このパラメータが有効な場合、set_params は 1 回のみ実行可能。  
+:::  
+::: field use_sanity_potion  
+@type boolean
+@default false
+@optional
+理性が不足した場合に理性剤を使用するかどうか。  
+:::  
+::: field formation  
+@type boolean
+@default false
+@optional
+自動編成を行うかどうか。  
+:::  
+::: field formation_index  
+@type number
+@default 0
+@optional
+自動編成で使用する編成スロットのインデックス。formation が true の場合のみ有効。
+<br>
+0～4 の整数。0 は現在の編成を意味し、1～4 は第 1～第 4 編成を表します。  
+:::  
+::: field user_additional  
+@type array`<object>`
+@default []
+@optional
+カスタム追加オペレーター リスト。formation が true の場合のみ有効。
+<br>
+各オブジェクトには以下を含みます：
+<br>
+
 - `name`: オペレーター名。可選、デフォルト ""。空の場合は無視
   <br>
-- `skill`: 使用スキル。可選、デフォルト 0（ゲーム内デフォルトのスキル選択に従う）。1～3 の整数。範囲外の場合もゲーム内デフォルトを使用  
-  :::  
-  ::: field add_trust  
-  @type boolean
-  @default false
-  @optional
-  自動編成時に信頼度の昇順で空き枠を自動補充するか。formation が true の場合のみ有効。  
-  :::  
-  ::: field ignore_requirements  
-  @type boolean
-  @default false
-  @optional
-  自動編成時にオペレーター属性要件を無視するか。formation が true の場合のみ有効。  
-  :::  
-  ::: field support_unit_usage  
-  @type number
-  @default 0
-  @optional
-  サポートオペレーターの使用モード。0～3 の整数。formation が true の場合のみ有効。
-  <br>
-  `0` - サポートオペレーターを使用しない
-  <br>
-  `1` - 不足が 1 名のみの場合、サポートで補填。不足がなければサポートを使用しない
-  <br>
-  `2` - 不足が 1 名のみの場合、サポートで補填。不足がなければ指定サポートを使用  
-  <br>
-  `3` - 不足が 1 名のみの場合、サポートで補填。不足がなければランダムサポートを使用  
-  :::  
-  ::: field support_unit_name  
-  @type string
-  @optional
-  指定サポートオペレーター名。support_unit_usage が 2 の場合のみ有効。  
-  :::  
-  ::::
+- `skill`: 使用スキル。可選、デフォルト 0（ゲーム内デフォルトのスキル選択に従う）。1～3 の整数。範囲外の場合もゲーム内デフォルトを使用
+
+:::  
+::: field add_trust  
+@type boolean
+@default false
+@optional
+自動編成時に信頼度の昇順で空き枠を自動補充するか。formation が true の場合のみ有効。  
+:::  
+::: field ignore_requirements  
+@type boolean
+@default false
+@optional
+自動編成時にオペレーター属性要件を無視するか。formation が true の場合のみ有効。  
+:::  
+::: field support_unit_usage  
+@type number
+@default 0
+@optional
+サポートオペレーターの使用モード。0～3 の整数。formation が true の場合のみ有効。
+<br>
+`0` - サポートオペレーターを使用しない
+<br>
+`1` - 不足が 1 名のみの場合、サポートで補填。不足がなければサポートを使用しない
+<br>
+`2` - 不足が 1 名のみの場合、サポートで補填。不足がなければ指定サポートを使用  
+<br>
+`3` - 不足が 1 名のみの場合、サポートで補填。不足がなければランダムサポートを使用  
+:::  
+::: field support_unit_name  
+@type string
+@optional
+指定サポートオペレーター名。support_unit_usage が 2 の場合のみ有効。  
+:::  
+::::
 
 作業 JSON は [戦闘流程プロトコル](./copilot-schema.md)を参照
 
@@ -1498,7 +1531,7 @@ Sarkaz テーマ、Investment モード、 ｢破棘成金分隊｣ または �
 @optional
 タスクの追加パラメータ。現在はピクセル画タスク（`MiniGame@PixelPaint@Begin`）、潜在能力自動強化タスク（`MiniGame@AutoRaisePotential@Begin`）、イベントショップ交換タスク（`SS@Store@Begin`）で使用：
 
-- `params.pixel_paint.groups`：色ごとのマス座標リスト。`color` はパレットのスロット番号（0~39、ゲーム右側パレットの順序と一致）、`points` は `[x, y]` のマス座標配列（0~23、左上原点）。
+- `params.pixel_paint.groups`：色ごとのマス座標リスト。`color` はパレットのスロット番号（0~~39、ゲーム右側パレットの順序と一致）、`points` は `[x, y]` のマス座標配列（0~~23、左上原点）。
 - `params.pixel_paint.swipe`（bool、任意、デフォルト true）：同じ色の連続マスを1回のドラッグで描画し高速化。一部のタッチ方式では正常に動作しない可能性があります。
 - `params.pixel_paint.grid_delay`（int、任意、デフォルト 0）：マスごとの追加待機時間（ms）。クリック後の待機とドラッグ時間の両方に加算されます。各タッチ方式に基礎間隔があるため、通常は調整不要。旧キー `grid_click_delay` も受け付けます。
 - `params.auto_raise_potential.use_normal_token`（bool、任意、デフォルト false）：トークンが不足している場合の確認ダイアログは、既定では × を押して中断する。true にすると √ を押して通常のトークンを消費して続行する。
@@ -1627,7 +1660,7 @@ AsstBool ASSTAPI AsstSetTaskParams(AsstHandle handle, AsstTaskId id, const char*
 #### 返回値
 
 - `AsstBool`  
-   設定が成功したかどうかを返す
+  設定が成功したかどうかを返す
 
 #### パラメータ説明
 
@@ -1665,7 +1698,7 @@ AsstBool ASSTAPI AsstSetStaticOption(AsstStaticOptionKey key, const char* value)
 #### 返回値
 
 - `AsstBool`  
-   設定が成功したかどうかを返す
+  設定が成功したかどうかを返す
 
 #### パラメータ説明
 
@@ -1718,7 +1751,7 @@ AsstBool ASSTAPI AsstSetInstanceOption(AsstHandle handle, AsstInstanceOptionKey 
 #### 返回値
 
 - `AsstBool`  
-   設定が成功したかどうかを返す
+  設定が成功したかどうかを返す
 
 #### パラメータ説明
 
