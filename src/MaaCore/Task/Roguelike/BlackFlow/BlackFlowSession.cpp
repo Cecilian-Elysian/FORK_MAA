@@ -242,8 +242,10 @@ void BlackFlowSession::set_cultivated_animal_types(std::vector<CultivatedAnimalT
     m_cultivated_animal_types.clear();
     m_cultivated_animal_types.reserve(types.size());
     for (const CultivatedAnimalType type : types) {
-        if (std::find(m_cultivated_animal_types.begin(), m_cultivated_animal_types.end(), type) ==
-            m_cultivated_animal_types.end()) {
+        // 组合目标保留每只动物；旧的单品种模式继续使用原有的品种列表。
+        if (!m_cultivation_targets.empty() ||
+            std::find(m_cultivated_animal_types.begin(), m_cultivated_animal_types.end(), type) ==
+                m_cultivated_animal_types.end()) {
             m_cultivated_animal_types.emplace_back(type);
         }
     }
@@ -252,8 +254,12 @@ void BlackFlowSession::set_cultivated_animal_types(std::vector<CultivatedAnimalT
     // 在页面结果提交的末尾求值，此刻写入才赶得上同一拍的结算。进店没能下种时收获为空，
     // 事实置假，正好落进 ｢培育已了结但没拿到目标｣ 那一条终止规则。
     const bool obtained =
-        std::find(m_cultivated_animal_types.begin(), m_cultivated_animal_types.end(), m_cultivation_target) !=
-        m_cultivated_animal_types.end();
+        m_cultivation_targets.empty()
+            ? std::ranges::find(m_cultivated_animal_types, m_cultivation_target) != m_cultivated_animal_types.end()
+            : std::ranges::all_of(m_cultivation_targets, [&](CultivatedAnimalType target) {
+                  return std::ranges::count(m_cultivated_animal_types, target) >=
+                         std::ranges::count(m_cultivation_targets, target);
+              });
     std::string error;
     if (!set_fact("cultivation_target_obtained", obtained, &error)) {
         Log.error("BlackFlow cultivation target fact update failed", error);
@@ -323,6 +329,13 @@ void BlackFlowSession::refresh_mission()
     for (const auto& [id, status] : m_mission.milestones) {
         const auto old = previous.find(id);
         if (status == MilestoneStatus::Inactive || (old != previous.end() && old->second == status)) {
+            continue;
+        }
+        // 路线偏好的状态只随楼层窗口变化，与地图和实际路线无关；它们留在日志里，回调只报告策略目标。
+        const auto definition = std::ranges::find(m_policy->milestones, id, &Milestone::id);
+        if (definition == m_policy->milestones.end() || !definition->strategy_goal()) {
+            LogInfo << __FUNCTION__ << "route preference" << id << "status" << to_string(status) << "floor"
+                    << m_run.floor << "progress" << m_mission.progress(id);
             continue;
         }
         json::object details {
@@ -774,29 +787,7 @@ void BlackFlowSession::queue_decision()
                                                                         : m_run.resources.action_points - requirement;
     m_decision_id = "BF-D" + std::to_string(m_run_revision) + "-" + std::to_string(++m_decision_sequence);
 
-    std::string reason_detail;
     const PolicyDecision& decision = m_last_plan->decision;
-    if (!decision.decisive_rule_id.empty() && m_policy.has_value()) {
-        const auto found = std::ranges::find(m_policy->rules, decision.decisive_rule_id, &PolicyRule::id);
-        if (found != m_policy->rules.end()) {
-            reason_detail = found->description;
-        }
-    }
-    if (!decision.decisive_milestone_ids.empty() && m_policy.has_value()) {
-        for (const std::string& milestone_id : decision.decisive_milestone_ids) {
-            const auto found = std::ranges::find(m_policy->milestones, milestone_id, &Milestone::id);
-            if (found == m_policy->milestones.end()) {
-                continue;
-            }
-            if (!reason_detail.empty()) {
-                reason_detail += "; ";
-            }
-            reason_detail += found->description;
-        }
-    }
-    if (reason_detail.empty()) {
-        reason_detail = decision.reason;
-    }
 
     std::vector<json::value> runners_up;
     for (const MoveCandidate& runner : decision.runners_up) {
@@ -818,16 +809,9 @@ void BlackFlowSession::queue_decision()
     for (const auto& [category, count] : decision.rejection_counts) {
         rejected[category] = count;
     }
-    std::vector<json::value> decisive_milestones;
-    decisive_milestones.reserve(decision.decisive_milestone_ids.size());
-    for (const std::string& milestone_id : decision.decisive_milestone_ids) {
-        decisive_milestones.emplace_back(milestone_id);
-    }
-    std::vector<json::value> released_reserves;
-    released_reserves.reserve(decision.released_reserve_ids.size());
-    for (const std::string& reserve_id : decision.released_reserve_ids) {
-        released_reserves.emplace_back(reserve_id);
-    }
+    const auto string_array = [](const std::vector<std::string>& values) {
+        return json::array(std::vector<json::value>(values.begin(), values.end()));
+    };
 
     json::object details {
         { "run_revision", m_run_revision },
@@ -851,14 +835,14 @@ void BlackFlowSession::queue_decision()
         { "safe_requirement", requirement },
         { "safety_margin", margin },
         { "reason_category", std::string(to_string(decision.reason_category)) },
-        { "reason_detail", reason_detail },
         { "decisive_rule_id", decision.decisive_rule_id },
-        { "decisive_milestone_id", decision.decisive_milestone_id },
-        { "decisive_milestone_ids", json::array(std::move(decisive_milestones)) },
+        { "decisive_metric", decision.decisive_metric },
+        { "decisive_milestone_ids", string_array(decision.decisive_milestone_ids) },
+        { "forgone_milestone_ids", string_array(decision.forgone_milestone_ids) },
         { "total_candidates", decision.total_candidates },
         { "eligible_candidates", decision.eligible_candidates },
         { "rejection_counts", std::move(rejected) },
-        { "released_reserve_ids", json::array(std::move(released_reserves)) },
+        { "released_reserve_ids", string_array(decision.released_reserve_ids) },
         { "runners_up", json::array(std::move(runners_up)) },
         { "planned_milestone_progress", std::move(planned_progress) },
         { "uses_inferred_edge", move.uses_inferred_edge },
@@ -914,10 +898,6 @@ void BlackFlowSession::queue_decision()
         m_decision_id,
         "profile",
         m_profile,
-        "rule",
-        decision.decisive_rule_id,
-        "milestone",
-        decision.decisive_milestone_id,
         "floor",
         m_run.floor,
         "target",
@@ -928,6 +908,14 @@ void BlackFlowSession::queue_decision()
         margin,
         "reason",
         to_string(decision.reason_category),
+        "rule",
+        decision.decisive_rule_id,
+        "metric",
+        decision.decisive_metric,
+        "goals",
+        decision.decisive_milestone_ids,
+        "forgone",
+        decision.forgone_milestone_ids,
         "confirmed states",
         m_last_plan->confirmed_state_count,
         "relaxed states",
@@ -2069,6 +2057,21 @@ std::optional<std::reference_wrapper<const ShoppingRule>> BlackFlowSession::shop
         return std::nullopt;
     }
     return resolve_shopping_rule(*m_policy, m_facts.merged(), m_page_context->page_intent);
+}
+
+int BlackFlowSession::reserved_amount(std::string_view resource) const
+{
+    if (!m_policy) {
+        return 0;
+    }
+    const FactStore facts = m_facts.merged();
+    int amount = 0;
+    for (const auto& reserve : m_policy->reserves) {
+        if (reserve.resource == resource && reserve.active_if.evaluate(facts)) {
+            amount = std::max(amount, reserve.minimum);
+        }
+    }
+    return amount;
 }
 
 bool BlackFlowSession::apply_shopping_purchase(std::string_view name, std::string* error)

@@ -494,14 +494,10 @@ python msvc.py
 # 内含：cl.exe / link.exe / lib.exe + Windows SDK + C++ STL + 必要的 VS 组件
 
 # 2. 重命名/搬迁到约定位置（避免被 git 误识别）
-Move-Item .\msvc C:\msvc-portable\msvc  # 改用 C 盘避免长路径；479 MB
+Move-Item .\msvc C:\Tools\msvc-portable\msvc  # 改用 C 盘避免长路径；479 MB
 
-# 3. 加载环境变量（创建一次性脚本 E:\msvc-setup\refresh-msvc-env.ps1）
-$msvc = "C:\msvc-portable\msvc"
-$env:Path = "$msvc\bin\Hostx64\x64;$msvc\bin\Hostx64\x64\cl;$env:Path"
-$env:INCLUDE = "$msvc\include;$msvc\Windows Kits\10\Include\10.0.28000.0\ucrt;$msvc\Windows Kits\10\Include\10.0.28000.0\um;$msvc\Windows Kits\10\Include\10.0.28000.0\shared;$msvc\Windows Kits\10\Include\10.0.28000.0\winrt;$msvc\Windows Kits\10\Include\10.0.28000.0\cppwinrt"
-$env:LIB = "$msvc\lib\x64;$msvc\Windows Kits\10\Lib\10.0.28000.0\ucrt\x64;$msvc\Windows Kits\10\Lib\10.0.28000.0\um\x64"
-& refresh-msvc-env.ps1
+# 3. 加载环境变量（setup_x64.bat 以 %~dp0 自定位，含 MSVC + Windows SDK）
+cmd /c "call C:\Tools\msvc-portable\msvc\setup_x64.bat && where cl"
 
 # 4. 安装 Ninja（替代 VS generator）
 pip install ninja  # 1.13.2
@@ -528,12 +524,12 @@ vcpkg install opencv4 onnxruntime paddleocr fastdeploy  # ABI x64-windows
 **踩坑点**：
 - vcpkg triplet `maa-x64-windows`（OpenCV/onnxruntime/PaddleOCR/FastDeploy）ABI 硬约束，GCC 跨 ABI 不可链接（MSYS2 GCC 不可用）
 - portable-msvc 与 MSYS2 GCC 可并存（不动 `E:\msys2`）
-- 不要把 `C:\msvc-portable\msvc\` 加进 git（加到 `.gitignore` 的 `msvc-portable/` 或放仓库外）
+- 不要把 `C:\Tools\msvc-portable\msvc\` 加进 git（加到 `.gitignore` 的 `msvc-portable/` 或放仓库外）
 
 **验证**：
 
 ```powershell
-where cl  # 应有 C:\msvc-portable\msvc\bin\Hostx64\x64\cl.exe
+cmd /c "call C:\Tools\msvc-portable\msvc\setup_x64.bat && where cl"  # 应有 C:\Tools\msvc-portable\msvc\VC\Tools\MSVC\<版本>\bin\Hostx64\x64\cl.exe
 cmake --version  # 应含 Ninja 1.13+
 Get-Item build\bin\MaaCore.dll  # 应 5MB+
 ```

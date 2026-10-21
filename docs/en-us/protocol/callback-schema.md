@@ -187,6 +187,8 @@ Todo
   Auto combat
 - `SSSCopilot`  
   Auto Stationary Security Service
+- `ParadoxCopilot`  
+  Auto Paradox Simulation
 - `Depot`  
   Depot recognition
 - `OperBox`  
@@ -246,9 +248,12 @@ Todo
     "action": "ClickSelf", // Action name, e.g. "ClickSelf" | "DoNothing" | "Swipe"
     "exec_times": 1, // Execution times
     "max_times": 999, // Maximum execution times
-    "algorithm": "MatchTemplate" // Recognition algorithm name, e.g. "MatchTemplate" | "OcrDetect" | "FeatureMatch" | "JustReturn"
+    "algorithm": "MatchTemplate", // Recognition algorithm name, e.g. "MatchTemplate" | "OcrDetect" | "FeatureMatch" | "JustReturn"
+    "result": {} // Recognition result of this run, structure varies by algorithm; empty object when there is none
   }
   ```
+
+  Additionally, when the task execution count reaches its limit, a `SubTaskExtraInfo` message with `what` set to `ExceededLimit` is reported first; its `details` contains `task` (task name), `exec_times` (execution times), and `max_times` (maximum execution times).
 
 - `ReportToPenguinStats` / `ReportToYituliu`  
   Report battle drops to Penguin Statistics / Yituliu big data (a `SubTaskError` is reported back when the upload fails)
@@ -362,7 +367,9 @@ Todo
         "quantity": 4,
         "addQuantity": 2
       }
-    ]
+    ],
+    "cur_times": 2, // Number of consecutive battles recognized on the settlement screen (only present when recognized)
+    "annihilation_weekly_process": [1600, 1800] // Weekly acquisition progress of Annihilation mode, format: [completed count, limit] (only present on Annihilation stages)
   }
   ```
 
@@ -547,13 +554,83 @@ Todo
   }
   ```
 
+- `CustomInfrastRoomKeptUnchanged`  
+  The room is kept unchanged during custom infrastructure scheduling. The `details` field always includes `facility` (facility name) and `index` (facility index), plus:
+
+  ```json
+  // Corresponding details field example
+  {
+    "reason": "candidates_working" // Reason for keeping the room unchanged, see below
+  }
+  ```
+
+  `reason` values:
+  - `facility_empty`: the custom rooms array is empty.
+  - `room_no_intent`: the room is configured but has no operator selection intent.
+  - `candidates_unavailable`: none of the candidate operators is available, usually a misconfigured list (typo or unowned operator).
+  - `candidates_working`: all candidate operators are working in other facilities.
+  - `candidates_low_mood`: all candidate operators are below the mood threshold.
+
+- `CustomInfrastRoomsNotConfigured`  
+  The facility is not covered by the custom rooms array and is kept unchanged. The `details` field contains only the default `facility` (facility name) and `index` (facility index).
+
+- `CustomInfrastTraineeNotFound`  
+  None of the training room candidate operators is matched. The `details` field always includes `facility` (facility name) and `index` (facility index), plus:
+
+  ```json
+  // Corresponding details field example
+  {
+    "candidates": ["艾雅法拉", "焰影苇草"] // List of candidate operators for the training room
+  }
+  ```
+
+- `CustomInfrastAssistantNotFound`  
+  None of the assistant candidate operators is matched. The `details` field always includes `facility` (facility name) and `index` (facility index), plus:
+
+  ```json
+  // Corresponding details field example
+  {
+    "candidates": ["凯尔希"],        // List of candidate operators for the assistant
+    "working_excluded": ["琴柳"],    // Optional; candidates excluded because working in other facilities, only present when non-empty
+    "low_mood_excluded": ["歌蕾蒂娅"] // Optional; candidates excluded because their mood is below the threshold, only present when non-empty
+  }
+  ```
+
+- `CustomInfrastRoomGroupsMatchFailed`  
+  Operator group matching failed during custom infrastructure scheduling. The `details` field always includes `facility` (facility name) and `index` (facility index), plus:
+
+  ```json
+  // Corresponding details field example
+  {
+    "reason": "all_unavailable", // Reason for the failure, see below
+    "groups": ["古+銀"] // Optional; undefined or unavailable group names, only present with `group_not_defined` and `all_unavailable`
+  }
+  ```
+
+  `reason` values:
+  - `group_not_defined`: none of the referenced group names is defined in groups.
+  - `all_unavailable`: operators of all groups are unavailable.
+  - `recognition_failed`: the operator list recognition failed.
+
+- `CopilotPrecheckFile`  
+  Reported before pre-matching each copilot file when "Assist formation with Yituliu data" is enabled in multi-file copilot mode. The `details` field contains:
+
+  ```json
+  // Corresponding details field example
+  {
+    "nav_name": "CV-EX-1", // Stage name
+    "filename": "作业.json" // Copilot file name
+  }
+  ```
+
 - `StageInfo`  
   Auto combat stage information
 
   ```json
   // Corresponding details field example
   {
-      "name": string  // Stage name
+      "name": string,  // Stage name
+      "size": number   // Number of map grid cells
   }
   ```
 
@@ -579,6 +656,10 @@ Todo
       {
           "id": "char_002_amiya",
           "name": "阿米娅", // "Amiya"
+          "name_en": "Amiya", // Operator English name
+          "name_jp": "アーミヤ", // Operator Japanese name
+          "name_kr": "아미야", // Operator Korean name
+          "name_tw": "阿米婭", // Operator Traditional Chinese name
           "own": true,
           "rarity": 5
       },
@@ -619,6 +700,39 @@ Todo
 
 - `UnsupportedLevel`  
   Auto combat, unsupported stage name
+
+- `BlackFlowStartRun`  
+  Progress of BlackFlow starting reward farming (roguelike mode 30003). (machine-translated)
+
+  ```json
+  // Corresponding details field example
+  {
+      "status": "reward_missed",       // Current progress, see below
+      "rewards": ["空间租赁", "金乌"]   // Optional; reward names recognized on the target run's support selection page
+  }
+  ```
+
+  `status` values:
+  - `preparing`: the preparation run started.
+  - `target_run`: the target run started.
+  - `reward_missed`: rewards were recognized on the support selection page but none is desired; the run is abandoned and a new preparation run starts.
+  - `completed`: a desired reward was found; the task exited to the theme page keeping the run, and the task ends.
+  - `reward_unrecognized`: rewards on the support selection page could not be recognized; the task stops on that page.
+  - `reward_page_missing`: the target run did not show the support selection page; the task stops.
+  - `reward_recognition_failed`: the preparation run failed to pick a reward on the support selection page; the task stops.
+
+  `rewards` is only reported with `reward_missed`, `completed` and `reward_unrecognized`, and is omitted when `blackflow_start_rewards` is 0 (rewards are not recognized) or when no reward was recognized. Reward names are reported in Simplified Chinese.
+
+- `BlackFlowScrapTradeAborted`  
+  The BlackFlow scrap trade is aborted due to an anomaly. The `details` field contains:
+
+  ```json
+  // Corresponding details field example
+  {
+    "reason": "sale_failed", // Reason for aborting the trade
+    "item": "晶体元件" // Name of the item that triggered the abort
+  }
+  ```
 
 ### ReportRequest
 
