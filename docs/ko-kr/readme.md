@@ -44,7 +44,7 @@ MAA는 MAA Assistant Arknights의 약자입니다
 | Fork 전용 기능 | 계정 로테이션, 계정별 데이터 버킷, 지원 가속 임계값, 응접실 단서 폴백, 진단 보고서, `expedite_min_level` 프로토콜 확장 등 모두 `branch`의 로컬 작업에서 파생 |
 | 문서 | 저장소 루트의 [README](../../README.md) + [AGENTS.md](../../AGENTS.md) + [WORKFLOW.md](../../WORKFLOW.md) + [LOG.md](../../LOG.md) |
 
-> `upstream/master-v2`를 `staging` 또는 `branch`로 직접 머지하지 마세요. Fork 흐름 세부사항은 [WORKFLOW.md](../../WORKFLOW.md) §5 (역사 接목) 및 §6 (수동 충돌 해결)을 참조하세요.
+> `upstream/master-v2`를 `staging` 또는 `branch`로 직접 머지하지 마세요. Fork 흐름 세부사항은 [WORKFLOW.md](../../WORKFLOW.md) §6 (수동 충돌 해결) 및 §8 (빌드 검증)을 참조하세요. §5 (역사 接목)와 §7 (git replace)는 완료된 일회성 절차이므로 다시 실행할 필요가 없습니다.
 
 ## 다운로드 및 설치
 

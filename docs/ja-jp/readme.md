@@ -44,7 +44,7 @@ MAAは、MAA Assistant Arknightsです。
 | Fork 独自機能 | アカウント巡回、アカウント別データバケット、求人加速閾値、応接室線索フォールバック、診断レポート、`expedite_min_level` プロトコル拡張など、すべて `branch` のローカル作業から派生 |
 | ドキュメント | リポジトリルートの [README](../../README.md) + [AGENTS.md](../../AGENTS.md) + [WORKFLOW.md](../../WORKFLOW.md) + [LOG.md](../../LOG.md) |
 
-> `upstream/master-v2` を `staging` や `branch` に直接マージしないでください。Fork フローの詳細は [WORKFLOW.md](../../WORKFLOW.md) §5（履歴接ぎ木）と §6（手動コンフリクト解消）を参照。
+> `upstream/master-v2` を `staging` や `branch` に直接マージしないでください。Fork フローの詳細は [WORKFLOW.md](../../WORKFLOW.md) §6（手動コンフリクト解消）と §8（ビルド検証）を参照。§5（履歴接ぎ木）と §7（git replace）は完了済みの一回限りの手順であり、再実行は不要です。
 
 ## ダウンロードとインストール
 

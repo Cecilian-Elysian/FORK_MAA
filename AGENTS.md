@@ -6,7 +6,7 @@
 
 中文叙述为主，分支名 / 命令 / 协议字段等关键术语保留英文原文。无 emoji、无 vuepress 容器，遵循 `LOG.md` 既有的表格驱动风格。上游开发约定全文见 `§9`。
 
-> **重要约束**：拉取上游新功能（merge `upstream/master-v2`）**必须**按 [`WORKFLOW.md`](./WORKFLOW.md) 流程执行（§5 graft 假历史关联 + §6 合并手解 + §7 转 git replace + §8 编译验证）。该流程基于 2026-08-06 v6.16.5 合入经验总结，绕过 fork root 无父节点导致的 unrelated histories 问题。
+> **重要约束**：拉取上游新功能（merge `upstream/master-v2`）按 [`WORKFLOW.md`](./WORKFLOW.md) 流程执行（§6 合并手解 + §8 编译验证）。§5 graft 假历史关联 / §7 转 git replace 是 2026-08-06 v6.16.5 首次挂接历史的**一次性步骤**（当时 fork root `c8c8e75be5` 无父节点，绕过 unrelated histories 问题）；此后历次上游 merge 已把 fork base 纳入正常拓扑，merge-base 直接落在上游 tip，replace ref 已于 2026-10-21 删除，日常同步无需再执行 §5 / §7。
 >
 
 
@@ -96,7 +96,7 @@ staging ──── feat/<name>, fix/<name> ← 从 staging 拉出
 | 晋升时机 | `branch` 晋升由用户手动触发；不再自动攒批晋升（变更日 2026-07-30） |
 | 晋升方式 | `staging` → `branch` 由用户执行 `git merge staging --no-ff`；feat/fix → `staging` 自动 `--no-ff` |
 | 出问题回退 | 从远端保留的 `feat/<name>` / `fix/<name>` 重新拉 `fix/<name>/<n>`，仍合并到 `staging` |
-| **上游同步 SOP** | **拉取上游新功能（merge `upstream/master-v2`）必须按 `WORKFLOW.md` 流程执行**（§5 graft + §6 合并 + §7 replace + §8 编译验证） |
+| **上游同步 SOP** | 拉取上游新功能（merge `upstream/master-v2`）按 `WORKFLOW.md` 流程执行（§6 合并手解 + §8 编译验证；§5 graft / §7 replace 为一次性历史挂接步骤，2026-08-06 完成后不再需要，replace ref 已于 2026-10-21 删除） |
 
 #### 当前 staging 内容（截至 2026-10-09 staging → branch 晋升完成）
 
@@ -116,7 +116,7 @@ staging ──── feat/<name>, fix/<name> ← 从 staging 拉出
 - 2026-10-13：`ab1f29bab3` merge 上游 **v6.19.0** release `d274123cfc`（#18595，2026-10-11，自 v6.18.0 起 220 commit，§7.25）；§7.24 登录页修复与上游自然收敛；v6.19 编译修复两处（`YituliuFetchResult` tuple 返回 + `MainTasksCompletedCount` → `RefreshMainTasksProgress()`）
 - 2026-10-20：`d983921df6` feat/background-embed 背景图内嵌存储合入 staging（§7.26：外部图片复制进 `Res\Backgrounds\Custom` + MAA 目录内路径改存 BaseDir 相对路径 + 启动自愈）
 
-历史假关联：fork base `c8c8e75be5` 无父节点，通过 `git replace --graft` 接 `6147357bd0`（v6.14.0 upstream release），merge-base = `c8c8e75be5` 走 3-way 合并。
+历史假关联（已退役）：fork base `c8c8e75be5` 原无父节点，2026-08-06 通过 `git replace --graft` 接 `6147357bd0`（v6.14.0 upstream release）完成首次 3-way 合并；此后 v6.16.5 / v6.18.0 / v6.19.0 各次 merge 已让 fork base 进入正常拓扑（merge-base = 上游 tip），replace ref 于 2026-10-21 删除（fix/sync-workflow-doc-cleanup），当前 merge-base 无需任何 replace 支持。
 
 #### staging → branch 晋升记录
 
@@ -765,7 +765,7 @@ Select-String -Path install-staging/MAA.runtimeconfig.json -Pattern "STARTUP_HOO
 ## 10. 通用踩坑（v6.18 沉淀）
 
 本节沉淀不专属于上游同步的踩坑事项，跨分支 / 跨场景复用。  
-上游同步专用 SOP 见 [`WORKFLOW.md`](./WORKFLOW.md)（§5 graft / §6.5.x 冲突地图 / §8.2.1 NetBeauty / §11.1 8 维度总检）。
+上游同步专用 SOP 见 [`WORKFLOW.md`](./WORKFLOW.md)（§6.5.x 冲突地图 / §8.2.1 NetBeauty / §11.1 8 维度总检；§5 graft / §7 replace 为已完成的一次性历史步骤，勿再执行）。
 
 ### 10.1 commit message 反斜杠转义陷阱
 

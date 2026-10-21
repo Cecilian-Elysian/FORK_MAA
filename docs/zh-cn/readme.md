@@ -42,7 +42,7 @@ MAA 的意思是 MAA Assistant Arknights
 | Fork 私有功能 | 账号轮换、账号数据分桶、公招加急门槛、会客室线索回退、诊断报告、`expedite_min_level` 协议扩展等，全部来自 `branch` 分支的本地改造 |
 | 文档 | 仓库根 [README](../../README.md) + [AGENTS.md](../../AGENTS.md) + [WORKFLOW.md](../../WORKFLOW.md) + [LOG.md](../../LOG.md) |
 
-> 不要将 `upstream/master-v2` 直接合并到 `staging` 或 `branch`。Fork 流程细节请参考 [WORKFLOW.md](../../WORKFLOW.md) §5（假历史关联）和 §6（合并手解）。
+> 不要将 `upstream/master-v2` 直接合并到 `staging` 或 `branch`。Fork 流程细节请参考 [WORKFLOW.md](../../WORKFLOW.md) §6（合并手解）与 §8（编译验证）；§5（假历史关联）与 §7（git replace）为已完成的一次性历史步骤，无需执行。
 
 ## 下载与安装
 
