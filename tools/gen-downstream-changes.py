@@ -354,6 +354,7 @@ def main(argv: list[str] | None = None) -> int:
     args.out.write_text(
         render_markdown(entries, total_rows),
         encoding="utf-8",
+        newline="\n",
     )
     print(
         f"Wrote {args.out} ({len(entries)} files scanned from "
