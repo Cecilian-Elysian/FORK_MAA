@@ -44,7 +44,7 @@ Development actively in progress ✿✿ヽ(°▽°)ノ✿
 | Fork-private features | Account cycling, account-scoped data, recruitment expedite threshold, reception-clue fallback, diagnostic export, `expedite_min_level` protocol extension, etc., all come from local work on `branch` |
 | Docs | Repo root [README.md](../../README.md), [AGENTS.md](../../AGENTS.md), [WORKFLOW.md](../../WORKFLOW.md) and [LOG.md](../../LOG.md) |
 
-> Do not merge `upstream/master-v2` directly into `staging` or `branch`. See [WORKFLOW.md](../../WORKFLOW.md) §5 (graft history) and §6 (manual conflict resolution) for fork flow details.
+> Do not merge `upstream/master-v2` directly into `staging` or `branch`. See [WORKFLOW.md](../../WORKFLOW.md) §6 (manual conflict resolution) and §8 (build verification) for fork flow details; §5 (graft history) and §7 (git replace) are one-time steps already completed — do not run them again.
 
 ## Download and Installation
 
