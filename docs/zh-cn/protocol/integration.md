@@ -22,8 +22,8 @@ AsstTaskId ASSTAPI AsstAppendTask(AsstHandle handle, const char* type, const cha
 #### 返回值
 
 - `AsstTaskId`  
-   若添加成功，返回该任务 ID, 可用于后续设置任务参数；  
-   若添加失败，返回 0
+  若添加成功，返回该任务 ID, 可用于后续设置任务参数；  
+  若添加失败，返回 0
 
 #### 参数说明
 
@@ -100,7 +100,7 @@ B服：`张三`，可输入 `张三`、`张`、`三`
 </details>
 
 - `CloseDown`  
-   关闭游戏
+  关闭游戏
 
 :::: field-group  
 ::: field enable  
@@ -131,7 +131,7 @@ B服：`张三`，可输入 `张三`、`张`、`三`
 </details>
 
 - `Fight`  
-   理智作战
+  理智作战
 
 :::: field-group  
 ::: field enable  
@@ -158,113 +158,115 @@ B服：`张三`，可输入 `张三`、`张`、`三`
 - 别传中的 OF-1 / OF-F3。
 - 当期 SS 活动 后三关。可访问 [API](https://api.maa.plus/MaaAssistantArknights/api/gui/StageActivityV2.json) 获取支持的关卡列表。需额外加载 [tasks.json](https://api.maa.plus/MaaAssistantArknights/api/resource/tasks.json) 文件中的活动关卡导航。
 - 复刻的 SS 活动。输入 `SSReopen-<关卡前缀>` ，可一次性刷完 XX-1 ~ XX-9 关，如 `SSReopen-IC`。
-  :::  
-  ::: field medicine  
-  @type number
-  @default 0
-  @optional
-  最大使用理智药数量。  
-  :::  
-  ::: field medicine_expire_days  
-  @type number
-  @default 0
-  @optional
-  使用过期时间在指定天数内的理智药，0 表示不使用过期理智药。  
-  :::  
-  ::: field expiring_medicine  
-  @type number
-  @default 0
-  @optional
-  @deprecated
-  已弃用，自 v6.8.0 起请使用 `medicine_expire_days` 代替。  
-  :::  
-  ::: field stone  
-  @type number
-  @default 0
-  @optional
-  最大吃石头数量。  
-  :::  
-  ::: field times  
-  @type number
-  @default 2147483647
-  @optional
-  战斗次数。  
-  :::  
-  ::: field series  
-  @type number
-  @default 1
-  @optional
-  代理倍率, -1~10。
-  <br>
-  `-1` 为禁用切换。
-  <br>
-  `0` 为自动切换为当前可用的最大倍率, 如当前理智不够最大倍率, 则选择最低可用倍率。
-  <br>
-  `1~10` 为指定代理倍率。
-  <br>
-  ::: info 服务器差异
-  输入校验取决于资源是否存在 `FightSeries-OldMethodFlag`：
-  <br>
-  - 新列表（国服 2026/8/1 后主资源，无该 flag）：接受 `-1~10`
-  - 旧列表（外服资源带该 flag）：仅接受 `-1~6`，更大值会被拒绝
 
-  外服预计约半年后跟进，届时上限随资源变为 10。Windows GUI 的代理倍率下拉目前固定提供到 10；外服若手动选择 7~10，任务下发时会被 Core 拒绝。
-  :::  
-  ::: field drops  
-  @type object
-  @optional
-  指定掉落数量，默认不指定。key 为 item_id, value 为数量。key 可参考 `resource/item_index.json` 文件。  
-  <br>
-  例如: `{ "30011": 10, "30062": 5 }`  
-  <br>
-  以上全部是或的关系，即任一达到即停止任务。  
-  :::  
-  ::: field report_to_penguin  
-  @type boolean
-  @default false
-  @optional
-  是否汇报企鹅数据。  
-  :::  
-  ::: field penguin_id  
-  @type string
-  @optional
-  企鹅数据汇报 id, 默认为空。仅在 `report_to_penguin` 为 true 时有效。  
-  :::  
-  ::: field report_to_yituliu  
-  @type boolean
-  @default false
-  @optional
-  是否汇报一图流。  
-  :::  
-  ::: field yituliu_id  
-  @type string
-  @optional
-  一图流汇报 id, 默认为空。仅在 `report_to_yituliu` 为 true 时有效。  
-  :::  
-  ::: field server  
-  @type string
-  @default CN
-  @optional
-  服务器，会影响掉落识别及上传。
-  <br>
-  选项：`CN` | `US` | `JP` | `KR`  
-  :::  
-  ::: field client_type  
-  @type string
-  @optional
-  客户端版本，默认为空。用于游戏崩溃时重启并连回去继续刷，若为空则不启用该功能。
-  <br>
-  选项：`Official` | `Bilibili` | `txwy` | `YoStarEN` | `YoStarJP` | `YoStarKR`  
-  :::  
-  ::: field DrGrandet  
-  @type boolean
-  @default false
-  @optional
-  节省理智碎石模式，仅在可能产生碎石效果时生效。
-  <br>
-  在碎石确认界面等待，直到当前的 1 点理智恢复完成后再立刻碎石。  
-  :::  
-  ::::
+:::  
+::: field medicine  
+@type number
+@default 0
+@optional
+最大使用理智药数量。  
+:::  
+::: field medicine_expire_days  
+@type number
+@default 0
+@optional
+使用过期时间在指定天数内的理智药，0 表示不使用过期理智药。  
+:::  
+::: field expiring_medicine  
+@type number
+@default 0
+@optional
+@deprecated
+已弃用，自 v6.8.0 起请使用 `medicine_expire_days` 代替。  
+:::  
+::: field stone  
+@type number
+@default 0
+@optional
+最大吃石头数量。  
+:::  
+::: field times  
+@type number
+@default 2147483647
+@optional
+战斗次数。  
+:::  
+::: field series  
+@type number
+@default 1
+@optional
+代理倍率, -1~10。
+<br>
+`-1` 为禁用切换。
+<br>
+`0` 为自动切换为当前可用的最大倍率, 如当前理智不够最大倍率, 则选择最低可用倍率。
+<br>
+`1~10` 为指定代理倍率。
+<br>
+::: info 服务器差异
+输入校验取决于资源是否存在 `FightSeries-OldMethodFlag`：
+<br>
+
+- 新列表（国服 2026/8/1 后主资源，无该 flag）：接受 `-1~10`
+- 旧列表（外服资源带该 flag）：仅接受 `-1~6`，更大值会被拒绝
+
+外服预计约半年后跟进，届时上限随资源变为 10。Windows GUI 的代理倍率下拉目前固定提供到 10；外服若手动选择 7~10，任务下发时会被 Core 拒绝。
+:::  
+::: field drops  
+@type object
+@optional
+指定掉落数量，默认不指定。key 为 item_id, value 为数量。key 可参考 `resource/item_index.json` 文件。  
+<br>
+例如: `{ "30011": 10, "30062": 5 }`  
+<br>
+以上全部是或的关系，即任一达到即停止任务。  
+:::  
+::: field report_to_penguin  
+@type boolean
+@default false
+@optional
+是否汇报企鹅数据。  
+:::  
+::: field penguin_id  
+@type string
+@optional
+企鹅数据汇报 id, 默认为空。仅在 `report_to_penguin` 为 true 时有效。  
+:::  
+::: field report_to_yituliu  
+@type boolean
+@default false
+@optional
+是否汇报一图流。  
+:::  
+::: field yituliu_id  
+@type string
+@optional
+一图流汇报 id, 默认为空。仅在 `report_to_yituliu` 为 true 时有效。  
+:::  
+::: field server  
+@type string
+@default CN
+@optional
+服务器，会影响掉落识别及上传。
+<br>
+选项：`CN` | `US` | `JP` | `KR`  
+:::  
+::: field client_type  
+@type string
+@optional
+客户端版本，默认为空。用于游戏崩溃时重启并连回去继续刷，若为空则不启用该功能。
+<br>
+选项：`Official` | `Bilibili` | `txwy` | `YoStarEN` | `YoStarJP` | `YoStarKR`  
+:::  
+::: field DrGrandet  
+@type boolean
+@default false
+@optional
+节省理智碎石模式，仅在可能产生碎石效果时生效。
+<br>
+在碎石确认界面等待，直到当前的 1 点理智恢复完成后再立刻碎石。  
+:::  
+::::
 
 <details>
 <summary>Example</summary>
@@ -459,7 +461,7 @@ Tag 等级（大于等于 3）和对应的希望招募时限，单位为分钟�
 </details>
 
 - `Infrast`  
-   基建换班
+  基建换班
 
 :::: field-group  
 ::: field enable  
@@ -478,7 +480,7 @@ Tag 等级（大于等于 3）和对应的希望招募时限，单位为分钟�
 <br>
 `10000` - `Custom`: 自定义换班模式，读取用户配置，可参考 [基建排班协议](./base-scheduling-schema.md)。
 <br>
-`20000` - `Rotation`: 一键轮换模式，会跳过控制中枢、发电站、宿舍以及办公室，其余设施不进行换班但保留基本操作（如使用无人机、会客室逻辑）。  
+`20000` - `Rotation`: 一键轮换模式，会跳过控制中枢、发电站、宿舍、办公室以及回收站，其余设施不进行换班但保留基本操作（如使用无人机、会客室逻辑）。  
 :::  
 ::: field facility  
 @type array<string>
@@ -487,7 +489,7 @@ Tag 等级（大于等于 3）和对应的希望招募时限，单位为分钟�
 <br>
 `mode = 0` 时该数组为启用集合，顺序与重复项不参与调度（换班顺序由算法统一安排）；`mode = 10000` / `20000` 时按数组顺序执行。
 <br>
-设施名：`Mfg` | `Trade` | `Power` | `Control` | `Reception` | `Office` | `Dorm` | `Processing` | `Training` | `AssistantChange`  
+设施名：`Mfg` | `Trade` | `Power` | `Control` | `Reception` | `Office` | `Recycle` | `Dorm` | `Processing` | `Training` | `AssistantChange`  
 :::  
 ::: field drones  
 @type string
@@ -627,8 +629,8 @@ Tag 等级（大于等于 3）和对应的希望招募时限，单位为分钟�
 </details>
 
 - `Mall`  
-   领取信用及商店购物。  
-   会先有序的按 `buy_first` 购买一遍，再从左到右并避开 `blacklist` 购买第二遍，在信用溢出时则会无视黑名单从左到右购买第三遍直到不再溢出
+  领取信用及商店购物。  
+  会先有序的按 `buy_first` 购买一遍，再从左到右并避开 `blacklist` 购买第二遍，在信用溢出时则会无视黑名单从左到右购买第三遍直到不再溢出
 
 :::: field-group  
 ::: field enable  
@@ -716,7 +718,7 @@ Tag 等级（大于等于 3）和对应的希望招募时限，单位为分钟�
 </details>
 
 - `Award`  
-   领取各种奖励
+  领取各种奖励
 
 :::: field-group  
 ::: field enable  
@@ -785,7 +787,7 @@ Tag 等级（大于等于 3）和对应的希望招募时限，单位为分钟�
 </details>
 
 - `SwitchTheme`  
-   更换游戏主界面主题
+  更换游戏主界面主题
 
 :::: field-group  
 ::: field enable  
@@ -814,7 +816,7 @@ Tag 等级（大于等于 3）和对应的希望招募时限，单位为分钟�
 </details>
 
 - `Roguelike`  
-   无限刷肉鸽
+  无限刷肉鸽
 
 :::: field-group  
 ::: field enable  
@@ -868,6 +870,8 @@ Tag 等级（大于等于 3）和对应的希望招募时限，单位为分钟�
 `20001` - 刷常乐节点，第一层进洞，找不到需要的节点就重开；仅适用于 JieGarden 主题，需配合 `find_playTime_target`。
 <br>
 `30001` - 刷襁褓动物；仅适用于 BlackFlow 主题。
+<br>
+`30003` - 刷开局，先打准备局，再开目标局。准备局取得 `blackflow_start_animals` 要求的襁褓动物并进入第三层后放弃；目标局在选择支援页命中 `blackflow_start_rewards` 中任意一项时不做选择，退出到主题页并保留该局，任务结束。准备局使用 `collectible_mode_squad`，`difficulty` 不为 `-1` 时在 0 难度下进行；目标局使用 `squad` 与 `difficulty`，到选择支援页即结束，`roles` 与开局干员只用于准备局。仅适用于 BlackFlow 主题，需配合 `blackflow_start_animals` 与 `blackflow_start_rewards`。
 :::  
 ::: field squad  
 @type string
@@ -1054,6 +1058,8 @@ Tag 等级（大于等于 3）和对应的希望招募时限，单位为分钟�
 @type string
 @optional
 烧水时使用的分队, 默认与squad同步, 当squad为空字符串且未指定collectible_mode_squad值时为指挥分队。  
+<br>
+黑流树海模式 30003 中为准备局使用的分队。  
 :::  
 ::: field start_with_seed  
 @type string
@@ -1074,12 +1080,36 @@ Tag 等级（大于等于 3）和对应的希望招募时限，单位为分钟�
 `burn_with_investment` - 第一层完成投资后尽快抵达第三层，到达即重开
 <br>
 `burn` - 尽快抵达第三层，到达即重开  
+<br>
+`ending1` - 以第一结局为目标推进刷等级
+<br>
+`ending2` - 以第二结局为目标推进刷等级
+<br>
+`ending3` - 以第三结局为目标推进刷等级
+<br>
+以上取值仅在刷等级模式（mode 0）下适用，对应结局是否开放以游戏内为准；指定结局后，开局照常招募干员。
+<br>
+模式 30003 不读取此项。有动物要求时，准备局按 `baby_animal` 的路线培育；没有动物要求时，准备局尽快抵达第三层，`investment_enabled` 为 true 时先在第一层投资。准备局的开局干员为机械师、`collectible_mode_squad` 为特勤分队或堡垒战术分队、`roles` 为稳扎稳打或坚不可摧时，视为满天赋机械师开局，自带结构性原理：准备局招到机械师后放弃其余开局招募，路线按需用结构性原理移动；没有动物要求时，第二层直接用它飞向出口。  
 :::  
 ::: field blackflow_cultivation_target  
 @type string
 @default swaddled_cat
 @optional
 刷襁褓动物模式的目标。可选值：`swaddled_cat` | `swaddled_feathered_serpent` | `swaddled_dog` | `swaddled_cerberus`；仅在 `blackflow_strategy` 为 `baby_animal` 时使用。  
+:::  
+::: field blackflow_start_animals  
+@type array<string>
+@optional
+模式 30003 准备局要培育的襁褓动物，0 至 2 项，可重复，羽蛇最多一项。可选值：`swaddled_cat` | `swaddled_dog` | `swaddled_cerberus` | `swaddled_feathered_serpent`。各项按数量同时满足，例如两项 `swaddled_cat` 要求至少两只猫，多出的其他动物不影响；培育结束仍未凑齐时放弃该局，重新进行准备局。为空数组时准备局只需进入第三层。模式 30003 下必填。  
+:::  
+::: field blackflow_start_rewards  
+@type number
+@optional
+模式 30003 目标局期望的开局奖励，位掩码，范围 0 至 4095。模式 30003 下必填。  
+<br>
+`1` 未编号物；`2` 调查预付款；`4` 空间租赁；`8` 退行补偿；`16` 林间代步；`32` 巢寄生；`64` 襁褓天马；`128` 襁褓骏鹰；`256` 襁褓巨龙；`512` 襁褓九头蛇；`1024` 襁褓白泽；`2048` 襁褓金乌。后六项是羽蛇带来的蓝色奖励，只在 `blackflow_start_animals` 含羽蛇时生效，否则忽略。  
+<br>
+目标局在选择支援页先认出页面上的全部奖励再判断：命中任意一项时完成；认出了奖励但没有期望的，放弃该局，重新进行准备局；一项都没认出，或要求了羽蛇奖励却读不出蓝色奖励时，停在选择支援页并停止任务，截图保存到 `debug/roguelike`。为 0 时进入选择支援页即完成。进度通过 `SubTaskExtraInfo` 的 `BlackFlowStartRun` 回调，见 [回调消息协议](./callback-schema.md)。  
 :::  
 ::: field find_playTime_target  
 @type number
@@ -1145,7 +1175,7 @@ Tag 等级（大于等于 3）和对应的希望招募时限，单位为分钟�
 刷坍缩范式功能具体请参考 [肉鸽辅助协议](./integrated-strategy-schema.md#萨米肉鸽——坍缩范式)
 
 - `Copilot`  
-   自动抄作业
+  自动抄作业
 
 :::: field-group  
 ::: field enable  
@@ -1170,77 +1200,80 @@ Tag 等级（大于等于 3）和对应的希望招募时限，单位为分钟�
 - `nav_name_override`: 导航用关卡名，可选；未提供或为 `null` 时自动从作业文件推导
   <br>
 - `is_raid`: 是否切换为突袭模式，可选，默认值 false
-  :::  
-  ::: field loop_times  
-  @type number
-  @default 1
-  @optional
-  循环次数。仅在单一作业模式下（即指定 filename 时）有效；此参数生效时仅可执行 set_params 一次。  
-  :::  
-  ::: field use_sanity_potion  
-  @type boolean
-  @default false
-  @optional
-  是否允许在剩余理智不足时使用理智药。  
-  :::  
-  ::: field formation  
-  @type boolean
-  @default false
-  @optional
-  是否进行自动编队。  
-  :::  
-  ::: field formation_index  
-  @type number
-  @default 0
-  @optional
-  自动编队所使用的编队栏位的编号。仅在 formation 为 true 时有效。
-  <br>
-  为 0–4 的整数，其中 0 表示选择当前编队，1-4 分别表示第一、二、三、四编队。  
-  :::  
-  ::: field user_additional  
-  @type array`<object>`
-  @default []
-  @optional
-  自定义追加干员列表。仅在 formation 为 true 时有效。
-  <br>
-  每个对象包含：
-  <br>
+
+:::  
+::: field loop_times  
+@type number
+@default 1
+@optional
+循环次数。仅在单一作业模式下（即指定 filename 时）有效；此参数生效时仅可执行 set_params 一次。  
+:::  
+::: field use_sanity_potion  
+@type boolean
+@default false
+@optional
+是否允许在剩余理智不足时使用理智药。  
+:::  
+::: field formation  
+@type boolean
+@default false
+@optional
+是否进行自动编队。  
+:::  
+::: field formation_index  
+@type number
+@default 0
+@optional
+自动编队所使用的编队栏位的编号。仅在 formation 为 true 时有效。
+<br>
+为 0–4 的整数，其中 0 表示选择当前编队，1-4 分别表示第一、二、三、四编队。  
+:::  
+::: field user_additional  
+@type array`<object>`
+@default []
+@optional
+自定义追加干员列表。仅在 formation 为 true 时有效。
+<br>
+每个对象包含：
+<br>
+
 - `name`: 干员名，可选，默认值 ""，若留空则忽视此干员
   <br>
-- `skill`: 需要携带的技能，可选，默认值 0，即遵从游戏内默认的技能选择；为 1–3 的整数，若不在此范围内也遵从游戏内默认的技能选择  
-  :::  
-  ::: field add_trust  
-  @type boolean
-  @default false
-  @optional
-  是否在自动编队时以信赖值升序自动填充空余栏位。仅在 formation 为 true 时有效。  
-  :::  
-  ::: field ignore_requirements  
-  @type boolean
-  @default false
-  @optional
-  是否在自动编队时忽视干员属性要求。仅在 formation 为 true 时有效。  
-  :::  
-  ::: field support_unit_usage  
-  @type number
-  @default 0
-  @optional
-  助战干员的使用模式。为 0–3 的整数。仅在 formation 为 true 时有效。
-  <br>
-  `0` - 表示不使用助战干员
-  <br>
-  `1` - 如果有且仅有一名缺失干员则尝试寻找助战干员补齐编队，如果无缺失干员则不使用助战干员
-  <br>
-  `2` - 如果有且仅有一名缺失干员则尝试寻找助战干员补齐编队，如果无缺失干员则使用指定助战干员  
-  <br>
-  `3` - 如果有且仅有一名缺失干员则尝试寻找助战干员补齐编队，如果无缺失干员则使用随机助战干员  
-  :::  
-  ::: field support_unit_name  
-  @type string
-  @optional
-  指定助战干员名。仅在 support_unit_usage 为 2 时有效。  
-  :::  
-  ::::
+- `skill`: 需要携带的技能，可选，默认值 0，即遵从游戏内默认的技能选择；为 1–3 的整数，若不在此范围内也遵从游戏内默认的技能选择
+
+:::  
+::: field add_trust  
+@type boolean
+@default false
+@optional
+是否在自动编队时以信赖值升序自动填充空余栏位。仅在 formation 为 true 时有效。  
+:::  
+::: field ignore_requirements  
+@type boolean
+@default false
+@optional
+是否在自动编队时忽视干员属性要求。仅在 formation 为 true 时有效。  
+:::  
+::: field support_unit_usage  
+@type number
+@default 0
+@optional
+助战干员的使用模式。为 0–3 的整数。仅在 formation 为 true 时有效。
+<br>
+`0` - 表示不使用助战干员
+<br>
+`1` - 如果有且仅有一名缺失干员则尝试寻找助战干员补齐编队，如果无缺失干员则不使用助战干员
+<br>
+`2` - 如果有且仅有一名缺失干员则尝试寻找助战干员补齐编队，如果无缺失干员则使用指定助战干员  
+<br>
+`3` - 如果有且仅有一名缺失干员则尝试寻找助战干员补齐编队，如果无缺失干员则使用随机助战干员  
+:::  
+::: field support_unit_name  
+@type string
+@optional
+指定助战干员名。仅在 support_unit_usage 为 2 时有效。  
+:::  
+::::
 
 作业 JSON 请参考 [战斗流程协议](./copilot-schema.md)
 
@@ -1271,7 +1304,7 @@ Tag 等级（大于等于 3）和对应的希望招募时限，单位为分钟�
 </details>
 
 - `SSSCopilot`  
-   自动抄保全作业
+  自动抄保全作业
 
 :::: field-group  
 ::: field enable  
@@ -1344,7 +1377,7 @@ Tag 等级（大于等于 3）和对应的希望招募时限，单位为分钟�
 </details>
 
 - `Depot`  
-   仓库识别
+  仓库识别
 
 :::: field-group  
 ::: field enable  
@@ -1367,7 +1400,7 @@ Tag 等级（大于等于 3）和对应的希望招募时限，单位为分钟�
 </details>
 
 - `OperBox`  
-   干员 box 识别
+  干员 box 识别
 
 :::: field-group  
 ::: field enable  
@@ -1390,7 +1423,7 @@ Tag 等级（大于等于 3）和对应的希望招募时限，单位为分钟�
 </details>
 
 - `Reclamation`  
-   生息演算
+  生息演算
 
 :::: field-group  
 ::: field enable  
@@ -1478,7 +1511,7 @@ Tag 等级（大于等于 3）和对应的希望招募时限，单位为分钟�
 </details>
 
 - `Custom`  
-   自定义任务
+  自定义任务
 
 :::: field-group  
 ::: field enable  
@@ -1498,7 +1531,7 @@ Tag 等级（大于等于 3）和对应的希望招募时限，单位为分钟�
 @optional
 任务附加参数。目前像素画任务（`MiniGame@PixelPaint@Begin`）、自动提升潜能任务（`MiniGame@AutoRaisePotential@Begin`）与活动商店兑换任务（`SS@Store@Begin`）使用：
 
-- `params.pixel_paint.groups`：按色分组点列。`color` 为色板序号（0~39，与游戏右侧色板顺序一致），`points` 为 `[x, y]` 格子坐标数组（0~23，左上为原点）。
+- `params.pixel_paint.groups`：按色分组点列。`color` 为色板序号（0~~39，与游戏右侧色板顺序一致），`points` 为 `[x, y]` 格子坐标数组（0~~23，左上为原点）。
 - `params.pixel_paint.swipe`（bool，可选，默认 true）：同色同行连续格用拖动一次画完，更快但部分触控模式可能异常。
 - `params.pixel_paint.grid_delay`（int，可选，默认 0）：每格额外等待（ms）。点击后 sleep，拖动时长按格累加。各触控方式自带基础间隔，一般无需调整。兼容旧键 `grid_click_delay`。
 - `params.auto_raise_potential.use_normal_token`（bool，可选，默认 false）：中坚信物不足时确认弹窗默认点 × 放弃提升；设为 true 时改点 √，消耗普通信物继续提升。
@@ -1534,7 +1567,7 @@ Tag 等级（大于等于 3）和对应的希望招募时限，单位为分钟�
 </details>
 
 - `SingleStep`  
-   单步任务（目前仅支持战斗）
+  单步任务（目前仅支持战斗）
 
 :::: field-group  
 ::: field enable  
@@ -1627,7 +1660,7 @@ AsstBool ASSTAPI AsstSetTaskParams(AsstHandle handle, AsstTaskId id, const char*
 #### 返回值
 
 - `AsstBool`  
-   返回是否设置成功
+  返回是否设置成功
 
 #### 参数说明
 
@@ -1665,7 +1698,7 @@ AsstBool ASSTAPI AsstSetStaticOption(AsstStaticOptionKey key, const char* value)
 #### 返回值
 
 - `AsstBool`  
-   返回是否设置成功
+  返回是否设置成功
 
 #### 参数说明
 
@@ -1718,7 +1751,7 @@ AsstBool ASSTAPI AsstSetInstanceOption(AsstHandle handle, AsstInstanceOptionKey 
 #### 返回值
 
 - `AsstBool`  
-   返回是否设置成功
+  返回是否设置成功
 
 #### 参数说明
 

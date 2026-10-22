@@ -139,7 +139,7 @@ Fork 私有扩展主要在：
 
 | 分支 | 角色 | 规则 |
 |------|------|------|
-| `master` | 上游镜像 | 仅 `git fetch upstream` + `git reset --hard upstream/master-v2`，不推送 |
+| `master` | 上游镜像 | 仅 `git fetch upstream master-v2` + `git reset --hard upstream/master-v2`，不推送 |
 | `feat/upstream-<v>-sync` | 上游同步基线 | 仅解决基线冲突，改造工作按领域拆子分支 |
 | `branch` | 下游稳定基线 | 接受 `staging` 的晋升，构建产物写入 `install/` |
 | `staging` | 待验证整合区 | 所有 `feat/*`、`fix/*` 合入此处，构建到 `install-staging/` |

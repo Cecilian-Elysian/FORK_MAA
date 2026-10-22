@@ -53,7 +53,7 @@
 
 | 分支 | 角色 | 备注 |
 |------|------|------|
-| `master` | **上游镜像** | 仅 `git fetch upstream && git reset --hard upstream/master-v2`，与上游 `master-v2` 保持一致；**不推送** |
+| `master` | **上游镜像** | 仅 `git fetch upstream master-v2 && git reset --hard upstream/master-v2`，与上游 `master-v2` 保持一致；**不推送**（fetch 必须限定 `master-v2`，全量 fetch 实测可挂起 10 分钟以上，见 `WORKFLOW.md` §1.4） |
 | `new-branch` | **临时对比分支** | 仅在拉上游时创建：从本地 `master` 拉出（先 `git reset --hard upstream/master-v2` 再 `git branch -f new-branch master`）；用于与 `branch` 对比落后上游多少，用完可删 |
 | `branch` | **稳定下游基线** | 从 `staging` 晋升（`git merge --no-ff staging`）+ 部署 `install/`（`tools/local-install.bat`） |
 | `staging` | **待验证整合区** | 所有 feat / fix 的合并目标；测试通过后晋升至 `branch`（详见 `§2.4`）；部署 `install-staging/` |
@@ -575,8 +575,9 @@ Select-String -Path install-staging/MAA.runtimeconfig.json -Pattern "STARTUP_HOO
 
 | 项 | 内容 |
 |----|------|
-| 用途 | 上游/下游一键脚本（`update-upstream` + `update-downstream`）+ 流程文档命令补全；合并上游时减少手动 git 操作（重置 master / fetch / branch -f） |
+| 用途 | 上游/下游同步的流程文档命令补全（拉上游时的 master 重置 / fetch / branch -f 命令写入 `WORKFLOW.md` §1）；原计划配套 `update-upstream` + `update-downstream` 一键脚本 |
 | 关键实现 | `tools: 上游/下游一键脚本 (update-upstream + update-downstream) + 流程文档命令补全`（`b8f975fbf8`）：3 个文件 +286（Python 脚本 + WORKFLOW.md 命令补全）；后随 `e079795071` 追加 AGENTS/LOG 文档同步 |
+| **现状更正（2026-10-22）** | 上述两个脚本**未实际落地到 `tools/`**：`b8f975fbf8` 的改动只含文档与 `new-branch.md`（工作笔记，已按 §3.1 删除），`tools/` 下不存在 `update-upstream*` / `update-downstream*`。实际拉上游请按 `WORKFLOW.md` §1 + §6 手工执行；`tools/` 下现存可用脚本为 `gen-downstream-changes.py`（清单刷新）、`post-merge-validate.ps1`（合并总检）、`inject-recruitnow-slot.py`（公招 slot 注入） |
 | 生命周期 | 2026-08-25 创建（从 staging 拉出） → 2026-08-25 `--no-ff` 合入 `staging`（`52caa00cd6` merge） |
 | 关键 commit | `b8f975fbf8`（工具实现） + `e079795071`（AGENTS/LOG 同步，2026-09-16 cherry-pick 验证为空 commit） |
 | 子修复分支 | 无 |
@@ -594,7 +595,7 @@ Select-String -Path install-staging/MAA.runtimeconfig.json -Pattern "STARTUP_HOO
 | 关键 commit | `6d32144858`（merge: upstream/master-v2 v6.18.0-beta.1 三方合并 — 同步基线）+ API 迁移修复 commit；`0a3884231d`（merge: upstream/master-v2 v6.18.0 → staging）+ `1b7b087aae`（fix(post-merge) 编译修复三连） |
 | 子修复分支 | 无 |
 | 验证 | dotnet build 0 错误；MaaCore 472/472 编译成功；install-staging 部署完成（STARTUP_HOOKS=libloader ✓）；启动冒烟 AsstLoadResource ret: true 无闪退；fork marker 12 项全命中；MaaCore.dll MD5 与 build 产物一致；8 项实机冒烟待用户日常验证。v6.18.0 跟进（09-25）：dotnet build 0 错误；MaaCore 249/249（含上游新增 AutoRaisePotentialTaskPlugin 等）；两轮冒烟（22:34/22:40）`ret: true` + 0 Unhandled/Fatal；merge-base = `23feeddc53` = 上游 release commit；阶段 12：三次 OOM（第三方 DLL 半匹配）→ 同步 5 DLL 后 CPU 模式 `det 1 rec 1 ocr 1`（3091ms）全任务链跑通 + GPU 模式 `det 1 rec 1 ocr 1`（3255ms）开始唤醒→基建链 0 错误；阶段 13：LOG 阶段 11 乱码重建 + AGENTS §9 用上游原文重写 + WORKFLOW §9 错误 8-11 沉淀；post-merge-validate 8/8（[8] 为新增 DLL 同步检查） |
-| 部署备注 | C++ 工具链实际位于 `E:\Tools\msvc-portable\msvc\`（`C:\msvc-portable` 为 junction 指向同处；MSVC 14.51.36231 + SDK 28000，env 模板 `setup_x64.bat` 以 `%~dp0` 自定位，两路径均可）；CMake 用 Ninja + cl（preset `windows-publish-x64` 会报 "generator platform: x64 Does not match"，须 `cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_{C,CXX}_COMPILER=cl`）；上游 release 窗口 bump 的子模块须在 MaaCore 打包前 `git submodule update`（否则 DLL 用旧 MaaUtils 编出），部署后跑 `tools/post-merge-validate.ps1` 第 [8] 项核对第三方 DLL 同步（见 WORKFLOW.md §9 错误 8） |
+| 部署备注 | C++ 工具链实际位于 `C:\Tools\msvc-portable\msvc\`（MSVC 14.51.36231 + SDK 28000；env 模板 `setup_x64.bat` 以 `%~dp0` 自定位）；CMake 用 Ninja + cl（preset `windows-publish-x64` 会报 "generator platform: x64 Does not match"，须 `cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_{C,CXX}_COMPILER=cl`）；上游 release 窗口 bump 的子模块须在 MaaCore 打包前 `git submodule update`（否则 DLL 用旧 MaaUtils 编出），部署后跑 `tools/post-merge-validate.ps1` 第 [8] 项核对第三方 DLL 同步（见 WORKFLOW.md §9 错误 8） |
 | 作用域 | 仅本仓库 fork 三方同步操作，不推 upstream |
 | 详见 | `V618_SYNC_PLAN.md`（项目根，压缩执行计划）；`LOG.md` 2026-09-16 阶段 0-10 + 2026-09-25 阶段 11-13 全部记录；`WORKFLOW.md` §9 错误 8-11（合并问题复盘主体） |
 
@@ -654,6 +655,20 @@ Select-String -Path install-staging/MAA.runtimeconfig.json -Pattern "STARTUP_HOO
 | 作用域 | 仅本仓库 fork 私有，不推 upstream |
 | 详见 | `LOG.md` 2026-10-20（启动 / 实施完成 两段） |
 
+### 7.27 feat/upstream-v620-sync（2026-10-22 已合入 staging）
+
+| 项 | 内容 |
+|----|------|
+| 用途 | 拉取上游 v6.19.0 `d274123cfc` → v6.20.1 `d94dd007ac` 共 172 commit 三方合并；主要新增基建训练室 / 回收站换班、黑流树海 DLC1（N16 / 新分队 / 刷等级模式）、五语协议文档与 `XxxTaskUserControl` 命名统一 |
+| 生命周期 | 2026-10-22 从 `staging` 创建 → merge `ff8fd20fc2` 落地 feat 分支 → `5c5a3472b3` `--no-ff` 合入 `staging`；随后 `75ab24fb6f` 回同步 branch 的 v6.19 晋升 / 生产部署记录 |
+| 关键冲突 | 仅 4 个：CHANGELOG、TaskQueueViewModel、RecruitTaskUserControlModel、StartUpTaskUserControlModel。上游将全套 Settings UserControl / Model 改名 Task UserControl / Model；fork 的 Expedite / AccountCycle partial 与 AccountCycleOrchestrator 同步迁移，旧类名 0 残留 |
+| fork 兼容 | 保留 `expedite_min_level` / ExpediteMode；补 `RecruitTaskUserControlModel.ResetRecruitVariables` 对接上游 v6.20 右键半选临时变量还原（仅 `UseExpedited` 为 null 时归一 false，保留门槛）；账号轮换切换到 StartUpTaskUserControlModel；CycleConfig XML 注释 mojibake 修复 |
+| 子模块 | MaaUtils gitlink 未变：`6e9ba33f6a`，无第三方 DLL ABI bump；fork 继续保留 4 个子模块，拒收上游 `test` / `src/MAAUnified` |
+| 工具链 | MSVC 14.51.36257 已实测，真实路径 `C:\Tools\msvc-portable\msvc\setup_x64.bat`；AGENTS / WORKFLOW SOP 已纠正旧的 `C:\msvc-portable` / `E:\Tools` 路径 |
+| 验证 | MaaCore 91/91（0 errors）；dotnet build 0 errors / 240 pre-existing warnings；install-staging publish + nbeauty2；post-merge-validate 8/8；MaaCore / MaaUtils 与 build/bin 尺寸一致；冒烟 `AsstLoadResource ret: true` + 0 Unhandled/Fatal + 进程存活 |
+| 边界 | 冒烟中的 penguin/yituliu POST 失败是本地代理未运行导致的历史网络上报问题，非 core/UI 回归；v6.20.1 保留在 `staging` 等待日常实机验证后再由用户手动晋升 `branch` |
+| 详见 | `LOG.md` 2026-10-22（启动 / 实施完成）；`WORKFLOW.md` §6.5.11；commit `ff8fd20fc2` / `5c5a3472b3` |
+
 
 ## 8. 关键参考链接
 
@@ -706,7 +721,7 @@ Select-String -Path install-staging/MAA.runtimeconfig.json -Pattern "STARTUP_HOO
 ### C++（MaaCore）
 
 - 格式化用 `python tools/ClangFormatter/clang-formatter.py --input=<改动文件或其所在子目录>`（`--input` 收目录递归或单个文件），只传本次改动的范围，确需全仓库批量时才传 `src/MaaCore`（全量幂等但白扫全仓库）；版本需求：clang-format 23.1.1（对齐 `.pre-commit-config.yaml` 锁定版本）；5 位以上整数字面量加千分位撇（`65'535`，存量尚有漏改，勿照抄）。
-- 日志用 `"Utils/Logger.hpp"`，日志走 `<<` 流式格式，正文一律英文。旧代码中存在使用函数式日志的情况，勿照抄。合理使用 `__FUNCTION__`、`LogTraceFunction` 标注当前函数，避免手动在日志中标记。避免匿名命名空间，会导致在日志中输出为 `<anonymous namespace>`，不利于定位。
+- 日志用 `"Utils/Logger.hpp"`，流式写法如 `LogWarn << __FUNCTION__ << "msg" << var`；等级宏为 `LogDebug` / `LogTrace` / `LogInfo` / `LogWarn` / `LogError`（展开为 `Log.info_()` 等流式入口），正文一律英文。旧代码中 `Log.info("x", var)` 变参函数式写法勿照抄。合理使用 `__FUNCTION__`、`LogTraceFunction` 标注当前函数，避免手动在日志中标记。避免匿名命名空间，会导致在日志中输出为 `<anonymous namespace>`，不利于定位。
 - 字符串一律 UTF-8 `std::string`，中文裸写、禁 `u8""` 前缀；文件路径必须经 `asst::utils::path()` 或 `"xxx"_p` 字面量构造，仅 Win32 API 边界转 `to_osstring`。
 - 错误处理返回 `bool` / `std::optional` / 空指针并记日志，常规任务与配置链路不用异常。
 - 避免返回裸指针，如有需要，使用引用或智能指针；引用返回值须保证生命周期，禁止返回局部变量引用。
@@ -750,6 +765,7 @@ Select-String -Path install-staging/MAA.runtimeconfig.json -Pattern "STARTUP_HOO
 - 文档中的 UI 均指 WPF UI，修改时不必处理 Avalonia（MAAUnified）等社区实现的相关描述；明日方舟 PC 端不进文档。
 - 新活动/模式尚无官方译名时以各语言 UI 显示为准（见 `Res/Localizations/*.xaml`），UI 也无译文则写中文并括号加描述，勿自行发明译名。
 - docs 新增文档须建五语言同名文件，frontmatter 带 `icon` 与 `order`（侧边栏排序）；站内链接用相对路径，CI 有死链检查。
+- `:::` 容器（hint / field / field-group 等）内容以列表结尾时，闭合行前须留空行且与开启行同缩进（通常顶格）；列表后紧贴的 `:::` 会被 prettier 改写为列表延续缩进，缩进与开启行不等的闭合行在部分容器插件下永不闭合。
 
 ### 发布 / 打包
 
