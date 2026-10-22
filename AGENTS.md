@@ -98,7 +98,7 @@ staging ──── feat/<name>, fix/<name> ← 从 staging 拉出
 | 出问题回退 | 从远端保留的 `feat/<name>` / `fix/<name>` 重新拉 `fix/<name>/<n>`，仍合并到 `staging` |
 | **上游同步 SOP** | 拉取上游新功能（merge `upstream/master-v2`）按 `WORKFLOW.md` 流程执行（§6 合并手解 + §8 编译验证；§5 graft / §7 replace 为一次性历史挂接步骤，2026-08-06 完成后不再需要，replace ref 已于 2026-10-21 删除） |
 
-#### 当前 staging 内容（截至 2026-10-21 staging → branch 晋升完成）
+#### 当前 staging 内容（截至 2026-10-22 staging → branch 晋升完成）
 
 `staging` 通过 commit `706f8babf4` merge `upstream/master-v2`（v6.16.5 release），已含：
 - Phase A: 移除 `feat/auto-recruit-3star-to-4star`（commit `3fd8903115`）
@@ -131,6 +131,7 @@ staging ──── feat/<name>, fix/<name> ← 从 staging 拉出
 | 2026-10-09 | `9f91e74d99` | 698 commit（v6.17.0 → v6.18.0 全量同步 + §7.10-§7.18/§7.20/§7.21/§7.23 全部 fix 与工具） | trust staging | 2026-09-16 + 2026-09-25 两行 _待晋升_ 内容随本次一并晋升（`branch` 原为 `staging` 祖先 `f60066bacc`，`--no-ff` 零冲突，tree `396241e973` 与 staging 一致）；子模块 `src/MaaUtils` gitlink `0c2556cf` → `6e9ba33`；`install/` 仍为 2026-09-03 旧构建，待 `tools/local-install.bat` 重建后跑实测项 |
 | 2026-10-13 | 已随 2026-10-21 晋升 | v6.18.0 → v6.19.0 全量同步 merge `ab1f29bab3` + 合入 `bb6de290ab`（staging 已含，branch 未晋升） | trust staging | 上游 220 commit；10 处冲突手解；子模块无变化；post-merge-validate 8/8 + 冒烟 `ret: true` 全过；§7.24 摘取修复与上游自然收敛 |
 | 2026-10-21 | `b13ddbd81c` | 240 commit（v6.19.0 全量同步 + §7.24/§7.25/§7.26 fix/feat 集 + fix/sync-workflow-doc-cleanup 文档纠偏与退役 replace ref 删除） | trust staging | `branch` 原为 `staging` 祖先 `2a3b27f23f`，`--no-ff` 零冲突，tree 与 staging 完全一致；replace ref 已删除（merge-base 直接落上游 tip `d274123cfc`，2026-10-13 行 _待晋升_ 内容随本次一并晋升）；上游已推进至 v6.20.1（2026-10-20，172 commit 待同步）；`install/` 重建与实测见 LOG 2026-10-21 |
+| 2026-10-22 | `f3ef1998f4` | 181 commit（上游 v6.20.1 全量同步 + §7.27 fix/upstream-sync-sop-doc 文档固化 + 分批 push 记录） | trust staging | `branch` 原为 `staging` 祖先 `b2424dfa27`，`--no-ff` 零冲突，tree 与 staging 完全一致；merge-base = 上游 tip `d94dd007ac`（v6.20.1）；本次同步 fork 私有功能随 partial class 迁移到上游 `XxxTaskUserControl` 新命名；`install/` 重建与实测见 LOG 2026-10-22 |
 
 晋升后实测验证项（仅适用于 `staging → branch` 晋升决策；本次晋升 trust staging）：
 - 多账号切号（官服 + B 服，含新增繁中服支援）
@@ -307,7 +308,7 @@ Select-String -Path install-staging/MAA.runtimeconfig.json -Pattern "STARTUP_HOO
 
 | 分支 | 角色 | 修复目标 |
 |------|------|----------|
-| （无 — v6.18 beta.1/v6.18.0/v6.19.0 同步均随 merge `6d32144858`/`0a3884231d`/`ab1f29bab3` 合入 staging，feat 分支已按 §2.3 删除；`feat/background-embed` 已于 2026-10-20 合入 staging，见 §7.26） | — | — |
+| （无 — v6.18 beta.1/v6.18.0/v6.19.0/v6.20.1 同步均随 merge `6d32144858`/`0a3884231d`/`ab1f29bab3`/`ff8fd20fc2` 合入 staging，feat 分支已按 §2.3 删除；v6.20.1 已于 2026-10-22 晋升 `branch`，见 §7.27） | — | — |
 
 
 ## 7. 分支生命周期记录
