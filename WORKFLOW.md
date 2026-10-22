@@ -37,8 +37,23 @@ $upstreamCount = (git log staging..upstream/master-v2 --oneline).Count
 Write-Host "Fork commits: $forkCount, Upstream new: $upstreamCount"
 
 # 1.4 拉取上游最新引用（即使本地已缓存，再 fetch 一次确保最新）
-git fetch upstream
+# 必须限定分支：remote.upstream.fetch = +refs/heads/*:refs/remotes/upstream/*
+#   全量 git fetch upstream 会把上游全部分支与历史拉下来，实测可挂起 10 分钟以上；
+#   加 --tags 更慢。定向 fetch 只需数十秒。
+git fetch upstream master-v2
+
+# 1.5 清理 fetch 中断残留（被 kill 的 fetch 会在 pack 目录留下 tmp_pack_* 垃圾，
+#     实测一次全量 fetch 中断遗留 19 个 / 164.4 MB）
+Get-ChildItem .git\objects\pack -Filter tmp_pack_* -ErrorAction SilentlyContinue | Remove-Item -Force
+
+# 1.6 fetch 看似卡住时的判定方法（不要立刻判失败）：
+#     看 FETCH_HEAD 的 mtime 与 .git\objects\pack\tmp_pack_* 的体积是否在增长；
+#     仍在增长 = 正常下载，只是上游 pack 很大。
 ```
+
+> **SSH 拉取慢 / 卡住的处置**：`upstream` 走 SSH（`git@github.com:MaaAssistantArknights/...`），
+> 网络差时表现为长时间无输出。可改为后台执行并轮询进度，必要时临时改用 HTTPS：
+> `git fetch https://github.com/MaaAssistantArknights/MaaAssistantArknights.git master-v2:refs/remotes/upstream/master-v2`。
 
 **完成标志**：看到最新的 upstream commits 列表（如包含 v6.17.0 release）。
 
@@ -235,6 +250,30 @@ Automatic merge failed; fix conflicts and then commit the result.
 
 冲突文件数：**~20 个真实冲突**（不是 249 个 — graft 起效）。
 
+### §6.2.1 真实 conflict 输出示例（2026-10-22 v6.20.1 合入，实际数据）
+
+上游 v6.19.0 → v6.20.1 共 172 commit，因 fork 的 partial class 隔离（§7.20）生效，
+冲突面远小于预估（改动面交集 21 个文件 → **实际冲突仅 4 个**）：
+
+```
+Auto-merging src/MaaWpfGui/Main/AsstProxy.cs
+Auto-merging src/MaaWpfGui/Main/Bootstrapper.cs
+Auto-merging src/MaaWpfGui/Res/Localizations/en-us.xaml
+Auto-merging src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs
+CONFLICT (content): Merge conflict in src/MaaWpfGui/ViewModels/UI/TaskQueueViewModel.cs
+Auto-merging src/MaaWpfGui/ViewModels/UserControl/TaskQueue/RecruitTaskUserControlModel.cs
+CONFLICT (content): Merge conflict in src/MaaWpfGui/ViewModels/UserControl/TaskQueue/RecruitTaskUserControlModel.cs
+Auto-merging src/MaaWpfGui/ViewModels/UserControl/TaskQueue/StartUpTaskUserControlModel.cs
+CONFLICT (content): Merge conflict in src/MaaWpfGui/ViewModels/UserControl/TaskQueue/StartUpTaskUserControlModel.cs
+CONFLICT (content): Merge conflict in CHANGELOG.md
+Automatic merge failed; fix conflicts and then commit the result.
+```
+
+冲突文件数：**4 个**（CHANGELOG + TaskQueueViewModel + Recruit/StartUp TaskUserControlModel）。
+
+> 结论：上游做**全局重命名**（v6.20.0 把全套 `*SettingsUserControlModel` 改为 `*TaskUserControlModel`）时，
+> 只要 fork 私有逻辑已下沉到 partial class，冲突面就会被压到个位数。解法见 §6.5.12 / §6.5.13。
+
 ### §6.3 列出冲突
 
 ```powershell
@@ -249,6 +288,9 @@ git diff --name-only --diff-filter=U
 | **modify/delete (submodule)** | `src/MaaMacGui`, `src/maa-cli` | 接 upstream：`git update-index --cacheinfo 160000,<new_sha>,<path>` |
 | **content conflict** | 5 语种 xaml / docs / cs 文件 | 手动 edit（按 AGENTS.md §2.6 决策） |
 | **namespace rename** | `MaaWpfGui.Services.Notification` → `ExternalNotification` | `git grep` + sed/edit |
+| **纯重命名 + fork 私有改动** | 上游 `XxxSettingsUserControlModel` → `XxxTaskUserControlModel`，fork 在该文件里有私有改动 | 取 fork 侧 + 应用类名重命名（§6.5.12） |
+| **上游新增调用 / fork 曾删除该方法** | 上游新增 `ResetRecruitVariables(recruit)`，fork 早把它下沉到 partial | 在 fork 的 partial 里补等价实现（§6.5.13） |
+| **CHANGELOG 双侧各自追加** | fork 有 `historical fork notes`，上游有发布日志 | 两侧拼接：fork notes 在前 + 上游发布日志在后 |
 
 ### §6.5 关键冲突手解范例（2026-08-06 实例）
 
@@ -533,6 +575,76 @@ cmd /c "call C:\Tools\msvc-portable\msvc\setup_x64.bat && where cl"  # 应有 C:
 cmake --version  # 应含 Ninja 1.13+
 Get-Item build\bin\MaaCore.dll  # 应 5MB+
 ```
+
+### §6.5.12 上游纯重命名 + fork 私有改动（2026-10-22 v6.20.1 实例）
+
+**特征**：上游把文件/类整体改名（`git diff --stat -M` 显示 8 ± 8 行 = 只改类名），而 fork 在同一文件里有私有改动。
+此时**不能**简单 `git checkout --theirs`（会丢 fork 逻辑），也**不能**取 upstream（会丢 fork 逻辑 + fork 的 partial 化收益）。
+
+**判定上游是否为纯重命名**：
+
+```powershell
+# 看上游对旧名的改动量：只有个位数行变动 = 纯重命名
+git diff --stat -M d274123cfc upstream/master-v2 -- src/MaaWpfGui/ViewModels/UserControl/TaskQueue/RecruitSettingsUserControlModel.cs
+```
+
+**解法（取 fork 侧 + 应用类名重命名）**：
+
+```powershell
+# 1) 取 HEAD(fork) 侧原始字节（不要用 PowerShell 管道读，避免编码转码）
+cmd /c "git show HEAD:src/MaaWpfGui/ViewModels/UserControl/TaskQueue/RecruitSettingsUserControlModel.cs > blob.tmp"
+
+# 2) 类名 + copyright file= 全量替换后写到新路径（UTF-8 无 BOM）
+$text = [System.IO.File]::ReadAllText("blob.tmp", [System.Text.Encoding]::UTF8)
+$text = $text.Replace("RecruitSettingsUserControlModel", "RecruitTaskUserControlModel")
+[System.IO.File]::WriteAllText("<新路径>", $text, (New-Object System.Text.UTF8Encoding($false)))
+
+# 3) fork 的私有 partial 同步改名（git mv 保留历史），并改内部类名
+git mv <旧partial路径> <新partial路径>
+
+# 4) 改所有引用点（含 fork 私有编排器）
+git grep -l "<旧类名>" -- src/MaaWpfGui
+
+# 5) 收尾必查：旧类名必须 0 命中
+git grep -n "<旧类名>" -- src/MaaWpfGui   # 期望 exit 1（0 命中）
+```
+
+**要点**：
+- fork 的 partial class（`*.Expedite.cs` / `*.AccountCycle.cs`）**必须跟着改名**，否则 partial 失效、编译报「成员不存在」
+- `git mv` 保留 rename 历史，比「删旧建新」更利于后续 diff
+- 上游若在改名之外还改了逻辑（diff 行数明显 > 10 行），则不能套用本解法，需逐段人工合并
+
+### §6.5.13 上游新增调用，但 fork 曾删除该方法（2026-10-22 v6.20.1 实例）
+
+**特征**：上游新增了 `Xxx.ResetRecruitVariables(recruit)` 调用点，而 fork 早前把该方法下沉到自己的 partial 或删除，
+合并后调用点存在但定义缺失 → 编译报错。
+
+**解法**：在 fork 的 partial 中按**上游语义**补等价实现，不要照搬上游实现（fork 状态模型可能不同）：
+
+```csharp
+/// 上游 v6.20.0 在 TaskQueueViewModel.ResetAllTemporaryVariable（右键半选还原临时变量）中
+/// 新增了对本方法的调用，故在此按上游语义补齐。
+/// 上游实现为 <c>recruit?.UseExpedited ??= false</c>（仅把 null 归一为 false）。
+/// fork 用 <see cref="RecruitTask.ExpediteMode"/> 表达加急开关，故此处只归一底层 UseExpedited 的
+/// null 值，保留 fork 独有的 <c>ExpediteMinLevel</c> 门槛设置。
+public static void ResetRecruitVariables(RecruitTask? recruit)
+{
+    if (recruit is null)
+    {
+        return;
+    }
+
+    if (recruit.UseExpedited is null)
+    {
+        recruit.UseExpedited = false;
+    }
+}
+```
+
+**要点**：
+- 语义对齐要逐句读上游实现，不要凭直觉改写；上游 `??= false` 只归一 null，**不覆盖已显式设置的值**
+- fork 独有的并列状态（如加急门槛 `ExpediteMinLevel`）必须原样保留，否则会静默丢失用户配置
+- 补完后跑 `tools/post-merge-validate.ps1` 确认 fork 标记（`expedite_min_level` 等）仍在
 
 ### §6.6 提交
 
@@ -924,7 +1036,7 @@ if (-not $upstreamUrl) {
 Write-Host "`n=== §1 预检 ===" -ForegroundColor Cyan
 $date = Get-Date -Format "yyyyMMdd"
 git branch "backup/staging-pre-merge-$date" staging
-git fetch upstream | Out-Null
+git fetch upstream master-v2 | Out-Null
 
 $forkCount = (git log master..staging --oneline).Count
 $upstreamCount = (git log staging..upstream/master-v2 --oneline).Count

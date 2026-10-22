@@ -53,7 +53,7 @@
 
 | 分支 | 角色 | 备注 |
 |------|------|------|
-| `master` | **上游镜像** | 仅 `git fetch upstream && git reset --hard upstream/master-v2`，与上游 `master-v2` 保持一致；**不推送** |
+| `master` | **上游镜像** | 仅 `git fetch upstream master-v2 && git reset --hard upstream/master-v2`，与上游 `master-v2` 保持一致；**不推送**（fetch 必须限定 `master-v2`，全量 fetch 实测可挂起 10 分钟以上，见 `WORKFLOW.md` §1.4） |
 | `new-branch` | **临时对比分支** | 仅在拉上游时创建：从本地 `master` 拉出（先 `git reset --hard upstream/master-v2` 再 `git branch -f new-branch master`）；用于与 `branch` 对比落后上游多少，用完可删 |
 | `branch` | **稳定下游基线** | 从 `staging` 晋升（`git merge --no-ff staging`）+ 部署 `install/`（`tools/local-install.bat`） |
 | `staging` | **待验证整合区** | 所有 feat / fix 的合并目标；测试通过后晋升至 `branch`（详见 `§2.4`）；部署 `install-staging/` |
@@ -575,8 +575,9 @@ Select-String -Path install-staging/MAA.runtimeconfig.json -Pattern "STARTUP_HOO
 
 | 项 | 内容 |
 |----|------|
-| 用途 | 上游/下游一键脚本（`update-upstream` + `update-downstream`）+ 流程文档命令补全；合并上游时减少手动 git 操作（重置 master / fetch / branch -f） |
+| 用途 | 上游/下游同步的流程文档命令补全（拉上游时的 master 重置 / fetch / branch -f 命令写入 `WORKFLOW.md` §1）；原计划配套 `update-upstream` + `update-downstream` 一键脚本 |
 | 关键实现 | `tools: 上游/下游一键脚本 (update-upstream + update-downstream) + 流程文档命令补全`（`b8f975fbf8`）：3 个文件 +286（Python 脚本 + WORKFLOW.md 命令补全）；后随 `e079795071` 追加 AGENTS/LOG 文档同步 |
+| **现状更正（2026-10-22）** | 上述两个脚本**未实际落地到 `tools/`**：`b8f975fbf8` 的改动只含文档与 `new-branch.md`（工作笔记，已按 §3.1 删除），`tools/` 下不存在 `update-upstream*` / `update-downstream*`。实际拉上游请按 `WORKFLOW.md` §1 + §6 手工执行；`tools/` 下现存可用脚本为 `gen-downstream-changes.py`（清单刷新）、`post-merge-validate.ps1`（合并总检）、`inject-recruitnow-slot.py`（公招 slot 注入） |
 | 生命周期 | 2026-08-25 创建（从 staging 拉出） → 2026-08-25 `--no-ff` 合入 `staging`（`52caa00cd6` merge） |
 | 关键 commit | `b8f975fbf8`（工具实现） + `e079795071`（AGENTS/LOG 同步，2026-09-16 cherry-pick 验证为空 commit） |
 | 子修复分支 | 无 |
